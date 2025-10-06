@@ -7,7 +7,7 @@
         src="@/assets/logo.png"
       />
 
-      <div class="mb-8 text-center">
+      <div class="mb-5 text-center">
         <div class="text-body-2 font-weight-light mb-n1">Welcome to</div>
         <h1 class="text-h2 font-weight-bold">Vuetify</h1>
       </div>
@@ -27,7 +27,7 @@
             </template>
 
             <template #title>
-              <h2 class="text-h5 font-weight-bold tw-text-purple-700 tw-underline">Get started</h2>
+              <h2 class="text-h4 font-weight-bold tw-text-purple-700 tw-underline">Get started</h2>
             </template>
 
             <template #subtitle>
