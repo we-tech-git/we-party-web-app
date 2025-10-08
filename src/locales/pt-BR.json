@@ -1,0 +1,30 @@
+{
+  "login": {
+    "title": "Fazer login",
+    "subtitle": "Recomendação {0} perfeita para sua {1}",
+    "emailPlaceholder": "E-mail",
+    "passwordPlaceholder": "Senha",
+    "rememberMe": "Lembrar-me",
+    "forgotPassword": "Esqueci minha senha",
+    "button": "Entrar",
+    "noAccount": "Não tem conta?",
+    "signupLink": "Cadastre-se"
+  },
+  "signup": {
+    "title": "Cadastro",
+    "subtitle": "Preencha os dados abaixo para começar.",
+    "brandSubtitle": "Rede social perfeita {0} para sua {1}",
+    "fullName": "Nome completo",
+    "email": "E-mail",
+    "password": "Senha",
+    "confirmPassword": "Confirmar Senha",
+    "button": "Concluir cadastro",
+    "hasAccount": "Já tem uma conta?",
+    "loginLink": "Clique para entrar",
+    "rules": {
+      "lowercase": "Pelo menos uma letra minúscula",
+      "uppercase": "Pelo menos uma letra maiúscula",
+      "minChars": "Pelo menos 10 caracteres"
+    }
+  }
+}

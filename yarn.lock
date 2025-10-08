@@ -316,6 +316,36 @@
   resolved "https://registry.npmjs.org/@humanwhocodes/retry/-/retry-0.4.3.tgz"
   integrity sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==
 
+"@intlify/core-base@12.0.0-alpha.3":
+  version "12.0.0-alpha.3"
+  resolved "https://registry.yarnpkg.com/@intlify/core-base/-/core-base-12.0.0-alpha.3.tgz#687ab9657c1997ed903ff91a39265feeef0234a1"
+  integrity sha512-LEvBHBUbiOOtIBkp4IIQENVC5Fg2YHsvdXN1+WRIxQ8hzHbHSBiqZ2l68B/yg8sE1a4S7dqhkaAedunShWPH+Q==
+  dependencies:
+    "@intlify/message-compiler" "12.0.0-alpha.3"
+    "@intlify/shared" "12.0.0-alpha.3"
+
+"@intlify/message-compiler@12.0.0-alpha.3":
+  version "12.0.0-alpha.3"
+  resolved "https://registry.yarnpkg.com/@intlify/message-compiler/-/message-compiler-12.0.0-alpha.3.tgz#46b15c60ac9504e1512acca02165280f4e2e1825"
+  integrity sha512-mDDTN3gfYOHhBnpnlby19UHyvMaOnzdlpsIrxUfs44R/vCATfn8pMOkE8PXD2t410xkocEj3FpDcC9XC/0v4Dg==
+  dependencies:
+    "@intlify/shared" "12.0.0-alpha.3"
+    source-map-js "^1.0.2"
+
+"@intlify/shared@12.0.0-alpha.3":
+  version "12.0.0-alpha.3"
+  resolved "https://registry.yarnpkg.com/@intlify/shared/-/shared-12.0.0-alpha.3.tgz#187f9056f7fdf75b7e2cf03964d306d1cca890db"
+  integrity sha512-ryaNYBvxQjyJUmVuBBg+HHUsmGnfxcEUPR0NCeG4/K9N2qtyFE35C80S15IN6iYFE2MGWLN7HfOSyg0MXZIc9w==
+
+"@intlify/vue-i18n-core@12.0.0-alpha.3":
+  version "12.0.0-alpha.3"
+  resolved "https://registry.yarnpkg.com/@intlify/vue-i18n-core/-/vue-i18n-core-12.0.0-alpha.3.tgz#9ee222e53544802b926e7079bbf5b77704088a68"
+  integrity sha512-YwAfTQILHN+VoK0P/Yv47GbKnEf1lhfbliyVyW3knAL1EmT8m0m3rwffXJnwyQhYw8Jpx85CpL49WkSgyi6d/g==
+  dependencies:
+    "@intlify/core-base" "12.0.0-alpha.3"
+    "@intlify/shared" "12.0.0-alpha.3"
+    "@vue/devtools-api" "^6.5.0"
+
 "@isaacs/fs-minipass@^4.0.0":
   version "4.0.1"
   resolved "https://registry.npmjs.org/@isaacs/fs-minipass/-/fs-minipass-4.0.1.tgz"
@@ -931,7 +961,7 @@
     "@vue/compiler-dom" "3.5.22"
     "@vue/shared" "3.5.22"
 
-"@vue/devtools-api@^6.6.4":
+"@vue/devtools-api@^6.5.0", "@vue/devtools-api@^6.6.4":
   version "6.6.4"
   resolved "https://registry.npmjs.org/@vue/devtools-api/-/devtools-api-6.6.4.tgz"
   integrity sha512-sGhTPMuXqZ1rVOk32RylztWkfXTRhuS7vgAKv0zjqk8gbsHkJ7xfFf+jbySxt7tWObEJwyKaHMikV/WGDiQm8g==
@@ -1181,6 +1211,11 @@ caniuse-lite@^1.0.30001702, caniuse-lite@^1.0.30001741:
   version "1.0.30001746"
   resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001746.tgz"
   integrity sha512-eA7Ys/DGw+pnkWWSE/id29f2IcPHVoE8wxtvE5JdvD2V28VTDPy1yEeo11Guz0sJ4ZeGRcm3uaTcAqK1LXaphA==
+
+canvas-confetti@^1.9.3:
+  version "1.9.3"
+  resolved "https://registry.yarnpkg.com/canvas-confetti/-/canvas-confetti-1.9.3.tgz#ef4c857420ad8045ab4abe8547261c8cdf229845"
+  integrity sha512-rFfTURMvmVEX1gyXFgn5QMn81bYk70qa0HLzcIOSVEyl57n6o9ItHeBtUSWdvKAPY0xlvBHno4/v3QPrT83q9g==
 
 chalk@^4.0.0:
   version "4.1.2"
@@ -2700,7 +2735,7 @@ sisteransi@^1.0.5:
   resolved "https://registry.npmjs.org/sisteransi/-/sisteransi-1.0.5.tgz"
   integrity sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==
 
-"source-map-js@>=0.6.2 <2.0.0", source-map-js@^1.2.1:
+"source-map-js@>=0.6.2 <2.0.0", source-map-js@^1.0.2, source-map-js@^1.2.1:
   version "1.2.1"
   resolved "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz"
   integrity sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==
@@ -2767,14 +2802,9 @@ sync-message-port@^1.0.0:
   dependencies:
     "@pkgr/core" "^0.2.9"
 
-tailwindcss@4.1.14:
+tailwindcss@4.1.14, tailwindcss@^4.1.14:
   version "4.1.14"
   resolved "https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.1.14.tgz"
-  integrity sha512-b7pCxjGO98LnxVkKjaZSDeNuljC4ueKUddjENJOADtubtdo8llTaJy7HwBMeLNSSo2N5QIAgklslK1+Ir8r6CA==
-
-tailwindcss@^4.1.14:
-  version "4.1.14"
-  resolved "https://registry.yarnpkg.com/tailwindcss/-/tailwindcss-4.1.14.tgz#a5907cc2202a2a1f5f15bac6f2031e53117e43a8"
   integrity sha512-b7pCxjGO98LnxVkKjaZSDeNuljC4ueKUddjENJOADtubtdo8llTaJy7HwBMeLNSSo2N5QIAgklslK1+Ir8r6CA==
 
 tapable@^2.2.0:
@@ -3043,6 +3073,16 @@ vue-eslint-parser@^10.2.0:
     espree "^10.3.0"
     esquery "^1.6.0"
     semver "^7.6.3"
+
+vue-i18n@^12.0.0-alpha.3:
+  version "12.0.0-alpha.3"
+  resolved "https://registry.yarnpkg.com/vue-i18n/-/vue-i18n-12.0.0-alpha.3.tgz#96afe398d62ccbfb29b65a2d8e8dd49cea0e557c"
+  integrity sha512-+KQgD9LJoHfGCdJh3gaLdVS/Sps1n860+6wsjyeNLWJeEofjdVH7KPjz4rAeBlTAUaIDlIjHoXQY0Lk+8B6S9w==
+  dependencies:
+    "@intlify/core-base" "12.0.0-alpha.3"
+    "@intlify/shared" "12.0.0-alpha.3"
+    "@intlify/vue-i18n-core" "12.0.0-alpha.3"
+    "@vue/devtools-api" "^6.5.0"
 
 vue-router@^4.5.1:
   version "4.5.1"

@@ -1,0 +1,30 @@
+{
+  "login": {
+    "title": "Sign in",
+    "subtitle": "The perfect {0} recommendation for your {1}",
+    "emailPlaceholder": "Email",
+    "passwordPlaceholder": "Password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot my password",
+    "button": "Sign in",
+    "noAccount": "Don't have an account?",
+    "signupLink": "Sign up"
+  },
+  "signup": {
+    "title": "Sign Up",
+    "subtitle": "Fill in the data below to get started.",
+    "brandSubtitle": "The perfect social network {0} for your {1}",
+    "fullName": "Full name",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "button": "Complete registration",
+    "hasAccount": "Already have an account?",
+    "loginLink": "Click to sign in",
+    "rules": {
+      "lowercase": "At least one lowercase letter",
+      "uppercase": "At least one uppercase letter",
+      "minChars": "At least 10 characters"
+    }
+  }
+}
