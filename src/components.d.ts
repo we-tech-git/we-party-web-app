@@ -8,6 +8,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AddFriends: typeof import('./components/modules/AddFriends/AddFriends.vue')['default']
     LanguageSwitcher: typeof import('./components/LanguageSwitcher.vue')['default']
     Login: typeof import('./components/modules/Login/Login.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

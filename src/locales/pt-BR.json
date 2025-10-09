@@ -26,5 +26,17 @@
       "uppercase": "Pelo menos uma letra maiúscula",
       "minChars": "Pelo menos 10 caracteres"
     }
+  },
+  "addFriends": {
+    "title": "Amigos",
+    "subtitle": "Adicione amigos para convidar ao seu evento",
+    "searchPlaceholder": "Search...",
+    "send": "enviar",
+    "sent": "enviado",
+    "finishButton": "CONCLUIR",
+    "infoTitle": "Por que adicionar amigos?",
+    "infoPoint1": "Conexões para todo momento",
+    "infoPoint2": "Eventos só para amigos",
+    "infoPoint3": "Compartilhe histórias e momentos"
   }
 }

@@ -26,5 +26,17 @@
       "uppercase": "At least one uppercase letter",
       "minChars": "At least 10 characters"
     }
+  },
+  "addFriends": {
+    "title": "Friends",
+    "subtitle": "Add friends to invite to your event",
+    "searchPlaceholder": "Search...",
+    "send": "send",
+    "sent": "sent",
+    "finishButton": "FINISH",
+    "infoTitle": "Why add friends?",
+    "infoPoint1": "Connections for every moment",
+    "infoPoint2": "Events just for friends",
+    "infoPoint3": "Share stories and moments"
   }
 }
