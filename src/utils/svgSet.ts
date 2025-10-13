@@ -97,4 +97,22 @@ export const svgIcons: Record<string, SvgIcon> = {
       },
     ],
   },
+  // filterIcon
+  // Origem: ícone de filtro/deslizadores
+  // Uso: botão à direita no campo de busca de Interest.vue
+  filterIcon: {
+    viewBox: '0 0 20 20',
+    paths: [
+      { d: 'M3 5h14M5 10h10M8 15h4', strokeLinecap: 'round', strokeLinejoin: 'round' },
+    ],
+  },
+  // plusIcon
+  // Origem: ícone de adição
+  // Uso: adicionar novo interesse na lista de sugestões de Interest.vue
+  plusIcon: {
+    viewBox: '0 0 20 20',
+    paths: [
+      { d: 'M10 4v12M4 10h12', strokeLinecap: 'round', strokeLinejoin: 'round' },
+    ],
+  },
 }

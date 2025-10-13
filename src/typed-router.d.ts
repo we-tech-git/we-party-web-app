@@ -19,6 +19,7 @@ declare module 'vue-router/auto-routes' {
    */
   export interface RouteNamedMap {
     '/public/AddFriends': RouteRecordInfo<'/public/AddFriends', '/public/AddFriends', Record<never, never>, Record<never, never>>,
+    '/public/Interest': RouteRecordInfo<'/public/Interest', '/public/Interest', Record<never, never>, Record<never, never>>,
     '/public/Login': RouteRecordInfo<'/public/Login', '/public/Login', Record<never, never>, Record<never, never>>,
     '/public/Signup': RouteRecordInfo<'/public/Signup', '/public/Signup', Record<never, never>, Record<never, never>>,
   }
@@ -36,6 +37,10 @@ declare module 'vue-router/auto-routes' {
   export interface _RouteFileInfoMap {
     'src/pages/public/AddFriends.vue': {
       routes: '/public/AddFriends'
+      views: never
+    }
+    'src/pages/public/Interest.vue': {
+      routes: '/public/Interest'
       views: never
     }
     'src/pages/public/Login.vue': {

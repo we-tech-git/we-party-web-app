@@ -39,4 +39,19 @@
     "infoPoint2": "Eventos só para amigos",
     "infoPoint3": "Compartilhe histórias e momentos"
   }
+  ,
+  "interest": {
+    "title": "Interesses",
+    "subtitle": "Adicione interesses ao seu perfil para te apresentar os eventos que você se identifica mais.",
+    "searchPlaceholder": "Search...",
+    "finishButton": "CONCLUIR",
+    "brandTitle": { "part1": "Por que adicionar", "part2": "interesses" },
+    "benefit1": "Eventos que tem mais a sua cara",
+    "benefit2": "Eventos personalizados irão aparecer",
+    "modal": {
+      "title": "Nova Solicitação",
+      "line1": "Obrigado por adicionar um novo interesse, iremos analisar este novo tipo de evento e em até 24h iremos adicionar a lista de interesses para todos.",
+      "line2": "Também vamos adicionar aos seus interesses pessoais para eventos personalizados"
+    }
+  }
 }
