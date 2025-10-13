@@ -1,189 +1,181 @@
-<script>
-// SCRIPT com Validação Avançada
+<script setup lang="ts">
+  // ===============================
+  // ESTADO E LÓGICA DO FORMULÁRIO
+  // ===============================
   import confetti from 'canvas-confetti'
+  import { computed, ref, watch } from 'vue'
+  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
+  const checkIconViewBox = computed(() => svgIcons.checkIcon?.viewBox || '0 0 12 12')
+  const checkIconPaths = computed(() => svgIcons.checkIcon?.paths || [{ d: 'M10 3L4.5 8.5L2 6', strokeLinecap: 'round', strokeLinejoin: 'round' }])
 
-  export default {
-    name: 'SignUpPage',
-    data () {
-      return {
-        fullName: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        passwordRules: {
-          hasLowercase: false,
-          hasUppercase: false,
-          hasTenChars: false,
-        },
-      }
-    },
-    computed: {
-      isFormValid () {
-        const allPasswordRulesMet = Object.values(this.passwordRules).every(rule => rule === true)
+  const fullName = ref('')
+  const email = ref('')
+  const password = ref('')
+  const confirmPassword = ref('')
+  const _showPassword = ref(false)
+  const _showConfirmPassword = ref(false)
+  const passwordRules = ref({
+    hasLowercase: false,
+    hasUppercase: false,
+    hasTenChars: false,
+  })
 
-        return this.fullName
-          && this.email
-          && this.password
-          && this.password === this.confirmPassword
-          && allPasswordRulesMet
-      },
-    },
-    watch: {
-      password (newValue) {
-        this.passwordRules.hasLowercase = /[a-z]/.test(newValue)
-        this.passwordRules.hasUppercase = /[A-Z]/.test(newValue)
-        this.passwordRules.hasTenChars = newValue.length >= 10
-      },
-    },
-    methods: {
-      submitForm () {
-        if (!this.isFormValid) return
-        console.log('Formulário enviado!', {
-          fullName: this.fullName, email: this.email, password: this.password,
-        })
+  const isFormValid = computed(() => {
+    const allPasswordRulesMet = Object.values(passwordRules.value).every(rule => rule === true)
 
-        this.triggerConfetti()
-      },
-      triggerConfetti () {
-        confetti({
-          particleCount: 150,
-          spread: 90,
-          origin: { y: 0.6 },
-          colors: ['#FFC947', '#F978A3', '#FF629F', '#FFFFFF'],
-        })
-      },
-    },
+    return fullName.value
+      && email.value
+      && password.value
+      && password.value === confirmPassword.value
+      && allPasswordRulesMet
+  })
+
+  function updatePasswordRules (newValue: string): void {
+    passwordRules.value.hasLowercase = /[a-z]/.test(newValue)
+    passwordRules.value.hasUppercase = /[A-Z]/.test(newValue)
+    passwordRules.value.hasTenChars = newValue.length >= 10
   }
+
+  function submitForm (): void {
+    if (!isFormValid.value) return
+    console.log('Formulário enviado!', {
+      fullName: fullName.value,
+      email: email.value,
+      password: password.value,
+    })
+
+    triggerConfetti()
+  }
+
+  function triggerConfetti (): void {
+    confetti({
+      particleCount: 150,
+      spread: 90,
+      origin: { y: 0.6 },
+      colors: ['#FFC947', '#F978A3', '#FF629F', '#FFFFFF'],
+    })
+  }
+
+  watch(password, updatePasswordRules)
 </script>
 
 <template>
-  <div class="page-container">
-    <div class="form-section">
-      <div class="form-content">
-        <a class="back-link" href="#">
-          <svg
-            class="back-arrow"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path d="M10 19l-7-7m0 0l7-7m-7 7h18" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </a>
-        <h1 class="text-3xl font-bold">{{ $t('signup.title') }}</h1>
-        <p class="subtitle">{{ $t('signup.subtitle') }}</p>
-        <form @submit.prevent="submitForm">
-          <div class="inputs-container">
-            <InputLabel
-              id="fullName"
-              v-model="fullName"
-              :label="$t('signup.fullName')"
-              type="text"
-            />
-            <InputLabel
-              id="email"
-              v-model="email"
-              :label="$t('signup.email')"
-              type="email"
-            />
-            <InputLabel
-              id="password"
-              v-model="password"
-              :input-password="true"
-              :label="$t('signup.password')"
-              type="password"
-            />
-            <ul v-if="password.length > 0" class="password-rules-container">
-              <li :class="{ 'completed': passwordRules.hasLowercase }">
-                <svg class="check-icon" fill="none" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path
-                  d="M10 3L4.5 8.5L2 6"
+  <AuthLayout>
+    <template #form-content>
+      <a class="back-link" href="#">
+        <svg
+          class="back-arrow"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          :viewBox="svgIcons.backArrow ? svgIcons.backArrow.viewBox : '0 0 24 24'"
+        >
+          <path
+            v-for="(path, index) in (svgIcons.backArrow ? svgIcons.backArrow.paths : [{ d: 'M10 19l-7-7m0 0l7-7m-7 7h18', strokeLinecap: 'round', strokeLinejoin: 'round' }])"
+            :key="index"
+            :d="path.d"
+            :stroke-linecap="path.strokeLinecap as StrokeLinecap"
+            :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin"
+          />
+        </svg>
+      </a>
+      <h1 class="text-3xl font-bold">{{ $t('signup.title') }}</h1>
+      <p class="subtitle">{{ $t('signup.subtitle') }}</p>
+      <form @submit.prevent="submitForm">
+        <div class="inputs-container">
+          <InputLabel id="fullName" v-model="fullName" :label="$t('signup.fullName')" type="text" />
+          <InputLabel id="email" v-model="email" :label="$t('signup.email')" type="email" />
+          <InputLabel
+            id="password"
+            v-model="password"
+            :input-password="true"
+            :label="$t('signup.password')"
+            type="password"
+          />
+          <ul v-if="password.length > 0" class="password-rules-container">
+            <li :class="{ 'completed': passwordRules.hasLowercase }">
+              <svg
+                class="check-icon"
+                fill="none"
+                :viewBox="svgIcons.checkIcon ? svgIcons.checkIcon.viewBox : '0 0 12 12'"
+              >
+                <path
+                  v-for="(path, index) in (svgIcons.checkIcon ? svgIcons.checkIcon.paths : [{ d: 'M10 3L4.5 8.5L2 6', strokeLinecap: 'round', strokeLinejoin: 'round' }])"
+                  :key="index"
+                  :d="path.d"
                   stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+                  :stroke-linecap="path.strokeLinecap as StrokeLinecap"
+                  :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin"
                   stroke-width="1.5"
-                /></svg>
-                {{ $t('signup.rules.lowercase') }}
-              </li>
-              <li :class="{ 'completed': passwordRules.hasUppercase }">
-                <svg class="check-icon" fill="none" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path
-                  d="M10 3L4.5 8.5L2 6"
+                />
+              </svg>
+              {{ $t('signup.rules.lowercase') }}
+            </li>
+            <li :class="{ 'completed': passwordRules.hasUppercase }">
+              <template v-if="svgIcons.checkIcon">
+                <svg class="check-icon" fill="none" :viewBox="svgIcons.checkIcon.viewBox">
+                  <path
+                    v-for="(path, index) in svgIcons.checkIcon.paths"
+                    :key="index"
+                    :d="path.d"
+                    stroke="currentColor"
+                    :stroke-linecap="path.strokeLinecap as StrokeLinecap"
+                    :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin"
+                    stroke-width="1.5"
+                  />
+                </svg>
+              </template>
+              {{ $t('signup.rules.uppercase') }}
+            </li>
+            <li :class="{ 'completed': passwordRules.hasTenChars }">
+              <svg class="check-icon" fill="none" :viewBox="checkIconViewBox">
+                <path
+                  v-for="(path, index) in checkIconPaths"
+                  :key="index"
+                  :d="path.d"
                   stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+                  :stroke-linecap="path.strokeLinecap as StrokeLinecap"
+                  :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin"
                   stroke-width="1.5"
-                /></svg>
-                {{ $t('signup.rules.uppercase') }}
-              </li>
-              <li :class="{ 'completed': passwordRules.hasTenChars }">
-                <svg class="check-icon" fill="none" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path
-                  d="M10 3L4.5 8.5L2 6"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.5"
-                /></svg>
-                {{ $t('signup.rules.minChars') }}
-              </li>
-            </ul>
+                />
+              </svg>
+              {{ $t('signup.rules.minChars') }}
+            </li>
+          </ul>
 
-            <InputLabel
-              id="confirmPassword"
-              v-model="confirmPassword"
-              :input-password="true"
-              :label="$t('signup.confirmPassword')"
-              type="password"
-            />
-          </div>
-          <p class="login-link-text">
-            {{ $t('signup.hasAccount') }}
-            <a href="#">{{ $t('signup.loginLink') }}</a>
-          </p>
-          <button class="submit-button" :class="{ 'active': isFormValid }" :disabled="!isFormValid" type="submit">
-            {{ $t('signup.button') }}
-          </button>
-        </form>
-      </div>
-    </div>
-    <div class="brand-section">
-      <div class="graphics-container">
-        <span class="shape dot-grid dg-1" />
-        <span class="shape dot-grid dg-2" />
-        <span class="shape circle c-1" />
-        <span class="shape circle c-2" />
-        <span class="shape circle c-3" />
-        <span class="shape circle c-4" />
-        <span class="shape cross cr-1" />
-        <span class="shape cross cr-2" />
-        <span class="shape plus p-1" />
-        <span class="shape plus p-2" />
-        <span class="shape triangle t-1" />
-        <span class="shape triangle t-2" />
-        <span class="shape triangle t-3" />
-        <span class="shape star star-1" />
-        <span class="shape star star-2" />
-        <span class="shape star star-3" />
-        <span class="shape confetti confetti-1" />
-        <span class="shape confetti confetti-2" />
-        <span class="shape confetti confetti-3" />
-        <span class="shape confetti confetti-4" />
-      </div>
-      <div class="brand-content">
-        <h2 class="brand-title">WE PARTY</h2>
-        <i18n-t class="brand-subtitle" keypath="signup.brandSubtitle" tag="p">
+          <InputLabel
+            id="confirmPassword"
+            v-model="confirmPassword"
+            :input-password="true"
+            :label="$t('signup.confirmPassword')"
+            type="password"
+          />
+        </div>
+        <p class="login-link-text">
+          {{ $t('signup.hasAccount') }}
+          <a href="#">{{ $t('signup.loginLink') }}</a>
+        </p>
+        <button class="submit-button" :class="{ 'active': isFormValid }" :disabled="!isFormValid" type="submit">
+          {{ $t('signup.button') }}
+        </button>
+      </form>
+    </template>
+
+    <template #brand-content>
+      <h2 class="brand-title">WE PARTY</h2>
+      <i18n-t class="brand-subtitle" keypath="signup.brandSubtitle" tag="p">
+        <template #default>
           <br>
           <span class="highlight-text">festa.</span>
-        </i18n-t>
-      </div>
-    </div>
-  </div>
+        </template>
+      </i18n-t>
+    </template>
+  </AuthLayout>
 </template>
 
 <style scoped>
-/* ----- FONTES E ESTILOS GLOBAIS ----- */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&display=swap');
+/* ----- Estilos específicos do Signup ----- */
 
 .page-container {
   display: flex;
@@ -413,215 +405,6 @@ h1 {
   height: 100%;
   pointer-events: none;
   z-index: 1;
-}
-
-/* ----- ESTILOS PARA FORMAS DECORATIVAS ----- */
-.shape {
-  position: absolute;
-  color: rgba(255, 98, 159, 0.5);
-  opacity: 0.8;
-}
-
-.dot-grid {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
-}
-
-.dot-grid::before {
-  content: '';
-  grid-column: 1 / -1;
-  grid-row: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
-  background-image: radial-gradient(circle, currentColor 3px, transparent 3px);
-  background-size: 100% 100%;
-}
-
-.dg-1 {
-  top: 15%;
-  left: 15%;
-}
-
-.dg-2 {
-  bottom: 15%;
-  right: 15%;
-}
-
-.circle {
-  background-color: currentColor;
-  border-radius: 50%;
-}
-
-.c-1 {
-  width: 15px;
-  height: 15px;
-  top: 50%;
-  left: 80%;
-}
-
-.c-2 {
-  width: 20px;
-  height: 20px;
-  top: 20%;
-  right: 35%;
-}
-
-.c-3 {
-  width: 12px;
-  height: 12px;
-  top: 80%;
-  left: 30%;
-}
-
-.c-4 {
-  width: 25px;
-  height: 25px;
-  top: 10%;
-  left: 40%;
-  opacity: 0.5;
-}
-
-.cross::before,
-.plus::before {
-  content: '+';
-  font-weight: 300;
-  display: inline-block;
-}
-
-.cross::before {
-  transform: rotate(45deg);
-}
-
-.cr-1 {
-  font-size: 1.8rem;
-  top: 12%;
-  right: 12%;
-}
-
-.cr-2 {
-  font-size: 1.5rem;
-  bottom: 12%;
-  left: 10%;
-}
-
-.p-1 {
-  font-size: 2.2rem;
-  top: 30%;
-  left: 10%;
-  opacity: 0.6;
-}
-
-.p-2 {
-  font-size: 1.6rem;
-  bottom: 20%;
-  right: 40%;
-  transform: rotate(15deg);
-}
-
-.triangle {
-  width: 0;
-  height: 0;
-  background-color: transparent;
-}
-
-.t-1 {
-  border-left: 12px solid transparent;
-  border-right: 12px solid transparent;
-  border-bottom: 20px solid currentColor;
-  bottom: 25%;
-  left: 30%;
-  transform: rotate(-25deg);
-}
-
-.t-2 {
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 14px solid currentColor;
-  top: 15%;
-  left: 60%;
-  transform: rotate(15deg);
-}
-
-.t-3 {
-  border-left: 15px solid transparent;
-  border-right: 15px solid transparent;
-  border-bottom: 25px solid currentColor;
-  bottom: 40%;
-  right: 10%;
-  transform: rotate(35deg);
-  opacity: 0.4;
-}
-
-.star::before {
-  content: '★';
-  font-weight: normal;
-}
-
-.star-1 {
-  font-size: 80px;
-  top: 45%;
-  left: 10%;
-  transform: rotate(15deg);
-  color: rgba(255, 201, 71, 0.6);
-}
-
-.star-2 {
-  font-size: 45px;
-  top: 10%;
-  right: 30%;
-  transform: rotate(-10deg);
-  color: rgba(255, 98, 159, 0.6);
-}
-
-.star-3 {
-  font-size: 30px;
-  bottom: 15%;
-  left: 45%;
-  color: rgba(255, 201, 71, 0.5);
-}
-
-.confetti {
-  background-color: currentColor;
-}
-
-.confetti-1 {
-  width: 15px;
-  height: 35px;
-  top: 25%;
-  left: 25%;
-  transform: rotate(45deg);
-  color: rgba(249, 120, 163, 0.7);
-}
-
-.confetti-2 {
-  width: 12px;
-  height: 30px;
-  bottom: 10%;
-  right: 8%;
-  transform: rotate(-35deg);
-  color: rgba(255, 201, 71, 0.8);
-}
-
-.confetti-3 {
-  width: 20px;
-  height: 45px;
-  top: 70%;
-  right: 35%;
-  transform: rotate(25deg);
-  color: rgba(249, 120, 163, 0.5);
-}
-
-.confetti-4 {
-  width: 10px;
-  height: 25px;
-  top: 85%;
-  left: 10%;
-  transform: rotate(55deg);
-  color: rgba(255, 201, 71, 0.7);
 }
 
 .password-rules-container {

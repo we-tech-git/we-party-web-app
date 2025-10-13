@@ -1,90 +1,19 @@
-<template>
-  <div class="add-friends-container">
-    <div class="friends-list-section">
-      <div class="content-wrapper">
-        <h1 class="title">{{ t('addFriends.title') }}</h1>
-        <p class="subtitle">{{ t('addFriends.subtitle') }}</p>
-
-        <div class="search-wrapper">
-          <svg class="search-icon" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              clip-rule="evenodd"
-              d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-              fill-rule="evenodd"
-            />
-          </svg>
-          <input v-model="searchQuery" :placeholder="t('addFriends.searchPlaceholder')" type="text">
-          <button class="filter-btn">
-            <svg fill="currentColor" viewBox="0 0 20 20">
-              <path
-                d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z"
-              />
-            </svg>
-          </button>
-        </div>
-
-        <ul class="user-list">
-          <li v-for="user in filteredUsers" :key="user.id" class="user-item">
-            <img :alt="user.name" class="avatar" :src="user.avatar">
-            <span class="name">{{ user.name }}</span>
-            <button :class="['invite-btn', user.status === 'sent' ? 'sent' : 'send']" @click="toggleInvite(user)">
-              <svg class="plane-icon" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"
-                />
-              </svg>
-              <span>{{ user.status === 'sent' ? t('addFriends.sent') : t('addFriends.send') }}</span>
-            </button>
-          </li>
-        </ul>
-
-        <button class="finish-btn">{{ t('addFriends.finishButton') }}</button>
-      </div>
-    </div>
-
-    <div class="info-section">
-      <div class="graphics-container">
-        <span class="shape dot-grid dg-1" />
-        <span class="shape dot-grid dg-2" />
-        <span class="shape circle c-1" />
-        <span class="shape circle c-2" />
-        <span class="shape circle c-3" />
-        <span class="shape circle c-4" />
-        <span class="shape cross cr-1" />
-        <span class="shape cross cr-2" />
-        <span class="shape plus p-1" />
-        <span class="shape plus p-2" />
-        <span class="shape triangle t-1" />
-        <span class="shape triangle t-2" />
-        <span class="shape triangle t-3" />
-        <span class="shape star star-1" />
-        <span class="shape star star-2" />
-        <span class="shape star star-3" />
-        <span class="shape confetti confetti-1" />
-        <span class="shape confetti confetti-2" />
-        <span class="shape confetti confetti-3" />
-        <span class="shape confetti confetti-4" />
-      </div>
-      <div class="info-content">
-        <h2 class="info-title">
-          {{ t('addFriends.infoTitle').replace('?', '') }}<span class="question-mark">?</span>
-        </h2>
-        <ul>
-          <li>{{ t('addFriends.infoPoint1') }}</li>
-          <li>{{ t('addFriends.infoPoint2') }}</li>
-          <li>{{ t('addFriends.infoPoint3') }}</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
+
+// Imports principais
+// - vue: reatividade e computeds
+// - vue-i18n: traduções (t)
+// - AuthLayout: layout base com seção de marca (direita) e slot de formulário (esquerda)
+// - svgIcons: set de ícones (ver src/utils/svgSet.ts)
   import { computed, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import { svgIcons } from '@/utils/svgSet'
 
+  // i18n
   const { t } = useI18n()
 
+  // Modelo de dados do usuário listado para convite
   interface User {
     id: number
     name: string
@@ -92,7 +21,10 @@
     status: 'pending' | 'sent'
   }
 
+  // Estado reativo
   const searchQuery = ref('')
+
+  // Fonte de dados mockada (apenas para UI)
   const users = ref<User[]>([
     { id: 1, name: 'Usuário novo', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', status: 'pending' },
     { id: 2, name: 'Pedro Santos', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', status: 'sent' },
@@ -101,103 +33,127 @@
     { id: 5, name: 'Alisson Silva', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', status: 'sent' },
   ])
 
+  // Filtro de usuários por nome (case-insensitive)
   const filteredUsers = computed(() => {
-    if (!searchQuery.value) {
-      return users.value
-    }
+    if (!searchQuery.value) return users.value
     return users.value.filter(user =>
       user.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
     )
   })
 
+  // Alterna status do convite (pending <-> sent)
   function toggleInvite (user: User) {
     user.status = user.status === 'pending' ? 'sent' : 'pending'
   }
+
 </script>
+
+<template>
+  <AuthLayout>
+    <template #form-content>
+      <!-- Título e subtítulo -->
+      <h1 class="title">
+        {{ t('addFriends.title') }}
+      </h1>
+      <p class="subtitle">
+        {{ t('addFriends.subtitle') }}
+      </p>
+      <div class="search-wrapper">
+        <!-- searchIcon
+             Origem: ícone de busca (ver svgSet.ts -> searchIcon)
+             Uso: campo de busca desta tela
+        -->
+        <svg v-if="svgIcons.searchIcon" class="search-icon" fill="currentColor" :viewBox="svgIcons.searchIcon.viewBox">
+          <path
+            v-for="(path, index) in svgIcons.searchIcon.paths"
+            :key="index"
+            :clip-rule="path.clipRule"
+            :d="path.d"
+            :fill-rule="path.fillRule"
+          />
+        </svg>
+        <input v-model="searchQuery" class="search-input" :placeholder="t('addFriends.searchPlaceholder')" type="text">
+      </div>
+
+      <ul class="user-list">
+        <li v-for="user in filteredUsers" :key="user.id" class="user-item">
+          <img :alt="user.name" class="avatar" :src="user.avatar">
+          <span class="name">{{ user.name }}</span>
+          <button :class="['invite-btn', user.status === 'sent' ? 'sent' : 'send']" @click="toggleInvite(user)">
+            <svg v-if="svgIcons.planeIcon" class="plane-icon" fill="currentColor" :viewBox="svgIcons.planeIcon.viewBox">
+              <path v-for="(path, index) in svgIcons.planeIcon.paths" :key="index" :d="path.d" />
+            </svg>
+            {{ user.status === 'pending' ? t('addFriends.send') : t('addFriends.sent') }}
+          </button>
+        </li>
+      </ul>
+
+      <button class="finish-btn">
+        {{ t('addFriends.finishButton') }}
+      </button>
+    </template>
+
+    <template #brand-content>
+      <!-- Seção de informações (direita) -->
+      <div class="info-section">
+        <div class="info-content">
+          <h2 class="info-title">
+            {{ t('addFriends.infoTitle').replace('?', '') }}<span class="question-mark">?</span>
+          </h2>
+          <ul>
+            <li>{{ t('addFriends.infoPoint1') }}</li>
+            <li>{{ t('addFriends.infoPoint2') }}</li>
+            <li>{{ t('addFriends.infoPoint3') }}</li>
+          </ul>
+        </div>
+      </div>
+    </template>
+  </AuthLayout>
+</template>
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&family=Poppins:wght@400;500;600;700&display=swap');
 
-.add-friends-container {
-  display: flex;
-  width: 100vw;
-  height: 100vh;
-  background-color: #fff;
-  font-family: 'Poppins', sans-serif;
-}
-
-/* Seção da Esquerda (sem alterações) */
-.friends-list-section {
-  width: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 2rem;
-  background-color: #fff;
-}
-
-.content-wrapper {
-  width: 100%;
-  max-width: 420px;
-  display: flex;
-  flex-direction: column;
-}
-
 .title {
-  font-size: 1.875rem;
   font-weight: 700;
-  color: #1f2937;
+  font-size: 2.25rem;
+  margin-bottom: 0.5rem;
 }
 
 .subtitle {
-  font-size: 1rem;
-  color: #6b7280;
+  color: #6B7280;
   margin-bottom: 2rem;
 }
 
 .search-wrapper {
   position: relative;
-  display: flex;
-  align-items: center;
   margin-bottom: 2rem;
-}
-
-.search-wrapper input {
-  width: 100%;
-  padding: 0.75rem 2.5rem;
-  border-radius: 0.5rem;
-  border: 1px solid #e5e7eb;
-  background-color: #f9fafb;
-  font-size: 1rem;
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-.search-wrapper input:focus {
-  border-color: #F978A3;
-  box-shadow: 0 0 0 2px rgba(249, 120, 163, 0.2);
 }
 
 .search-icon {
   position: absolute;
-  left: 0.75rem;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
   width: 1.25rem;
   height: 1.25rem;
-  color: #9ca3af;
+  color: #9CA3AF;
 }
 
-.filter-btn {
-  position: absolute;
-  right: 0.75rem;
-  color: #6b7280;
-  background: none;
-  border: none;
-  cursor: pointer;
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 3rem;
+  border: 1px solid #E5E7EB;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #1F2937;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: 'Poppins', sans-serif;
 }
 
-.filter-btn svg {
-  width: 1.25rem;
-  height: 1.25rem;
+.search-input:focus {
+  border-color: #FFB37B;
 }
 
 .user-list {
@@ -283,15 +239,16 @@
   box-shadow: 0 4px 15px rgba(252, 149, 89, 0.4);
 }
 
-/* SEÇÃO DE INFORMAÇÕES (DIREITA) - ESTILOS CORRIGIDOS */
+/* SEÇÃO DE INFORMAÇÕES (DIREITA) -  */
 .info-section {
-  width: 50%;
+  width: 100%;
+  height: 100%;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 4rem;
-  background: linear-gradient(142.35deg, rgba(252, 149, 89, 0.15) -1.66%, rgba(255, 98, 216, 0.15) 100.44%);
+  background: none;
   overflow: hidden;
 }
 
@@ -317,15 +274,11 @@
   background-color: #F978A3;
   color: #fff;
   width: 50px;
-  /* Tamanho ajustado */
   height: 50px;
-  /* Tamanho ajustado */
   border-radius: 50%;
   font-size: 2.5rem;
-  /* Tamanho ajustado */
   margin-left: 0.5rem;
   transform: translateY(-5px);
-  /* Alinhamento ajustado */
 }
 
 .info-content ul {
@@ -335,17 +288,13 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  /* Espaço entre os itens */
 }
 
 .info-content li {
-  /* Ajustado para o visual do Figma */
   font-family: 'Poppins', sans-serif;
   font-weight: 600;
   font-size: 1.25rem;
-  /* 20px - Mais próximo do visual */
   line-height: 1.6;
-  /* Espaçamento de linha normal */
   color: #4F4F4F;
   display: flex;
   align-items: center;
@@ -357,234 +306,5 @@
   font-size: 2rem;
   margin-right: 1.5rem;
   line-height: 0;
-}
-
-/* ELEMENTOS GRÁFICOS DE FUNDO */
-.graphics-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1
-}
-
-.shape {
-  position: absolute;
-  color: rgba(255, 98, 159, .5);
-  opacity: .8
-}
-
-.dot-grid {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px
-}
-
-.dot-grid::before {
-  content: '';
-  grid-column: 1/-1;
-  grid-row: 1/-1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
-  background-image: radial-gradient(circle, currentColor 3px, transparent 3px);
-  background-size: 100% 100%
-}
-
-.dg-1 {
-  top: 15%;
-  left: 15%
-}
-
-.dg-2 {
-  bottom: 15%;
-  right: 15%
-}
-
-.circle {
-  background-color: currentColor;
-  border-radius: 50%
-}
-
-.c-1 {
-  width: 15px;
-  height: 15px;
-  top: 50%;
-  left: 80%
-}
-
-.c-2 {
-  width: 20px;
-  height: 20px;
-  top: 20%;
-  right: 35%
-}
-
-.c-3 {
-  width: 12px;
-  height: 12px;
-  top: 80%;
-  left: 30%
-}
-
-.c-4 {
-  width: 25px;
-  height: 25px;
-  top: 10%;
-  left: 40%;
-  opacity: .5
-}
-
-.cross::before,
-.plus::before {
-  content: '+';
-  font-weight: 300;
-  display: inline-block
-}
-
-.cross::before {
-  transform: rotate(45deg)
-}
-
-.cr-1 {
-  font-size: 1.8rem;
-  top: 12%;
-  right: 12%
-}
-
-.cr-2 {
-  font-size: 1.5rem;
-  bottom: 12%;
-  left: 10%
-}
-
-.p-1 {
-  font-size: 2.2rem;
-  top: 30%;
-  left: 10%;
-  opacity: .6
-}
-
-.p-2 {
-  font-size: 1.6rem;
-  bottom: 20%;
-  right: 40%;
-  transform: rotate(15deg)
-}
-
-.triangle {
-  width: 0;
-  height: 0;
-  background-color: transparent
-}
-
-.t-1 {
-  border-left: 12px solid transparent;
-  border-right: 12px solid transparent;
-  border-bottom: 20px solid currentColor;
-  bottom: 25%;
-  left: 30%;
-  transform: rotate(-25deg)
-}
-
-.t-2 {
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 14px solid currentColor;
-  top: 15%;
-  left: 60%;
-  transform: rotate(15deg)
-}
-
-.t-3 {
-  border-left: 15px solid transparent;
-  border-right: 15px solid transparent;
-  border-bottom: 25px solid currentColor;
-  bottom: 40%;
-  right: 10%;
-  transform: rotate(35deg);
-  opacity: .4
-}
-
-.star::before {
-  content: '★';
-  font-weight: 400
-}
-
-.star-1 {
-  font-size: 80px;
-  top: 45%;
-  left: 10%;
-  transform: rotate(15deg);
-  color: rgba(255, 201, 71, .6)
-}
-
-.star-2 {
-  font-size: 45px;
-  top: 10%;
-  right: 30%;
-  transform: rotate(-10deg);
-  color: rgba(255, 98, 159, .6)
-}
-
-.star-3 {
-  font-size: 30px;
-  bottom: 15%;
-  left: 45%;
-  color: rgba(255, 201, 71, .5)
-}
-
-.confetti {
-  background-color: currentColor
-}
-
-.confetti-1 {
-  width: 15px;
-  height: 35px;
-  top: 25%;
-  left: 25%;
-  transform: rotate(45deg);
-  color: rgba(249, 120, 163, .7)
-}
-
-.confetti-2 {
-  width: 12px;
-  height: 30px;
-  bottom: 10%;
-  right: 8%;
-  transform: rotate(-35deg);
-  color: rgba(255, 201, 71, .8)
-}
-
-.confetti-3 {
-  width: 20px;
-  height: 45px;
-  top: 70%;
-  right: 35%;
-  transform: rotate(25deg);
-  color: rgba(249, 120, 163, .5)
-}
-
-.confetti-4 {
-  width: 10px;
-  height: 25px;
-  top: 85%;
-  left: 10%;
-  transform: rotate(55deg);
-  color: rgba(255, 201, 71, .7)
-}
-
-@media (max-width: 960px) {
-  .info-section {
-    display: none;
-  }
-
-  .friends-list-section {
-    width: 100%;
-  }
 }
 </style>

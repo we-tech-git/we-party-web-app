@@ -24,6 +24,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.14",
     "@tsconfig/node22": "^22.0.0",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.9.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/tsconfig": "^0.8.1",
