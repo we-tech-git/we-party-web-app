@@ -4,8 +4,12 @@
 // ===============================
   import confetti from 'canvas-confetti'
   import { computed, ref, watch } from 'vue'
+  import { ca } from 'vuetify/locale'
+  import { callApi } from '@/api'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import router from '@/router'
   import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
+
   const checkIconViewBox = computed(() => svgIcons.checkIcon?.viewBox || '0 0 12 12')
   const checkIconPaths = computed(() => svgIcons.checkIcon?.paths || [{ d: 'M10 3L4.5 8.5L2 6', strokeLinecap: 'round', strokeLinejoin: 'round' }])
 
@@ -19,6 +23,13 @@
     hasLowercase: false,
     hasUppercase: false,
     hasTenChars: false,
+  })
+
+  const formErrors = ref({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
   })
 
   const isFormValid = computed(() => {
@@ -37,15 +48,59 @@
     passwordRules.value.hasTenChars = newValue.length >= 10
   }
 
-  function submitForm (): void {
-    if (!isFormValid.value) return
-    console.log('Formulário enviado!', {
-      fullName: fullName.value,
-      email: email.value,
-      password: password.value,
-    })
+  function validateForm () {
+    if (fullName.value === '') {
+      formErrors.value.name = 'Nome é obrigatório'
+    }
 
-    triggerConfetti()
+    if (email.value === '') {
+      formErrors.value.email = 'Email é obrigatório'
+    }
+
+    if (password.value === '') {
+      formErrors.value.password = 'Senha é obrigatória'
+    }
+
+    if (confirmPassword.value === '') {
+      formErrors.value.confirmPassword = 'Confirmação de senha é obrigatória'
+    }
+
+    if (formErrors.value.name === '' && formErrors.value.email === '' && formErrors.value.password === '' && formErrors.value.confirmPassword === '') {
+      submitForm()
+    }
+  }
+
+  async function submitForm () {
+    if (!isFormValid.value) return
+
+    try {
+      const body = {
+        name: fullName.value,
+        email: email.value,
+        password: password.value,
+        acceptedTerms: true,
+        notificationActive: true,
+      }
+      console.log('Formulário enviado!', {
+        fullName: fullName.value,
+        email: email.value,
+        password: password.value,
+      })
+
+      // Chamada à API para registrar o usuário
+      const { data } = await callApi('POST', '/userprofile/create', body)
+
+      console.log('Resposta da API:', data)
+
+      triggerConfetti()
+
+      setTimeout(() => {
+        router.push('/public/Login')
+      }, 3000)
+    } catch (error) {
+      console.error('Erro ao registrar usuário:', error)
+      return
+    }
   }
 
   function triggerConfetti (): void {
@@ -83,9 +138,17 @@
       <h2 class="mobile-brand-title">WE PARTY</h2>
       <h1 class="text-3xl font-bold">{{ $t('signup.title') }}</h1>
       <p class="subtitle">{{ $t('signup.subtitle') }}</p>
-      <form @submit.prevent="submitForm">
+      <form @submit.prevent="validateForm">
         <div class="inputs-container">
-          <InputLabel id="fullName" v-model="fullName" :label="$t('signup.fullName')" type="text" />
+          <InputLabel
+            id="fullName"
+            v-model="fullName"
+            :class="{ 'input-error': formErrors.name }"
+            :label="$t('signup.fullName')"
+            type="text"
+            @update:model-value="formErrors.name = ''"
+          />
+          <span v-if="formErrors.name" class="error-message">{{ formErrors.name }}</span>
           <InputLabel id="email" v-model="email" :label="$t('signup.email')" type="email" />
           <InputLabel
             id="password"
@@ -157,7 +220,7 @@
           {{ $t('signup.hasAccount') }}
           <a href="#">{{ $t('signup.loginLink') }}</a>
         </p>
-        <button class="submit-button" :class="{ 'active': isFormValid }" :disabled="!isFormValid" type="submit">
+        <button class="submit-button" type="submit">
           {{ $t('signup.button') }}
         </button>
       </form>
@@ -339,16 +402,17 @@ h1 {
   font-size: 1rem;
   transition: all 0.2s;
   border: none;
-  background-color: #e5e7eb;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.submit-button.active {
   color: white;
   background: #FFB37B;
   box-shadow: 0 4px 14px 0 rgba(255, 179, 123, 0.5);
   cursor: pointer;
+}
+
+.submit-button.disabled {
+  cursor: not-allowed;
+  border: none;
+  background-color: #e5e7eb;
+  color: #9ca3af;
 }
 
 .submit-button.active:hover {
@@ -400,6 +464,18 @@ h1 {
 .highlight-text {
   font-weight: 700;
   color: #ff6262be;
+}
+
+.input-error {
+  border: 1px solid #ef4444;
+  border-radius: 12px;
+}
+
+.error-message {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 4px;
+  display: block;
 }
 
 .graphics-container {
