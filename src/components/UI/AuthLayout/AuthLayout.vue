@@ -72,21 +72,31 @@
   align-items: center;
   justify-content: center;
   padding: 32px;
+  overflow-y: auto;
 }
 
 @media (max-width: 960px) {
+  .page-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
   .form-section {
     width: 100%;
+    padding: 32px 24px 48px;
   }
 
   .brand-section {
-    display: none;
+    display: none !important;
   }
 }
 
 .form-content {
   width: 100%;
   max-width: 400px;
+  margin: 0 auto;
+  /* Centraliza o conteúdo do formulário */
 }
 
 /* ----- SEÇÃO DA MARCA (DIREITA) ----- */

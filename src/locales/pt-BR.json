@@ -53,5 +53,10 @@
       "line1": "Obrigado por adicionar um novo interesse, iremos analisar este novo tipo de evento e em até 24h iremos adicionar a lista de interesses para todos.",
       "line2": "Também vamos adicionar aos seus interesses pessoais para eventos personalizados"
     }
+  },
+  "congratulations": {
+    "title": "Parabéns",
+    "description": "Aproveite da melhor forma nosso app para encontrar os melhores eventos e festas",
+    "button": "CONTINUAR"
   }
 }

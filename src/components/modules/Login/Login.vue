@@ -44,6 +44,7 @@
     </template>
 
     <template #form-content>
+      <h2 class="mobile-brand-title">WE PARTY</h2>
       <h1 class="text-3xl font-bold">{{ $t('login.title') }}</h1>
 
       <form @submit.prevent="submitForm">
@@ -81,6 +82,11 @@
 </template>
 
 <style scoped>
+/* Título da marca exibido apenas no mobile */
+.mobile-brand-title {
+  display: none;
+}
+
 /* Tema rosa para InputLabel dentro desta página */
 .il-theme--pink {
   --il-border-neutral: #F0F0F0;
@@ -260,6 +266,52 @@
 
 .heart {
   color: #F978A3;
+}
+
+@media (max-width: 960px) {
+  .mobile-brand-title {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-family: 'Baloo Thambi 2', cursive;
+    font-weight: 800;
+    font-size: 2.75rem;
+    line-height: 1.1;
+    text-transform: uppercase;
+    background: linear-gradient(to right, #FFC947, #F978A3);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-align: center;
+  }
+
+  .text-3xl {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  form {
+    margin-top: 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .text-3xl {
+    text-align: center;
+  }
+
+  .footer-row {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-options {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
 }
 
 /* ----- SEÇÃO DA MARCA (DIREITA) ----- */

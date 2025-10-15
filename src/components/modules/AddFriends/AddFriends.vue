@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 // Imports principais
 // - vue: reatividade e computeds
 // - vue-i18n: traduções (t)
@@ -79,7 +78,11 @@
         <li v-for="user in filteredUsers" :key="user.id" class="user-item">
           <img :alt="user.name" class="avatar" :src="user.avatar">
           <span class="name">{{ user.name }}</span>
-          <button :class="['invite-btn', user.status === 'sent' ? 'sent' : 'send']" @click="toggleInvite(user)">
+          <button
+            :class="['invite-btn', user.status === 'sent' ? 'sent' : 'send']"
+            type="button"
+            @click="toggleInvite(user)"
+          >
             <svg v-if="svgIcons.planeIcon" class="plane-icon" fill="currentColor" :viewBox="svgIcons.planeIcon.viewBox">
               <path v-for="(path, index) in svgIcons.planeIcon.paths" :key="index" :d="path.d" />
             </svg>
@@ -187,38 +190,50 @@
 }
 
 .invite-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 9999px;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.5rem 1.2rem;
+  min-width: 120px;
+  border-radius: 12px;
   border: none;
   cursor: pointer;
   font-weight: 600;
   font-size: 0.875rem;
   transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .plane-icon {
-  width: 1rem;
-  height: 1rem;
+  width: 0.95rem;
+  height: 0.95rem;
+  color: inherit;
 }
 
 .invite-btn.send {
-  background-color: #fff;
-  color: #FC9559;
-  border: 1px solid #FC9559;
+  color: #F97316;
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(90deg, #FFC947 0%, #F978A3 100%) border-box;
 }
 
 .invite-btn.send:hover {
-  background-color: #FC9559;
-  color: #fff;
+  box-shadow: none;
 }
 
 .invite-btn.sent {
-  background-color: #F978A3;
+  border: none;
+  background: linear-gradient(90deg, #FFC947 0%, #F978A3 100%);
+  background-size: 100% 100%;
   color: #fff;
-  cursor: default;
+  box-shadow: 0 10px 18px rgba(249, 120, 163, 0.25);
+}
+
+.invite-btn.sent:hover {
+  box-shadow: 0 12px 22px rgba(249, 120, 163, 0.3);
 }
 
 .finish-btn {
@@ -306,5 +321,127 @@
   font-size: 2rem;
   margin-right: 1.5rem;
   line-height: 0;
+}
+
+@media (max-width: 960px) {
+  .info-section {
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .info-title {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .info-content ul {
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .info-content li {
+    font-size: 1.1rem;
+    justify-content: center;
+  }
+
+  .info-content li::before {
+    margin-right: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 1.75rem;
+    text-align: center;
+  }
+
+  .subtitle {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .search-wrapper {
+    margin-bottom: 1.5rem;
+  }
+
+  .search-input {
+    border-radius: 16px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+    padding: 0.85rem 3.1rem;
+    font-size: 0.9rem;
+  }
+
+  .search-icon {
+    left: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    color: #94A3B8;
+  }
+
+  .filter-btn {
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    background: #fff;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  }
+
+  .user-list {
+    gap: 0.85rem;
+  }
+
+  .user-item {
+    background: #fff;
+    border-radius: 18px;
+    padding: 0.85rem 1rem;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  }
+
+  .avatar {
+    width: 52px;
+    height: 52px;
+  }
+
+  .name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .invite-btn {
+    min-width: 140px;
+    padding: 0.55rem 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .info-title {
+    font-size: 2rem;
+  }
+
+  .question-mark {
+    width: 40px;
+    height: 40px;
+    font-size: 2rem;
+  }
+
+  .info-content li {
+    font-size: 1rem;
+  }
+
+  .user-item {
+    padding: 0.75rem 0.9rem;
+  }
+
+  .avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .invite-btn {
+    min-width: 120px;
+    padding: 0.5rem 1.1rem;
+    font-size: 0.82rem;
+  }
 }
 </style>

@@ -53,5 +53,10 @@
       "line1": "Thanks for adding a new interest. We'll review this event type and add it to the public list within 24h.",
       "line2": "We'll also add it to your personal interests for personalization."
     }
+  },
+  "congratulations": {
+    "title": "Congratulations",
+    "description": "Make the most of our app to find the best events and parties",
+    "button": "CONTINUE"
   }
 }

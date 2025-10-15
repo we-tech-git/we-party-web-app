@@ -115,4 +115,20 @@ export const svgIcons: Record<string, SvgIcon> = {
       { d: 'M10 4v12M4 10h12', strokeLinecap: 'round', strokeLinejoin: 'round' },
     ],
   },
+  // successBadge
+  // Origem: selo de sucesso com círculo e check
+  // Uso: tela de congratulações (Congratulations.vue)
+  successBadge: {
+    viewBox: '0 0 128 128',
+    paths: [
+      {
+        d: 'M64 10a54 54 0 1 1 0 108a54 54 0 1 1 0-108z',
+      },
+      {
+        d: 'M45 67.5 58.5 81 83 55',
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+      },
+    ],
+  },
 }

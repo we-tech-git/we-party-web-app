@@ -1,7 +1,7 @@
 <script setup lang="ts">
-  // ===============================
-  // ESTADO E LÓGICA DO FORMULÁRIO
-  // ===============================
+// ===============================
+// ESTADO E LÓGICA DO FORMULÁRIO
+// ===============================
   import confetti from 'canvas-confetti'
   import { computed, ref, watch } from 'vue'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
@@ -80,6 +80,7 @@
           />
         </svg>
       </a>
+      <h2 class="mobile-brand-title">WE PARTY</h2>
       <h1 class="text-3xl font-bold">{{ $t('signup.title') }}</h1>
       <p class="subtitle">{{ $t('signup.subtitle') }}</p>
       <form @submit.prevent="submitForm">
@@ -176,6 +177,10 @@
 
 <style scoped>
 /* ----- Estilos específicos do Signup ----- */
+
+.mobile-brand-title {
+  display: none;
+}
 
 .page-container {
   display: flex;
@@ -432,5 +437,53 @@ h1 {
   width: 16px;
   height: 16px;
   margin-right: 8px;
+}
+
+@media (max-width: 960px) {
+  .mobile-brand-title {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-family: 'Baloo Thambi 2', cursive;
+    font-weight: 800;
+    font-size: 2.75rem;
+    line-height: 1.1;
+    text-transform: uppercase;
+    background: linear-gradient(to right, #FFC947, #F978A3);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-align: center;
+  }
+
+  h1 {
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .subtitle {
+    text-align: center;
+  }
+
+  .brand-title {
+    font-size: 80px;
+  }
+
+  .brand-subtitle {
+    font-size: 50px;
+    line-height: 1.2;
+  }
+
+  .back-link {
+    margin-bottom: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+
+  h1,
+  .subtitle,
+  .login-link-text {
+    text-align: center;
+  }
 }
 </style>

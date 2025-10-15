@@ -10,6 +10,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AddFriends: typeof import('./components/modules/AddFriends/AddFriends.vue')['default']
     AuthLayout: typeof import('./components/UI/AuthLayout/AuthLayout.vue')['default']
+    Congratulations: typeof import('./components/modules/Congratulations/Congratulations.vue')['default']
     InputLabel: typeof import('./components/UI/inputLabel/InputLabel.vue')['default']
     Interest: typeof import('./components/modules/interest/Interest.vue')['default']
     LanguageSwitcher: typeof import('./components/LanguageSwitcher.vue')['default']
