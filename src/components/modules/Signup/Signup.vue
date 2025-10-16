@@ -4,25 +4,34 @@
 // ===============================
   import confetti from 'canvas-confetti'
   import { computed, ref, watch } from 'vue'
-  import { ca } from 'vuetify/locale'
+  import { useI18n } from 'vue-i18n'
   import { callApi } from '@/api'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import router from '@/router'
   import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
+  const { t } = useI18n()
+
   const checkIconViewBox = computed(() => svgIcons.checkIcon?.viewBox || '0 0 12 12')
+
   const checkIconPaths = computed(() => svgIcons.checkIcon?.paths || [{ d: 'M10 3L4.5 8.5L2 6', strokeLinecap: 'round', strokeLinejoin: 'round' }])
 
   const fullName = ref('')
   const email = ref('')
   const password = ref('')
   const confirmPassword = ref('')
+  const isSubmitting = ref(false)
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
   const _showPassword = ref(false)
   const _showConfirmPassword = ref(false)
   const passwordRules = ref({
     hasLowercase: false,
     hasUppercase: false,
     hasTenChars: false,
+    hasSpecial: false,
   })
 
   const formErrors = ref({
@@ -42,36 +51,96 @@
       && allPasswordRulesMet
   })
 
+  function showSnackbar (message: string, color = '#ff9800') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+
+    if (snackbarVisible.value) {
+      snackbarVisible.value = false
+      requestAnimationFrame(() => {
+        snackbarVisible.value = true
+      })
+      return
+    }
+
+    snackbarVisible.value = true
+  }
+
   function updatePasswordRules (newValue: string): void {
     passwordRules.value.hasLowercase = /[a-z]/.test(newValue)
     passwordRules.value.hasUppercase = /[A-Z]/.test(newValue)
     passwordRules.value.hasTenChars = newValue.length >= 10
+    passwordRules.value.hasSpecial = /[^A-Za-z0-9]/.test(newValue)
   }
 
-  function validateForm () {
-    if (fullName.value === '') {
-      formErrors.value.name = 'Nome é obrigatório'
+  function resetErrors () {
+    formErrors.value = {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    }
+  }
+
+  async function validateForm () {
+    if (isSubmitting.value) return
+
+    resetErrors()
+
+    const missingFields: string[] = []
+
+    if (!fullName.value.trim()) {
+      formErrors.value.name = t('signup.errors.required.name')
+      missingFields.push(t('signup.fullName'))
     }
 
-    if (email.value === '') {
-      formErrors.value.email = 'Email é obrigatório'
+    if (!email.value.trim()) {
+      formErrors.value.email = t('signup.errors.required.email')
+      missingFields.push(t('signup.email'))
     }
 
-    if (password.value === '') {
-      formErrors.value.password = 'Senha é obrigatória'
+    if (!password.value.trim()) {
+      formErrors.value.password = t('signup.errors.required.password')
+      missingFields.push(t('signup.password'))
     }
 
-    if (confirmPassword.value === '') {
-      formErrors.value.confirmPassword = 'Confirmação de senha é obrigatória'
+    if (!confirmPassword.value.trim()) {
+      formErrors.value.confirmPassword = t('signup.errors.required.confirmPassword')
+      missingFields.push(t('signup.confirmPassword'))
     }
 
-    if (formErrors.value.name === '' && formErrors.value.email === '' && formErrors.value.password === '' && formErrors.value.confirmPassword === '') {
-      submitForm()
+    if (missingFields.length > 0) {
+      const key = missingFields.length > 1 ? 'signup.snackbar.missingFields.multiple' : 'signup.snackbar.missingFields.single'
+      showSnackbar(t(key, { fields: missingFields.join(', ') }))
+      return
     }
+
+    if (password.value !== confirmPassword.value) {
+      formErrors.value.confirmPassword = t('signup.errors.passwordMismatch')
+      showSnackbar(t('signup.errors.passwordMismatch'))
+      return
+    }
+
+    if (!Object.values(passwordRules.value).every(rule => rule === true)) {
+      formErrors.value.password = t('signup.errors.passwordRules')
+      showSnackbar(t('signup.errors.passwordRules'))
+      return
+    }
+
+    await submitForm()
   }
 
   async function submitForm () {
-    if (!isFormValid.value) return
+    if (isSubmitting.value) return
+
+    if (!isFormValid.value) {
+      showSnackbar(t('signup.snackbar.invalidForm'))
+      return
+    }
+
+    const minLoadingMs = 3000
+    const start = Date.now()
+    isSubmitting.value = true
 
     try {
       const body = {
@@ -93,13 +162,22 @@
       console.log('Resposta da API:', data)
 
       triggerConfetti()
+      showSnackbar(t('signup.snackbar.success'), '#22c55e')
 
       setTimeout(() => {
         router.push('/public/Login')
       }, 3000)
     } catch (error) {
       console.error('Erro ao registrar usuário:', error)
+      showSnackbar(t('signup.snackbar.failure'), '#ef4444')
       return
+    } finally {
+      const elapsed = Date.now() - start
+      const remaining = minLoadingMs - elapsed
+      if (remaining > 0) {
+        await new Promise(resolve => setTimeout(resolve, remaining))
+      }
+      isSubmitting.value = false
     }
   }
 
@@ -143,20 +221,31 @@
           <InputLabel
             id="fullName"
             v-model="fullName"
-            :class="{ 'input-error': formErrors.name }"
+            :error="!!formErrors.name"
             :label="$t('signup.fullName')"
             type="text"
             @update:model-value="formErrors.name = ''"
           />
           <span v-if="formErrors.name" class="error-message">{{ formErrors.name }}</span>
-          <InputLabel id="email" v-model="email" :label="$t('signup.email')" type="email" />
+          <InputLabel
+            id="email"
+            v-model="email"
+            :error="!!formErrors.email"
+            :label="$t('signup.email')"
+            type="email"
+            @update:model-value="formErrors.email = ''"
+          />
+          <span v-if="formErrors.email" class="error-message">{{ formErrors.email }}</span>
           <InputLabel
             id="password"
             v-model="password"
+            :error="!!formErrors.password"
             :input-password="true"
             :label="$t('signup.password')"
             type="password"
+            @update:model-value="formErrors.password = ''"
           />
+          <span v-if="formErrors.password" class="error-message">{{ formErrors.password }}</span>
           <ul v-if="password.length > 0" class="password-rules-container">
             <li :class="{ 'completed': passwordRules.hasLowercase }">
               <svg
@@ -206,23 +295,47 @@
               </svg>
               {{ $t('signup.rules.minChars') }}
             </li>
+            <li :class="{ 'completed': passwordRules.hasSpecial }">
+              <svg class="check-icon" fill="none" :viewBox="checkIconViewBox">
+                <path
+                  v-for="(path, index) in checkIconPaths"
+                  :key="`special-${index}`"
+                  :d="path.d"
+                  stroke="currentColor"
+                  :stroke-linecap="path.strokeLinecap as StrokeLinecap"
+                  :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin"
+                  stroke-width="1.5"
+                />
+              </svg>
+              {{ $t('signup.rules.specialChar') }}
+            </li>
           </ul>
 
           <InputLabel
             id="confirmPassword"
             v-model="confirmPassword"
+            :error="!!formErrors.confirmPassword"
             :input-password="true"
             :label="$t('signup.confirmPassword')"
             type="password"
+            @update:model-value="formErrors.confirmPassword = ''"
           />
+          <span v-if="formErrors.confirmPassword" class="error-message">{{ formErrors.confirmPassword }}</span>
         </div>
         <p class="login-link-text">
           {{ $t('signup.hasAccount') }}
           <a href="#">{{ $t('signup.loginLink') }}</a>
         </p>
-        <button class="submit-button" type="submit">
-          {{ $t('signup.button') }}
+        <button
+          :aria-busy="isSubmitting"
+          :class="['submit-button', { loading: isSubmitting }]"
+          :disabled="isSubmitting"
+          type="submit"
+        >
+          <span v-if="isSubmitting" aria-hidden="true" class="loader" />
+          <span>{{ isSubmitting ? 'Enviando...' : $t('signup.button') }}</span>
         </button>
+        <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />
       </form>
     </template>
 
@@ -406,6 +519,10 @@ h1 {
   background: #FFB37B;
   box-shadow: 0 4px 14px 0 rgba(255, 179, 123, 0.5);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
 }
 
 .submit-button.disabled {
@@ -413,6 +530,33 @@ h1 {
   border: none;
   background-color: #e5e7eb;
   color: #9ca3af;
+}
+
+.submit-button.loading {
+  cursor: wait;
+}
+
+.submit-button:disabled {
+  cursor: not-allowed;
+}
+
+.loader {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: loader-spin 0.8s linear infinite;
+}
+
+@keyframes loader-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .submit-button.active:hover {

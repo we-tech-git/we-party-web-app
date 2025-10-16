@@ -24,7 +24,27 @@
     "rules": {
       "lowercase": "Pelo menos uma letra minúscula",
       "uppercase": "Pelo menos uma letra maiúscula",
-      "minChars": "Pelo menos 10 caracteres"
+      "minChars": "Pelo menos 10 caracteres",
+      "specialChar": "Pelo menos um caractere especial"
+    },
+    "errors": {
+      "required": {
+        "name": "Nome é obrigatório",
+        "email": "E-mail é obrigatório",
+        "password": "Senha é obrigatória",
+        "confirmPassword": "Confirmação de senha é obrigatória"
+      },
+      "passwordMismatch": "As senhas precisam ser iguais",
+      "passwordRules": "A senha precisa atender a todos os requisitos"
+    },
+    "snackbar": {
+      "missingFields": {
+        "single": "Preencha o campo: {fields}",
+        "multiple": "Preencha os campos: {fields}"
+      },
+      "invalidForm": "Revise os campos obrigatórios antes de continuar",
+      "success": "Cadastro realizado! Redirecionando para o login...",
+      "failure": "Não foi possível concluir o cadastro. Tente novamente."
     }
   },
   "addFriends": {

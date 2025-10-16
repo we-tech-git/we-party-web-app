@@ -11,6 +11,7 @@
     required?: boolean
     disabled?: boolean
     inputPassword?: boolean
+    error?: boolean
   }
 
   interface Emits {
@@ -24,6 +25,7 @@
     required: false,
     disabled: false,
     inputPassword: false,
+    error: false,
   })
 
   const emit = defineEmits<Emits>()
@@ -50,13 +52,13 @@
 
 <template>
   <div class="input-wrapper">
-    <label :class="{ 'active': modelValue }" :for="inputId">
+    <label :class="{ 'active': modelValue, 'has-error': error }" :for="inputId">
       {{ label }}
     </label>
     <input
       :id="inputId"
       class="input-field"
-      :class="{ 'filled': modelValue }"
+      :class="{ 'filled': modelValue, 'has-error': error }"
       :disabled="disabled"
       :placeholder="placeholder"
       :required="required"
@@ -135,6 +137,10 @@
   color: var(--il-label-active, #FFB37B);
 }
 
+.input-wrapper label.has-error {
+  color: var(--il-border-error, #ef4444);
+}
+
 /* ===============================
    CAMPO: ESTADO BASE
 ================================ */
@@ -173,6 +179,16 @@
   top: 8px;
   font-size: 0.75rem;
   color: var(--il-border-focus, #f97316);
+}
+
+.input-field.has-error {
+  border-color: var(--il-border-error, #ef4444);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2);
+}
+
+.input-field.has-error:focus {
+  border-color: var(--il-border-error, #ef4444);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
 }
 
 /* ===============================

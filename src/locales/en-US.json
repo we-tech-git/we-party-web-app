@@ -24,7 +24,27 @@
     "rules": {
       "lowercase": "At least one lowercase letter",
       "uppercase": "At least one uppercase letter",
-      "minChars": "At least 10 characters"
+      "minChars": "At least 10 characters",
+      "specialChar": "At least one special character"
+    },
+    "errors": {
+      "required": {
+        "name": "Full name is required",
+        "email": "Email is required",
+        "password": "Password is required",
+        "confirmPassword": "Password confirmation is required"
+      },
+      "passwordMismatch": "Passwords must match",
+      "passwordRules": "Password must meet all the requirements"
+    },
+    "snackbar": {
+      "missingFields": {
+        "single": "Please fill in the field: {fields}",
+        "multiple": "Please fill in the fields: {fields}"
+      },
+      "invalidForm": "Review the required fields before continuing",
+      "success": "Registration complete! Redirecting to login...",
+      "failure": "We couldn't finish the registration. Try again."
     }
   },
   "addFriends": {
