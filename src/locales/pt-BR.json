@@ -7,8 +7,20 @@
     "rememberMe": "Lembrar-me",
     "forgotPassword": "Esqueci minha senha",
     "button": "Entrar",
+    "submitting": "Entrando...",
     "noAccount": "Não tem conta?",
-    "signupLink": "Cadastre-se"
+    "signupLink": "Cadastre-se",
+    "errors": {
+      "requiredEmail": "Informe o e-mail",
+      "requiredPassword": "Informe a senha",
+      "invalidCredentials": "Credenciais inválidas. Verifique os dados e tente novamente."
+    },
+    "snackbar": {
+      "missingFields": "Preencha e-mail e senha para continuar.",
+      "invalidCredentials": "Não encontramos credenciais válidas para este acesso.",
+      "success": "Login realizado com sucesso! Redirecionando...",
+      "failure": "Não foi possível concluir o login. Tente novamente."
+    }
   },
   "signup": {
     "title": "Cadastro",
@@ -34,6 +46,7 @@
         "password": "Senha é obrigatória",
         "confirmPassword": "Confirmação de senha é obrigatória"
       },
+      "duplicateEmail": "Já existe uma conta cadastrada com este e-mail",
       "passwordMismatch": "As senhas precisam ser iguais",
       "passwordRules": "A senha precisa atender a todos os requisitos"
     },
@@ -43,6 +56,7 @@
         "multiple": "Preencha os campos: {fields}"
       },
       "invalidForm": "Revise os campos obrigatórios antes de continuar",
+      "duplicateUser": "Identificamos um cadastro ativo com esses dados. Acesse sua conta para prosseguir.",
       "success": "Cadastro realizado! Redirecionando para o login...",
       "failure": "Não foi possível concluir o cadastro. Tente novamente."
     }
@@ -54,10 +68,15 @@
     "send": "enviar",
     "sent": "enviado",
     "finishButton": "CONCLUIR",
+    "sending": "Enviando...",
     "infoTitle": "Por que adicionar amigos?",
     "infoPoint1": "Conexões para todo momento",
     "infoPoint2": "Eventos só para amigos",
-    "infoPoint3": "Compartilhe histórias e momentos"
+    "infoPoint3": "Compartilhe histórias e momentos",
+    "snackbar": {
+      "success": "Convites enviados! Prepare-se para celebrar.",
+      "failure": "Não foi possível enviar os convites. Tente novamente."
+    }
   }
   ,
   "interest": {
@@ -65,6 +84,7 @@
     "subtitle": "Adicione interesses ao seu perfil para te apresentar os eventos que você se identifica mais.",
     "searchPlaceholder": "Search...",
     "finishButton": "CONCLUIR",
+    "saving": "Salvando...",
     "brandTitle": { "part1": "Por que adicionar", "part2": "interesses" },
     "benefit1": "Eventos que tem mais a sua cara",
     "benefit2": "Eventos personalizados irão aparecer",
@@ -72,6 +92,11 @@
       "title": "Nova Solicitação",
       "line1": "Obrigado por adicionar um novo interesse, iremos analisar este novo tipo de evento e em até 24h iremos adicionar a lista de interesses para todos.",
       "line2": "Também vamos adicionar aos seus interesses pessoais para eventos personalizados"
+    },
+    "snackbar": {
+      "empty": "Escolha ao menos um interesse para continuar.",
+      "success": "Interesses atualizados com sucesso!",
+      "failure": "Não foi possível salvar seus interesses. Tente novamente."
     }
   },
   "congratulations": {

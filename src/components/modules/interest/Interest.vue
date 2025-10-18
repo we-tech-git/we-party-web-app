@@ -7,10 +7,14 @@
 <script setup lang="ts">
   import { computed, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import { useRouter } from 'vue-router'
+  import { callApi } from '@/api'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import { svgIcons } from '@/utils/svgSet'
 
   const { t } = useI18n()
+  const router = useRouter()
 
   const allChips = ref<string[]>([
     'FUNK', 'EVENTOS DE SP', 'DANCE HALL',
@@ -58,8 +62,58 @@
   }
 
   const showModal = ref(false)
-  function finish () {
-    // Ação de concluir ficará disponível para integração futura
+  const isSaving = ref(false)
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
+
+  function showSnackbar (message: string, color = '#ff9800') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+
+    if (snackbarVisible.value) {
+      snackbarVisible.value = false
+      requestAnimationFrame(() => {
+        snackbarVisible.value = true
+      })
+      return
+    }
+
+    snackbarVisible.value = true
+  }
+
+  async function finish () {
+    if (isSaving.value) return
+
+    const interests = Array.from(selected.value)
+
+    if (interests.length === 0) {
+      showSnackbar(t('interest.snackbar.empty'), '#ef4444')
+      return
+    }
+
+    const minLoadingMs = 1500
+    const start = Date.now()
+    isSaving.value = true
+
+    try {
+      await callApi('POST', '/user/interests', { interests })
+      showSnackbar(t('interest.snackbar.success'), '#22c55e')
+
+      setTimeout(() => {
+        router.push('/public/AddFriends')
+      }, 1000)
+    } catch (error) {
+      console.error('Erro ao salvar interesses:', error)
+      showSnackbar(t('interest.snackbar.failure'), '#ef4444')
+    } finally {
+      const elapsed = Date.now() - start
+      const remaining = minLoadingMs - elapsed
+      if (remaining > 0) {
+        await new Promise(resolve => setTimeout(resolve, remaining))
+      }
+      isSaving.value = false
+    }
   }
   function closeModal () {
     showModal.value = false
@@ -126,9 +180,22 @@
         </button>
       </div>
 
-      <button class="finish-btn" type="button" @click="finish">
-        {{ t('interest.finishButton') }}
+      <button
+        :aria-busy="isSaving"
+        class="finish-btn"
+        :disabled="isSaving"
+        type="button"
+        @click="finish"
+      >
+        {{ isSaving ? t('interest.saving') : t('interest.finishButton') }}
       </button>
+
+      <Snackbar
+        v-model="snackbarVisible"
+        :color="snackbarColor"
+        :message="snackbarMessage"
+        :timeout="4000"
+      />
 
       <!-- Modal -->
       <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
@@ -322,6 +389,12 @@
 .finish-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 28px rgba(255, 95, 166, .3);
+}
+
+.finish-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* ===============================
