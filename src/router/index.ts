@@ -11,7 +11,14 @@ import { routes } from 'vue-router/auto-routes'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: setupLayouts(routes),
+  routes: [
+    // Redirect da rota raiz para o login
+    {
+      path: '/',
+      redirect: '/public/Login'
+    },
+    ...setupLayouts(routes)
+  ],
 })
 
 // Workaround for https://github.com/vitejs/vite/issues/11804
