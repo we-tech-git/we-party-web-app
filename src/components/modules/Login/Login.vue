@@ -24,6 +24,7 @@
   const password = ref('')
   const rememberMe = ref(false)
   const isSubmitting = ref(false)
+  const isLoading = ref(false)
 
   const formErrors = ref({
     email: '',
@@ -67,21 +68,28 @@
     formErrors.value.password = ''
   })
 
-  async function submitForm () {
-    if (isSubmitting.value) return
-
+  async function checkLoginForm (event: any) {
+    event.preventDefault()
     resetErrors()
 
     if (!email.value.trim()) {
       formErrors.value.email = t('login.errors.requiredEmail')
+      showSnackbar(t('login.snackbar.missingFields'))
+      return
     }
 
     if (!password.value.trim()) {
       formErrors.value.password = t('login.errors.requiredPassword')
+      showSnackbar(t('login.snackbar.missingFields'))
+      return
     }
 
+    submitForm()
+  }
+
+  async function submitForm () {
+    console.log('Submitting login form...')
     if (formErrors.value.email || formErrors.value.password) {
-      showSnackbar(t('login.snackbar.missingFields'))
       return
     }
 
@@ -96,7 +104,7 @@
         rememberMe: rememberMe.value,
       }
 
-      const { data } = await callApi('POST', '/auth/login', body)
+      const { data } = await callApi('POST', '/userprofile/login', body)
 
       const token = data?.token
       if (token) {
@@ -155,7 +163,7 @@
       <h2 class="mobile-brand-title">WE PARTY</h2>
       <h1 class="text-3xl font-bold">{{ $t('login.title') }}</h1>
 
-      <form @submit.prevent="submitForm">
+      <form>
         <div class="inputs-container il-theme--pink">
           <InputLabel
             id="email"
@@ -186,9 +194,10 @@
 
           <button
             :aria-busy="isSubmitting"
-            :class="['submit-button', { active: isFormValid && !isSubmitting }]"
-            :disabled="isSubmitting || !isFormValid"
+            :class="['submit-button', { active: !isLoading }]"
+            :disabled="isLoading"
             type="submit"
+            @click="checkLoginForm"
           >
             {{ isSubmitting ? $t('login.submitting') : $t('login.button') }}
           </button>

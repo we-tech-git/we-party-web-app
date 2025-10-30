@@ -5,7 +5,7 @@
   Data: 13/10/2025
 -->
 <script setup lang="ts">
-  import { computed, ref } from 'vue'
+  import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import { callApi } from '@/api'
@@ -16,13 +16,14 @@
   const { t } = useI18n()
   const router = useRouter()
 
-  const allChips = ref<string[]>([
-    'FUNK', 'EVENTOS DE SP', 'DANCE HALL',
-    'PALESTRA', 'AMAPIANO', 'MANDELÃO',
-    'REGGAE', 'ANOS 90', 'ANOS 80',
-    'COMUNITÁRIO', 'POP', 'VINTAGE',
-  ])
-  const selected = ref<Set<string>>(new Set(['FUNK', 'COMUNITÁRIO']))
+  interface IInterest {
+    name: string
+    createdBy: string
+    id: string
+  }
+
+  const allChips = ref<IInterest[]>([])
+  const selected = ref<Set<string>>(new Set())
 
   const query = ref('')
   const baseSuggestions = ref<string[]>(['Dance hall', 'Feira do Livro', 'Eventos de SP'])
@@ -48,21 +49,24 @@
     selected.value = new Set(selected.value)
   }
 
-  function addFromSuggestion (label: string) {
-    const up = label.toUpperCase()
-    const isNewInterest = !allChips.value.includes(up)
+  async function addFromSuggestion (selectedInterest: IInterest) {
+    const alreyadySelected = selected.value.has(selectedInterest.id)
 
-    if (isNewInterest) allChips.value.unshift(up)
-    selected.value.add(up)
+    const body = {
+      interestId: selectedInterest.id,
+    }
 
-    if (isNewInterest) showModal.value = true
-
-    selected.value = new Set(selected.value)
-    query.value = ''
+    if (!alreyadySelected) {
+      const response = await callApi('POST', '/userprofile/add/interest', body, true)
+      console.log('response interest added =====>', response.data)
+      // selected.value.add(selectedInterest.id)
+      // selected.value = new Set(selected.value)
+    }
   }
 
   const showModal = ref(false)
   const isSaving = ref(false)
+  const isLoading = ref(false)
   const snackbarVisible = ref(false)
   const snackbarMessage = ref('')
   const snackbarColor = ref('#ff9800')
@@ -81,6 +85,44 @@
 
     snackbarVisible.value = true
   }
+
+  async function loadAllInterests () {
+    isLoading.value = true
+
+    try {
+      const response = await callApi('GET', '/interest/search', {}, true)
+
+      console.log('response =====>', response.data)
+
+      allChips.value = response.data
+    } catch (error) {
+      console.error('Erro ao carregar interesses:', error)
+      showSnackbar(t('interest.snackbar.loadError'), '#ef4444')
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function loadUserInterests () {
+    isLoading.value = true
+
+    try {
+      const response = await callApi('GET', '/userprofile/interests', {}, true)
+
+      console.log('response user interests =====>', response.data)
+
+      allChips.value = response.data
+    } catch (error) {
+      console.error('Erro ao carregar interesses:', error)
+      showSnackbar(t('interest.snackbar.loadError'), '#ef4444')
+    }
+  }
+
+  // Carrega os dados quando o componente é montado
+  onMounted(() => {
+    loadAllInterests()
+    loadUserInterests()
+  })
 
   async function finish () {
     if (isSaving.value) return
@@ -144,7 +186,7 @@
         <div v-if="showDropdown" class="suggestions">
           <div v-for="(s, idx) in filteredSuggestions" :key="idx" class="suggestion-item">
             <span class="suggestion-label">{{ s }}</span>
-            <button class="add-suggestion" type="button" @click="addFromSuggestion(s)">
+            <button class="add-suggestion" type="button">
               <svg
                 v-if="svgIcons.plusIcon"
                 class="plus-icon"
@@ -167,16 +209,20 @@
       </div>
 
       <!-- Grid de chips -->
-      <div class="chips-grid">
+      <div v-if="isLoading" class="loading-state">
+        <div class="loading-spinner" />
+        <p>{{ t('interest.loading') }}</p>
+      </div>
+      <div v-else class="chips-grid">
         <button
           v-for="chip in allChips"
-          :key="chip"
-          :class="['chip', selected.has(chip.toUpperCase()) ? 'selected' : '']"
-          :title="chip"
+          :key="chip.id"
+          :class="['chip', selected.has(chip.name.toUpperCase()) ? 'selected' : '']"
+          :title="chip.name"
           type="button"
-          @click="toggleChip(chip)"
+          @click="addFromSuggestion(chip)"
         >
-          {{ chip }}
+          {{ chip.name }}
         </button>
       </div>
 
