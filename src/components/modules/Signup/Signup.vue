@@ -5,7 +5,7 @@
   import confetti from 'canvas-confetti'
   import { computed, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
-  import { callApi } from '@/api'
+  import { createUser } from '@/api/users'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import router from '@/router'
@@ -143,23 +143,21 @@
     isSubmitting.value = true
 
     try {
-      const body = {
+      // Prepara os dados no formato esperado pelo novo endpoint
+      const userData = {
         name: fullName.value,
+        username: email.value.split('@')[0],
         email: email.value,
+        phone: '', // pode adicionar campo de telefone futuramente
         password: password.value,
         acceptedTerms: true,
         notificationActive: true,
       }
-      console.log('Formulário enviado!', {
-        fullName: fullName.value,
-        email: email.value,
-        password: password.value,
-      })
+      console.log('Envio de dados do usuário:', userData)
 
-      // Chamada à API para registrar o usuário
-      const { data } = await callApi('POST', '/userprofile/create', body)
+      const response = await createUser(userData)
 
-      console.log('Resposta da API:', data)
+      console.log('Resposta da API:', response.data)
 
       triggerConfetti()
       showSnackbar(t('signup.snackbar.success'), '#22c55e')
@@ -167,10 +165,11 @@
       setTimeout(() => {
         router.push('/public/Login')
       }, 3000)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao registrar usuário:', error)
-      showSnackbar(t('signup.snackbar.failure'), '#ef4444')
-      return
+
+      const errorMessage = error?.response?.data?.message || t('signup.snackbar.failure')
+      showSnackbar(errorMessage, '#ef4444')
     } finally {
       const elapsed = Date.now() - start
       const remaining = minLoadingMs - elapsed

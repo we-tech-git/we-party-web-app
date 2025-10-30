@@ -7,130 +7,22 @@
 // ESTADO E LÓGICA DO FORMULÁRIO
 // ===============================
 // Tela de Login – usa AuthLayout e InputLabel
-  import { computed, ref, watch } from 'vue'
-  import { useI18n } from 'vue-i18n'
-  import { useRouter } from 'vue-router'
-  import { callApi } from '@/api'
+  import { computed, ref } from 'vue'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
-  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-  import { STORAGE_KEY_NAME } from '@/utils/storageKeys'
-
-  const { t } = useI18n()
-  const router = useRouter()
 
   // Estado do formulário de login
   const email = ref('')
   const password = ref('')
   const rememberMe = ref(false)
-  const isSubmitting = ref(false)
-
-  const formErrors = ref({
-    email: '',
-    password: '',
-  })
-
-  const snackbarVisible = ref(false)
-  const snackbarMessage = ref('')
-  const snackbarColor = ref('#ff9800')
 
   // Validação mínima: e-mail + senha preenchidos
   const isFormValid = computed(() => Boolean(email.value && password.value))
 
-  function showSnackbar (message: string, color = '#ff9800') {
-    snackbarMessage.value = message
-    snackbarColor.value = color
-
-    if (snackbarVisible.value) {
-      snackbarVisible.value = false
-      requestAnimationFrame(() => {
-        snackbarVisible.value = true
-      })
-      return
-    }
-
-    snackbarVisible.value = true
-  }
-
-  function resetErrors () {
-    formErrors.value = {
-      email: '',
-      password: '',
-    }
-  }
-
-  watch(email, () => {
-    formErrors.value.email = ''
-  })
-
-  watch(password, () => {
-    formErrors.value.password = ''
-  })
-
-  async function submitForm () {
-    if (isSubmitting.value) return
-
-    resetErrors()
-
-    if (!email.value.trim()) {
-      formErrors.value.email = t('login.errors.requiredEmail')
-    }
-
-    if (!password.value.trim()) {
-      formErrors.value.password = t('login.errors.requiredPassword')
-    }
-
-    if (formErrors.value.email || formErrors.value.password) {
-      showSnackbar(t('login.snackbar.missingFields'))
-      return
-    }
-
-    const minLoadingMs = 1500
-    const start = Date.now()
-    isSubmitting.value = true
-
-    try {
-      const body = {
-        email: email.value,
-        password: password.value,
-        rememberMe: rememberMe.value,
-      }
-
-      const { data } = await callApi('POST', '/auth/login', body)
-
-      const token = data?.token
-      if (token) {
-        localStorage.setItem(STORAGE_KEY_NAME.ACCESS_TOKEN, token)
-      }
-
-      showSnackbar(t('login.snackbar.success'), '#22c55e')
-
-      setTimeout(() => {
-        router.push('/public/Interest')
-      }, 1000)
-    } catch (error: any) {
-      console.error('Erro ao autenticar usuário:', error)
-
-      const status = error?.response?.status
-      const apiMessage = error?.response?.data?.message
-        ?? error?.response?.data?.erro
-        ?? error?.response?.data?.erros?.[0]
-
-      if (status === 401 || (typeof apiMessage === 'string' && apiMessage.toLowerCase().includes('credencial'))) {
-        formErrors.value.password = t('login.errors.invalidCredentials')
-        showSnackbar(t('login.snackbar.invalidCredentials'), '#ef4444')
-        return
-      }
-
-      showSnackbar(t('login.snackbar.failure'), '#ef4444')
-    } finally {
-      const elapsed = Date.now() - start
-      const remaining = minLoadingMs - elapsed
-      if (remaining > 0) {
-        await new Promise(resolve => setTimeout(resolve, remaining))
-      }
-      isSubmitting.value = false
-    }
+  function submitForm (): void {
+    if (!isFormValid.value) return
+    // TODO: chamar ação de autenticação aqui
+    console.log('Login submit:', { email: email.value, rememberMe: rememberMe.value })
   }
 </script>
 
@@ -157,24 +49,14 @@
 
       <form @submit.prevent="submitForm">
         <div class="inputs-container il-theme--pink">
-          <InputLabel
-            id="email"
-            v-model="email"
-            :error="!!formErrors.email"
-            :label="$t('login.emailPlaceholder')"
-            type="email"
-          />
-          <span v-if="formErrors.email" class="error-message">{{ formErrors.email }}</span>
-
+          <InputLabel id="email" v-model="email" :label="$t('login.emailPlaceholder')" type="email" />
           <InputLabel
             id="password"
             v-model="password"
-            :error="!!formErrors.password"
             :input-password="true"
             :label="$t('login.passwordPlaceholder')"
             type="password"
           />
-          <span v-if="formErrors.password" class="error-message">{{ formErrors.password }}</span>
 
           <div class="login-options">
             <label class="remember-me">
@@ -184,23 +66,10 @@
             <a class="forgot-link" href="#">{{ $t('login.forgotPassword') }}</a>
           </div>
 
-          <button
-            :aria-busy="isSubmitting"
-            :class="['submit-button', { active: isFormValid && !isSubmitting }]"
-            :disabled="isSubmitting || !isFormValid"
-            type="submit"
-          >
-            {{ isSubmitting ? $t('login.submitting') : $t('login.button') }}
-          </button>
+          <button class="submit-button" :class="{ active: isFormValid }" :disabled="!isFormValid" type="submit">{{
+            $t('login.button') }}</button>
         </div>
       </form>
-
-      <Snackbar
-        v-model="snackbarVisible"
-        :color="snackbarColor"
-        :message="snackbarMessage"
-        :timeout="4000"
-      />
 
       <div class="footer-row">
         <p class="login-link-text">
@@ -252,12 +121,6 @@
   top: 8px;
   font-size: 0.75rem;
   color: #9ca3af;
-}
-
-.error-message {
-  margin-top: 6px;
-  font-size: 0.75rem;
-  color: #ef4444;
 }
 
 .input-field {
