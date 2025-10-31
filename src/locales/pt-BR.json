@@ -47,6 +47,35 @@
       "failure": "Não foi possível concluir o cadastro. Tente novamente."
     }
   },
+  "feed": {
+    "searchPlaceholder": "Buscar eventos, artistas ou locais",
+    "searchAria": "Buscar eventos no feed",
+    "actions": {
+      "clearSearch": "Limpar busca"
+    },
+    "nav": {
+      "tagline": "Planeje suas experiências",
+      "home": "Home",
+      "topEvents": "Top eventos",
+      "favorites": "Eventos favoritos",
+      "notifications": "Notificações",
+      "profile": "Perfil",
+      "helper": "Descubra novidades e aproveite as experiências da semana.",
+      "newEvent": "Criar evento"
+    },
+    "tabs": {
+      "forYou": "Para você",
+      "today": "Acontecendo hoje",
+      "friends": "Com amigos"
+    },
+    "trending": {
+      "title": "O que tá rolando?",
+      "subtitle": "Tendência na sua cidade",
+      "cityHighlight": "Tendência na sua cidade",
+      "more": "Mostrar mais"
+    },
+    "empty": "Nenhum evento encontrado para o momento."
+  },
   "addFriends": {
     "title": "Amigos",
     "subtitle": "Adicione amigos para convidar ao seu evento",

@@ -47,6 +47,35 @@
       "failure": "We couldn't finish the registration. Try again."
     }
   },
+  "feed": {
+    "searchPlaceholder": "Search events, artists or venues",
+    "searchAria": "Search events in the feed",
+    "actions": {
+      "clearSearch": "Clear search"
+    },
+    "nav": {
+      "tagline": "Plan your experiences",
+      "home": "Home",
+      "topEvents": "Top events",
+      "favorites": "Saved events",
+      "notifications": "Notifications",
+      "profile": "Profile",
+      "helper": "Discover what is trending and enjoy the week.",
+      "newEvent": "Create event"
+    },
+    "tabs": {
+      "forYou": "For you",
+      "today": "Happening today",
+      "friends": "With friends"
+    },
+    "trending": {
+      "title": "What's happening?",
+      "subtitle": "Trending in your city",
+      "cityHighlight": "Trending in your city",
+      "more": "Show more"
+    },
+    "empty": "No events found right now."
+  },
   "addFriends": {
     "title": "Friends",
     "subtitle": "Add friends to invite to your event",

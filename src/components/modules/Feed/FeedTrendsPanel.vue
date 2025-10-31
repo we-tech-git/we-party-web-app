@@ -1,0 +1,131 @@
+<script setup lang="ts">
+  import { useI18n } from 'vue-i18n'
+
+  interface TrendItem {
+    id: number
+    title: string
+    highlight: string
+    engagement: string
+  }
+
+  defineProps<{
+    items: TrendItem[]
+  }>()
+
+  const { t } = useI18n()
+</script>
+
+<template>
+  <aside class="feed-trends">
+    <header class="head">
+      <h2>{{ t('feed.trending.title') }}</h2>
+      <p>{{ t('feed.trending.subtitle') }}</p>
+    </header>
+
+    <ul>
+      <li v-for="item in items" :key="item.id">
+        <span class="label">{{ item.highlight }}</span>
+        <strong>{{ item.title }}</strong>
+        <span class="meta">{{ item.engagement }}</span>
+      </li>
+    </ul>
+
+    <button class="more" type="button">{{ t('feed.trending.more') }}</button>
+  </aside>
+</template>
+
+<style scoped>
+.feed-trends {
+    position: sticky;
+    top: 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.75rem 1.65rem 1.9rem;
+    border-radius: 32px;
+    background: #ffffff;
+    box-shadow: 0 18px 45px rgba(20, 24, 60, 0.12);
+    min-width: 280px;
+}
+
+.head h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #272c4b;
+}
+
+.head p {
+    margin: 0.4rem 0 0;
+    font-size: 0.85rem;
+    color: #9097b4;
+}
+
+ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.65rem 0.5rem;
+    border-bottom: 1px solid rgba(144, 151, 180, 0.16);
+}
+
+li:last-of-type {
+    border-bottom: none;
+}
+
+.label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #ff5fa6;
+    font-weight: 600;
+}
+
+strong {
+    color: #2c3154;
+    font-size: 1rem;
+}
+
+.meta {
+    font-size: 0.82rem;
+    color: #9ca2ba;
+}
+
+.more {
+    align-self: flex-start;
+    padding: 0.55rem 1.35rem;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(135deg, rgba(255, 138, 91, 0.15), rgba(255, 95, 166, 0.15));
+    color: #ff5fa6;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+}
+
+.more:hover {
+    background: linear-gradient(135deg, rgba(255, 138, 91, 0.25), rgba(255, 95, 166, 0.25));
+}
+
+@media (max-width: 1240px) {
+    .feed-trends {
+        position: static;
+        min-width: auto;
+        order: 3;
+    }
+}
+
+@media (max-width: 960px) {
+    .feed-trends {
+        display: none;
+    }
+}
+</style>
