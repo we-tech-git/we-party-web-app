@@ -5,20 +5,23 @@
   Data: 13/10/2025
 -->
 <script setup lang="ts">
-  import { computed, ref } from 'vue'
+  import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import { callApi } from '@/api'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import { svgIcons } from '@/utils/svgSet'
 
   const { t } = useI18n()
 
-  const allChips = ref<string[]>([
-    'FUNK', 'EVENTOS DE SP', 'DANCE HALL',
-    'PALESTRA', 'AMAPIANO', 'MANDELÃO',
-    'REGGAE', 'ANOS 90', 'ANOS 80',
-    'COMUNITÁRIO', 'POP', 'VINTAGE',
-  ])
-  const selected = ref<Set<string>>(new Set(['FUNK', 'COMUNITÁRIO']))
+  interface IInterest {
+    name: string
+    createdBy: string
+    id: string
+  }
+
+  const allChips = ref<IInterest[]>([])
+  const selected = ref<Set<string>>(new Set())
+  const isLoading = ref(false)
 
   const query = ref('')
   const baseSuggestions = ref<string[]>(['Dance hall', 'Feira do Livro', 'Eventos de SP'])
@@ -44,22 +47,58 @@
     selected.value = new Set(selected.value)
   }
 
-  function addFromSuggestion (label: string) {
-    const up = label.toUpperCase()
-    const isNewInterest = !allChips.value.includes(up)
+  async function fetchInterests () {
+    try {
+      isLoading.value = true
+      const response = await callApi('GET', '/interests', undefined, true)
+      const rawData = Array.isArray(response?.data?.data)
+        ? response.data.data
+        : response?.data
 
-    if (isNewInterest) allChips.value.unshift(up)
-    selected.value.add(up)
+      const payload = Array.isArray(rawData) ? rawData : []
 
-    if (isNewInterest) showModal.value = true
-
-    selected.value = new Set(selected.value)
-    query.value = ''
+      if (payload.length > 0) {
+        allChips.value = payload.map((item: any) => ({
+          id: String(item.id ?? item.uuid ?? item.name ?? crypto.randomUUID()),
+          name: String(item.name ?? item.label ?? ''),
+          createdBy: item.createdBy ?? '',
+        })).filter(chip => chip.name.trim().length > 0)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar interesses:', error)
+      allChips.value = []
+    } finally {
+      isLoading.value = false
+    }
   }
+
+  async function addFromSuggestion (selectedInterest: IInterest) {
+    const alreadySelected = selected.value.has(selectedInterest.name.toUpperCase())
+
+    const body = {
+      interestId: selectedInterest.id,
+    }
+
+    if (alreadySelected) {
+      toggleChip(selectedInterest.name)
+      return
+    }
+
+    try {
+      await callApi('POST', '/userprofile/add/interest', body, true)
+      toggleChip(selectedInterest.name)
+    } catch (error) {
+      console.error('Erro ao adicionar interesse:', error)
+    }
+  }
+
+  onMounted(() => {
+    fetchInterests()
+  })
 
   const showModal = ref(false)
   function finish () {
-    // Ação de concluir ficará disponível para integração futura
+  // Ação de concluir ficará disponível para integração futura
   }
   function closeModal () {
     showModal.value = false
@@ -90,7 +129,7 @@
         <div v-if="showDropdown" class="suggestions">
           <div v-for="(s, idx) in filteredSuggestions" :key="idx" class="suggestion-item">
             <span class="suggestion-label">{{ s }}</span>
-            <button class="add-suggestion" type="button" @click="addFromSuggestion(s)">
+            <button class="add-suggestion" type="button">
               <svg
                 v-if="svgIcons.plusIcon"
                 class="plus-icon"
@@ -113,16 +152,20 @@
       </div>
 
       <!-- Grid de chips -->
-      <div class="chips-grid">
+      <div v-if="isLoading" class="loading-state">
+        <div class="loading-spinner" />
+        <p>{{ t('interest.loading') }}</p>
+      </div>
+      <div v-else class="chips-grid">
         <button
           v-for="chip in allChips"
-          :key="chip"
-          :class="['chip', selected.has(chip.toUpperCase()) ? 'selected' : '']"
-          :title="chip"
+          :key="chip.id"
+          :class="['chip', selected.has(chip.name.toUpperCase()) ? 'selected' : '']"
+          :title="chip.name"
           type="button"
-          @click="toggleChip(chip)"
+          @click="addFromSuggestion(chip)"
         >
-          {{ chip }}
+          {{ chip.name }}
         </button>
       </div>
 

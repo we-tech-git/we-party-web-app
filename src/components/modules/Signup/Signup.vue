@@ -144,9 +144,14 @@
 
     try {
       // Prepara os dados no formato esperado pelo novo endpoint
+      const parsedEmail = email.value.trim()
+      const username = parsedEmail && parsedEmail.includes('@')
+        ? parsedEmail.split('@')[0] ?? parsedEmail
+        : parsedEmail
+
       const userData = {
         name: fullName.value,
-        username: email.value.split('@')[0],
+        username,
         email: email.value,
         phone: '', // pode adicionar campo de telefone futuramente
         password: password.value,
