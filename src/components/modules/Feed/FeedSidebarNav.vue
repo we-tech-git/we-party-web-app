@@ -100,7 +100,7 @@
 <style scoped>
 .feed-sidebar {
   position: sticky;
-  top: 48px;
+  top: var(--feed-sticky-offset, 120px);
   display: flex;
   flex-direction: column;
   gap: 2rem;
