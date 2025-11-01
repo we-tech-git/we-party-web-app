@@ -7,20 +7,8 @@
     "rememberMe": "Remember me",
     "forgotPassword": "Forgot my password",
     "button": "Sign in",
-    "submitting": "Signing in...",
     "noAccount": "Don't have an account?",
-    "signupLink": "Sign up",
-    "errors": {
-      "requiredEmail": "Please provide your email",
-      "requiredPassword": "Please provide your password",
-      "invalidCredentials": "Invalid credentials. Please try again."
-    },
-    "snackbar": {
-      "missingFields": "Fill in your email and password to continue.",
-      "invalidCredentials": "We couldn't verify these credentials.",
-      "success": "Signed in successfully! Redirecting...",
-      "failure": "We couldn't complete the sign in. Try again."
-    }
+    "signupLink": "Sign up"
   },
   "signup": {
     "title": "Sign Up",
@@ -46,7 +34,6 @@
         "password": "Password is required",
         "confirmPassword": "Password confirmation is required"
       },
-      "duplicateEmail": "An account is already registered with this email",
       "passwordMismatch": "Passwords must match",
       "passwordRules": "Password must meet all the requirements"
     },
@@ -56,10 +43,38 @@
         "multiple": "Please fill in the fields: {fields}"
       },
       "invalidForm": "Review the required fields before continuing",
-      "duplicateUser": "We found an existing account with this information. Please sign in to continue.",
       "success": "Registration complete! Redirecting to login...",
       "failure": "We couldn't finish the registration. Try again."
     }
+  },
+  "feed": {
+    "searchPlaceholder": "Search events, artists or venues",
+    "searchAria": "Search events in the feed",
+    "actions": {
+      "clearSearch": "Clear search"
+    },
+    "nav": {
+      "tagline": "Plan your experiences",
+      "home": "Home",
+      "topEvents": "Top events",
+      "favorites": "Saved events",
+      "notifications": "Notifications",
+      "profile": "Profile",
+      "helper": "Discover what is trending and enjoy the week.",
+      "newEvent": "Create event"
+    },
+    "tabs": {
+      "forYou": "For you",
+      "today": "Happening today",
+      "friends": "With friends"
+    },
+    "trending": {
+      "title": "What's happening?",
+      "subtitle": "Trending in your city",
+      "cityHighlight": "Trending in your city",
+      "more": "Show more"
+    },
+    "empty": "No events found right now."
   },
   "addFriends": {
     "title": "Friends",
@@ -68,15 +83,10 @@
     "send": "send",
     "sent": "sent",
     "finishButton": "FINISH",
-    "sending": "Sending...",
     "infoTitle": "Why add friends?",
     "infoPoint1": "Connections for every moment",
     "infoPoint2": "Events just for friends",
-    "infoPoint3": "Share stories and moments",
-    "snackbar": {
-      "success": "Invites sent! Time to celebrate.",
-      "failure": "We couldn't send the invites. Try again."
-    }
+    "infoPoint3": "Share stories and moments"
   }
   ,
   "interest": {
@@ -84,7 +94,6 @@
     "subtitle": "Add interests to your profile so we can show events that fit you best.",
     "searchPlaceholder": "Search...",
     "finishButton": "FINISH",
-    "saving": "Saving...",
     "brandTitle": { "part1": "Why add", "part2": "interests" },
     "benefit1": "Events that match you better",
     "benefit2": "Personalized events will appear",
@@ -92,15 +101,10 @@
       "title": "New Request",
       "line1": "Thanks for adding a new interest. We'll review this event type and add it to the public list within 24h.",
       "line2": "We'll also add it to your personal interests for personalization."
-    },
-    "snackbar": {
-      "empty": "Select at least one interest to continue.",
-      "success": "Interests saved successfully!",
-      "failure": "We couldn't save your interests. Try again."
     }
   },
   "congratulations": {
-    "title": "Congratulations",
+    "title": "Congratulations, check your email",
     "description": "Make the most of our app to find the best events and parties",
     "button": "CONTINUE"
   }

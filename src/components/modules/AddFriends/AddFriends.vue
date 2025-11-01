@@ -6,15 +6,11 @@
 // - svgIcons: set de ícones (ver src/utils/svgSet.ts)
   import { computed, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
-  import { useRouter } from 'vue-router'
-  import { callApi } from '@/api'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import { svgIcons } from '@/utils/svgSet'
 
   // i18n
   const { t } = useI18n()
-  const router = useRouter()
 
   // Modelo de dados do usuário listado para convite
   interface User {
@@ -47,57 +43,6 @@
   // Alterna status do convite (pending <-> sent)
   function toggleInvite (user: User) {
     user.status = user.status === 'pending' ? 'sent' : 'pending'
-  }
-
-  const isFinishing = ref(false)
-  const snackbarVisible = ref(false)
-  const snackbarMessage = ref('')
-  const snackbarColor = ref('#ff9800')
-
-  function showSnackbar (message: string, color = '#ff9800') {
-    snackbarMessage.value = message
-    snackbarColor.value = color
-
-    if (snackbarVisible.value) {
-      snackbarVisible.value = false
-      requestAnimationFrame(() => {
-        snackbarVisible.value = true
-      })
-      return
-    }
-
-    snackbarVisible.value = true
-  }
-
-  async function finish () {
-    if (isFinishing.value) return
-
-    const invitedIds = users.value
-      .filter(user => user.status === 'sent')
-      .map(user => user.id)
-
-    const minLoadingMs = 1500
-    const start = Date.now()
-    isFinishing.value = true
-
-    try {
-      await callApi('POST', '/user/invitations', { invitedIds })
-      showSnackbar(t('addFriends.snackbar.success'), '#22c55e')
-
-      setTimeout(() => {
-        router.push('/public/Congratulations')
-      }, 1000)
-    } catch (error) {
-      console.error('Erro ao enviar convites:', error)
-      showSnackbar(t('addFriends.snackbar.failure'), '#ef4444')
-    } finally {
-      const elapsed = Date.now() - start
-      const remaining = minLoadingMs - elapsed
-      if (remaining > 0) {
-        await new Promise(resolve => setTimeout(resolve, remaining))
-      }
-      isFinishing.value = false
-    }
   }
 
 </script>
@@ -146,22 +91,9 @@
         </li>
       </ul>
 
-      <button
-        :aria-busy="isFinishing"
-        class="finish-btn"
-        :disabled="isFinishing"
-        type="button"
-        @click="finish"
-      >
-        {{ isFinishing ? t('addFriends.sending') : t('addFriends.finishButton') }}
+      <button class="finish-btn">
+        {{ t('addFriends.finishButton') }}
       </button>
-
-      <Snackbar
-        v-model="snackbarVisible"
-        :color="snackbarColor"
-        :message="snackbarMessage"
-        :timeout="4000"
-      />
     </template>
 
     <template #brand-content>
@@ -320,12 +252,6 @@
 .finish-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(252, 149, 89, 0.4);
-}
-
-.finish-btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-  box-shadow: none;
 }
 
 /* SEÇÃO DE INFORMAÇÕES (DIREITA) -  */

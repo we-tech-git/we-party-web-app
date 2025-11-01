@@ -7,14 +7,11 @@
 <script setup lang="ts">
   import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
-  import { useRouter } from 'vue-router'
   import { callApi } from '@/api'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import { svgIcons } from '@/utils/svgSet'
 
   const { t } = useI18n()
-  const router = useRouter()
 
   interface IInterest {
     name: string
@@ -24,6 +21,7 @@
 
   const allChips = ref<IInterest[]>([])
   const selected = ref<Set<string>>(new Set())
+  const isLoading = ref(false)
 
   const query = ref('')
   const baseSuggestions = ref<string[]>(['Dance hall', 'Feira do Livro', 'Eventos de SP'])
@@ -49,113 +47,58 @@
     selected.value = new Set(selected.value)
   }
 
-  async function addFromSuggestion (selectedInterest: IInterest) {
-    const alreyadySelected = selected.value.has(selectedInterest.id)
-
-    const body = {
-      interestId: selectedInterest.id,
-    }
-
-    if (!alreyadySelected) {
-      const response = await callApi('POST', '/userprofile/add/interest', body, true)
-      console.log('response interest added =====>', response.data)
-      // selected.value.add(selectedInterest.id)
-      // selected.value = new Set(selected.value)
-    }
-  }
-
-  const showModal = ref(false)
-  const isSaving = ref(false)
-  const isLoading = ref(false)
-  const snackbarVisible = ref(false)
-  const snackbarMessage = ref('')
-  const snackbarColor = ref('#ff9800')
-
-  function showSnackbar (message: string, color = '#ff9800') {
-    snackbarMessage.value = message
-    snackbarColor.value = color
-
-    if (snackbarVisible.value) {
-      snackbarVisible.value = false
-      requestAnimationFrame(() => {
-        snackbarVisible.value = true
-      })
-      return
-    }
-
-    snackbarVisible.value = true
-  }
-
-  async function loadAllInterests () {
-    isLoading.value = true
-
+  async function fetchInterests () {
     try {
-      const response = await callApi('GET', '/interest/search', {}, true)
+      isLoading.value = true
+      const response = await callApi('GET', '/interests', undefined, true)
+      const rawData = Array.isArray(response?.data?.data)
+        ? response.data.data
+        : response?.data
 
-      console.log('response =====>', response.data)
+      const payload = Array.isArray(rawData) ? rawData : []
 
-      allChips.value = response.data
+      if (payload.length > 0) {
+        allChips.value = payload.map((item: any) => ({
+          id: String(item.id ?? item.uuid ?? item.name ?? crypto.randomUUID()),
+          name: String(item.name ?? item.label ?? ''),
+          createdBy: item.createdBy ?? '',
+        })).filter(chip => chip.name.trim().length > 0)
+      }
     } catch (error) {
-      console.error('Erro ao carregar interesses:', error)
-      showSnackbar(t('interest.snackbar.loadError'), '#ef4444')
+      console.error('Erro ao buscar interesses:', error)
+      allChips.value = []
     } finally {
       isLoading.value = false
     }
   }
 
-  async function loadUserInterests () {
-    isLoading.value = true
+  async function addFromSuggestion (selectedInterest: IInterest) {
+    const alreadySelected = selected.value.has(selectedInterest.name.toUpperCase())
 
-    try {
-      const response = await callApi('GET', '/userprofile/interests', {}, true)
-
-      console.log('response user interests =====>', response.data)
-
-      allChips.value = response.data
-    } catch (error) {
-      console.error('Erro ao carregar interesses:', error)
-      showSnackbar(t('interest.snackbar.loadError'), '#ef4444')
+    const body = {
+      interestId: selectedInterest.id,
     }
-  }
 
-  // Carrega os dados quando o componente é montado
-  onMounted(() => {
-    loadAllInterests()
-    loadUserInterests()
-  })
-
-  async function finish () {
-    if (isSaving.value) return
-
-    const interests = Array.from(selected.value)
-
-    if (interests.length === 0) {
-      showSnackbar(t('interest.snackbar.empty'), '#ef4444')
+    if (alreadySelected) {
+      toggleChip(selectedInterest.name)
       return
     }
 
-    const minLoadingMs = 1500
-    const start = Date.now()
-    isSaving.value = true
-
     try {
-      await callApi('POST', '/user/interests', { interests })
-      showSnackbar(t('interest.snackbar.success'), '#22c55e')
-
-      setTimeout(() => {
-        router.push('/public/AddFriends')
-      }, 1000)
+      await callApi('POST', '/userprofile/add/interest', body, true)
+      toggleChip(selectedInterest.name)
     } catch (error) {
-      console.error('Erro ao salvar interesses:', error)
-      showSnackbar(t('interest.snackbar.failure'), '#ef4444')
-    } finally {
-      const elapsed = Date.now() - start
-      const remaining = minLoadingMs - elapsed
-      if (remaining > 0) {
-        await new Promise(resolve => setTimeout(resolve, remaining))
-      }
-      isSaving.value = false
+      console.error('Erro ao adicionar interesse:', error)
     }
+  }
+
+  onMounted(() => {
+    fetchInterests()
+  })
+
+  const showModal = ref(false)
+  function finish () {
+  // Ação de concluir ficará disponível para integração futura
   }
   function closeModal () {
     showModal.value = false
@@ -226,22 +169,9 @@
         </button>
       </div>
 
-      <button
-        :aria-busy="isSaving"
-        class="finish-btn"
-        :disabled="isSaving"
-        type="button"
-        @click="finish"
-      >
-        {{ isSaving ? t('interest.saving') : t('interest.finishButton') }}
+      <button class="finish-btn" type="button" @click="finish">
+        {{ t('interest.finishButton') }}
       </button>
-
-      <Snackbar
-        v-model="snackbarVisible"
-        :color="snackbarColor"
-        :message="snackbarMessage"
-        :timeout="4000"
-      />
 
       <!-- Modal -->
       <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
@@ -435,12 +365,6 @@
 .finish-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 28px rgba(255, 95, 166, .3);
-}
-
-.finish-btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-  box-shadow: none;
 }
 
 /* ===============================
