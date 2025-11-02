@@ -50,17 +50,16 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 1.9rem clamp(1.5rem, 6vw, 3.75rem) 1.6rem;
+  padding: 2.75rem clamp(1.5rem, 6vw, 4.5rem) 2.25rem;
   background: linear-gradient(180deg, #ffffff 0%, #fff7fb 100%);
-  box-shadow: 0 28px 56px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 32px 64px rgba(15, 23, 42, 0.12);
   gap: 1.5rem;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  position: relative;
+  z-index: 2;
 }
 
 .brand {
-  font-family: 'Baloo Thambi', 'Baloo Thambi 2', cursive;
+  font-family: 'Baloo Thambi 2', cursive;
   font-size: 2.35rem;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -99,7 +98,7 @@
 
 @media (max-width: 1200px) {
   .feed-top-header {
-    padding: 1.8rem clamp(1.5rem, 5vw, 3rem) 1.5rem;
+    padding: 2.5rem clamp(1.5rem, 5vw, 3rem) 2rem;
   }
 
   .brand {
@@ -112,8 +111,8 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 1.25rem;
-    padding: 1.95rem 2rem 1.6rem;
-    box-shadow: 0 22px 42px rgba(15, 23, 42, 0.1);
+    padding: 2.25rem 2rem 1.85rem;
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.1);
   }
 
   .user-summary {
@@ -123,7 +122,7 @@
 
 @media (max-width: 640px) {
   .feed-top-header {
-    padding: 1.7rem 1.5rem 1.4rem;
+    padding: 2rem 1.5rem 1.65rem;
   }
 
   .brand {

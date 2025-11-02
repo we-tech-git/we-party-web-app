@@ -247,13 +247,11 @@
   background: linear-gradient(180deg, #f9f9ff 0%, #ffffff 100%);
   border-radius: 42px;
   box-shadow: 0 40px 80px rgba(15, 23, 42, 0.08);
-  align-items: start;
-  --feed-sticky-offset: clamp(96px, 12vw, 140px);
+  overflow: hidden;
 }
 
 .feed-sidebar {
   grid-area: sidebar;
-  align-self: start;
 }
 
 .feed-main {
@@ -265,21 +263,12 @@
 
 .feed-trends {
   grid-area: trends;
-  align-self: start;
 }
 
 .feed-controls {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  position: sticky;
-  top: var(--feed-sticky-offset);
-  z-index: 5;
-  padding: 0.75rem 0.5rem 1rem;
-  margin: -0.75rem -0.5rem 0;
-  background: linear-gradient(180deg, rgba(249, 249, 255, 0.92) 0%, rgba(255, 255, 255, 0.92) 100%);
-  backdrop-filter: blur(12px);
-  border-radius: 24px;
 }
 
 .search {
@@ -406,20 +395,6 @@
     margin: 0;
     border-radius: 0;
     box-shadow: none;
-  }
-
-  .feed-controls {
-    position: static;
-    top: auto;
-    padding: 0;
-    margin: 0;
-    backdrop-filter: none;
-    background: transparent;
-    border-radius: 0;
-  }
-
-  .feed-shell {
-    --feed-sticky-offset: 0px;
   }
 }
 
