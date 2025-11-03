@@ -12,33 +12,35 @@
 
 <template>
   <header aria-label="Brand header" class="feed-top-header">
-    <span aria-hidden="true" class="brand">WE PARTY</span>
+    <div class="header-inner">
+      <span aria-hidden="true" class="brand">WE PARTY</span>
 
-    <div class="user-summary">
-      <span class="points">
-        <svg fill="none" height="18" viewBox="0 0 24 24" width="18">
-          <path
-            d="m12 3 2.09 4.74 5.16.45-3.9 3.37 1.16 5.02L12 14.92l-4.51 3.66 1.16-5.02-3.9-3.37 5.16-.45z"
-            fill="url(#starGradient)"
-          />
-          <defs>
-            <linearGradient
-              id="starGradient"
-              gradientUnits="userSpaceOnUse"
-              x1="12"
-              x2="12"
-              y1="3"
-              y2="21"
-            >
-              <stop stop-color="#ffba4b" />
-              <stop offset="1" stop-color="#ff5fa6" />
-            </linearGradient>
-          </defs>
-        </svg>
-        <span>{{ user.points }} pts.</span>
-      </span>
+      <div class="user-summary">
+        <span class="points">
+          <svg fill="none" height="18" viewBox="0 0 24 24" width="18">
+            <path
+              d="m12 3 2.09 4.74 5.16.45-3.9 3.37 1.16 5.02L12 14.92l-4.51 3.66 1.16-5.02-3.9-3.37 5.16-.45z"
+              fill="url(#starGradient)"
+            />
+            <defs>
+              <linearGradient
+                id="starGradient"
+                gradientUnits="userSpaceOnUse"
+                x1="12"
+                x2="12"
+                y1="3"
+                y2="21"
+              >
+                <stop stop-color="#ffba4b" />
+                <stop offset="1" stop-color="#ff5fa6" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <span>{{ user.points }} pts.</span>
+        </span>
 
-      <img :alt="user.name" class="avatar" loading="lazy" :src="user.avatar">
+        <img :alt="user.name" class="avatar" loading="lazy" :src="user.avatar">
+      </div>
     </div>
   </header>
 </template>
@@ -46,17 +48,24 @@
 <style scoped>
 .feed-top-header {
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   width: 100%;
-  padding: 1.9rem clamp(1.5rem, 6vw, 3.75rem) 1.6rem;
-  background: linear-gradient(180deg, #ffffff 0%, #fff7fb 100%);
-  box-shadow: 0 28px 56px rgba(15, 23, 42, 0.12);
-  gap: 1.5rem;
+  padding: 1.9rem 0 1.6rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 246, 250, 0.94) 100%);
+  backdrop-filter: blur(18px);
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+.header-inner {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  width: min(100%, 1290px);
+  margin: 0 auto;
+  padding: 0 clamp(1.5rem, 5vw, 3rem);
 }
 
 .brand {
@@ -99,7 +108,11 @@
 
 @media (max-width: 1200px) {
   .feed-top-header {
-    padding: 1.8rem clamp(1.5rem, 5vw, 3rem) 1.5rem;
+    padding: 1.8rem 0 1.5rem;
+  }
+
+  .header-inner {
+    padding: 0 clamp(1.5rem, 5vw, 3rem);
   }
 
   .brand {
@@ -109,11 +122,15 @@
 
 @media (max-width: 960px) {
   .feed-top-header {
+    padding: 1.95rem 0 1.6rem;
+    box-shadow: 0 22px 42px rgba(15, 23, 42, 0.1);
+  }
+
+  .header-inner {
     flex-direction: column;
     align-items: flex-start;
     gap: 1.25rem;
-    padding: 1.95rem 2rem 1.6rem;
-    box-shadow: 0 22px 42px rgba(15, 23, 42, 0.1);
+    padding: 0 clamp(1.5rem, 5vw, 2rem);
   }
 
   .user-summary {
@@ -123,7 +140,11 @@
 
 @media (max-width: 640px) {
   .feed-top-header {
-    padding: 1.7rem 1.5rem 1.4rem;
+    padding: 1.7rem 0 1.4rem;
+  }
+
+  .header-inner {
+    padding: 0 clamp(1.25rem, 6vw, 1.5rem);
   }
 
   .brand {

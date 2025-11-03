@@ -40,11 +40,11 @@
   top: var(--feed-sticky-offset, 120px);
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 1.75rem 1.65rem 1.9rem;
-  border-radius: 32px;
-  background: #ffffff;
-  box-shadow: 0 18px 45px rgba(20, 24, 60, 0.12);
+  gap: 1.4rem;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   min-width: 280px;
 }
 
@@ -73,8 +73,7 @@ li {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  padding: 0.65rem 0.5rem;
-  border-bottom: 1px solid rgba(144, 151, 180, 0.16);
+  padding: 0.65rem 0;
 }
 
 li:last-of-type {
