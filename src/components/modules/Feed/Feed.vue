@@ -229,7 +229,7 @@
 <style scoped>
 .feed-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8f9ff 0%, #ffffff 100%);
+  background: linear-gradient(142.35deg, rgba(252, 162, 89, 0.07) -1.66%, rgba(255, 98, 159, 0.11) 100.44%);
   display: flex;
   flex-direction: column;
 }
@@ -241,17 +241,18 @@
   grid-template-areas: 'sidebar main trends';
   column-gap: 2rem;
   row-gap: 0;
-  padding: 5rem 3rem 3.25rem;
-  width: min(100%, 1320px);
-  margin: -4.75rem auto 3.5rem;
-  background: linear-gradient(180deg, #f9f9ff 0%, #ffffff 100%);
-  border-radius: 42px;
-  box-shadow: 0 40px 80px rgba(15, 23, 42, 0.08);
-  overflow: hidden;
+  width: min(100%, 1280px);
+  margin: 0 auto 3.5rem;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  align-items: start;
+  --feed-sticky-offset: clamp(96px, 12vw, 140px);
 }
 
 .feed-sidebar {
   grid-area: sidebar;
+  align-self: start;
 }
 
 .feed-main {
@@ -263,12 +264,21 @@
 
 .feed-trends {
   grid-area: trends;
+  align-self: start;
 }
 
 .feed-controls {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  position: sticky;
+  top: var(--feed-sticky-offset);
+  z-index: 5;
+  padding: 0.75rem 0.5rem 1rem;
+  margin: -0.75rem -0.5rem 0;
+  background: linear-gradient(180deg, rgba(249, 249, 255, 0.92) 0%, rgba(255, 255, 255, 0.92) 100%);
+  backdrop-filter: blur(12px);
+  border-radius: 24px;
 }
 
 .search {
@@ -374,9 +384,9 @@
     grid-template-columns: 220px 1fr;
     grid-template-areas: 'sidebar main';
     width: min(100%, 960px);
-    padding: 4.5rem 2.5rem 2.75rem;
-    margin: -4rem auto 3rem;
-    border-radius: 36px;
+    padding: 2.75rem 2.25rem 2.5rem;
+    margin: 0 auto 3rem;
+    border-radius: 0;
   }
 
   .feed-trends {
@@ -391,10 +401,25 @@
       'sidebar'
       'main';
     width: 100%;
-    padding: 3.25rem 1.75rem 2.75rem;
+    padding: 2.5rem 1.75rem 2.75rem;
     margin: 0;
     border-radius: 0;
     box-shadow: none;
+    background: transparent;
+  }
+
+  .feed-controls {
+    position: static;
+    top: auto;
+    padding: 0;
+    margin: 0;
+    backdrop-filter: none;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  .feed-shell {
+    --feed-sticky-offset: 0px;
   }
 }
 

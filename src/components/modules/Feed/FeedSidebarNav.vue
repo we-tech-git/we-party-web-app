@@ -90,17 +90,13 @@
       </ul>
     </nav>
 
-    <footer class="helper">
-      <p>{{ t('feed.nav.helper') }}</p>
-      <button class="cta" type="button">{{ t('feed.nav.newEvent') }}</button>
-    </footer>
   </aside>
 </template>
 
 <style scoped>
 .feed-sidebar {
   position: sticky;
-  top: 48px;
+  top: var(--feed-sticky-offset, 120px);
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -109,6 +105,7 @@
   background: #ffffff;
   box-shadow: 0 20px 60px rgba(20, 27, 68, 0.12);
   min-height: 540px;
+
 }
 
 ul {
@@ -176,16 +173,6 @@ button.active .icon {
   color: #8c93ad;
   font-size: 0.85rem;
   line-height: 1.5;
-}
-
-.cta {
-  align-self: flex-start;
-  padding: 0.55rem 1.35rem;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #6fddff 0%, #5a4bff 100%);
-  color: #ffffff;
-  font-weight: 700;
-  letter-spacing: 0.04em;
 }
 
 @media (max-width: 1240px) {
