@@ -151,9 +151,9 @@
   border-radius: 32px;
   overflow: hidden;
   background: #0a0f1f;
-  box-shadow: 0 28px 58px rgba(12, 16, 37, 0.35);
+  box-shadow: 0 28px 58px rgba(12, 16, 37, 0.356);
   isolation: isolate;
-  padding: 3rem;
+  padding: 0.45rem;
   width: 49rem;
 }
 
@@ -169,6 +169,8 @@
   height: clamp(320px, 35vw, 420px);
   object-fit: cover;
   border-radius: 24px;
+  padding:0rem;
+
 }
 
 .host-tag {
@@ -222,9 +224,9 @@
   flex-direction: column;
   justify-content: flex-end;
   gap: 2.65rem;
-  background: linear-gradient(180deg, rgba(8, 13, 30, 0.35) 0%, rgba(8, 13, 30, 0.92) 65%, rgba(8, 13, 30, 0.98) 100%);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, rgba(13, 16, 43, 0.92) 65%, rgba(8, 13, 30, 0.98) 100%);
   color: #ffffff;
- ;
+
 }
 
 .schedule {

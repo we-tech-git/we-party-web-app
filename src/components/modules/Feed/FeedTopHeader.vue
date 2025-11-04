@@ -85,8 +85,8 @@
   gap: 1rem;
   padding: 0.9rem 1.4rem;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(255, 244, 248, 0.9) 0%, rgba(255, 210, 236, 0.75) 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 95, 166, 0.18);
+  background: linear-gradient(120deg, #ff996238 0%, #ff5fa733 100%);
+  box-shadow: inset 0 0 0 1px rgba(129, 25, 72, 0.158);
 }
 
 .points {
