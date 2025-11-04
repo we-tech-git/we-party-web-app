@@ -229,7 +229,7 @@
 <style scoped>
 .feed-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8f9ff 0%, #ffffff 100%);
+  background: linear-gradient(142.35deg, rgba(252, 162, 89, 0.07) -1.66%, rgba(255, 98, 159, 0.11) 100.44%);
   display: flex;
   flex-direction: column;
 }

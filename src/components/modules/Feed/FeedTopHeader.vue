@@ -50,7 +50,6 @@
   box-sizing: border-box;
   width: 100%;
   padding: 1.9rem 0 1.6rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 246, 250, 0.94) 100%);
   backdrop-filter: blur(18px);
   position: sticky;
   top: 0;
@@ -63,9 +62,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  width: min(100%, 1290px);
+  width: min(100%, 1280px);
   margin: 0 auto;
-  padding: 0 clamp(1.5rem, 5vw, 3rem);
+  padding: 0;
 }
 
 .brand {
@@ -109,10 +108,6 @@
 @media (max-width: 1200px) {
   .feed-top-header {
     padding: 1.8rem 0 1.5rem;
-  }
-
-  .header-inner {
-    padding: 0 clamp(1.5rem, 5vw, 3rem);
   }
 
   .brand {

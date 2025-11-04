@@ -148,11 +148,13 @@
 <style scoped>
 .feed-card {
   position: relative;
-  border-radius: 28px;
+  border-radius: 32px;
   overflow: hidden;
   background: #0a0f1f;
-  box-shadow: 0 24px 48px rgba(12, 16, 37, 0.32);
+  box-shadow: 0 28px 58px rgba(12, 16, 37, 0.35);
   isolation: isolate;
+  padding: 3rem;
+  width: 49rem;
 }
 
 .media {
@@ -164,8 +166,9 @@
 .banner {
   display: block;
   width: 100%;
-  height: 280px;
+  height: clamp(320px, 35vw, 420px);
   object-fit: cover;
+  border-radius: 24px;
 }
 
 .host-tag {
@@ -193,12 +196,12 @@
 
 .bookmark {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: clamp(18px, 2.2vw, 30px);
+  right: clamp(18px, 2.2vw, 30px);
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: clamp(46px, 3.8vw, 56px);
+  height: clamp(46px, 3.8vw, 56px);
   border-radius: 50%;
   border: none;
   background: rgba(7, 10, 22, 0.55);
@@ -218,10 +221,10 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 0.65rem;
-  padding: 2rem;
+  gap: 2.65rem;
   background: linear-gradient(180deg, rgba(8, 13, 30, 0.35) 0%, rgba(8, 13, 30, 0.92) 65%, rgba(8, 13, 30, 0.98) 100%);
   color: #ffffff;
+ ;
 }
 
 .schedule {
@@ -229,56 +232,56 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 600;
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.72);
+  font-size: clamp(0.86rem, 0.3vw + 0.8rem, 1.05rem);
+  color: rgba(255, 255, 255, 0.78);
 }
 
 .title {
   margin: 0;
-  font-size: clamp(1.35rem, 1.4vw + 1rem, 1.8rem);
+  font-size: clamp(1.85rem, 1.2vw + 1.45rem, 2.55rem);
   line-height: 1.3;
   font-weight: 700;
 }
 
 .description {
   margin: 0;
-  font-size: 0.94rem;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.88);
+  font-size: clamp(1rem, 0.4vw + 0.95rem, 1.18rem);
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  margin-top: 0.5rem;
+  gap: clamp(1rem, 1.5vw, 1.8rem);
+  margin-top: clamp(0.75rem, 1vw, 1.5rem);
 }
 
 .stats {
   display: flex;
   align-items: center;
-  gap: 1.1rem;
-  font-size: 0.88rem;
+  gap: clamp(1rem, 1.6vw, 2rem);
+  font-size: clamp(0.96rem, 0.35vw + 0.9rem, 1.14rem);
   font-weight: 600;
 }
 
 .stat {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  color: rgba(255, 255, 255, 0.88);
+  gap: clamp(0.4rem, 0.5vw, 0.7rem);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .actions {
   display: inline-flex;
-  gap: 0.6rem;
+  gap: clamp(0.65rem, 1vw, 0.9rem);
 }
 
 .icon-button {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
+  width: clamp(38px, 3vw, 48px);
+  height: clamp(38px, 3vw, 48px);
+  border-radius: clamp(12px, 2vw, 16px);
   border: none;
   background: rgba(255, 255, 255, 0.18);
   color: #ffffff;
@@ -294,23 +297,37 @@
   transform: translateY(-1px);
 }
 
+.bookmark svg,
+.stat svg,
+.icon-button svg {
+  width: clamp(20px, 2.3vw, 24px);
+  height: clamp(20px, 2.3vw, 24px);
+}
+
 @media (max-width: 920px) {
+  .feed-card {
+    padding: clamp(1.25rem, 3vw, 1.85rem);
+    border-radius: 28px;
+  }
+
   .banner {
-    height: 240px;
+    height: clamp(260px, 40vw, 320px);
+    border-radius: 22px;
   }
 
   .overlay {
-    padding: 1.6rem;
+    padding: clamp(1.4rem, 4vw, 2rem);
   }
 }
 
 @media (max-width: 640px) {
   .feed-card {
-    border-radius: 22px;
+    border-radius: 24px;
   }
 
   .banner {
-    height: 210px;
+    height: clamp(210px, 52vw, 260px);
+    border-radius: 20px;
   }
 
   .footer {

@@ -109,6 +109,7 @@
   background: #ffffff;
   box-shadow: 0 20px 60px rgba(20, 27, 68, 0.12);
   min-height: 540px;
+
 }
 
 ul {

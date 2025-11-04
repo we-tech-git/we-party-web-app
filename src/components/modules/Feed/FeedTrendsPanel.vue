@@ -40,12 +40,14 @@
   top: var(--feed-sticky-offset, 120px);
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
+  gap: 0.4rem;
   padding: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   min-width: 280px;
+  margin-left: 9rem;
+
 }
 
 .head h2 {
