@@ -106,5 +106,20 @@
     "title": "Congratulations, check your email",
     "description": "Make the most of our app to find the best events and parties",
     "button": "CONTINUE"
+  },
+  "confirmEmail": {
+    "title": "Confirm your email",
+    "subtitle": "Enter the 6-digit code we sent to:",
+    "pinHint": "Enter the 6-digit verification code",
+    "didntReceive": "Didn't receive the code?",
+    "resend": "Resend code",
+    "resendIn": "Resend in {seconds}s",
+    "verify": "Verify code",
+    "verifying": "Verifying...",
+    "success": "Email confirmed successfully!",
+    "invalidPin": "Invalid code. Please try again.",
+    "verifyError": "Error verifying code. Please try again.",
+    "pinResent": "Code resent successfully!",
+    "resendError": "Error resending code. Please try again."
   }
 }

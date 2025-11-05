@@ -39,17 +39,21 @@ export async function callApi (
     })
     return response
   } catch (error: any) {
-    if (
-      error.response.status === 401
-      || error.response.data.erros[0] === 'Invalid JWT token'
-      || error.response.data.erros[0]
-      === 'Required request header \'auth\' for method parameter type String is not present'
-    ) {
-      localStorage.removeItem('ACCESS_TOKEN')
-      router.push('/')
-      return error
-    } else {
-      return error
-    }
+    console.error('Erro na chamada API:', error)
+    // TODO: im
+    // if (
+    //   error.response?.status === 401
+    //   || error.response.data.erros[0] === 'Invalid JWT token'
+    //   || error.response.data.erros[0]
+    //   === 'Required request header \'auth\' for method parameter type String is not present'
+    // ) {
+    //   localStorage.removeItem('ACCESS_TOKEN')
+    //   router.push('/')
+    //   return error
+    // } else {
+    //   return error
+    // }
+
+    return error
   }
 }

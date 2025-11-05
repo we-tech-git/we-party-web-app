@@ -50,6 +50,7 @@
   box-sizing: border-box;
   width: 100%;
   padding: 1.9rem 0 1.6rem;
+ Feature-feed
   backdrop-filter: blur(18px);
   position: sticky;
   top: 0;

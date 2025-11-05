@@ -105,5 +105,20 @@
     "title": "Parabéns, verifique seu e-mail",
     "description": "Aproveite da melhor forma nosso app para encontrar os melhores eventos e festas",
     "button": "CONTINUAR"
+  },
+  "confirmEmail": {
+    "title": "Confirme seu e-mail",
+    "subtitle": "Digite o código de 6 dígitos que enviamos para:",
+    "pinHint": "Digite o código de verificação de 6 dígitos",
+    "didntReceive": "Não recebeu o código?",
+    "resend": "Reenviar código",
+    "resendIn": "Reenviar em {seconds}s",
+    "verify": "Verificar código",
+    "verifying": "Verificando...",
+    "success": "Email confirmado com sucesso!",
+    "invalidPin": "Código inválido. Tente novamente.",
+    "verifyError": "Erro ao verificar código. Tente novamente.",
+    "pinResent": "Código reenviado com sucesso!",
+    "resendError": "Erro ao reenviar código. Tente novamente."
   }
 }

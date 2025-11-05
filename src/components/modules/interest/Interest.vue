@@ -50,7 +50,7 @@
   async function fetchInterests () {
     try {
       isLoading.value = true
-      const response = await callApi('GET', '/interests', undefined, true)
+      const response = await callApi('GET', '/interest', undefined, true)
       const rawData = Array.isArray(response?.data?.data)
         ? response.data.data
         : response?.data
@@ -85,7 +85,7 @@
     }
 
     try {
-      await callApi('POST', '/userprofile/add/interest', body, true)
+      await callApi('POST', '/users/interest', body, true)
       toggleChip(selectedInterest.name)
     } catch (error) {
       console.error('Erro ao adicionar interesse:', error)
