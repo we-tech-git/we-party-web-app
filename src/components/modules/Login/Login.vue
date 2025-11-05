@@ -220,7 +220,7 @@
     <template #form-content>
       <h2 class="mobile-brand-title">WE PARTY</h2>
       <div class="title-container">
-        <h1 class="text-3xl font-bold">{{ $t('login.title') }}</h1>
+        <h1 class="text-3xl font-bold">{{ t('login.title') }}</h1>
         <button
           class="regenerate-btn"
           title="Gerar novos dados de teste"
@@ -237,7 +237,7 @@
             id="email"
             v-model="email"
             :error="!!formErrors.email"
-            :label="$t('login.emailPlaceholder')"
+            :label="t('login.emailPlaceholder')"
             type="email"
             @update:model-value="formErrors.email = ''"
           />
@@ -248,7 +248,7 @@
             v-model="password"
             :error="!!formErrors.password"
             :input-password="true"
-            :label="$t('login.passwordPlaceholder')"
+            :label="t('login.passwordPlaceholder')"
             type="password"
             @update:model-value="formErrors.password = ''"
           />
@@ -257,9 +257,9 @@
           <div class="login-options">
             <label class="remember-me">
               <input v-model="rememberMe" type="checkbox">
-              {{ $t('login.rememberMe') }}
+              {{ t('login.rememberMe') }}
             </label>
-            <a class="forgot-link" href="#">{{ $t('login.forgotPassword') }}</a>
+            <a class="forgot-link" href="#">{{ t('login.forgotPassword') }}</a>
           </div>
 
           <button
@@ -269,7 +269,7 @@
             type="submit"
           >
             <span v-if="isSubmitting" aria-hidden="true" class="loader" />
-            <span>{{ isSubmitting ? 'Entrando...' : $t('login.button') }}</span>
+            <span>{{ isSubmitting ? 'Entrando...' : t('login.button') }}</span>
           </button>
         </div>
 
@@ -278,7 +278,7 @@
 
       <div class="footer-row">
         <p class="login-link-text">
-          {{ $t('login.noAccount') }} <a href="/public/Signup">{{ $t('login.signupLink') }}</a>
+          {{ t('login.noAccount') }} <a href="/public/Signup">{{ t('login.signupLink') }}</a>
         </p>
         <p class="free-text">É de graça <span class="heart">❤</span></p>
       </div>
