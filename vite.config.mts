@@ -96,4 +96,12 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    // Ensure proper build for SPA routing
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+      },
+    },
+  },
 })

@@ -422,7 +422,7 @@
         </div>
         <p class="login-link-text">
           {{ $t('signup.hasAccount') }}
-          <a href="#">{{ $t('signup.loginLink') }}</a>
+          <a href="/public/login">{{ $t('signup.loginLink') }}</a>
         </p>
         <button
           :aria-busy="isSubmitting"
