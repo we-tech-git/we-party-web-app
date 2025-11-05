@@ -9,10 +9,15 @@ const i18n = createI18n({
   legacy: false, // Essencial para usar a Composition API do Vue 3
   locale: 'pt-BR', // Define o idioma padrão
   fallbackLocale: 'en-US', // Idioma de fallback caso uma tradução não exista
+  globalInjection: true, // Habilita injeção global do $t
   messages: {
     'pt-BR': ptBR,
     'en-US': enUS,
   },
+  // Configurações adicionais para produção
+  warnHtmlMessage: false,
+  missingWarn: false,
+  fallbackWarn: false,
 })
 
 export default i18n

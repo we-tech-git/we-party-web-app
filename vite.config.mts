@@ -5,6 +5,7 @@ import Vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Fonts from 'unplugin-fonts/vite'
 import Components from 'unplugin-vue-components/vite'
+import VueI18n from '@intlify/unplugin-vue-i18n/vite'
 
 import { VueRouterAutoImports } from 'unplugin-vue-router'
 import VueRouter from 'unplugin-vue-router/vite'
@@ -21,6 +22,14 @@ export default defineConfig({
       dts: 'src/typed-router.d.ts',
     }),
     Layouts(),
+    VueI18n({
+      // Resolve i18n resource files
+      include: fileURLToPath(new URL('./src/locales/**', import.meta.url)),
+      // Composition API mode
+      compositionOnly: true,
+      // Full build mode (includes runtime)
+      fullInstall: true,
+    }),
     AutoImport({
       imports: [
         'vue',
