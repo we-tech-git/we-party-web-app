@@ -6,17 +6,19 @@ import enUS from '@/locales/en-US.json'
 
 // Criando a instância do i18n
 const i18n = createI18n({
-  legacy: false, // Essencial para usar a Composition API do Vue 3
-  locale: 'pt-BR', // Define o idioma padrão
-  fallbackLocale: 'en-US', // Idioma de fallback caso uma tradução não exista
-  globalInjection: true, // Habilita injeção global do $t
+  legacy: false, // Usar Composition API
+  locale: 'pt-BR', // Idioma padrão
+  fallbackLocale: 'en-US', // Fallback
+  globalInjection: true, // Injeção global do $t
   messages: {
     'pt-BR': ptBR,
     'en-US': enUS,
   },
-  // Configurações para produção
-  silentTranslationWarn: true,
-  silentFallbackWarn: true,
+  // Desabilitar warnings em produção
+  silentTranslationWarn: import.meta.env.PROD,
+  silentFallbackWarn: import.meta.env.PROD,
+  missingWarn: !import.meta.env.PROD,
+  fallbackWarn: !import.meta.env.PROD,
 })
 
 export default i18n
