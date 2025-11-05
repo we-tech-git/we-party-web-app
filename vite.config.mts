@@ -31,6 +31,8 @@ export default defineConfig({
       fullInstall: true,
       // Enable runtime compilation
       runtimeOnly: false,
+      // Force production mode
+      forceStringify: true,
     }),
     AutoImport({
       imports: [

@@ -1,8 +1,8 @@
 import { createI18n } from 'vue-i18n'
 
-import enUS from '../locales/en-US.json'
-// Importando os arquivos de tradução
-import ptBR from '../locales/pt-BR.json'
+// Importando os arquivos de tradução diretamente
+import ptBR from '@/locales/pt-BR.json'
+import enUS from '@/locales/en-US.json'
 
 // Criando a instância do i18n
 const i18n = createI18n({
@@ -14,12 +14,9 @@ const i18n = createI18n({
     'pt-BR': ptBR,
     'en-US': enUS,
   },
-  // Configurações adicionais para produção
-  warnHtmlMessage: false,
-  missingWarn: false,
-  fallbackWarn: false,
-  // Forçar modo não-legacy para garantir compatibilidade
-  allowComposition: true,
+  // Configurações para produção
+  silentTranslationWarn: true,
+  silentFallbackWarn: true,
 })
 
 export default i18n
