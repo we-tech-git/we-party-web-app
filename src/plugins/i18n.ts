@@ -18,6 +18,8 @@ const i18n = createI18n({
   warnHtmlMessage: false,
   missingWarn: false,
   fallbackWarn: false,
+  // Forçar modo não-legacy para garantir compatibilidade
+  allowComposition: true,
 })
 
 export default i18n

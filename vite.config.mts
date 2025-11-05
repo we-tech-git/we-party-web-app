@@ -24,11 +24,13 @@ export default defineConfig({
     Layouts(),
     VueI18n({
       // Resolve i18n resource files
-      include: fileURLToPath(new URL('./src/locales/**', import.meta.url)),
+      include: [fileURLToPath(new URL('./src/locales/**', import.meta.url))],
       // Composition API mode
-      compositionOnly: true,
+      compositionOnly: false,
       // Full build mode (includes runtime)
       fullInstall: true,
+      // Enable runtime compilation
+      runtimeOnly: false,
     }),
     AutoImport({
       imports: [
