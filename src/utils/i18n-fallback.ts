@@ -27,7 +27,9 @@ export function getTranslation(key: string, locale: string = 'pt-BR'): string {
     
     return typeof value === 'string' ? value : key
   } catch (error) {
-    console.error('Translation fallback error:', error)
+    if (!import.meta.env.PROD) {
+      console.error('Translation fallback error:', error)
+    }
     return key
   }
 }
@@ -46,12 +48,16 @@ export function createFallbackPlugin() {
             const result = originalT.call(this, key, ...args)
             // Se retorna a chave, significa que a tradução falhou
             if (result === key || result.includes('.')) {
-              console.warn('i18n: falling back for key:', key)
+              if (!import.meta.env.PROD) {
+                console.warn('i18n: falling back for key:', key)
+              }
               return getTranslation(key)
             }
             return result
           } catch (error) {
-            console.error('i18n: error, using fallback:', error)
+            if (!import.meta.env.PROD) {
+              console.error('i18n: error, using fallback:', error)
+            }
             return getTranslation(key)
           }
         }

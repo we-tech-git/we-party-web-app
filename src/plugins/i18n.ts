@@ -10,13 +10,6 @@ const messages = {
   'en-US': enUS,
 }
 
-// Debug logs
-if (!import.meta.env.PROD) {
-  console.log('i18n: ptBR loaded:', !!ptBR, Object.keys(ptBR).length)
-  console.log('i18n: enUS loaded:', !!enUS, Object.keys(enUS).length)
-  console.log('i18n: messages object:', messages)
-}
-
 // Criando a instância do i18n com configuração mais explícita
 const i18n = createI18n({
   legacy: false,
@@ -24,21 +17,13 @@ const i18n = createI18n({
   fallbackLocale: 'en-US',
   globalInjection: true,
   messages,
-  // Configuração específica para produção
-  silentTranslationWarn: import.meta.env.PROD,
-  silentFallbackWarn: import.meta.env.PROD,
-  missingWarn: !import.meta.env.PROD,
-  fallbackWarn: !import.meta.env.PROD,
-  // Configurações adicionais para garantir funcionamento em produção
-  warnHtmlMessage: !import.meta.env.PROD,
+  // Silenciar todos os warnings em produção
+  silentTranslationWarn: true,
+  silentFallbackWarn: true,
+  missingWarn: false,
+  fallbackWarn: false,
+  warnHtmlMessage: false,
   escapeParameter: false,
 })
-
-// Debug final
-if (!import.meta.env.PROD) {
-  console.log('i18n: instance created with locale:', i18n.global.locale.value)
-  console.log('i18n: available locales:', i18n.global.availableLocales)
-  console.log('i18n: testing translation:', i18n.global.t('login.title'))
-}
 
 export default i18n
