@@ -12,7 +12,7 @@ export function getTranslation(key: string, locale: string = 'pt-BR'): string {
   try {
     const keys = key.split('.')
     let value: any = translations[locale as keyof typeof translations]
-    
+
     for (const k of keys) {
       if (value && typeof value === 'object' && k in value) {
         value = value[k]
@@ -24,7 +24,7 @@ export function getTranslation(key: string, locale: string = 'pt-BR'): string {
         return key // Retorna a chave se não encontrar tradução
       }
     }
-    
+
     return typeof value === 'string' ? value : key
   } catch (error) {
     if (!import.meta.env.PROD) {
@@ -39,7 +39,7 @@ export function createFallbackPlugin() {
   return {
     install(app: any) {
       app.config.globalProperties.$tf = getTranslation
-      
+
       // Monitorar se o $t está funcionando
       const originalT = app.config.globalProperties.$t
       if (originalT) {

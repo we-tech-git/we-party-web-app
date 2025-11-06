@@ -40,7 +40,8 @@
 
     // Gera email fixo com número randômico de 3 dígitos
     const randomNumber = Math.floor(Math.random() * 900) + 100 // Gera número entre 100-999
-    const emailGenerated = `teste${randomNumber}@gmail.com`
+    // const emailGenerated = `teste${randomNumber}@gmail.com`
+    const emailGenerated = `contact@wepartyapp.com`
 
     // Gera senha que atende aos critérios
     const passwordGenerated = `Teste12345@`
@@ -225,6 +226,10 @@
       const response = await createUser(userData)
 
       console.log('Resposta da API:', response.data)
+
+      if (!response.data) {
+        throw new Error('Resposta inválida da API ao criar usuário.')
+      }
 
       triggerConfetti()
       showSnackbar(t('signup.snackbar.success'), '#22c55e')
