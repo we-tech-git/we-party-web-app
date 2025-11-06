@@ -5,7 +5,8 @@
   import confetti from 'canvas-confetti'
   import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
-  import { createUser } from '@/api/users'
+  import { createUser, deleteUser } from '@/api/users'
+  import { STORAGE_KEYS } from '@/common/storage'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import router from '@/router'
@@ -41,9 +42,9 @@
     // Gera email fixo com número randômico de 3 dígitos
     const randomNumber = Math.floor(Math.random() * 900) + 100 // Gera número entre 100-999
     // const emailGenerated = `teste${randomNumber}@gmail.com`
-    const emailGenerated = `contact@wepartyapp.com`
 
     // Gera senha que atende aos critérios
+    const emailGenerated = `contact@wepartyapp.com`
     const passwordGenerated = `Teste12345@`
 
     return {
@@ -227,15 +228,16 @@
 
       console.log('Resposta da API:', response.data)
 
-      if (!response.data) {
-        throw new Error('Resposta inválida da API ao criar usuário.')
+      if (response.status !== 201) {
+        throw new Error(`Erro inesperado ao registrar usuário. Status: ${response.status}`)
       }
 
       triggerConfetti()
       showSnackbar(t('signup.snackbar.success'), '#22c55e')
+      localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
 
       setTimeout(() => {
-        router.push('/public/Login')
+        router.push('/public/ConfirmEmail')
       }, 1500)
     } catch (error: any) {
       console.error('Erro ao registrar usuário:', error)
@@ -284,6 +286,12 @@
       senha: testData.password,
     })
   })
+
+  function deleteUserTest (e: any) {
+    e.preventDefault()
+    const resp = deleteUser()
+    console.log('deleteUserTest =====>', resp)
+  }
 </script>
 
 <template>
@@ -321,6 +329,7 @@
       <p class="subtitle">{{ $t('signup.subtitle') }}</p>
       <form @submit.prevent="validateForm">
         <div class="inputs-container">
+          <button @click="deleteUserTest">delete user test</button>
           <InputLabel
             id="fullName"
             v-model="fullName"

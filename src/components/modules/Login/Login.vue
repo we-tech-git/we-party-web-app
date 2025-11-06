@@ -24,7 +24,7 @@
   function generateTestLoginData () {
     // Gera email fixo com número randômico de 3 dígitos
     const randomNumber = Math.floor(Math.random() * 900) + 100
-    const emailGenerated = `teste776@gmail.com`
+    const emailGenerated = `contact@wepartyapp.com`
     const passwordGenerated = 'Teste12345@'
 
     return {

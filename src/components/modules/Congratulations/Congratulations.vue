@@ -1,72 +1,72 @@
 <script setup lang="ts">
-import confetti from 'canvas-confetti'
-import { onBeforeUnmount, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+  import confetti from 'canvas-confetti'
+  import { onBeforeUnmount, onMounted } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import { useRouter } from 'vue-router'
 
-const props = withDefaults(defineProps<{ continueTo?: string }>(), {
-  continueTo: '/',
-})
+  const props = withDefaults(defineProps<{ continueTo?: string }>(), {
+    continueTo: '/',
+  })
 
-const { t } = useI18n()
-const router = useRouter()
-const confettiColors = ['#FFC947', '#F978A3', '#FF629F', '#22C55E', '#FFFFFF'] as const
-let confettiInterval: number | undefined
+  const { t } = useI18n()
+  const router = useRouter()
+  const confettiColors = ['#FFC947', '#F978A3', '#FF629F', '#22C55E', '#FFFFFF'] as const
+  let confettiInterval: number | undefined
 
-function launchConfettiBurst() {
-  const base = {
-    particleCount: 50,
-    startVelocity: 65,
-    spread: 80,
-    ticks: 240,
-    gravity: 0.9,
-    scalar: 0.9,
-    colors: [...confettiColors],
-    angle: 90,
-  }
+  function launchConfettiBurst () {
+    const base = {
+      particleCount: 50,
+      startVelocity: 65,
+      spread: 80,
+      ticks: 240,
+      gravity: 0.9,
+      scalar: 0.9,
+      colors: [...confettiColors],
+      angle: 90,
+    }
 
-  const lanes = [0.05, 0.2, 0.4, 0.6, 0.8, 0.95]
+    const lanes = [0.05, 0.2, 0.4, 0.6, 0.8, 0.95]
 
-  for (const xPos of lanes) {
+    for (const xPos of lanes) {
+      confetti({
+        ...base,
+        particleCount: base.particleCount + Math.round(Math.random() * 20),
+        startVelocity: base.startVelocity + Math.random() * 10,
+        scalar: base.scalar + (Math.random() - 0.5) * 0.3,
+        drift: (Math.random() - 0.5) * 2,
+        origin: {
+          x: xPos,
+          y: 0.98,
+        },
+      })
+    }
+
     confetti({
       ...base,
-      particleCount: base.particleCount + Math.round(Math.random() * 20),
-      startVelocity: base.startVelocity + Math.random() * 10,
-      scalar: base.scalar + (Math.random() - 0.5) * 0.3,
-      drift: (Math.random() - 0.5) * 2,
-      origin: {
-        x: xPos,
-        y: 0.98,
-      },
+      particleCount: 80,
+      startVelocity: 75,
+      spread: 120,
+      scalar: 1.1,
+      origin: { x: Math.random(), y: 0.98 },
     })
   }
 
-  confetti({
-    ...base,
-    particleCount: 80,
-    startVelocity: 75,
-    spread: 120,
-    scalar: 1.1,
-    origin: { x: Math.random(), y: 0.98 },
-  })
-}
-
-function handleContinue() {
-  router.push(props.continueTo)
-}
-
-onMounted(() => {
-  launchConfettiBurst()
-  confettiInterval = window.setInterval(launchConfettiBurst, 1800)
-})
-
-onBeforeUnmount(() => {
-  if (confettiInterval) {
-    window.clearInterval(confettiInterval)
-    confettiInterval = undefined
+  function handleContinue () {
+    router.push('/private/AddFriends')
   }
-  confetti.reset()
-})
+
+  onMounted(() => {
+    launchConfettiBurst()
+    confettiInterval = window.setInterval(launchConfettiBurst, 1800)
+  })
+
+  onBeforeUnmount(() => {
+    if (confettiInterval) {
+      window.clearInterval(confettiInterval)
+      confettiInterval = undefined
+    }
+    confetti.reset()
+  })
 </script>
 
 <template>

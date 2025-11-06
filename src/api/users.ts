@@ -47,3 +47,72 @@ export async function loginUser (credentials: LoginCredentials) {
     throw error
   }
 }
+
+export async function reqeustSendPin ({
+  email,
+  code,
+}: {
+  email: string
+  code: string
+}) {
+  try {
+    const response = await callApi(
+      'POST',
+      '/users/verify-email',
+      { email, code },
+      false, // sem autenticação, pois o usuario ainda não está logado
+    )
+    return response
+  } catch (error) {
+    console.error('Erro ao fazer login:', error)
+    throw error
+  }
+}
+
+export async function reqeustResendPin (email: string) {
+  try {
+    const response = await callApi(
+      'POST',
+      '/users/send-email-verification',
+      { email },
+      false, // sem autenticação, pois o usuario ainda não está logado
+    )
+    return response
+  } catch (error) {
+    console.error('Erro ao fazer login:', error)
+    throw error
+  }
+}
+
+export async function requestConfirmEmail (email: string) {
+  try {
+    const response = await callApi(
+      'POST',
+      '/users/send-email-verification',
+      { email },
+      false, // sem autenticação, pois o usuario ainda não está logado
+    )
+    return response
+  } catch (error) {
+    console.error('Erro ao fazer login:', error)
+    throw error
+  }
+}
+
+export async function deleteUser () {
+  try {
+    const response = await callApi(
+      'DELETE',
+      '/users',
+      {},
+      true,
+      {
+        'Authorization': `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
+      }
+    )
+    return response
+  } catch (error) {
+    console.error('Erro ao fazer login:', error)
+    throw error
+  }
+}

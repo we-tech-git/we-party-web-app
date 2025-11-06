@@ -19,12 +19,12 @@ declare module 'vue-router/auto-routes' {
    */
   export interface RouteNamedMap {
     '/home/': RouteRecordInfo<'/home/', '/home', Record<never, never>, Record<never, never>>,
+    '/private/AddFriends': RouteRecordInfo<'/private/AddFriends', '/private/AddFriends', Record<never, never>, Record<never, never>>,
     '/private/feed': RouteRecordInfo<'/private/feed', '/private/feed', Record<never, never>, Record<never, never>>,
+    '/private/Interest': RouteRecordInfo<'/private/Interest', '/private/Interest', Record<never, never>, Record<never, never>>,
     '/private/test-auth': RouteRecordInfo<'/private/test-auth', '/private/test-auth', Record<never, never>, Record<never, never>>,
-    '/public/AddFriends': RouteRecordInfo<'/public/AddFriends', '/public/AddFriends', Record<never, never>, Record<never, never>>,
     '/public/ConfirmEmail': RouteRecordInfo<'/public/ConfirmEmail', '/public/ConfirmEmail', Record<never, never>, Record<never, never>>,
     '/public/Congratulations': RouteRecordInfo<'/public/Congratulations', '/public/Congratulations', Record<never, never>, Record<never, never>>,
-    '/public/Interest': RouteRecordInfo<'/public/Interest', '/public/Interest', Record<never, never>, Record<never, never>>,
     '/public/Login': RouteRecordInfo<'/public/Login', '/public/Login', Record<never, never>, Record<never, never>>,
     '/public/Signup': RouteRecordInfo<'/public/Signup', '/public/Signup', Record<never, never>, Record<never, never>>,
   }
@@ -44,16 +44,20 @@ declare module 'vue-router/auto-routes' {
       routes: '/home/'
       views: never
     }
+    'src/pages/private/AddFriends.vue': {
+      routes: '/private/AddFriends'
+      views: never
+    }
     'src/pages/private/feed.vue': {
       routes: '/private/feed'
       views: never
     }
-    'src/pages/private/test-auth.vue': {
-      routes: '/private/test-auth'
+    'src/pages/private/Interest.vue': {
+      routes: '/private/Interest'
       views: never
     }
-    'src/pages/public/AddFriends.vue': {
-      routes: '/public/AddFriends'
+    'src/pages/private/test-auth.vue': {
+      routes: '/private/test-auth'
       views: never
     }
     'src/pages/public/ConfirmEmail.vue': {
@@ -62,10 +66,6 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/public/Congratulations.vue': {
       routes: '/public/Congratulations'
-      views: never
-    }
-    'src/pages/public/Interest.vue': {
-      routes: '/public/Interest'
       views: never
     }
     'src/pages/public/Login.vue': {

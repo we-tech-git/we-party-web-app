@@ -6,9 +6,12 @@
   import { computed, nextTick, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRoute } from 'vue-router'
+  import { reqeustResendPin, reqeustSendPin, requestConfirmEmail } from '@/api/users'
+  import { STORAGE_KEYS } from '@/common/storage'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import router from '@/router'
+  import { AuthService } from '@/services/auth'
   import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
   const { t } = useI18n()
@@ -121,12 +124,26 @@
 
     try {
       // Simula API call para verificar PIN
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      const response = await reqeustSendPin({
+        email: userEmail.value,
+        code: fullPin.value,
+      })
+      console.log({ response })
+      const data = response.data
 
-      // Mock: PIN válido é "123456"
-      if (fullPin.value === '123456') {
+      if (response.status === 200) {
         triggerConfetti()
         showSnackbar(t('confirmEmail.success'), '#22c55e')
+
+        if (data.success && !!data.data.token) {
+          console.log('Resposta do login ao confirmar email =====>', data.data)
+          AuthService.saveAuthData({
+            success: true,
+            message: 'Login realizado com sucesso',
+            token: data.data.token,
+            user: data.data,
+          })
+        }
 
         setTimeout(() => {
           router.push('/public/Congratulations')
@@ -135,6 +152,19 @@
         showSnackbar(t('confirmEmail.invalidPin'), '#ef4444')
         clearPin()
       }
+
+      // Mock: PIN válido é "123456"
+      // if (fullPin.value === '123456') {
+      //   triggerConfetti()
+      //   showSnackbar(t('confirmEmail.success'), '#22c55e')
+
+      //   setTimeout(() => {
+      //     router.push('/public/Congratulations')
+      //   }, 1500)
+      // } else {
+      //   showSnackbar(t('confirmEmail.invalidPin'), '#ef4444')
+      //   clearPin()
+      // }
     } catch (error: any) {
       console.error('Erro ao verificar PIN:', error)
       showSnackbar(t('confirmEmail.verifyError'), '#ef4444')
@@ -153,9 +183,10 @@
 
     try {
       // Simula API call para reenviar PIN
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const response = await reqeustResendPin(userEmail.value)
+      console.log({ response })
 
-      showSnackbar(t('confirmEmail.pinResent'), '#22c55e')
+      showSnackbar(t('confirmEmail.pinSent'), '#22c55e')
 
       // Inicia cooldown de 60 segundos
       canResendPin.value = false
@@ -188,8 +219,10 @@
   // ===============================
   onMounted(() => {
     // Recupera email da URL ou localStorage
-    const emailFromQuery = route.query.email as string
-    userEmail.value = emailFromQuery || 'usuario@exemplo.com'
+    // const emailFromQuery = route.query.email as string
+    const emailFromStorage = localStorage?.getItem(STORAGE_KEYS.NEW_CREATED_USER)
+
+    userEmail.value = JSON.parse(emailFromStorage || '') || 'usuario@exemplo.com'
 
     // Foca no primeiro input do PIN
     nextTick(() => {
@@ -197,6 +230,8 @@
         pinInputs.value[0].focus()
       }
     })
+
+    resendPin()
 
     console.log('🚀 Tela de confirmação de email carregada para:', userEmail.value)
   })

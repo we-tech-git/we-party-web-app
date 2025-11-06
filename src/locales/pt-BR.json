@@ -104,7 +104,7 @@
     }
   },
   "congratulations": {
-    "title": "Parabéns, verifique seu e-mail",
+    "title": "Parabéns, Agora você pode aproveitar!",
     "description": "Aproveite da melhor forma nosso app para encontrar os melhores eventos e festas",
     "button": "CONTINUAR"
   },
@@ -120,7 +120,7 @@
     "success": "Email confirmado com sucesso!",
     "invalidPin": "Código inválido. Tente novamente.",
     "verifyError": "Erro ao verificar código. Tente novamente.",
-    "pinResent": "Código reenviado com sucesso!",
+    "pinSent": "Código enviado com sucesso!",
     "resendError": "Erro ao reenviar código. Tente novamente."
   }
 }

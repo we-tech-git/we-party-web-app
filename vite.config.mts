@@ -69,12 +69,7 @@ export default defineConfig({
       'unplugin-vue-router/data-loaders/basic',
     ],
   },
-  define: {
-    'process.env': {},
-    __VUE_I18N_FULL_INSTALL__: true,
-    __VUE_I18N_LEGACY_API__: false,
-    __INTLIFY_PROD_DEVTOOLS__: false,
-  },
+  define: { 'process.env': {} },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('src', import.meta.url)),
@@ -100,15 +95,5 @@ export default defineConfig({
         rewrite: path => path.replace(/^\/api/, ''),
       },
     },
-  },
-  build: {
-    // Ensure proper build for SPA routing
-    rollupOptions: {
-      input: {
-        main: 'index.html',
-      },
-    },
-    // Configurações para melhor tratamento de assets
-    assetsInlineLimit: 0, // Não fazer inline de assets para debug
   },
 })

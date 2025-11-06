@@ -7,6 +7,8 @@
 // Composables
 import { createApp } from 'vue'
 
+import i18n from '@/plugins/i18n'
+
 // Components
 import App from './App.vue'
 // Plugins
@@ -22,5 +24,7 @@ import './styles/main.css'
 const app = createApp(App)
 
 registerPlugins(app)
+
+app.use(i18n)
 
 app.mount('#app')
