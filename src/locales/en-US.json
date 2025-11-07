@@ -122,5 +122,42 @@
     "verifyError": "Error verifying code. Please try again.",
     "pinResent": "Code resent successfully!",
     "resendError": "Error resending code. Please try again."
+  },
+  "form": {
+    "loading": "Loading...",
+    "email": "Email",
+    "pin": "PIN Code",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm New Password"
+  },
+  "forgotPassword": {
+    "title": "Recover Password",
+    "subtitle": "Enter your email and we'll send you a code to reset your password.",
+    "button": "Send Code",
+    "successMessage": "Code sent! Check your inbox.",
+    "errors": {
+      "emailRequired": "The email field is required.",
+      "generic": "Could not send code. Please try again."
+    }
+  },
+  "verifyPin": {
+    "title": "Verify Code",
+    "subtitle": "We sent a 6-digit code to {email}. Please enter it below.",
+    "button": "Verify",
+    "errors": {
+      "invalidPin": "The code must be 6 digits long.",
+      "generic": "Invalid or expired code. Please try again."
+    }
+  },
+  "resetPassword": {
+    "title": "Create New Password",
+    "subtitle": "Create a strong and secure password.",
+    "button": "Save New Password",
+    "successMessage": "Password changed successfully! Redirecting to login...",
+    "errors": {
+      "passwordMismatch": "The passwords do not match.",
+      "passwordTooShort": "Password must be at least 6 characters long.",
+      "generic": "Could not change password. Please try again."
+    }
   }
 }

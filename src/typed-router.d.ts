@@ -26,7 +26,10 @@ declare module 'vue-router/auto-routes' {
     '/public/Congratulations': RouteRecordInfo<'/public/Congratulations', '/public/Congratulations', Record<never, never>, Record<never, never>>,
     '/public/Interest': RouteRecordInfo<'/public/Interest', '/public/Interest', Record<never, never>, Record<never, never>>,
     '/public/Login': RouteRecordInfo<'/public/Login', '/public/Login', Record<never, never>, Record<never, never>>,
+    '/public/RequestPassword': RouteRecordInfo<'/public/RequestPassword', '/public/RequestPassword', Record<never, never>, Record<never, never>>,
+    '/public/ResetPassword': RouteRecordInfo<'/public/ResetPassword', '/public/ResetPassword', Record<never, never>, Record<never, never>>,
     '/public/Signup': RouteRecordInfo<'/public/Signup', '/public/Signup', Record<never, never>, Record<never, never>>,
+    '/public/VerifyPin': RouteRecordInfo<'/public/VerifyPin', '/public/VerifyPin', Record<never, never>, Record<never, never>>,
   }
 
   /**
@@ -72,8 +75,20 @@ declare module 'vue-router/auto-routes' {
       routes: '/public/Login'
       views: never
     }
+    'src/pages/public/RequestPassword.vue': {
+      routes: '/public/RequestPassword'
+      views: never
+    }
+    'src/pages/public/ResetPassword.vue': {
+      routes: '/public/ResetPassword'
+      views: never
+    }
     'src/pages/public/Signup.vue': {
       routes: '/public/Signup'
+      views: never
+    }
+    'src/pages/public/VerifyPin.vue': {
+      routes: '/public/VerifyPin'
       views: never
     }
   }

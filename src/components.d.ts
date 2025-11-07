@@ -20,9 +20,12 @@ declare module 'vue' {
     Interest: typeof import('./components/modules/interest/Interest.vue')['default']
     LanguageSwitcher: typeof import('./components/LanguageSwitcher.vue')['default']
     Login: typeof import('./components/modules/Login/Login.vue')['default']
+    RequestPassword: typeof import('./components/modules/PasswordRecovery/RequestPassword.vue')['default']
+    ResetPassword: typeof import('./components/modules/PasswordRecovery/ResetPassword.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     Signup: typeof import('./components/modules/Signup/Signup.vue')['default']
     Snackbar: typeof import('./components/UI/Snackbar/Snackbar.vue')['default']
+    VerifyPin: typeof import('./components/modules/PasswordRecovery/VerifyPin.vue')['default']
   }
 }

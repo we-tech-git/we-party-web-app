@@ -259,7 +259,7 @@
               <input v-model="rememberMe" type="checkbox">
               {{ $t('login.rememberMe') }}
             </label>
-            <a class="forgot-link" href="#">{{ $t('login.forgotPassword') }}</a>
+            <router-link class="forgot-link" to="/public/RequestPassword">{{ $t('login.forgotPassword') }}</router-link>
           </div>
 
           <button
@@ -486,6 +486,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
