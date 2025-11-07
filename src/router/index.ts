@@ -7,8 +7,22 @@
 // Composables
 import { setupLayouts } from 'virtual:generated-layouts'
 import { createRouter, createWebHistory } from 'vue-router'
-import { routes } from 'vue-router/auto-routes'
+import { routes as autoRoutes } from 'vue-router/auto-routes'
 import { privateRouteGuard, publicRouteGuard } from '@/composables/useAuth'
+
+// Adiciona nomes às rotas de recuperação de senha
+const passwordRecoveryRoutes = autoRoutes.map(route => {
+  if (route.path === '/public/RequestPassword') {
+    route.name = 'RequestPassword'
+  }
+  if (route.path === '/public/VerifyPin') {
+    route.name = 'VerifyPin'
+  }
+  if (route.path === '/public/ResetPassword') {
+    route.name = 'ResetPassword'
+  }
+  return route
+})
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,9 +30,9 @@ const router = createRouter({
     // Redirect da rota raiz para o login
     {
       path: '/',
-      redirect: '/public/Login'
+      redirect: '/public/Login',
     },
-    ...setupLayouts(routes)
+    ...setupLayouts(passwordRecoveryRoutes),
   ],
 })
 

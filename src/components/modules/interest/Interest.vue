@@ -1,30 +1,53 @@
 <!--
   Componente: Interest.vue
   Descrição: Seleção de interesses com busca, sugestões e chips; usa AuthLayout.
-  Autor: we-tech-git
-  Data: 13/10/2025
+
 -->
 <script setup lang="ts">
   import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
-  import { callApi } from '@/api'
+  import { addUserInterest, getInterests } from '@/api/interest'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import { svgIcons } from '@/utils/svgSet'
 
   const { t } = useI18n()
 
+  type InterestOrigin = 'api' | 'static' | 'personal'
   interface IInterest {
-    name: string
-    createdBy: string
     id: string
+    name: string
+    createdBy?: string
+    origin?: InterestOrigin
   }
+
+  const FALLBACK_INTERESTS: IInterest[] = [
+    { id: 'static-palestra', name: 'Palestra', origin: 'static' },
+    { id: 'static-amapiano', name: 'Amapiano', origin: 'static' },
+    { id: 'static-mandelao', name: 'Mandelão', origin: 'static' },
+    { id: 'static-reggae', name: 'Reggae', origin: 'static' },
+    { id: 'static-anos-90', name: 'Anos 90', origin: 'static' },
+    { id: 'static-anos-80', name: 'Anos 80', origin: 'static' },
+    { id: 'static-comunitario', name: 'Comunitário', origin: 'static' },
+    { id: 'static-pop', name: 'Pop', origin: 'static' },
+    { id: 'static-vintage', name: 'Vintage', origin: 'static' },
+    { id: 'static-sertanejo', name: 'Sertanejo', origin: 'static' },
+    { id: 'static-festival', name: 'Festival', origin: 'static' },
+    { id: 'static-standup', name: 'Stand-up', origin: 'static' },
+  ]
 
   const allChips = ref<IInterest[]>([])
   const selected = ref<Set<string>>(new Set())
   const isLoading = ref(false)
 
+  const defaultSelectedLabels = new Set(['PALESTRA', 'MANDELÃO'])
+
   const query = ref('')
-  const baseSuggestions = ref<string[]>(['Dance hall', 'Feira do Livro', 'Eventos de SP'])
+  const baseSuggestions = ref<string[]>([
+    ...FALLBACK_INTERESTS.map(item => item.name),
+    'Dance hall',
+    'Feira do Livro',
+    'Eventos de SP',
+  ])
 
   const showDropdown = computed(() => query.value.trim().length > 0)
   const filteredSuggestions = computed(() => {
@@ -50,34 +73,58 @@
   async function fetchInterests () {
     try {
       isLoading.value = true
-      const response = await callApi('GET', '/interest', undefined, true)
+      const response = await getInterests()
       const rawData = Array.isArray(response?.data?.data)
         ? response.data.data
         : response?.data
 
       const payload = Array.isArray(rawData) ? rawData : []
 
-      if (payload.length > 0) {
-        allChips.value = payload.map((item: any) => ({
-          id: String(item.id ?? item.uuid ?? item.name ?? crypto.randomUUID()),
-          name: String(item.name ?? item.label ?? ''),
-          createdBy: item.createdBy ?? '',
-        })).filter(chip => chip.name.trim().length > 0)
-      }
+      const normalized = payload.map((item: any) => ({
+        id: String(item.id ?? item.uuid ?? item.name ?? crypto.randomUUID()),
+        name: String(item.name ?? item.label ?? ''),
+        createdBy: item.createdBy ?? '',
+        origin: 'api' as InterestOrigin,
+      })).filter(chip => chip.name.trim().length > 0)
+
+      allChips.value = normalized.length > 0 ? normalized : [...FALLBACK_INTERESTS]
+      applyDefaultSelection()
     } catch (error) {
       console.error('Erro ao buscar interesses:', error)
-      allChips.value = []
+      allChips.value = [...FALLBACK_INTERESTS]
+      applyDefaultSelection()
     } finally {
       isLoading.value = false
     }
   }
 
+  function chipClasses (chip: IInterest) {
+    const isSelected = selected.value.has(chip.name.toUpperCase())
+    return [
+      'chip',
+      isSelected ? 'selected' : 'idle',
+    ]
+  }
+
+  function applyDefaultSelection () {
+    if (selected.value.size > 0) {
+      return
+    }
+
+    const defaults = allChips.value.filter(chip => defaultSelectedLabels.has(chip.name.toUpperCase()))
+    if (defaults.length === 0) {
+      return
+    }
+
+    const newSelection = new Set(selected.value)
+    for (const chip of defaults) {
+      newSelection.add(chip.name.toUpperCase())
+    }
+    selected.value = newSelection
+  }
+
   async function addFromSuggestion (selectedInterest: IInterest) {
     const alreadySelected = selected.value.has(selectedInterest.name.toUpperCase())
-
-    const body = {
-      interestId: selectedInterest.id,
-    }
 
     if (alreadySelected) {
       toggleChip(selectedInterest.name)
@@ -85,11 +132,42 @@
     }
 
     try {
-      await callApi('POST', '/users/interest', body, true)
+      await addUserInterest(selectedInterest.name)
       toggleChip(selectedInterest.name)
     } catch (error) {
       console.error('Erro ao adicionar interesse:', error)
     }
+  }
+
+  function handleSuggestionClick (label: string) {
+    const normalized = label.trim()
+    if (!normalized) {
+      return
+    }
+
+    const existing = allChips.value.find(
+      chip => chip.name.toLowerCase() === normalized.toLowerCase(),
+    )
+
+    if (existing) {
+      addFromSuggestion(existing)
+    } else {
+      const personalChip: IInterest = {
+        id: `personal-${crypto.randomUUID()}`,
+        name: normalized,
+        origin: 'personal',
+      }
+
+      allChips.value = [personalChip, ...allChips.value]
+      toggleChip(personalChip.name)
+      showModal.value = true
+      baseSuggestions.value = Array.from(new Set([
+        personalChip.name,
+        ...baseSuggestions.value,
+      ]))
+    }
+
+    query.value = ''
   }
 
   onMounted(() => {
@@ -124,12 +202,30 @@
         </svg>
 
         <input v-model="query" class="search-input" :placeholder="t('interest.searchPlaceholder')" type="text">
+        <button class="filter-btn" type="button">
+          <svg
+            v-if="svgIcons.filterIcon"
+            class="filter-icon"
+            fill="none"
+            stroke="currentColor"
+            :viewBox="svgIcons.filterIcon.viewBox"
+          >
+            <path
+              v-for="(p, i) in svgIcons.filterIcon.paths"
+              :key="i"
+              :d="p.d"
+              :stroke-linecap="p.strokeLinecap ?? 'round'"
+              :stroke-linejoin="p.strokeLinejoin ?? 'round'"
+              stroke-width="1.8"
+            />
+          </svg>
+        </button>
 
         <!-- Dropdown de sugestões -->
         <div v-if="showDropdown" class="suggestions">
           <div v-for="(s, idx) in filteredSuggestions" :key="idx" class="suggestion-item">
             <span class="suggestion-label">{{ s }}</span>
-            <button class="add-suggestion" type="button">
+            <button class="add-suggestion" type="button" @click="handleSuggestionClick(s)">
               <svg
                 v-if="svgIcons.plusIcon"
                 class="plus-icon"
@@ -160,7 +256,7 @@
         <button
           v-for="chip in allChips"
           :key="chip.id"
-          :class="['chip', selected.has(chip.name.toUpperCase()) ? 'selected' : '']"
+          :class="chipClasses(chip)"
           :title="chip.name"
           type="button"
           @click="addFromSuggestion(chip)"
@@ -218,14 +314,16 @@
 ================================ */
 .title {
   font-weight: 700;
-  font-size: 2.25rem;
-  margin-bottom: .5rem;
+  font-size: 2.75rem;
+  margin-bottom: .75rem;
 }
 
 .subtitle {
-  color: #6B7280;
-  margin-bottom: 1.25rem;
-  max-width: 36ch;
+  color: #4B5563;
+  margin-bottom: 1.75rem;
+  max-width: 42ch;
+  font-size: 1.125rem;
+  line-height: 1.7;
 }
 
 /* ===============================
@@ -233,19 +331,19 @@
 ================================ */
 .search-wrapper {
   position: relative;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .search-input {
   width: 100%;
-  padding: .75rem 1.5rem .75rem 3rem;
+  padding: 1rem 1.75rem 1rem 3.5rem;
   border: 1px solid #E5E7EB;
   border-radius: 10px;
-  font-size: .95rem;
+  font-size: 1.1rem;
   color: #1F2937;
   outline: none;
   transition: border-color .2s, box-shadow .2s;
-  box-shadow: 0 4px 0 rgba(0, 0, 0, .05);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, .05);
 }
 
 .search-input:focus {
@@ -255,11 +353,11 @@
 
 .search-icon {
   position: absolute;
-  left: .9rem;
+  left: 1.2rem;
   top: 50%;
   transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   color: #9CA3AF;
 }
 
@@ -280,7 +378,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: .75rem 1rem;
+  padding: 1rem 1.25rem;
 }
 
 .suggestion-item+.suggestion-item {
@@ -293,12 +391,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: 8px;
+  margin-right: 12px;
+  font-size: 1.05rem;
 }
 
 .add-suggestion {
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: none;
   background: linear-gradient(90deg, #FFC25B, #FF5FA6);
@@ -308,32 +407,42 @@
 }
 
 .plus-icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 /* ===============================
    CHIPS GRID
 ================================ */
 .chips-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin: 1.25rem 0 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 18px;
+  margin: 1.75rem auto 2rem;
+  max-width: 520px;
+  width: 100%;
+  justify-content: center;
 }
 
 .chip {
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 10px;
-  border: 1.5px solid #FF8CB5;
-  color: #1F2937;
-  background: #fff;
+  box-sizing: border-box;
+  width: 100%;
+  height: 54px;
+  padding: 0 24px;
+  border-radius: 16px;
+  border: 2px solid transparent;
+  color: #111827;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(90deg, #FFC25B, #FF5FA6) border-box;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+  font-size: 1rem;
+  letter-spacing: .02em;
+  text-transform: uppercase;
 }
 
 .chip.selected {
@@ -344,8 +453,14 @@
   box-shadow: 0 10px 20px rgba(255, 95, 166, .2);
 }
 
-.chip:not(.selected) {
-  box-shadow: 0 2px 0 rgba(0, 0, 0, .05);
+.chip.idle {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, .06);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.chip.idle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 18px rgba(255, 95, 166, .2);
 }
 
 /* ===============================
@@ -353,10 +468,11 @@
 ================================ */
 .finish-btn {
   width: 100%;
-  padding: 16px;
-  border-radius: 10px;
+  padding: 20px;
+  border-radius: 14px;
   border: none;
   font-weight: 700;
+  font-size: 1.2rem;
   color: #fff;
   background: linear-gradient(90deg, #FFC25B, #FF5FA6);
   box-shadow: 0 10px 24px rgba(255, 95, 166, .25);
@@ -380,7 +496,7 @@
 }
 
 .modal {
-  width: min(560px, 92vw);
+  width: min(620px, 92vw);
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
@@ -396,7 +512,7 @@
 }
 
 .modal-header h3 {
-  font-size: 1.125rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: #111827;
 }
@@ -411,30 +527,32 @@
 }
 
 .modal-body {
-  padding: 16px 20px;
+  padding: 22px 24px;
   color: #4B5563;
   display: grid;
-  gap: 10px;
+  gap: 14px;
+  font-size: 1.05rem;
+  line-height: 1.7;
 }
 
 .modal-footer {
-  padding: 16px 20px 20px;
+  padding: 20px 24px 24px;
 }
 
 /* ===============================
   BRAND CONTENT (direita)
 ================================ */
 .brand-wrap {
-  padding-left: 48px;
-  padding-right: 48px;
-  margin-top: 64px;
-  max-width: 640px;
+  padding-left: 56px;
+  padding-right: 56px;
+  margin-top: 72px;
+  max-width: 680px;
   font-family: 'Poppins', sans-serif;
 }
 
 .brand-title {
   font-family: 'Baloo Thambi 2', cursive;
-  font-size: clamp(40px, 4.2vw + 10px, 60px);
+  font-size: clamp(52px, 4.6vw + 16px, 68px);
   font-weight: 800;
   line-height: 1.05;
   color: #3F3D56;
@@ -458,13 +576,13 @@
 }
 
 .benefits {
-  margin-top: 20px;
+  margin-top: 28px;
   color: #4B5563;
   font-weight: 600;
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 1.125rem;
+  line-height: 1.7;
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .benefits li {
@@ -491,36 +609,37 @@
 
 @media (max-width: 768px) {
   .title {
-    font-size: 1.75rem;
+    font-size: 2.15rem;
     text-align: center;
   }
 
   .subtitle {
     text-align: center;
     max-width: 100%;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.75rem;
   }
 
   .chips-grid {
-    gap: 12px;
-    justify-content: center;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 100%;
+    gap: 14px;
   }
 
   .chip {
-    height: 38px;
-    padding: 0 14px;
-    font-size: 0.875rem;
+    height: 46px;
+    padding: 0 18px;
+    font-size: 1rem;
   }
 
   .finish-btn {
-    padding: 14px;
+    padding: 18px;
   }
 }
 
 @media (max-width: 480px) {
   .chips-grid {
     /* Garante que os chips possam quebrar em mais linhas se necessário */
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   }
 }
 </style>

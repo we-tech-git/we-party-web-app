@@ -1,6 +1,4 @@
 <script setup lang="ts">
-  import { useI18n } from 'vue-i18n'
-
   interface NavItem {
     id: string
     label: string
@@ -15,8 +13,6 @@
   const emit = defineEmits<{
     (e: 'select', value: string): void
   }>()
-
-  const { t } = useI18n()
 
   function handleSelect (id: string) {
     if (id === props.active) return
