@@ -154,7 +154,6 @@
       })
       // Salvar dados do usuário logado usando AuthService
       if (data.success && !!data.data.token) {
-        console.log('Resposta do login 2', data.data)
         AuthService.saveAuthData({
           success: true,
           message: 'Login realizado com sucesso',

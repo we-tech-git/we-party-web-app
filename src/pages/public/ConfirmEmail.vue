@@ -136,7 +136,6 @@
         showSnackbar(t('confirmEmail.success'), '#22c55e')
 
         if (data.success && !!data.data.token) {
-          console.log('Resposta do login ao confirmar email =====>', data.data)
           AuthService.saveAuthData({
             success: true,
             message: 'Login realizado com sucesso',
