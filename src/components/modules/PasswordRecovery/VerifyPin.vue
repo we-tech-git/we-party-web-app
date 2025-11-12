@@ -16,11 +16,15 @@
   const errorMessage = ref('')
 
   onMounted(() => {
+    // Se o e-mail existe na URL, usa ele
     if (typeof route.query.email === 'string') {
       email.value = route.query.email
+    } else if (import.meta.env.DEV) {
+      // Se estiver em modo de desenvolvimento, usa um e-mail de teste
+      email.value = 'dev-email@teste.com'
     } else {
-      // Se não houver e-mail, volta para a primeira etapa
-      router.push({ name: 'RequestPassword' })
+      // Se não, redireciona
+      router.push({ name: '/public/RequestPassword' })
     }
   })
 
@@ -35,7 +39,7 @@
 
     try {
       await verifyPasswordResetPin(email.value, pin.value)
-      router.push({ name: 'ResetPassword', query: { email: email.value, pin: pin.value } })
+      router.push({ name: '/public/ResetPassword', query: { email: email.value, pin: pin.value } })
     } catch (error: any) {
       errorMessage.value = error.response?.data?.message || t('verifyPin.errors.generic')
     } finally {
@@ -47,24 +51,25 @@
 <template>
   <AuthLayout>
     <template #form-content>
-      <h1 class="title">{{ t('verifyPin.title') }}</h1>
-      <p class="subtitle">{{ t('verifyPin.subtitle', { email }) }}</p>
+      <h1 class="auth-title">{{ t('verifyPin.title') }}</h1>
+      <p class="auth-subtitle">{{ t('verifyPin.subtitle', { email }) }}</p>
 
       <form @submit.prevent="handleVerify">
-        <InputLabel
-          v-model="pin"
-          :label="t('form.pin')"
-          maxlength="6"
-          placeholder="123456"
-          required
-          type="text"
-        />
+        <div class="il-theme--pink">
+          <InputLabel
+            v-model="pin"
+            :label="t('form.pin')"
+            maxlength="6"
+            required
+            type="text"
+          />
+        </div>
 
         <div v-if="errorMessage" class="error-message">
           {{ errorMessage }}
         </div>
 
-        <button class="submit-btn" :disabled="isLoading" type="submit">
+        <button class="btn-primary" :disabled="isLoading" type="submit">
           <span v-if="isLoading">{{ t('form.loading') }}</span>
           <span v-else>{{ t('verifyPin.button') }}</span>
         </button>
@@ -74,36 +79,16 @@
 </template>
 
 <style scoped>
-.title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-}
-
-.subtitle {
-    color: #4B5563;
-    margin-bottom: 2rem;
-    font-size: 1.1rem;
-}
-
-.submit-btn {
-    width: 100%;
-    padding: 1rem;
-    border-radius: 10px;
-    border: none;
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: #fff;
-    background: linear-gradient(90deg, #FFC25B, #FF5FA6);
-    margin-top: 1.5rem;
+.btn-primary {
+  margin-top: 1.5rem;
 }
 
 .error-message {
-    margin-top: 1rem;
-    padding: 0.75rem;
-    border-radius: 8px;
-    text-align: center;
-    background-color: #f8d7da;
-    color: #721c24;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  text-align: center;
+  background-color: #f8d7da;
+  color: #721c24;
 }
 </style>

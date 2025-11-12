@@ -64,18 +64,23 @@
   <AuthLayout>
     <template #form-content>
       <!-- Título e subtítulo -->
-      <h1 class="title">
+      <h1 class="auth-title">
         {{ t('addFriends.title') }}
       </h1>
-      <p class="subtitle">
+      <p class="auth-subtitle">
         {{ t('addFriends.subtitle') }}
       </p>
-      <div class="search-wrapper">
+      <div class="search-input-wrapper il-theme--pink">
         <!-- searchIcon
              Origem: ícone de busca (ver svgSet.ts -> searchIcon)
              Uso: campo de busca desta tela
         -->
-        <svg v-if="svgIcons.searchIcon" class="search-icon" fill="currentColor" :viewBox="svgIcons.searchIcon.viewBox">
+        <svg
+          v-if="svgIcons.searchIcon"
+          class="search-input-icon"
+          fill="currentColor"
+          :viewBox="svgIcons.searchIcon.viewBox"
+        >
           <path
             v-for="(path, index) in svgIcons.searchIcon.paths"
             :key="index"
@@ -104,7 +109,7 @@
         </li>
       </ul>
 
-      <button class="finish-btn">
+      <button class="btn-primary">
         {{ t('addFriends.finishButton') }}
       </button>
     </template>
@@ -130,23 +135,41 @@
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&family=Poppins:wght@400;500;600;700&display=swap');
 
-.title {
-  font-weight: 700;
+/* Tema rosa para InputLabel dentro desta página */
+.il-theme--pink {
+  --il-border-neutral: #F0F0F0;
+  /* neutra */
+  --il-border-filled: #FBC0D6;
+  /* preenchido rosa claro */
+  --il-border-focus: #F978A3;
+  /* foco rosa */
+  --il-label-active: #F7A4C0;
+  /* label ativo rosa suave */
+  --il-text: #072961;
+  /* texto */
+  --il-focus-halo: rgba(249, 120, 163, 0.20);
+  /* halo rosa */
+}
+
+.auth-title {
   font-size: 2.25rem;
   margin-bottom: 0.5rem;
+  text-align: left;
+  margin-left: 0;
 }
 
-.subtitle {
-  color: #6B7280;
+.auth-subtitle {
   margin-bottom: 2rem;
+  text-align: left;
+  margin-left: 0;
 }
 
-.search-wrapper {
+.search-input-wrapper {
   position: relative;
   margin-bottom: 2rem;
 }
 
-.search-icon {
+.search-input-icon {
   position: absolute;
   left: 1rem;
   top: 50%;
@@ -169,7 +192,7 @@
 }
 
 .search-input:focus {
-  border-color: #FFB37B;
+  border-color: #F978A3;
 }
 
 .user-list {
@@ -226,7 +249,7 @@
 }
 
 .invite-btn.send {
-  color: #F97316;
+  color: #F978A3;
   border: 1.5px solid transparent;
   background:
     linear-gradient(#fff, #fff) padding-box,
@@ -249,20 +272,15 @@
   box-shadow: 0 12px 22px rgba(249, 120, 163, 0.3);
 }
 
-.finish-btn {
+.btn-primary {
   width: 100%;
   padding: 1rem;
   border-radius: 0.5rem;
-  border: none;
   font-size: 1rem;
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(to right, #FFC947, #F978A3);
-  cursor: pointer;
   transition: all 0.3s ease;
 }
 
-.finish-btn:hover {
+.btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(252, 149, 89, 0.4);
 }

@@ -329,8 +329,8 @@
       </div>
       <p class="subtitle">{{ $t('signup.subtitle') }}</p>
       <form @submit.prevent="validateForm">
-        <div class="inputs-container">
-          <button @click="deleteUserTest">delete user test</button>
+        <div class="inputs-container il-theme--pink">
+          <!-- <button @click="deleteUserTest">delete user test</button> -->
           <InputLabel
             id="fullName"
             v-model="fullName"
@@ -439,12 +439,7 @@
           {{ $t('signup.hasAccount') }}
           <a href="/public/login">{{ $t('signup.loginLink') }}</a>
         </p>
-        <button
-          :aria-busy="isSubmitting"
-          :class="['submit-button', { loading: isSubmitting }]"
-          :disabled="isSubmitting"
-          type="submit"
-        >
+        <button :aria-busy="isSubmitting" class="btn-primary" :disabled="!isFormValid || isSubmitting" type="submit">
           <span v-if="isSubmitting" aria-hidden="true" class="loader" />
           <span>{{ isSubmitting ? 'Enviando...' : $t('signup.button') }}</span>
         </button>
@@ -466,6 +461,22 @@
 
 <style scoped>
 /* ----- Estilos específicos do Signup ----- */
+
+/* Tema rosa para InputLabel dentro desta página */
+.il-theme--pink {
+  --il-border-neutral: #F0F0F0;
+  /* neutra */
+  --il-border-filled: #FBC0D6;
+  /* preenchido rosa claro */
+  --il-border-focus: #F978A3;
+  /* foco rosa */
+  --il-label-active: #F7A4C0;
+  /* label ativo rosa suave */
+  --il-text: #072961;
+  /* texto */
+  --il-focus-halo: rgba(249, 120, 163, 0.20);
+  /* halo rosa */
+}
 
 .mobile-brand-title {
   display: none;
@@ -501,7 +512,7 @@
 
 .back-link {
   display: inline-flex;
-  color: #FFB37B;
+  color: #F978A3;
   margin-bottom: 48px;
 }
 
@@ -521,6 +532,10 @@ h1 {
   font-size: 1.875rem;
   font-weight: 700;
   color: #1f2937;
+  margin: 0;
+}
+
+.auth-title {
   margin: 0;
 }
 
@@ -585,27 +600,27 @@ h1 {
 }
 
 .input-field.filled {
-  border-color: #FFD3B5;
+  border-color: #FBC0D6;
   color: #212121;
   font-weight: 500;
 }
 
 .input-field.filled+label,
 .input-wrapper label.active {
-  color: #FFB37B;
+  color: #F978A3;
 }
 
 .input-field:focus {
   outline: none;
-  border-color: #f97316;
+  border-color: #F978A3;
   background-color: #fff;
-  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+  box-shadow: 0 0 0 2px rgba(249, 120, 163, 0.2);
 }
 
 .input-field:focus+label {
   top: 8px;
   font-size: 0.75rem;
-  color: #f97316;
+  color: #F978A3;
 }
 
 .eye-button {
@@ -635,46 +650,12 @@ h1 {
 
 .login-link-text a {
   font-weight: 600;
-  color: #f97316;
+  color: #F978A3;
   text-decoration: none;
 }
 
 .login-link-text a:hover {
   text-decoration: underline;
-}
-
-.submit-button {
-  width: 100%;
-  margin-top: 32px;
-  padding: 16px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: all 0.2s;
-  border: none;
-  color: white;
-  background: #FFB37B;
-  box-shadow: 0 4px 14px 0 rgba(255, 179, 123, 0.5);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-}
-
-.submit-button.disabled {
-  cursor: not-allowed;
-  border: none;
-  background-color: #e5e7eb;
-  color: #9ca3af;
-}
-
-.submit-button.loading {
-  cursor: wait;
-}
-
-.submit-button:disabled {
-  cursor: not-allowed;
 }
 
 .loader {
