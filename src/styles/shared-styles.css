@@ -1,0 +1,105 @@
+/* src/styles/shared-styles.css */
+
+/* ===============================
+   ESTILOS PADRONIZADOS PARA FORMULÁRIOS
+================================ */
+
+/* Título Principal (Ex: "Fazer login", "Cadastro") */
+.auth-title {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 2.75rem; /* Tamanho padronizado */
+  margin-bottom: 0.75rem;
+  color: #1F2937;
+  text-align: center;
+}
+
+/* Subtítulo (Texto de apoio abaixo do título) */
+.auth-subtitle {
+  font-family: 'Poppins', sans-serif;
+  color: #4B5563;
+  margin-bottom: 2rem;
+  max-width: 45ch;
+  font-size: 1.125rem; /* Tamanho padronizado */
+  line-height: 1.7;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Botão de Ação Principal (Ex: "Entrar", "Concluir") */
+.btn-primary {
+  width: 100%;
+  padding: 18px; /* Padding padronizado */
+  border-radius: 14px;
+  border: none;
+  font-weight: 700;
+  font-size: 1.15rem; /* Tamanho padronizado */
+  color: #fff;
+  background: linear-gradient(90deg, #FFC947 0%, #F978A3 100%);
+  box-shadow: 0 10px 24px rgba(255, 95, 166, .25);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(255, 95, 166, .3);
+}
+
+.btn-primary:disabled,
+.btn-primary[disabled] {
+  background: #E5E7EB;
+  color: #9CA3AF;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Wrapper para Inputs de Busca (Ex: Interesses, Amigos) */
+.search-input-wrapper {
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.search-input {
+  width: 100%;
+  height: 60px; /* Altura padronizada */
+  padding: 1rem 1.75rem 1rem 3.5rem;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px; /* Raio padronizado */
+  font-size: 1.1rem;
+  color: #1F2937;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, .05);
+}
+
+.search-input:focus {
+  border-color: #c7c9cf;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, .06);
+}
+
+.search-input-icon {
+  position: absolute;
+  left: 1.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  color: #9CA3AF;
+}
+
+/* ===============================
+   TEMA PARA INPUTS
+================================ */
+.il-theme--pink {
+  --il-border-filled: #FBCFE8; /* Rosa claro para borda preenchida */
+  --il-border-focus: #F472B6;  /* Rosa médio para foco */
+  --il-label-active: #F472B6;  /* Rosa médio para label ativo */
+  --il-focus-halo: rgba(244, 114, 182, 0.2); /* Sombra de foco rosa */
+}

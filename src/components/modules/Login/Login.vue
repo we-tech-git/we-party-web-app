@@ -22,8 +22,7 @@
   // GERADOR DE DADOS DE TESTE
   // ===============================
   function generateTestLoginData () {
-    // Gera email fixo com número randômico de 3 dígitos
-    const randomNumber = Math.floor(Math.random() * 900) + 100
+    // Gera email fixo
     const emailGenerated = `teste776@gmail.com`
     const passwordGenerated = 'Teste12345@'
 
@@ -33,23 +32,24 @@
     }
   }
 
-  function fillFormWithTestData (showFeedback = false) {
-    const testData = generateTestLoginData()
+  function fillFormWithTestData (isRandom = false) {
+    if (isRandom) {
+      const randomNumber = Math.floor(Math.random() * 900) + 100
+      email.value = `testuser${randomNumber}@example.com`
+      password.value = 'password123'
+    } else {
+      const testData = generateTestLoginData()
 
-    // Limpa os erros antes de preencher
-    resetErrors()
+      // Limpa os erros antes de preencher
+      resetErrors()
 
-    email.value = testData.email
-    password.value = testData.password
+      email.value = testData.email
+      password.value = testData.password
 
-    console.log('📝 Dados de teste de login gerados:', {
-      email: testData.email,
-      senha: testData.password,
-    })
-
-    // Feedback visual apenas quando solicitado (regeneração manual)
-    if (showFeedback) {
-      showSnackbar('✨ Novos dados de teste gerados!', '#22c55e')
+      console.log('📝 Dados de teste de login gerados:', {
+        email: testData.email,
+        senha: testData.password,
+      })
     }
   }
 
@@ -262,12 +262,7 @@
             <router-link class="forgot-link" to="/public/RequestPassword">{{ $t('login.forgotPassword') }}</router-link>
           </div>
 
-          <button
-            :aria-busy="isSubmitting"
-            :class="['submit-button', { active: isFormValid, loading: isSubmitting }]"
-            :disabled="!isFormValid || isSubmitting"
-            type="submit"
-          >
+          <button :aria-busy="isSubmitting" class="btn-primary" :disabled="!isFormValid || isSubmitting" type="submit">
             <span v-if="isSubmitting" aria-hidden="true" class="loader" />
             <span>{{ isSubmitting ? 'Entrando...' : $t('login.button') }}</span>
           </button>
@@ -300,6 +295,10 @@
 }
 
 .text-3xl {
+  margin: 0;
+}
+
+.auth-title {
   margin: 0;
 }
 
@@ -433,44 +432,6 @@
 
 .login-link-text a:hover {
   text-decoration: underline;
-}
-
-.submit-button {
-  width: 100%;
-  margin-top: 32px;
-  padding: 16px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: all 0.2s;
-  border: none;
-  background-color: #e5e7eb;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.submit-button.active {
-  color: white;
-  background: #F978A3;
-  /* Rosa principal conforme Figma */
-  box-shadow: 0 4px 14px 0 rgba(249, 120, 163, 0.35);
-  cursor: pointer;
-}
-
-.submit-button.active:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px 0 rgba(249, 120, 163, 0.5);
-}
-
-.submit-button.loading {
-  cursor: wait;
-}
-
-.submit-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
 }
 
 .loader {

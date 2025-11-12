@@ -175,6 +175,14 @@
   box-shadow: 0 0 0 2px var(--il-focus-halo, rgba(249, 115, 22, 0.2));
 }
 
+.input-field::placeholder {
+  color: transparent;
+}
+
+.input-field:focus::placeholder {
+  color: #9ca3af;
+}
+
 .input-field:focus+label {
   top: 8px;
   font-size: 0.75rem;

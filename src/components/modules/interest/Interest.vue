@@ -186,12 +186,17 @@
 <template>
   <AuthLayout>
     <template #form-content>
-      <h1 class="title">{{ t('interest.title') }}</h1>
-      <p class="subtitle">{{ t('interest.subtitle') }}</p>
+      <h1 class="auth-title">{{ t('interest.title') }}</h1>
+      <p class="auth-subtitle">{{ t('interest.subtitle') }}</p>
 
       <!-- Campo de busca -->
-      <div class="search-wrapper">
-        <svg v-if="svgIcons.searchIcon" class="search-icon" fill="currentColor" :viewBox="svgIcons.searchIcon.viewBox">
+      <div class="search-input-wrapper">
+        <svg
+          v-if="svgIcons.searchIcon"
+          class="search-input-icon"
+          fill="currentColor"
+          :viewBox="svgIcons.searchIcon.viewBox"
+        >
           <path
             v-for="(p, i) in svgIcons.searchIcon.paths"
             :key="i"
@@ -265,7 +270,7 @@
         </button>
       </div>
 
-      <button class="finish-btn" type="button" @click="finish">
+      <button class="btn-primary" type="button" @click="finish">
         {{ t('interest.finishButton') }}
       </button>
 
@@ -283,7 +288,7 @@
             <p>{{ t('interest.modal.line2') }}</p>
           </div>
           <div class="modal-footer">
-            <button class="finish-btn" type="button" @click="closeModal">
+            <button class="btn-primary" type="button" @click="closeModal">
               {{ t('interest.finishButton') }}
             </button>
           </div>
@@ -312,24 +317,15 @@
 /* ===============================
    TIPOGRAFIA E TÍTULOS
 ================================ */
-.title {
-  font-weight: 700;
-  font-size: 2.75rem;
-  margin-bottom: .75rem;
-}
-
-.subtitle {
-  color: #4B5563;
-  margin-bottom: 1.75rem;
-  max-width: 42ch;
-  font-size: 1.125rem;
-  line-height: 1.7;
+.auth-title,
+.auth-subtitle {
+  text-align: left;
 }
 
 /* ===============================
    BUSCA E SUGESTÕES
 ================================ */
-.search-wrapper {
+.search-input-wrapper {
   position: relative;
   margin-bottom: 2rem;
 }
@@ -351,7 +347,7 @@
   box-shadow: 0 6px 10px rgba(0, 0, 0, .06);
 }
 
-.search-icon {
+.search-input-icon {
   position: absolute;
   left: 1.2rem;
   top: 50%;
@@ -466,19 +462,11 @@
 /* ===============================
    BOTÃO CONCLUIR (GRADIENTE)
 ================================ */
-.finish-btn {
-  width: 100%;
-  padding: 20px;
-  border-radius: 14px;
-  border: none;
-  font-weight: 700;
-  font-size: 1.2rem;
-  color: #fff;
-  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
-  box-shadow: 0 10px 24px rgba(255, 95, 166, .25);
+.btn-primary {
+  margin-top: 1rem;
 }
 
-.finish-btn:hover {
+.btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 28px rgba(255, 95, 166, .3);
 }
