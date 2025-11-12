@@ -6,6 +6,7 @@
 // - svgIcons: set de ícones (ver src/utils/svgSet.ts)
   import { computed, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import { getUserRecomendations } from '@/api/users'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import { svgIcons } from '@/utils/svgSet'
 
@@ -24,13 +25,21 @@
   const searchQuery = ref('')
 
   // Fonte de dados mockada (apenas para UI)
-  const users = ref<User[]>([
-    { id: 1, name: 'Usuário novo', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', status: 'pending' },
-    { id: 2, name: 'Pedro Santos', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', status: 'sent' },
-    { id: 3, name: 'Pedro Lopes', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', status: 'pending' },
-    { id: 4, name: 'Paulo Farias', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026707d', status: 'sent' },
-    { id: 5, name: 'Alisson Silva', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', status: 'sent' },
-  ])
+  const users = ref<User[]>([])
+
+  // const users = ref<User[]>([
+  //   { id: 1, name: 'Usuário novo', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', status: 'pending' },
+  //   { id: 2, name: 'Pedro Santos', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', status: 'sent' },
+  //   { id: 3, name: 'Pedro Lopes', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', status: 'pending' },
+  //   { id: 4, name: 'Paulo Farias', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026707d', status: 'sent' },
+  //   { id: 5, name: 'Alisson Silva', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', status: 'sent' },
+  // ])
+
+  async function requestUserRecomendations () {
+    const userToFollowRecomendations = await getUserRecomendations()
+    console.log(userToFollowRecomendations.data.data.users)
+    users.value = userToFollowRecomendations.data.data.users
+  }
 
   // Filtro de usuários por nome (case-insensitive)
   const filteredUsers = computed(() => {
@@ -44,6 +53,10 @@
   function toggleInvite (user: User) {
     user.status = user.status === 'pending' ? 'sent' : 'pending'
   }
+
+  onMounted(() => {
+    requestUserRecomendations()
+  })
 
 </script>
 

@@ -116,3 +116,21 @@ export async function deleteUser () {
     throw error
   }
 }
+
+export async function getUserRecomendations () {
+  try {
+    const response = await callApi(
+      'GET',
+      '/users/recommendations',
+      {},
+      true,
+      {
+        'Authorization': `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
+      }
+    )
+    return response
+  } catch (error) {
+    console.error('Erro ao fazer login:', error)
+    throw error
+  }
+}
