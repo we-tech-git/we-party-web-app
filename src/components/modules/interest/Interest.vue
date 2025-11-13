@@ -1,71 +1,41 @@
 <!--
   Componente: Interest.vue
   Descrição: Seleção de interesses com busca, sugestões e chips; usa AuthLayout.
-
+  Autor: we-tech-git
+  Data: 13/10/2025
 -->
 <script setup lang="ts">
   import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
-  import { useRouter } from 'vue-router'
-  import { getInterests, saveUserInterests } from '@/api/interest'
+  import { callApi } from '@/api'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import { svgIcons } from '@/utils/svgSet'
 
   const { t } = useI18n()
-  const router = useRouter()
 
-  const STORAGE_KEY = 'weparty_selected_interests'
-
-  type InterestOrigin = 'api' | 'static' | 'personal'
   interface IInterest {
-    id: string
     name: string
-    isDefault?: boolean
-    createdBy?: string
-    origin?: InterestOrigin
+    createdBy: string
+    id: string
   }
-
-  /* const FALLBACK_INTERESTS: IInterest[] = [
-{ id: 'static-palestra', name: 'Palestra', origin: 'static' },
-{ id: 'static-amapiano', name: 'Amapiano', origin: 'static' },
-{ id: 'static-mandelao', name: 'Mandelão', origin: 'static' },
-{ id: 'static-reggae', name: 'Reggae', origin: 'static' },
-{ id: 'static-anos-90', name: 'Anos 90', origin: 'static' },
-{ id: 'static-anos-80', name: 'Anos 80', origin: 'static' },
-{ id: 'static-comunitario', name: 'Comunitário', origin: 'static' },
-{ id: 'static-pop', name: 'Pop', origin: 'static' },
-{ id: 'static-vintage', name: 'Vintage', origin: 'static' },
-{ id: 'static-sertanejo', name: 'Sertanejo', origin: 'static' },
-{ id: 'static-festival', name: 'Festival', origin: 'static' },
-{ id: 'static-standup', name: 'Stand-up', origin: 'static' },
-] */
 
   const allChips = ref<IInterest[]>([])
   const selected = ref<Set<string>>(new Set())
   const isLoading = ref(false)
-  const isFinishing = ref(false)
 
   const query = ref('')
+  const baseSuggestions = ref<string[]>(['Dance hall', 'Feira do Livro', 'Eventos de SP'])
 
   const showDropdown = computed(() => query.value.trim().length > 0)
   const filteredSuggestions = computed(() => {
     const q = query.value.trim().toLowerCase()
     const inSelected = (s: string) => selected.value.has(s.toUpperCase())
-
-    const list = allChips.value
-      .map(chip => chip.name)
-      .filter(name => name.toLowerCase().includes(q) && !inSelected(name))
-
+    const list = baseSuggestions.value.filter(s => s.toLowerCase().includes(q) && !inSelected(s))
     if (q && !list.some(s => s.toLowerCase() === q) && !inSelected(query.value)) {
       return [query.value, ...list]
     }
     return list
   })
-
-  function persistSelection () {
-    const selectionArray = Array.from(selected.value)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(selectionArray))
-  }
 
   function toggleChip (label: string) {
     const key = label.toUpperCase()
@@ -75,154 +45,60 @@
       selected.value.add(key)
     }
     selected.value = new Set(selected.value)
-    persistSelection()
   }
 
   async function fetchInterests () {
     try {
       isLoading.value = true
-      const response = await getInterests()
+      const response = await callApi('GET', '/interest', undefined, true)
       const rawData = Array.isArray(response?.data?.data)
         ? response.data.data
         : response?.data
 
       const payload = Array.isArray(rawData) ? rawData : []
 
-      const normalized = payload.map((item: any) => ({
-        id: String(item.id ?? item.uuid ?? item.name ?? crypto.randomUUID()),
-        name: String(item.name ?? item.label ?? ''),
-        isDefault: !!item.isDefault,
-        createdBy: item.createdBy ?? '',
-        origin: 'api' as InterestOrigin,
-      })).filter(chip => chip.name.trim().length > 0)
-
-      allChips.value = normalized // normalized.length > 0 ? normalized : [...FALLBACK_INTERESTS]
-      applyDefaultSelection()
-    } catch (error: any) {
-      // Se for um erro de autenticação em modo de desenvolvimento, carrega dados de teste.
-      /* if (error.response?.status === 401 && import.meta.env.DEV) {
-    console.warn('MODO DEV: Carregando dados de interesses de teste.')
-    const mockInterests: IInterest[] = [
-      { id: 'mock-1', name: 'Música Pop', origin: 'api' },
-      { id: 'mock-2', name: 'Cinema', origin: 'api' },
-      { id: 'mock-3', name: 'Viagens', origin: 'api' },
-      { id: 'mock-4', name: 'Games', origin: 'api' },
-      { id: 'mock-5', name: 'Culinária', origin: 'api' },
-      { id: 'mock-6', name: 'Esportes', origin: 'api' },
-    ]
-    allChips.value = mockInterests
-  } else {
-  */
-      // Em produção, o erro de redirecionamento continua funcionando.
+      if (payload.length > 0) {
+        allChips.value = payload.map((item: any) => ({
+          id: String(item.id ?? item.uuid ?? item.name ?? crypto.randomUUID()),
+          name: String(item.name ?? item.label ?? ''),
+          createdBy: item.createdBy ?? '',
+        })).filter(chip => chip.name.trim().length > 0)
+      }
+    } catch (error) {
       console.error('Erro ao buscar interesses:', error)
-    // allChips.value = [...FALLBACK_INTERESTS]
-    // applyDefaultSelection()
-    // }
+      allChips.value = []
     } finally {
       isLoading.value = false
     }
   }
 
-  function chipClasses (chip: IInterest) {
-    const isSelected = selected.value.has(chip.name.toUpperCase())
-    return [
-      'chip',
-      isSelected ? 'selected' : 'idle',
-    ]
-  }
-
-  function applyDefaultSelection () {
-    if (selected.value.size > 0) {
-      return
-    }
-
-    const defaults = allChips.value.filter(chip => chip.isDefault)
-    if (defaults.length === 0) {
-      return
-    }
-
-    const newSelection = new Set(selected.value)
-    for (const chip of defaults) {
-      newSelection.add(chip.name.toUpperCase())
-    }
-    selected.value = newSelection
-    // Garante que a seleção padrão também seja salva no localStorage
-    persistSelection()
-  }
-
   async function addFromSuggestion (selectedInterest: IInterest) {
-    // Apenas alterna o estado local, sem chamar a API
-    toggleChip(selectedInterest.name)
-  }
+    const alreadySelected = selected.value.has(selectedInterest.name.toUpperCase())
 
-  function handleSuggestionClick (label: string) {
-    const normalized = label.trim()
-    if (!normalized) {
+    const body = {
+      interestId: selectedInterest.id,
+    }
+
+    if (alreadySelected) {
+      toggleChip(selectedInterest.name)
       return
     }
 
-    const existing = allChips.value.find(
-      chip => chip.name.toLowerCase() === normalized.toLowerCase(),
-    )
-
-    if (existing) {
-      addFromSuggestion(existing)
-    } else {
-      const personalChip: IInterest = {
-        id: `personal-${crypto.randomUUID()}`,
-        name: normalized,
-        origin: 'personal',
-      }
-
-      allChips.value = [personalChip, ...allChips.value]
-      toggleChip(personalChip.name)
-      showModal.value = true
+    try {
+      await callApi('POST', '/users/interest', body, true)
+      toggleChip(selectedInterest.name)
+    } catch (error) {
+      console.error('Erro ao adicionar interesse:', error)
     }
-
-    query.value = ''
   }
 
   onMounted(() => {
-    // Ao carregar o componente, verifica se há dados no localStorage
-    const savedSelection = localStorage.getItem(STORAGE_KEY)
-    if (savedSelection) {
-      try {
-        const parsedSelection = JSON.parse(savedSelection)
-        if (Array.isArray(parsedSelection)) {
-          selected.value = new Set(parsedSelection)
-        }
-      } catch (error) {
-        console.error('Erro ao carregar interesses do localStorage:', error)
-        localStorage.removeItem(STORAGE_KEY) // Limpa dados corrompidos
-      }
-    }
     fetchInterests()
   })
 
   const showModal = ref(false)
-  async function finish () {
-    isFinishing.value = true
-    try {
-      const selectedNames = Array.from(selected.value)
-      if (selectedNames.length > 0) {
-        const selectedIds = allChips.value
-          .filter(interest => selectedNames.includes(interest.name.toUpperCase()))
-          .map(interest => interest.id)
-
-        // Envia todos os IDs para a API de uma só vez
-        if (selectedIds.length > 0) {
-          await saveUserInterests(selectedIds)
-        }
-      }
-
-      // Após o sucesso, limpa o localStorage e navega
-      localStorage.removeItem(STORAGE_KEY)
-      router.push({ name: '/private/AddFriends' })
-    } catch (error) {
-      console.error('Erro ao salvar interesses:', error)
-    } finally {
-      isFinishing.value = false
-    }
+  function finish () {
+  // Ação de concluir ficará disponível para integração futura
   }
   function closeModal () {
     showModal.value = false
@@ -232,17 +108,12 @@
 <template>
   <AuthLayout>
     <template #form-content>
-      <h1 class="auth-title">{{ t('interest.title') }}</h1>
-      <p class="auth-subtitle">{{ t('interest.subtitle') }}</p>
+      <h1 class="title">{{ t('interest.title') }}</h1>
+      <p class="subtitle">{{ t('interest.subtitle') }}</p>
 
       <!-- Campo de busca -->
-      <div class="search-input-wrapper">
-        <svg
-          v-if="svgIcons.searchIcon"
-          class="search-input-icon"
-          fill="currentColor"
-          :viewBox="svgIcons.searchIcon.viewBox"
-        >
+      <div class="search-wrapper">
+        <svg v-if="svgIcons.searchIcon" class="search-icon" fill="currentColor" :viewBox="svgIcons.searchIcon.viewBox">
           <path
             v-for="(p, i) in svgIcons.searchIcon.paths"
             :key="i"
@@ -253,30 +124,12 @@
         </svg>
 
         <input v-model="query" class="search-input" :placeholder="t('interest.searchPlaceholder')" type="text">
-        <button class="filter-btn" type="button">
-          <svg
-            v-if="svgIcons.filterIcon"
-            class="filter-icon"
-            fill="none"
-            stroke="currentColor"
-            :viewBox="svgIcons.filterIcon.viewBox"
-          >
-            <path
-              v-for="(p, i) in svgIcons.filterIcon.paths"
-              :key="i"
-              :d="p.d"
-              :stroke-linecap="p.strokeLinecap ?? 'round'"
-              :stroke-linejoin="p.strokeLinejoin ?? 'round'"
-              stroke-width="1.8"
-            />
-          </svg>
-        </button>
 
         <!-- Dropdown de sugestões -->
         <div v-if="showDropdown" class="suggestions">
           <div v-for="(s, idx) in filteredSuggestions" :key="idx" class="suggestion-item">
             <span class="suggestion-label">{{ s }}</span>
-            <button class="add-suggestion" type="button" @click="handleSuggestionClick(s)">
+            <button class="add-suggestion" type="button">
               <svg
                 v-if="svgIcons.plusIcon"
                 class="plus-icon"
@@ -307,18 +160,17 @@
         <button
           v-for="chip in allChips"
           :key="chip.id"
-          :class="chipClasses(chip)"
+          :class="['chip', selected.has(chip.name.toUpperCase()) ? 'selected' : '']"
           :title="chip.name"
           type="button"
-          @click="toggleChip(chip.name)"
+          @click="addFromSuggestion(chip)"
         >
           {{ chip.name }}
         </button>
       </div>
 
-      <button class="btn-primary" :disabled="isFinishing || selected.size === 0" type="button" @click="finish">
-        <span v-if="isFinishing">Salvando...</span>
-        <span v-else>{{ t('interest.finishButton') }}</span>
+      <button class="finish-btn" type="button" @click="finish">
+        {{ t('interest.finishButton') }}
       </button>
 
       <!-- Modal -->
@@ -335,7 +187,7 @@
             <p>{{ t('interest.modal.line2') }}</p>
           </div>
           <div class="modal-footer">
-            <button class="btn-primary" type="button" @click="closeModal">
+            <button class="finish-btn" type="button" @click="closeModal">
               {{ t('interest.finishButton') }}
             </button>
           </div>
@@ -364,43 +216,50 @@
 /* ===============================
    TIPOGRAFIA E TÍTULOS
 ================================ */
-.auth-title,
-.auth-subtitle {
-  text-align: left;
+.title {
+  font-weight: 700;
+  font-size: 2.25rem;
+  margin-bottom: .5rem;
+}
+
+.subtitle {
+  color: #6B7280;
+  margin-bottom: 1.25rem;
+  max-width: 36ch;
 }
 
 /* ===============================
    BUSCA E SUGESTÕES
 ================================ */
-.search-input-wrapper {
+.search-wrapper {
   position: relative;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .search-input {
   width: 100%;
-  padding: 1rem 1.75rem 1rem 3.5rem;
+  padding: .75rem 1.5rem .75rem 3rem;
   border: 1px solid #E5E7EB;
   border-radius: 10px;
-  font-size: 1.1rem;
+  font-size: .95rem;
   color: #1F2937;
   outline: none;
   transition: border-color .2s, box-shadow .2s;
-  box-shadow: 0 6px 0 rgba(0, 0, 0, .05);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, .05);
 }
 
 .search-input:focus {
-  border-color: #f97316;
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
+  border-color: #c7c9cf;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, .06);
 }
 
-.search-input-icon {
+.search-icon {
   position: absolute;
-  left: 1.2rem;
+  left: .9rem;
   top: 50%;
   transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   color: #9CA3AF;
 }
 
@@ -421,7 +280,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
+  padding: .75rem 1rem;
 }
 
 .suggestion-item+.suggestion-item {
@@ -434,13 +293,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: 12px;
-  font-size: 1.05rem;
+  margin-right: 8px;
 }
 
 .add-suggestion {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: none;
   background: linear-gradient(90deg, #FFC25B, #FF5FA6);
@@ -450,42 +308,32 @@
 }
 
 .plus-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 /* ===============================
    CHIPS GRID
 ================================ */
 .chips-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px 18px;
-  margin: 1.75rem auto 2rem;
-  max-width: 520px;
-  width: 100%;
-  justify-content: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 1.25rem 0 1.5rem;
 }
 
 .chip {
-  box-sizing: border-box;
-  width: 100%;
-  height: 54px;
-  padding: 0 24px;
-  border-radius: 16px;
-  border: 0.60px solid transparent;
-  color: #111827;
-  background:
-    linear-gradient(#fff, #fff) padding-box,
-    linear-gradient(90deg, #FFC25B, #FF5FA6) border-box;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1.5px solid #FF8CB5;
+  color: #1F2937;
+  background: #fff;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   white-space: nowrap;
-  font-size: 1rem;
-  letter-spacing: .02em;
-  text-transform: uppercase;
 }
 
 .chip.selected {
@@ -496,24 +344,25 @@
   box-shadow: 0 10px 20px rgba(255, 95, 166, .2);
 }
 
-.chip.idle {
-  box-shadow: 0 6px 12px rgba(0, 0, 0, .06);
-  transition: transform .2s ease, box-shadow .2s ease;
-}
-
-.chip.idle:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 18px rgba(255, 95, 166, .2);
+.chip:not(.selected) {
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .05);
 }
 
 /* ===============================
    BOTÃO CONCLUIR (GRADIENTE)
 ================================ */
-.btn-primary {
-  margin-top: 1rem;
+.finish-btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  box-shadow: 0 10px 24px rgba(255, 95, 166, .25);
 }
 
-.btn-primary:hover {
+.finish-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 28px rgba(255, 95, 166, .3);
 }
@@ -531,7 +380,7 @@
 }
 
 .modal {
-  width: min(620px, 92vw);
+  width: min(560px, 92vw);
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
@@ -547,7 +396,7 @@
 }
 
 .modal-header h3 {
-  font-size: 1.35rem;
+  font-size: 1.125rem;
   font-weight: 700;
   color: #111827;
 }
@@ -562,32 +411,30 @@
 }
 
 .modal-body {
-  padding: 22px 24px;
+  padding: 16px 20px;
   color: #4B5563;
   display: grid;
-  gap: 14px;
-  font-size: 1.05rem;
-  line-height: 1.7;
+  gap: 10px;
 }
 
 .modal-footer {
-  padding: 20px 24px 24px;
+  padding: 16px 20px 20px;
 }
 
 /* ===============================
   BRAND CONTENT (direita)
 ================================ */
 .brand-wrap {
-  padding-left: 56px;
-  padding-right: 56px;
-  margin-top: 72px;
-  max-width: 680px;
+  padding-left: 48px;
+  padding-right: 48px;
+  margin-top: 64px;
+  max-width: 640px;
   font-family: 'Poppins', sans-serif;
 }
 
 .brand-title {
   font-family: 'Baloo Thambi 2', cursive;
-  font-size: clamp(52px, 4.6vw + 16px, 68px);
+  font-size: clamp(40px, 4.2vw + 10px, 60px);
   font-weight: 800;
   line-height: 1.05;
   color: #3F3D56;
@@ -611,13 +458,13 @@
 }
 
 .benefits {
-  margin-top: 28px;
+  margin-top: 20px;
   color: #4B5563;
   font-weight: 600;
-  font-size: 1.125rem;
-  line-height: 1.7;
+  font-size: 16px;
+  line-height: 1.6;
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .benefits li {
@@ -644,37 +491,36 @@
 
 @media (max-width: 768px) {
   .title {
-    font-size: 2.15rem;
+    font-size: 1.75rem;
     text-align: center;
   }
 
   .subtitle {
     text-align: center;
     max-width: 100%;
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.5rem;
   }
 
   .chips-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-width: 100%;
-    gap: 14px;
+    gap: 12px;
+    justify-content: center;
   }
 
   .chip {
-    height: 46px;
-    padding: 0 18px;
-    font-size: 1rem;
+    height: 38px;
+    padding: 0 14px;
+    font-size: 0.875rem;
   }
 
   .finish-btn {
-    padding: 18px;
+    padding: 14px;
   }
 }
 
 @media (max-width: 480px) {
   .chips-grid {
     /* Garante que os chips possam quebrar em mais linhas se necessário */
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
 }
 </style>

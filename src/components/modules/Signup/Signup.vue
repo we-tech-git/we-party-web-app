@@ -40,11 +40,11 @@
     const fullNameGenerated = `${firstName} ${lastName}`
 
     // Gera email fixo com número randômico de 3 dígitos
-    const randomNumber = Math.floor(Math.random() * 900) + 100 // Gera número entre 100-999
-    const emailGenerated = `teste${randomNumber}@gmail.com`
+    // const randomNumber = Math.floor(Math.random() * 900) + 100 // Gera número entre 100-999
+    // const emailGenerated = `teste${randomNumber}@gmail.com`
 
     // Gera senha que atende aos critérios
-    // const emailGenerated = `contact@wepartyapp.com`
+    const emailGenerated = `contact@wepartyapp.com`
     const passwordGenerated = `Teste12345@`
 
     return {
