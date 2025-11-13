@@ -6,11 +6,15 @@
 <script setup lang="ts">
   import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
-  import { addUserInterest, getInterests } from '@/api/interest'
+  import { useRouter } from 'vue-router'
+  import { getInterests, saveUserInterests } from '@/api/interest'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import { svgIcons } from '@/utils/svgSet'
 
   const { t } = useI18n()
+  const router = useRouter()
+
+  const STORAGE_KEY = 'weparty_selected_interests'
 
   type InterestOrigin = 'api' | 'static' | 'personal'
   interface IInterest {
@@ -38,6 +42,7 @@
   const allChips = ref<IInterest[]>([])
   const selected = ref<Set<string>>(new Set())
   const isLoading = ref(false)
+  const isFinishing = ref(false)
 
   const defaultSelectedLabels = new Set(['PALESTRA', 'MANDELÃO'])
 
@@ -60,6 +65,11 @@
     return list
   })
 
+  function persistSelection () {
+    const selectionArray = Array.from(selected.value)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(selectionArray))
+  }
+
   function toggleChip (label: string) {
     const key = label.toUpperCase()
     if (selected.value.has(key)) {
@@ -68,6 +78,7 @@
       selected.value.add(key)
     }
     selected.value = new Set(selected.value)
+    persistSelection()
   }
 
   async function fetchInterests () {
@@ -89,10 +100,25 @@
 
       allChips.value = normalized.length > 0 ? normalized : [...FALLBACK_INTERESTS]
       applyDefaultSelection()
-    } catch (error) {
-      console.error('Erro ao buscar interesses:', error)
-      allChips.value = [...FALLBACK_INTERESTS]
-      applyDefaultSelection()
+    } catch (error: any) {
+      // Se for um erro de autenticação em modo de desenvolvimento, carrega dados de teste.
+      if (error.response?.status === 401 && import.meta.env.DEV) {
+        console.warn('MODO DEV: Carregando dados de interesses de teste.')
+        const mockInterests = [
+          { id: 'mock-1', name: 'Música Pop', origin: 'api' },
+          { id: 'mock-2', name: 'Cinema', origin: 'api' },
+          { id: 'mock-3', name: 'Viagens', origin: 'api' },
+          { id: 'mock-4', name: 'Games', origin: 'api' },
+          { id: 'mock-5', name: 'Culinária', origin: 'api' },
+          { id: 'mock-6', name: 'Esportes', origin: 'api' },
+        ]
+        allChips.value = mockInterests
+      } else {
+        // Em produção, o erro de redirecionamento continua funcionando.
+        console.error('Erro ao buscar interesses:', error)
+        allChips.value = [...FALLBACK_INTERESTS]
+        applyDefaultSelection()
+      }
     } finally {
       isLoading.value = false
     }
@@ -121,22 +147,13 @@
       newSelection.add(chip.name.toUpperCase())
     }
     selected.value = newSelection
+    // Garante que a seleção padrão também seja salva no localStorage
+    persistSelection()
   }
 
   async function addFromSuggestion (selectedInterest: IInterest) {
-    const alreadySelected = selected.value.has(selectedInterest.name.toUpperCase())
-
-    if (alreadySelected) {
-      toggleChip(selectedInterest.name)
-      return
-    }
-
-    try {
-      await addUserInterest(selectedInterest.name)
-      toggleChip(selectedInterest.name)
-    } catch (error) {
-      console.error('Erro ao adicionar interesse:', error)
-    }
+    // Apenas alterna o estado local, sem chamar a API
+    toggleChip(selectedInterest.name)
   }
 
   function handleSuggestionClick (label: string) {
@@ -171,12 +188,46 @@
   }
 
   onMounted(() => {
+    // Ao carregar o componente, verifica se há dados no localStorage
+    const savedSelection = localStorage.getItem(STORAGE_KEY)
+    if (savedSelection) {
+      try {
+        const parsedSelection = JSON.parse(savedSelection)
+        if (Array.isArray(parsedSelection)) {
+          selected.value = new Set(parsedSelection)
+        }
+      } catch (error) {
+        console.error('Erro ao carregar interesses do localStorage:', error)
+        localStorage.removeItem(STORAGE_KEY) // Limpa dados corrompidos
+      }
+    }
     fetchInterests()
   })
 
   const showModal = ref(false)
-  function finish () {
-  // Ação de concluir ficará disponível para integração futura
+  async function finish () {
+    isFinishing.value = true
+    try {
+      const selectedNames = Array.from(selected.value)
+      if (selectedNames.length > 0) {
+        const selectedIds = allChips.value
+          .filter(interest => selectedNames.includes(interest.name.toUpperCase()))
+          .map(interest => interest.id)
+
+        // Envia todos os IDs para a API de uma só vez
+        if (selectedIds.length > 0) {
+          await saveUserInterests(selectedIds)
+        }
+      }
+
+      // Após o sucesso, limpa o localStorage e navega
+      localStorage.removeItem(STORAGE_KEY)
+      router.push({ name: '/public/AddFriends' })
+    } catch (error) {
+      console.error('Erro ao salvar interesses:', error)
+    } finally {
+      isFinishing.value = false
+    }
   }
   function closeModal () {
     showModal.value = false
@@ -264,14 +315,15 @@
           :class="chipClasses(chip)"
           :title="chip.name"
           type="button"
-          @click="addFromSuggestion(chip)"
+          @click="toggleChip(chip.name)"
         >
           {{ chip.name }}
         </button>
       </div>
 
-      <button class="btn-primary" type="button" @click="finish">
-        {{ t('interest.finishButton') }}
+      <button class="btn-primary" :disabled="isFinishing || selected.size === 0" type="button" @click="finish">
+        <span v-if="isFinishing">Salvando...</span>
+        <span v-else>{{ t('interest.finishButton') }}</span>
       </button>
 
       <!-- Modal -->
