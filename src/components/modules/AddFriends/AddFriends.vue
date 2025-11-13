@@ -6,15 +6,17 @@
 // - svgIcons: set de ícones (ver src/utils/svgSet.ts)
   import { computed, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import { requestFollowUser, requestUnFollowUser } from '@/api/follows'
   import { getUserRecomendations } from '@/api/users'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import router from '@/router'
   import { svgIcons } from '@/utils/svgSet'
 
   // i18n
   const { t } = useI18n()
 
   // Modelo de dados do usuário listado para convite
-  interface User {
+  export interface User {
     id: number
     name: string
     profileImage: string
@@ -27,23 +29,31 @@
 
   // Fonte de dados mockada (apenas para UI)
   const users = ref<User[]>([])
-  const selectedUsers = ref<User[]>([])
+  // const selectedUsers = ref<User[]>([])
+
+  async function followUser (user: User) {
+    await requestFollowUser(user)
+  }
+
+  async function unFollowUser (user: User) {
+    await requestUnFollowUser(user)
+  }
 
   async function requestUserRecomendations () {
     const userToFollowRecomendations = await getUserRecomendations()
-    selectedUsers.value = userToFollowRecomendations.data.data.users.map((user: User) => {
-      if (user.isFollowing) {
-        return {
-          ...user,
-          currentStatus: 'sent',
-        }
-      }
+    // selectedUsers.value = userToFollowRecomendations.data.data.users.map((user: User) => {
+    //   if (user.isFollowing) {
+    //     return {
+    //       ...user,
+    //       currentStatus: 'sent',
+    //     }
+    //   }
 
-      return {
-        ...user,
-        currentStatus: 'pending',
-      }
-    })
+    //   return {
+    //     ...user,
+    //     currentStatus: 'pending',
+    //   }
+    // })
 
     users.value = userToFollowRecomendations.data.data.users
   }
@@ -58,26 +68,35 @@
 
   // Alterna status do convite (pending <-> sent)
   function toggleInvite (user: User) {
-    selectedUsers.value = selectedUsers.value.map(u => {
-      if (u.id === user.id) {
-        return {
-          ...u,
-          isFollowing: !u.isFollowing,
-          currentStatus: u.currentStatus === 'pending' ? 'sent' : 'pending',
-        }
-      }
-      return u
-    })
+    if (user.isFollowing) {
+      unFollowUser(user)
+    } else {
+      followUser(user)
+    }
+    // selectedUsers.value = selectedUsers.value.map(u => {
+    //   if (u.id === user.id) {
+    //     return {
+    //       ...u,
+    //       isFollowing: !u.isFollowing,
+    //       currentStatus: u.currentStatus === 'pending' ? 'sent' : 'pending',
+    //     }
+    //   }
+    //   return u
+    // })
     user.isFollowing = !user.isFollowing
+  }
+
+  function finishSelection () {
+    router.push('/private/Interest')
   }
 
   onMounted(() => {
     requestUserRecomendations()
   })
 
-  watch(selectedUsers, (newSelectedUsers: User[]) => {
-    console.log('Selected users updated:', newSelectedUsers)
-  })
+  // watch(selectedUsers, (newSelectedUsers: User[]) => {
+  //   console.log('Selected users updated:', newSelectedUsers)
+  // })
 
   // watch(users, (newSelectedUsers: User[]) => {
   //   console.log('users ====>', newSelectedUsers)
@@ -134,8 +153,12 @@
         </li>
       </ul>
 
-      <button class="btn-primary">
+      <button class="btn-primary" @click="finishSelection">
         {{ t('addFriends.finishButton') }}
+      </button>
+
+      <button class="btn-primary mt-3" @click="finishSelection">
+        {{ t('global.skipStepByNow') }}
       </button>
     </template>
 
