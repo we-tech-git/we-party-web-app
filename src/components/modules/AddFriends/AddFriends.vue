@@ -4,16 +4,17 @@
 // - vue-i18n: traduções (t)
 // - AuthLayout: layout base com seção de marca (direita) e slot de formulário (esquerda)
 // - svgIcons: set de ícones (ver src/utils/svgSet.ts)
-  import { computed, ref } from 'vue'
+  import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import { useRouter } from 'vue-router'
   import { requestFollowUser, requestUnFollowUser } from '@/api/follows'
   import { getUserRecomendations } from '@/api/users'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-  import router from '@/router'
   import { svgIcons } from '@/utils/svgSet'
 
   // i18n
   const { t } = useI18n()
+  const router = useRouter()
 
   // Modelo de dados do usuário listado para convite
   export interface User {
@@ -90,6 +91,10 @@
     router.push('/private/Interest')
   }
 
+  function skipStep () {
+    router.push('/private/Interest')
+  }
+
   onMounted(() => {
     requestUserRecomendations()
   })
@@ -157,9 +162,9 @@
         {{ t('addFriends.finishButton') }}
       </button>
 
-      <button class="btn-primary mt-3" @click="finishSelection">
-        {{ t('global.skipStepByNow') }}
-      </button>
+      <div class="skip-container">
+        <a class="skip-link" href="#" @click.prevent="skipStep"><span>Pular esta etapa por enquanto</span></a>
+      </div>
     </template>
 
     <template #brand-content>
@@ -331,6 +336,29 @@
 .btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(252, 149, 89, 0.4);
+}
+
+.skip-container {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.skip-link {
+  font-weight: 600;
+  color: #f97316;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.skip-link:hover {
+  text-decoration: underline;
+}
+
+.skip-link:hover span {
+  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 /* SEÇÃO DE INFORMAÇÕES (DIREITA) -  */

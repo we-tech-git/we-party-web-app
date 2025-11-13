@@ -18,6 +18,10 @@ export function addUserInterest (interestId: string) {
   return callApi('POST', '/users/interest', body, true)
 }
 
+export function removeUserInterest (interestId: string) {
+  return callApi('DELETE', `/users/interest/${interestId}`, '', true)
+}
+
 /**
  * Salva uma lista de interesses para o usuário logado.
  * Substitui os interesses existentes do usuário.

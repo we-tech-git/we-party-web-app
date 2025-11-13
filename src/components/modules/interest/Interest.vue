@@ -7,21 +7,27 @@
 <script setup lang="ts">
   import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
-  import { callApi } from '@/api'
+  import { useRouter } from 'vue-router'
+  import { getInterests, saveUserInterests } from '@/api/interest'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import { svgIcons } from '@/utils/svgSet'
 
   const { t } = useI18n()
+  const router = useRouter()
+
+  const STORAGE_KEY = 'weparty_selected_interests'
 
   interface IInterest {
     name: string
     createdBy: string
     id: string
+    isSelected: boolean
   }
 
   const allChips = ref<IInterest[]>([])
   const selected = ref<Set<string>>(new Set())
   const isLoading = ref(false)
+  const isFinishing = ref(false)
 
   const query = ref('')
   const baseSuggestions = ref<string[]>(['Dance hall', 'Feira do Livro', 'Eventos de SP'])
@@ -62,6 +68,7 @@
           id: String(item.id ?? item.uuid ?? item.name ?? crypto.randomUUID()),
           name: String(item.name ?? item.label ?? ''),
           createdBy: item.createdBy ?? '',
+          isSelected: false,
         })).filter(chip => chip.name.trim().length > 0)
       }
     } catch (error) {
@@ -73,23 +80,29 @@
   }
 
   async function addFromSuggestion (selectedInterest: IInterest) {
-    const alreadySelected = selected.value.has(selectedInterest.name.toUpperCase())
-
-    const body = {
-      interestId: selectedInterest.id,
+    if (selectedInterest.isSelected) {
+      removeUserInterest(selectedInterest.id)
+    } else {
+      addUserInterest(selectedInterest.id)
     }
+    toggleChip(selectedInterest.name)
 
-    if (alreadySelected) {
-      toggleChip(selectedInterest.name)
-      return
-    }
+  // const alreadySelected = selected.value.has(selectedInterest.name.toUpperCase())
+  // const body = {
+  //   interestId: selectedInterest.id,
+  // }
 
-    try {
-      await callApi('POST', '/users/interest', body, true)
-      toggleChip(selectedInterest.name)
-    } catch (error) {
-      console.error('Erro ao adicionar interesse:', error)
-    }
+  // if (alreadySelected) {
+  //   toggleChip(selectedInterest.name)
+  //   return
+  // }
+
+  // try {
+  //   await callApi('POST', '/users/interest', body, true)
+  //   toggleChip(selectedInterest.name)
+  // } catch (error) {
+  //   console.error('Erro ao adicionar interesse:', error)
+  // }
   }
 
   onMounted(() => {
@@ -98,7 +111,23 @@
 
   const showModal = ref(false)
   function finish () {
-  // Ação de concluir ficará disponível para integração futura
+    isFinishing.value = true
+    const interestsToSave = Array.from(selected.value).map(name => {
+      const chip = allChips.value.find(c => c.name.toUpperCase() === name)
+      return chip ? { id: chip.id, name: chip.name } : null
+    }).filter(Boolean)
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(interestsToSave))
+      router.push({ name: '/private/AddFriends' })
+    } catch (error) {
+      console.error('Erro ao salvar interesses:', error)
+    } finally {
+      isFinishing.value = false
+    }
+  }
+  function skipStep () {
+    router.push('/private/feed')
   }
   function closeModal () {
     showModal.value = false
@@ -169,9 +198,13 @@
         </button>
       </div>
 
-      <button class="finish-btn" type="button" @click="finish">
-        {{ t('interest.finishButton') }}
+      <button class="btn-primary" :disabled="isFinishing || selected.size === 0" type="button" @click="finish">
+        <span v-if="isFinishing">Salvando...</span>
+        <span v-else>{{ t('interest.finishButton') }}</span>
       </button>
+      <div class="skip-container">
+        <a class="skip-link" href="#" @click.prevent="skipStep"><span>Pular esta etapa por enquanto</span></a>
+      </div>
 
       <!-- Modal -->
       <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
@@ -351,7 +384,7 @@
 /* ===============================
    BOTÃO CONCLUIR (GRADIENTE)
 ================================ */
-.finish-btn {
+.btn-primary {
   width: 100%;
   padding: 16px;
   border-radius: 10px;
@@ -362,9 +395,32 @@
   box-shadow: 0 10px 24px rgba(255, 95, 166, .25);
 }
 
-.finish-btn:hover {
+.btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 28px rgba(255, 95, 166, .3);
+}
+
+.skip-container {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.skip-link {
+  font-weight: 600;
+  color: #f97316;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.skip-link:hover {
+  text-decoration: underline;
+}
+
+.skip-link:hover span {
+  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 /* ===============================
@@ -512,7 +568,7 @@
     font-size: 0.875rem;
   }
 
-  .finish-btn {
+  .btn-primary {
     padding: 14px;
   }
 }
