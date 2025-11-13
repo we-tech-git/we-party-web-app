@@ -1,4 +1,7 @@
 {
+  "global": {
+    "skipStepByNow": "Skip this step for now"
+  },
   "login": {
     "title": "Sign in",
     "subtitle": "The perfect {0} recommendation for your {1}",

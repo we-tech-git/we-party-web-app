@@ -4,59 +4,103 @@
 // - vue-i18n: traduções (t)
 // - AuthLayout: layout base com seção de marca (direita) e slot de formulário (esquerda)
 // - svgIcons: set de ícones (ver src/utils/svgSet.ts)
-import { computed, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { getUserRecomendations } from '@/api/users'
-import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-import { svgIcons } from '@/utils/svgSet'
+  import { computed, ref } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import { requestFollowUser, requestUnFollowUser } from '@/api/follows'
+  import { getUserRecomendations } from '@/api/users'
+  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import router from '@/router'
+  import { svgIcons } from '@/utils/svgSet'
 
-// i18n
-const { t } = useI18n()
+  // i18n
+  const { t } = useI18n()
 
-// Modelo de dados do usuário listado para convite
-interface User {
-  id: number
-  name: string
-  avatar: string
-  status: 'pending' | 'sent'
-}
+  // Modelo de dados do usuário listado para convite
+  export interface User {
+    id: number
+    name: string
+    profileImage: string
+    isFollowing: boolean
+    currentStatus: string
+  }
 
-// Estado reativo
-const searchQuery = ref('')
+  // Estado reativo
+  const searchQuery = ref('')
 
-// Fonte de dados mockada (apenas para UI)
-const users = ref<User[]>([])
+  // Fonte de dados mockada (apenas para UI)
+  const users = ref<User[]>([])
+  // const selectedUsers = ref<User[]>([])
 
-// const users = ref<User[]>([
-//   { id: 1, name: 'Usuário novo', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', status: 'pending' },
-//   { id: 2, name: 'Pedro Santos', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', status: 'sent' },
-//   { id: 3, name: 'Pedro Lopes', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', status: 'pending' },
-//   { id: 4, name: 'Paulo Farias', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026707d', status: 'sent' },
-//   { id: 5, name: 'Alisson Silva', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', status: 'sent' },
-// ])
+  async function followUser (user: User) {
+    await requestFollowUser(user)
+  }
 
-async function requestUserRecomendations() {
-  const userToFollowRecomendations = await getUserRecomendations()
-  console.log(userToFollowRecomendations.data.data.users)
-  users.value = userToFollowRecomendations.data.data.users
-}
+  async function unFollowUser (user: User) {
+    await requestUnFollowUser(user)
+  }
 
-// Filtro de usuários por nome (case-insensitive)
-const filteredUsers = computed(() => {
-  if (!searchQuery.value) return users.value
-  return users.value.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
-  )
-})
+  async function requestUserRecomendations () {
+    const userToFollowRecomendations = await getUserRecomendations()
+    // selectedUsers.value = userToFollowRecomendations.data.data.users.map((user: User) => {
+    //   if (user.isFollowing) {
+    //     return {
+    //       ...user,
+    //       currentStatus: 'sent',
+    //     }
+    //   }
 
-// Alterna status do convite (pending <-> sent)
-function toggleInvite(user: User) {
-  user.status = user.status === 'pending' ? 'sent' : 'pending'
-}
+    //   return {
+    //     ...user,
+    //     currentStatus: 'pending',
+    //   }
+    // })
 
-onMounted(() => {
-  requestUserRecomendations()
-})
+    users.value = userToFollowRecomendations.data.data.users
+  }
+
+  // Filtro de usuários por nome (case-insensitive)
+  const filteredUsers = computed(() => {
+    if (!searchQuery.value) return users.value
+    return users.value.filter(user =>
+      user.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
+    )
+  })
+
+  // Alterna status do convite (pending <-> sent)
+  function toggleInvite (user: User) {
+    if (user.isFollowing) {
+      unFollowUser(user)
+    } else {
+      followUser(user)
+    }
+    // selectedUsers.value = selectedUsers.value.map(u => {
+    //   if (u.id === user.id) {
+    //     return {
+    //       ...u,
+    //       isFollowing: !u.isFollowing,
+    //       currentStatus: u.currentStatus === 'pending' ? 'sent' : 'pending',
+    //     }
+    //   }
+    //   return u
+    // })
+    user.isFollowing = !user.isFollowing
+  }
+
+  function finishSelection () {
+    router.push('/private/Interest')
+  }
+
+  onMounted(() => {
+    requestUserRecomendations()
+  })
+
+  // watch(selectedUsers, (newSelectedUsers: User[]) => {
+  //   console.log('Selected users updated:', newSelectedUsers)
+  // })
+
+  // watch(users, (newSelectedUsers: User[]) => {
+  //   console.log('users ====>', newSelectedUsers)
+  // })
 
 </script>
 
@@ -70,35 +114,51 @@ onMounted(() => {
       <p class="auth-subtitle">
         {{ t('addFriends.subtitle') }}
       </p>
-      <div class="search-input-wrapper">
+      <div class="search-input-wrapper il-theme--pink">
         <!-- searchIcon
              Origem: ícone de busca (ver svgSet.ts -> searchIcon)
              Uso: campo de busca desta tela
         -->
-        <svg v-if="svgIcons.searchIcon" class="search-input-icon" fill="currentColor"
-          :viewBox="svgIcons.searchIcon.viewBox">
-          <path v-for="(path, index) in svgIcons.searchIcon.paths" :key="index" :clip-rule="path.clipRule" :d="path.d"
-            :fill-rule="path.fillRule" />
+        <svg
+          v-if="svgIcons.searchIcon"
+          class="search-input-icon"
+          fill="currentColor"
+          :viewBox="svgIcons.searchIcon.viewBox"
+        >
+          <path
+            v-for="(path, index) in svgIcons.searchIcon.paths"
+            :key="index"
+            :clip-rule="path.clipRule"
+            :d="path.d"
+            :fill-rule="path.fillRule"
+          />
         </svg>
         <input v-model="searchQuery" class="search-input" :placeholder="t('addFriends.searchPlaceholder')" type="text">
       </div>
 
       <ul class="user-list">
         <li v-for="user in filteredUsers" :key="user.id" class="user-item">
-          <img :alt="user.name" class="avatar" :src="user.avatar">
+          <img :alt="user.name" class="avatar" :src="user.profileImage">
           <span class="name">{{ user.name }}</span>
-          <button :class="['invite-btn', user.status === 'sent' ? 'sent' : 'send']" type="button"
-            @click="toggleInvite(user)">
+          <button
+            :class="['invite-btn', user.isFollowing ? 'sent' : 'send']"
+            type="button"
+            @click="toggleInvite(user)"
+          >
             <svg v-if="svgIcons.planeIcon" class="plane-icon" fill="currentColor" :viewBox="svgIcons.planeIcon.viewBox">
               <path v-for="(path, index) in svgIcons.planeIcon.paths" :key="index" :d="path.d" />
             </svg>
-            {{ user.status === 'pending' ? t('addFriends.send') : t('addFriends.sent') }}
+            {{ user.isFollowing ? t('addFriends.sent') : t('addFriends.send') }}
           </button>
         </li>
       </ul>
 
-      <button class="btn-primary">
+      <button class="btn-primary" @click="finishSelection">
         {{ t('addFriends.finishButton') }}
+      </button>
+
+      <button class="btn-primary mt-3" @click="finishSelection">
+        {{ t('global.skipStepByNow') }}
       </button>
     </template>
 
@@ -122,6 +182,22 @@ onMounted(() => {
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&family=Poppins:wght@400;500;600;700&display=swap');
+
+/* Tema rosa para InputLabel dentro desta página */
+.il-theme--pink {
+  --il-border-neutral: #F0F0F0;
+  /* neutra */
+  --il-border-filled: #FBC0D6;
+  /* preenchido rosa claro */
+  --il-border-focus: #F978A3;
+  /* foco rosa */
+  --il-label-active: #F7A4C0;
+  /* label ativo rosa suave */
+  --il-text: #072961;
+  /* texto */
+  --il-focus-halo: rgba(249, 120, 163, 0.20);
+  /* halo rosa */
+}
 
 .auth-title {
   font-size: 2.25rem;
@@ -164,8 +240,7 @@ onMounted(() => {
 }
 
 .search-input:focus {
-  border-color: #f97316;
-  /* Laranja */
+  border-color: #F978A3;
 }
 
 .user-list {
