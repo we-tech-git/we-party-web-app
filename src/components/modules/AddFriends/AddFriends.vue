@@ -17,8 +17,9 @@
   interface User {
     id: number
     name: string
-    avatar: string
-    status: 'pending' | 'sent'
+    profileImage: string
+    isFollowing: boolean
+    currentStatus: string
   }
 
   // Estado reativo
@@ -26,18 +27,24 @@
 
   // Fonte de dados mockada (apenas para UI)
   const users = ref<User[]>([])
-
-  // const users = ref<User[]>([
-  //   { id: 1, name: 'Usuário novo', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', status: 'pending' },
-  //   { id: 2, name: 'Pedro Santos', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', status: 'sent' },
-  //   { id: 3, name: 'Pedro Lopes', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', status: 'pending' },
-  //   { id: 4, name: 'Paulo Farias', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026707d', status: 'sent' },
-  //   { id: 5, name: 'Alisson Silva', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', status: 'sent' },
-  // ])
+  const selectedUsers = ref<User[]>([])
 
   async function requestUserRecomendations () {
     const userToFollowRecomendations = await getUserRecomendations()
-    console.log(userToFollowRecomendations.data.data.users)
+    selectedUsers.value = userToFollowRecomendations.data.data.users.map((user: User) => {
+      if (user.isFollowing) {
+        return {
+          ...user,
+          currentStatus: 'sent',
+        }
+      }
+
+      return {
+        ...user,
+        currentStatus: 'pending',
+      }
+    })
+
     users.value = userToFollowRecomendations.data.data.users
   }
 
@@ -51,12 +58,30 @@
 
   // Alterna status do convite (pending <-> sent)
   function toggleInvite (user: User) {
-    user.status = user.status === 'pending' ? 'sent' : 'pending'
+    selectedUsers.value = selectedUsers.value.map(u => {
+      if (u.id === user.id) {
+        return {
+          ...u,
+          isFollowing: !u.isFollowing,
+          currentStatus: u.currentStatus === 'pending' ? 'sent' : 'pending',
+        }
+      }
+      return u
+    })
+    user.isFollowing = !user.isFollowing
   }
 
   onMounted(() => {
     requestUserRecomendations()
   })
+
+  watch(selectedUsers, (newSelectedUsers: User[]) => {
+    console.log('Selected users updated:', newSelectedUsers)
+  })
+
+  // watch(users, (newSelectedUsers: User[]) => {
+  //   console.log('users ====>', newSelectedUsers)
+  // })
 
 </script>
 
@@ -94,17 +119,17 @@
 
       <ul class="user-list">
         <li v-for="user in filteredUsers" :key="user.id" class="user-item">
-          <img :alt="user.name" class="avatar" :src="user.avatar">
+          <img :alt="user.name" class="avatar" :src="user.profileImage">
           <span class="name">{{ user.name }}</span>
           <button
-            :class="['invite-btn', user.status === 'sent' ? 'sent' : 'send']"
+            :class="['invite-btn', user.isFollowing ? 'sent' : 'send']"
             type="button"
             @click="toggleInvite(user)"
           >
             <svg v-if="svgIcons.planeIcon" class="plane-icon" fill="currentColor" :viewBox="svgIcons.planeIcon.viewBox">
               <path v-for="(path, index) in svgIcons.planeIcon.paths" :key="index" :d="path.d" />
             </svg>
-            {{ user.status === 'pending' ? t('addFriends.send') : t('addFriends.sent') }}
+            {{ user.isFollowing ? t('addFriends.sent') : t('addFriends.send') }}
           </button>
         </li>
       </ul>
