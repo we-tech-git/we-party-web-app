@@ -5,7 +5,7 @@
   import confetti from 'canvas-confetti'
   import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
-  import { createUser, deleteUser } from '@/api/users'
+  import { createUser } from '@/api/users'
   import { STORAGE_KEYS } from '@/common/storage'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
@@ -287,12 +287,6 @@
       senha: testData.password,
     })
   })
-
-  function deleteUserTest (e: any) {
-    e.preventDefault()
-    const resp = deleteUser()
-    console.log('deleteUserTest =====>', resp)
-  }
 </script>
 
 <template>
@@ -329,8 +323,7 @@
       </div>
       <p class="subtitle">{{ $t('signup.subtitle') }}</p>
       <form @submit.prevent="validateForm">
-        <div class="inputs-container il-theme--pink">
-          <!-- <button @click="deleteUserTest">delete user test</button> -->
+        <div class="inputs-container">
           <InputLabel
             id="fullName"
             v-model="fullName"
@@ -461,22 +454,6 @@
 
 <style scoped>
 /* ----- Estilos específicos do Signup ----- */
-
-/* Tema rosa para InputLabel dentro desta página */
-.il-theme--pink {
-  --il-border-neutral: #F0F0F0;
-  /* neutra */
-  --il-border-filled: #FBC0D6;
-  /* preenchido rosa claro */
-  --il-border-focus: #F978A3;
-  /* foco rosa */
-  --il-label-active: #F7A4C0;
-  /* label ativo rosa suave */
-  --il-text: #072961;
-  /* texto */
-  --il-focus-halo: rgba(249, 120, 163, 0.20);
-  /* halo rosa */
-}
 
 .mobile-brand-title {
   display: none;
@@ -646,11 +623,16 @@ h1 {
   font-size: 0.875rem;
   color: #6b7280;
   margin-top: 24px;
+  margin-bottom: 24px;
+  /* Adicionado espaçamento abaixo */
+  text-align: center;
+  /* Centralizado para consistência */
 }
 
 .login-link-text a {
   font-weight: 600;
-  color: #F978A3;
+  color: #f97316;
+  /* Alterado para laranja */
   text-decoration: none;
 }
 

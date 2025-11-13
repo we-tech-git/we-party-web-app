@@ -20,45 +20,42 @@
   interface IInterest {
     id: string
     name: string
+    isDefault?: boolean
     createdBy?: string
     origin?: InterestOrigin
   }
 
-  const FALLBACK_INTERESTS: IInterest[] = [
-    { id: 'static-palestra', name: 'Palestra', origin: 'static' },
-    { id: 'static-amapiano', name: 'Amapiano', origin: 'static' },
-    { id: 'static-mandelao', name: 'Mandelão', origin: 'static' },
-    { id: 'static-reggae', name: 'Reggae', origin: 'static' },
-    { id: 'static-anos-90', name: 'Anos 90', origin: 'static' },
-    { id: 'static-anos-80', name: 'Anos 80', origin: 'static' },
-    { id: 'static-comunitario', name: 'Comunitário', origin: 'static' },
-    { id: 'static-pop', name: 'Pop', origin: 'static' },
-    { id: 'static-vintage', name: 'Vintage', origin: 'static' },
-    { id: 'static-sertanejo', name: 'Sertanejo', origin: 'static' },
-    { id: 'static-festival', name: 'Festival', origin: 'static' },
-    { id: 'static-standup', name: 'Stand-up', origin: 'static' },
-  ]
+  /* const FALLBACK_INTERESTS: IInterest[] = [
+{ id: 'static-palestra', name: 'Palestra', origin: 'static' },
+{ id: 'static-amapiano', name: 'Amapiano', origin: 'static' },
+{ id: 'static-mandelao', name: 'Mandelão', origin: 'static' },
+{ id: 'static-reggae', name: 'Reggae', origin: 'static' },
+{ id: 'static-anos-90', name: 'Anos 90', origin: 'static' },
+{ id: 'static-anos-80', name: 'Anos 80', origin: 'static' },
+{ id: 'static-comunitario', name: 'Comunitário', origin: 'static' },
+{ id: 'static-pop', name: 'Pop', origin: 'static' },
+{ id: 'static-vintage', name: 'Vintage', origin: 'static' },
+{ id: 'static-sertanejo', name: 'Sertanejo', origin: 'static' },
+{ id: 'static-festival', name: 'Festival', origin: 'static' },
+{ id: 'static-standup', name: 'Stand-up', origin: 'static' },
+] */
 
   const allChips = ref<IInterest[]>([])
   const selected = ref<Set<string>>(new Set())
   const isLoading = ref(false)
   const isFinishing = ref(false)
 
-  const defaultSelectedLabels = new Set(['PALESTRA', 'MANDELÃO'])
-
   const query = ref('')
-  const baseSuggestions = ref<string[]>([
-    ...FALLBACK_INTERESTS.map(item => item.name),
-    'Dance hall',
-    'Feira do Livro',
-    'Eventos de SP',
-  ])
 
   const showDropdown = computed(() => query.value.trim().length > 0)
   const filteredSuggestions = computed(() => {
     const q = query.value.trim().toLowerCase()
     const inSelected = (s: string) => selected.value.has(s.toUpperCase())
-    const list = baseSuggestions.value.filter(s => s.toLowerCase().includes(q) && !inSelected(s))
+
+    const list = allChips.value
+      .map(chip => chip.name)
+      .filter(name => name.toLowerCase().includes(q) && !inSelected(name))
+
     if (q && !list.some(s => s.toLowerCase() === q) && !inSelected(query.value)) {
       return [query.value, ...list]
     }
@@ -94,31 +91,33 @@
       const normalized = payload.map((item: any) => ({
         id: String(item.id ?? item.uuid ?? item.name ?? crypto.randomUUID()),
         name: String(item.name ?? item.label ?? ''),
+        isDefault: !!item.isDefault,
         createdBy: item.createdBy ?? '',
         origin: 'api' as InterestOrigin,
       })).filter(chip => chip.name.trim().length > 0)
 
-      allChips.value = normalized.length > 0 ? normalized : [...FALLBACK_INTERESTS]
+      allChips.value = normalized // normalized.length > 0 ? normalized : [...FALLBACK_INTERESTS]
       applyDefaultSelection()
     } catch (error: any) {
       // Se for um erro de autenticação em modo de desenvolvimento, carrega dados de teste.
-      if (error.response?.status === 401 && import.meta.env.DEV) {
-        console.warn('MODO DEV: Carregando dados de interesses de teste.')
-        const mockInterests = [
-          { id: 'mock-1', name: 'Música Pop', origin: 'api' },
-          { id: 'mock-2', name: 'Cinema', origin: 'api' },
-          { id: 'mock-3', name: 'Viagens', origin: 'api' },
-          { id: 'mock-4', name: 'Games', origin: 'api' },
-          { id: 'mock-5', name: 'Culinária', origin: 'api' },
-          { id: 'mock-6', name: 'Esportes', origin: 'api' },
-        ]
-        allChips.value = mockInterests
-      } else {
-        // Em produção, o erro de redirecionamento continua funcionando.
-        console.error('Erro ao buscar interesses:', error)
-        allChips.value = [...FALLBACK_INTERESTS]
-        applyDefaultSelection()
-      }
+      /* if (error.response?.status === 401 && import.meta.env.DEV) {
+    console.warn('MODO DEV: Carregando dados de interesses de teste.')
+    const mockInterests: IInterest[] = [
+      { id: 'mock-1', name: 'Música Pop', origin: 'api' },
+      { id: 'mock-2', name: 'Cinema', origin: 'api' },
+      { id: 'mock-3', name: 'Viagens', origin: 'api' },
+      { id: 'mock-4', name: 'Games', origin: 'api' },
+      { id: 'mock-5', name: 'Culinária', origin: 'api' },
+      { id: 'mock-6', name: 'Esportes', origin: 'api' },
+    ]
+    allChips.value = mockInterests
+  } else {
+  */
+      // Em produção, o erro de redirecionamento continua funcionando.
+      console.error('Erro ao buscar interesses:', error)
+    // allChips.value = [...FALLBACK_INTERESTS]
+    // applyDefaultSelection()
+    // }
     } finally {
       isLoading.value = false
     }
@@ -137,7 +136,7 @@
       return
     }
 
-    const defaults = allChips.value.filter(chip => defaultSelectedLabels.has(chip.name.toUpperCase()))
+    const defaults = allChips.value.filter(chip => chip.isDefault)
     if (defaults.length === 0) {
       return
     }
@@ -178,10 +177,6 @@
       allChips.value = [personalChip, ...allChips.value]
       toggleChip(personalChip.name)
       showModal.value = true
-      baseSuggestions.value = Array.from(new Set([
-        personalChip.name,
-        ...baseSuggestions.value,
-      ]))
     }
 
     query.value = ''
@@ -222,7 +217,7 @@
 
       // Após o sucesso, limpa o localStorage e navega
       localStorage.removeItem(STORAGE_KEY)
-      router.push({ name: '/public/AddFriends' })
+      router.push({ name: '/private/AddFriends' })
     } catch (error) {
       console.error('Erro ao salvar interesses:', error)
     } finally {
@@ -395,8 +390,8 @@
 }
 
 .search-input:focus {
-  border-color: #c7c9cf;
-  box-shadow: 0 6px 10px rgba(0, 0, 0, .06);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
 }
 
 .search-input-icon {
@@ -478,7 +473,7 @@
   height: 54px;
   padding: 0 24px;
   border-radius: 16px;
-  border: 2px solid transparent;
+  border: 0.60px solid transparent;
   color: #111827;
   background:
     linear-gradient(#fff, #fff) padding-box,

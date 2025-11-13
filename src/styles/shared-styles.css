@@ -103,3 +103,13 @@
   --il-label-active: #F472B6;  /* Rosa médio para label ativo */
   --il-focus-halo: rgba(244, 114, 182, 0.2); /* Sombra de foco rosa */
 }
+
+/* Sobrescreve o botão primário para ser rosa dentro do tema rosa */
+.il-theme--pink .btn-primary {
+  background: linear-gradient(90deg, #F978A3 0%, #F472B6 100%);
+  box-shadow: 0 10px 24px rgba(249, 120, 163, .25);
+}
+
+.il-theme--pink .btn-primary:hover {
+  box-shadow: 0 12px 28px rgba(249, 120, 163, .3);
+}

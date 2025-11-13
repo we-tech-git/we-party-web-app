@@ -4,59 +4,59 @@
 // - vue-i18n: traduções (t)
 // - AuthLayout: layout base com seção de marca (direita) e slot de formulário (esquerda)
 // - svgIcons: set de ícones (ver src/utils/svgSet.ts)
-  import { computed, ref } from 'vue'
-  import { useI18n } from 'vue-i18n'
-  import { getUserRecomendations } from '@/api/users'
-  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-  import { svgIcons } from '@/utils/svgSet'
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { getUserRecomendations } from '@/api/users'
+import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+import { svgIcons } from '@/utils/svgSet'
 
-  // i18n
-  const { t } = useI18n()
+// i18n
+const { t } = useI18n()
 
-  // Modelo de dados do usuário listado para convite
-  interface User {
-    id: number
-    name: string
-    avatar: string
-    status: 'pending' | 'sent'
-  }
+// Modelo de dados do usuário listado para convite
+interface User {
+  id: number
+  name: string
+  avatar: string
+  status: 'pending' | 'sent'
+}
 
-  // Estado reativo
-  const searchQuery = ref('')
+// Estado reativo
+const searchQuery = ref('')
 
-  // Fonte de dados mockada (apenas para UI)
-  const users = ref<User[]>([])
+// Fonte de dados mockada (apenas para UI)
+const users = ref<User[]>([])
 
-  // const users = ref<User[]>([
-  //   { id: 1, name: 'Usuário novo', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', status: 'pending' },
-  //   { id: 2, name: 'Pedro Santos', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', status: 'sent' },
-  //   { id: 3, name: 'Pedro Lopes', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', status: 'pending' },
-  //   { id: 4, name: 'Paulo Farias', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026707d', status: 'sent' },
-  //   { id: 5, name: 'Alisson Silva', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', status: 'sent' },
-  // ])
+// const users = ref<User[]>([
+//   { id: 1, name: 'Usuário novo', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', status: 'pending' },
+//   { id: 2, name: 'Pedro Santos', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', status: 'sent' },
+//   { id: 3, name: 'Pedro Lopes', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', status: 'pending' },
+//   { id: 4, name: 'Paulo Farias', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026707d', status: 'sent' },
+//   { id: 5, name: 'Alisson Silva', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', status: 'sent' },
+// ])
 
-  async function requestUserRecomendations () {
-    const userToFollowRecomendations = await getUserRecomendations()
-    console.log(userToFollowRecomendations.data.data.users)
-    users.value = userToFollowRecomendations.data.data.users
-  }
+async function requestUserRecomendations() {
+  const userToFollowRecomendations = await getUserRecomendations()
+  console.log(userToFollowRecomendations.data.data.users)
+  users.value = userToFollowRecomendations.data.data.users
+}
 
-  // Filtro de usuários por nome (case-insensitive)
-  const filteredUsers = computed(() => {
-    if (!searchQuery.value) return users.value
-    return users.value.filter(user =>
-      user.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
-    )
-  })
+// Filtro de usuários por nome (case-insensitive)
+const filteredUsers = computed(() => {
+  if (!searchQuery.value) return users.value
+  return users.value.filter(user =>
+    user.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
+  )
+})
 
-  // Alterna status do convite (pending <-> sent)
-  function toggleInvite (user: User) {
-    user.status = user.status === 'pending' ? 'sent' : 'pending'
-  }
+// Alterna status do convite (pending <-> sent)
+function toggleInvite(user: User) {
+  user.status = user.status === 'pending' ? 'sent' : 'pending'
+}
 
-  onMounted(() => {
-    requestUserRecomendations()
-  })
+onMounted(() => {
+  requestUserRecomendations()
+})
 
 </script>
 
@@ -70,24 +70,15 @@
       <p class="auth-subtitle">
         {{ t('addFriends.subtitle') }}
       </p>
-      <div class="search-input-wrapper il-theme--pink">
+      <div class="search-input-wrapper">
         <!-- searchIcon
              Origem: ícone de busca (ver svgSet.ts -> searchIcon)
              Uso: campo de busca desta tela
         -->
-        <svg
-          v-if="svgIcons.searchIcon"
-          class="search-input-icon"
-          fill="currentColor"
-          :viewBox="svgIcons.searchIcon.viewBox"
-        >
-          <path
-            v-for="(path, index) in svgIcons.searchIcon.paths"
-            :key="index"
-            :clip-rule="path.clipRule"
-            :d="path.d"
-            :fill-rule="path.fillRule"
-          />
+        <svg v-if="svgIcons.searchIcon" class="search-input-icon" fill="currentColor"
+          :viewBox="svgIcons.searchIcon.viewBox">
+          <path v-for="(path, index) in svgIcons.searchIcon.paths" :key="index" :clip-rule="path.clipRule" :d="path.d"
+            :fill-rule="path.fillRule" />
         </svg>
         <input v-model="searchQuery" class="search-input" :placeholder="t('addFriends.searchPlaceholder')" type="text">
       </div>
@@ -96,11 +87,8 @@
         <li v-for="user in filteredUsers" :key="user.id" class="user-item">
           <img :alt="user.name" class="avatar" :src="user.avatar">
           <span class="name">{{ user.name }}</span>
-          <button
-            :class="['invite-btn', user.status === 'sent' ? 'sent' : 'send']"
-            type="button"
-            @click="toggleInvite(user)"
-          >
+          <button :class="['invite-btn', user.status === 'sent' ? 'sent' : 'send']" type="button"
+            @click="toggleInvite(user)">
             <svg v-if="svgIcons.planeIcon" class="plane-icon" fill="currentColor" :viewBox="svgIcons.planeIcon.viewBox">
               <path v-for="(path, index) in svgIcons.planeIcon.paths" :key="index" :d="path.d" />
             </svg>
@@ -134,22 +122,6 @@
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&family=Poppins:wght@400;500;600;700&display=swap');
-
-/* Tema rosa para InputLabel dentro desta página */
-.il-theme--pink {
-  --il-border-neutral: #F0F0F0;
-  /* neutra */
-  --il-border-filled: #FBC0D6;
-  /* preenchido rosa claro */
-  --il-border-focus: #F978A3;
-  /* foco rosa */
-  --il-label-active: #F7A4C0;
-  /* label ativo rosa suave */
-  --il-text: #072961;
-  /* texto */
-  --il-focus-halo: rgba(249, 120, 163, 0.20);
-  /* halo rosa */
-}
 
 .auth-title {
   font-size: 2.25rem;
@@ -192,7 +164,8 @@
 }
 
 .search-input:focus {
-  border-color: #F978A3;
+  border-color: #f97316;
+  /* Laranja */
 }
 
 .user-list {

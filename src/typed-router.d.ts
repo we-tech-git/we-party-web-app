@@ -23,6 +23,7 @@ declare module 'vue-router/auto-routes' {
     '/private/feed': RouteRecordInfo<'/private/feed', '/private/feed', Record<never, never>, Record<never, never>>,
     '/private/Interest': RouteRecordInfo<'/private/Interest', '/private/Interest', Record<never, never>, Record<never, never>>,
     '/private/test-auth': RouteRecordInfo<'/private/test-auth', '/private/test-auth', Record<never, never>, Record<never, never>>,
+    '/public/AddFriends': RouteRecordInfo<'/public/AddFriends', '/public/AddFriends', Record<never, never>, Record<never, never>>,
     '/public/ConfirmEmail': RouteRecordInfo<'/public/ConfirmEmail', '/public/ConfirmEmail', Record<never, never>, Record<never, never>>,
     '/public/Congratulations': RouteRecordInfo<'/public/Congratulations', '/public/Congratulations', Record<never, never>, Record<never, never>>,
     '/public/Interest': RouteRecordInfo<'/public/Interest', '/public/Interest', Record<never, never>, Record<never, never>>,
@@ -62,6 +63,10 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/private/test-auth.vue': {
       routes: '/private/test-auth'
+      views: never
+    }
+    'src/pages/public/AddFriends.vue': {
+      routes: '/public/AddFriends'
       views: never
     }
     'src/pages/public/ConfirmEmail.vue': {

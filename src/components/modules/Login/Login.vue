@@ -321,6 +321,11 @@
   transform: scale(1.1);
 }
 
+.btn-primary {
+  /* Estilos base já estão em shared-styles.css */
+  margin-top: 1.5rem;
+}
+
 .error-message {
   color: #ef4444;
   font-size: 0.875rem;

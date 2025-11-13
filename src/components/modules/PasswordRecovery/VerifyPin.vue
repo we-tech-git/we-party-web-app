@@ -55,7 +55,7 @@
       <p class="auth-subtitle">{{ t('verifyPin.subtitle', { email }) }}</p>
 
       <form @submit.prevent="handleVerify">
-        <div class="il-theme--pink">
+        <div>
           <InputLabel
             v-model="pin"
             :label="t('form.pin')"

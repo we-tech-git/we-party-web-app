@@ -68,7 +68,7 @@
       <p class="auth-subtitle">{{ t('resetPassword.subtitle') }}</p>
 
       <form @submit.prevent="handleReset">
-        <div class="il-theme--pink">
+        <div class="form-fields">
           <InputLabel v-model="password" :label="t('form.newPassword')" required type="password" />
           <InputLabel v-model="passwordConfirm" :label="t('form.confirmPassword')" required type="password" />
         </div>
@@ -86,6 +86,7 @@
         </button>
       </form>
     </template>
+
   </AuthLayout>
 </template>
 
@@ -94,7 +95,7 @@
   margin-top: 1.5rem;
 }
 
-.il-theme--pink {
+.form-fields {
   display: flex;
   flex-direction: column;
   gap: 1rem;

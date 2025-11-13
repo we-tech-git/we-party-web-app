@@ -46,7 +46,7 @@
       <p class="auth-subtitle">{{ t('forgotPassword.subtitle') }}</p>
 
       <form @submit.prevent="handleRequest">
-        <div class="il-theme--pink">
+        <div>
           <InputLabel v-model="email" :label="t('form.email')" required type="email" />
         </div>
 
