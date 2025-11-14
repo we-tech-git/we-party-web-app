@@ -104,6 +104,21 @@
       "title": "Nova Solicitação",
       "line1": "Obrigado por adicionar um novo interesse, iremos analisar este novo tipo de evento e em até 24h iremos adicionar a lista de interesses para todos.",
       "line2": "Também vamos adicionar aos seus interesses pessoais para eventos personalizados"
+    },
+    "searching": "Buscando...",
+    "noResults": "Nenhum resultado encontrado",
+    "loading": "Carregando interesses...",
+    "noResultsTitle": "Nenhum interesse encontrado",
+    "noResultsDescription": "Não encontramos nenhum interesse com esse nome. Que tal solicitar ao WE Party para adicionar?",
+    "requestNewInterest": "Solicitar novo interesse",
+    "requestModal": {
+      "title": "Solicitar Novo Interesse",
+      "description": "Digite o nome do interesse que você gostaria que adicionássemos:",
+      "label": "Nome do interesse",
+      "placeholder": "Ex: Festa Eletrônica, Show de Rock...",
+      "cancel": "Cancelar",
+      "submit": "Solicitar",
+      "submitting": "Enviando..."
     }
   },
   "congratulations": {
