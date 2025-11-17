@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  import { useI18n } from 'vue-i18n'
+
   interface UserSummary {
     name: string
     avatar: string
@@ -8,13 +10,22 @@
   defineProps<{
     user: UserSummary
   }>()
+  const { t } = useI18n()
+
+  function changePicture () {
+  // TODO: Implement picture change logic
+  }
+
+  function logout () {
+  // TODO: Implement logout logic
+  }
 </script>
 
 <template>
   <header aria-label="Brand header" class="feed-top-header">
     <div class="header-inner">
       <span aria-hidden="true" class="brand">WE PARTY</span>
-
+      <slot name="center-content" />
       <div class="user-summary">
         <span class="points">
           <svg fill="none" height="18" viewBox="0 0 24 24" width="18">
@@ -39,7 +50,26 @@
           <span>{{ user.points }} pts.</span>
         </span>
 
-        <img :alt="user.name" class="avatar" loading="lazy" :src="user.avatar">
+        <v-menu location="bottom" transition="slide-y-transition">
+          <template #activator="{ props }">
+            <img
+              v-bind="props"
+              :alt="user.name"
+              class="avatar"
+              loading="lazy"
+              :src="user.avatar"
+            >
+          </template>
+
+          <v-list density="compact" :lines="false">
+            <v-list-item @click="changePicture">
+              <v-list-item-title>{{ t('feed.profileActions.changePicture') }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="logout">
+              <v-list-item-title>{{ t('feed.profileActions.logout') }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </div>
     </div>
   </header>
@@ -103,6 +133,13 @@
   border-radius: 999px;
   object-fit: cover;
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
 }
 
 @media (max-width: 1200px) {

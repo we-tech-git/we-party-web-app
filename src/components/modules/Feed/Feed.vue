@@ -155,12 +155,8 @@
 </script>
 <template>
   <div class="feed-page">
-    <FeedTopHeader :user="user" />
-
-    <section class="feed-shell">
-      <FeedSidebarNav :active="activeNav" class="feed-sidebar" :items="navItems" @select="activeNav = $event" />
-
-      <main class="feed-main">
+    <FeedTopHeader :user="user">
+      <template #center-content>
         <section class="feed-controls">
           <label class="search" role="search">
             <span aria-hidden="true" class="search-icon">
@@ -203,7 +199,13 @@
             </button>
           </nav>
         </section>
+      </template>
+    </FeedTopHeader>
 
+    <section class="feed-shell">
+      <FeedSidebarNav :active="activeNav" class="feed-sidebar" :items="navItems" @select="activeNav = $event" />
+
+      <main class="feed-main">
         <section v-if="filteredItems.length > 0" class="cards-stack">
           <FeedCard
             v-for="item in filteredItems"
@@ -260,6 +262,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
+  padding-top: 1.75rem;
 }
 
 .feed-trends {
@@ -271,11 +274,10 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  position: sticky;
-  top: var(--feed-sticky-offset);
-  z-index: 5;
+  width: 100%;
+  max-width: 810px;
+  margin: 0 auto;
   padding: 0.75rem 0.5rem 1rem;
-  margin: -0.75rem -0.5rem 0;
   background: linear-gradient(180deg, rgba(249, 249, 255, 0.92) 0%, rgba(255, 255, 255, 0.92) 100%);
   backdrop-filter: blur(12px);
   border-radius: 24px;

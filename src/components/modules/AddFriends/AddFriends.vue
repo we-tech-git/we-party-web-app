@@ -99,13 +99,13 @@
     requestUserRecomendations()
   })
 
-  // watch(selectedUsers, (newSelectedUsers: User[]) => {
-  //   console.log('Selected users updated:', newSelectedUsers)
-  // })
+// watch(selectedUsers, (newSelectedUsers: User[]) => {
+//   console.log('Selected users updated:', newSelectedUsers)
+// })
 
-  // watch(users, (newSelectedUsers: User[]) => {
-  //   console.log('users ====>', newSelectedUsers)
-  // })
+// watch(users, (newSelectedUsers: User[]) => {
+//   console.log('users ====>', newSelectedUsers)
+// })
 
 </script>
 
@@ -145,11 +145,7 @@
         <li v-for="user in filteredUsers" :key="user.id" class="user-item">
           <img :alt="user.name" class="avatar" :src="user.profileImage">
           <span class="name">{{ user.name }}</span>
-          <button
-            :class="['invite-btn', user.isFollowing ? 'sent' : 'send']"
-            type="button"
-            @click="toggleInvite(user)"
-          >
+          <button :class="['invite-btn', user.isFollowing ? 'sent' : 'send']" type="button" @click="toggleInvite(user)">
             <svg v-if="svgIcons.planeIcon" class="plane-icon" fill="currentColor" :viewBox="svgIcons.planeIcon.viewBox">
               <path v-for="(path, index) in svgIcons.planeIcon.paths" :key="index" :d="path.d" />
             </svg>
