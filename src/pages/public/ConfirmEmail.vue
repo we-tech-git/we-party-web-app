@@ -6,7 +6,7 @@
   import { computed, nextTick, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRoute } from 'vue-router'
-  import { reqeustResendPin, reqeustSendPin, requestConfirmEmail } from '@/api/users'
+  import { reqeustResendPin, reqeustSendPin } from '@/api/users'
   import { STORAGE_KEYS } from '@/common/storage'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'

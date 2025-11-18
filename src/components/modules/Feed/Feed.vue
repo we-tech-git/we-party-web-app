@@ -209,6 +209,7 @@
         <section v-if="filteredItems.length > 0" class="cards-stack">
           <FeedCard
             v-for="item in filteredItems"
+            :id="item.id"
             :key="item.id"
             :banner="item.banner"
             :confirmed="item.confirmed"

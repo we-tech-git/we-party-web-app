@@ -98,7 +98,7 @@
 }
 
 .brand {
-  font-family: 'Baloo Thambi', 'Baloo Thambi 2', cursive;
+  font-family: 'Baloo Thambi 2', cursive;
   font-size: 2.35rem;
   font-weight: 800;
   letter-spacing: 0.1em;

@@ -10,6 +10,7 @@
   import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { loginUser } from '@/api/users'
+  import { STORAGE_KEYS } from '@/common/storage'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
@@ -144,37 +145,56 @@
         password: password.value,
       }
 
-      console.log('Tentativa de login:', { email: credentials.email })
-
       const response = await loginUser(credentials)
-      const data = response.data
+      const data = response?.data
 
-      console.log('Resposta do login:', {
-        data,
-        test: data.success,
-        token: data.data.token,
-        boolean: (data.success && !!data.data.token),
-      })
-      // Salvar dados do usuário logado usando AuthService
-      if (data.success && !!data.data.token) {
+      // PRIMEIRO, VERIFICAMOS SE O LOGIN FOI UM SUCESSO REAL
+      if (data?.success && !!data?.data?.token) {
+        // --- LÓGICA DE SUCESSO ---
         AuthService.saveAuthData({
           success: true,
           message: 'Login realizado com sucesso',
           token: data.data.token,
           user: data.data,
         })
+
+        showSnackbar('Login realizado com sucesso! 🎉', '#22c55e')
+
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
+      } else {
+        // --- LÓGICA DE FALHA (MAS SEM ERRO DE REDE) ---
+        // Extrai a mensagem de erro da resposta, como "Email não verificado"
+        const errorMessage = data?.message || 'Email não verificado.'
+
+        // Verifica se o erro é sobre e-mail não verificado
+        // Usamos uma verificação mais flexível para evitar problemas com espaços ou pontuação
+        if (errorMessage.toLowerCase().includes('email não verificado')) {
+          showSnackbar(errorMessage, '#ff9800')
+          localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
+          setTimeout(() => {
+            router.push('/public/ConfirmEmail')
+          }, 3000)
+        } else {
+          // Trata outros erros lógicos que podem vir do backend
+          showSnackbar(errorMessage, '#ef4444')
+        }
       }
-
-      showSnackbar('Login realizado com sucesso! 🎉', '#22c55e')
-
-      setTimeout(() => {
-        router.push('/private/feed') // ou rota do dashboard
-      }, 1500)
     } catch (error: any) {
-      console.error('Erro ao fazer login:', error)
-
+      // Este bloco agora só será ativado para erros de rede (4xx, 5xx)
       const errorMessage = error?.response?.data?.message || 'Erro ao fazer login. Verifique suas credenciais.'
-      showSnackbar(errorMessage, '#ef4444')
+
+      // Verifica se o erro é sobre e-mail não verificado (mesmo lógica do bloco else)
+      if (errorMessage.toLowerCase().includes('email não verificado')) {
+        showSnackbar(errorMessage, '#ff9800')
+        localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
+        setTimeout(() => {
+          router.push('/public/ConfirmEmail')
+        }, 3000)
+      } else {
+        showSnackbar(errorMessage, '#ef4444')
+      }
     } finally {
       const elapsed = Date.now() - start
       const remaining = minLoadingMs - elapsed
@@ -594,7 +614,7 @@
 
 .brand-subtitle {
   font-family: 'Poppins', sans-serif;
-  font-weight: 600;
+  font-weight: 800;
   font-size: 65px;
   line-height: 80px;
   letter-spacing: 0.3px;

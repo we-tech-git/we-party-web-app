@@ -107,8 +107,8 @@ export async function deleteUser () {
       {},
       true,
       {
-        'Authorization': `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      }
+        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
+      },
     )
     return response
   } catch (error) {
@@ -125,8 +125,8 @@ export async function getUserRecomendations () {
       {},
       true,
       {
-        'Authorization': `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      }
+        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
+      },
     )
     return response
   } catch (error) {
