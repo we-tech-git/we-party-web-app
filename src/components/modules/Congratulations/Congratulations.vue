@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import confetti from 'canvas-confetti'
-  import { onBeforeUnmount, onMounted } from 'vue'
+  import { onBeforeUnmount, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
 
@@ -12,8 +12,17 @@
   const router = useRouter()
   const confettiColors = ['#FFC947', '#F978A3', '#FF629F', '#22C55E', '#FFFFFF'] as const
   let confettiInterval: number | undefined
+  const confettiCount = ref(0)
 
   function launchConfettiBurst () {
+    if (confettiCount.value >= 3) {
+      if (confettiInterval) {
+        window.clearInterval(confettiInterval)
+        confettiInterval = undefined
+      }
+      return
+    }
+
     const base = {
       particleCount: 50,
       startVelocity: 65,
@@ -49,10 +58,11 @@
       scalar: 1.1,
       origin: { x: Math.random(), y: 0.98 },
     })
+    confettiCount.value++
   }
 
   function handleContinue () {
-    router.push('/private/AddFriends')
+    router.push(props.continueTo)
   }
 
   onMounted(() => {
@@ -75,8 +85,12 @@
       <div aria-hidden="true" class="icon" role="presentation">
         <img alt="" class="success-gif" src="/email.gif">
       </div>
-      <h1 class="title">{{ t('congratulations.title') }}</h1>
-      <p class="subtitle">{{ t('congratulations.description') }}</p>
+      <h1 class="title">
+        {{ t('congratulations.title') }}
+      </h1>
+      <p class="subtitle">
+        {{ t('congratulations.description') }}
+      </p>
       <button class="continue-btn" type="button" @click="handleContinue">
         {{ t('congratulations.button') }}
       </button>
@@ -93,13 +107,15 @@
   background: #fff;
   padding: 2rem 1.5rem;
   font-family: 'Poppins', sans-serif;
+  text-align: center;
 }
 
 .content {
-  width: min(420px, 90vw);
-  text-align: center;
+  width: 100%;
+  max-width: 420px;
   display: grid;
   gap: 1.5rem;
+  justify-items: center;
 }
 
 .icon {
@@ -117,7 +133,7 @@
   font-size: clamp(1.75rem, 2.2vw + 1rem, 2.4rem);
   font-weight: 700;
   color: #111827;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .subtitle {
@@ -127,9 +143,9 @@
 }
 
 .continue-btn {
-  justify-self: stretch;
-  padding: 1.2rem 4.5rem;
-  min-width: 320px;
+  padding: 1.2rem;
+  width: 100%;
+  max-width: 320px;
   border-radius: 999px;
   border: none;
   font-weight: 700;
@@ -155,14 +171,16 @@
     gap: 1.25rem;
   }
 
+  .title {
+    font-size: 1.5rem;
+  }
+
   .subtitle {
     font-size: 0.95rem;
   }
 
   .continue-btn {
-    width: 100%;
-    padding: 1.2rem 2.8rem;
-    min-width: auto;
+    padding: 1.2rem;
   }
 }
 </style>

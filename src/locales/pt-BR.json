@@ -77,7 +77,11 @@
       "cityHighlight": "Tendência na sua cidade",
       "more": "Mostrar mais"
     },
-    "empty": "Nenhum evento encontrado para o momento."
+    "empty": "Nenhum evento encontrado para o momento.",
+    "profileActions": {
+      "changePicture": "Trocar foto de perfil",
+      "logout": "Sair"
+    }
   },
   "addFriends": {
     "title": "Amigos",

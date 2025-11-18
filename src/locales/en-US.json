@@ -77,7 +77,11 @@
       "cityHighlight": "Trending in your city",
       "more": "Show more"
     },
-    "empty": "No events found right now."
+    "empty": "No events found right now.",
+    "profileActions": {
+      "changePicture": "Change profile picture",
+      "logout": "Logout"
+    }
   },
   "addFriends": {
     "title": "Friends",
