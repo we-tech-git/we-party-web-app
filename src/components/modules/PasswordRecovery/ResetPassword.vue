@@ -2,9 +2,10 @@
   import { onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRoute, useRouter } from 'vue-router'
-  import { resetPassword } from '@/api/password'
+  import { requestSetNewPassord, requestVerifyToken } from '@/api/password'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
 
   const { t } = useI18n()
   const route = useRoute()
@@ -13,24 +14,30 @@
   const password = ref('')
   const passwordConfirm = ref('')
   const email = ref('')
-  const pin = ref('')
+  const token = ref('')
   const isLoading = ref(false)
   const errorMessage = ref('')
   const successMessage = ref('')
 
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
+
   onMounted(() => {
     // Se os parâmetros existem na URL, usa eles (comportamento normal)
-    if (typeof route.query.email === 'string' && typeof route.query.pin === 'string') {
+    if (typeof route.query.token === 'string' && typeof route.query.email === 'string') {
+      token.value = route.query.token
       email.value = route.query.email
-      pin.value = route.query.pin
     } else if (import.meta.env.DEV) {
       // Se estiver em modo de desenvolvimento e os parâmetros não existirem, usa dados de teste
-      email.value = 'dev-email@teste.com'
-      pin.value = '123456' // PIN de teste
+      // email.value = 'dev-email@teste.com'
+      // pin.value = '123456' // PIN de teste
     } else {
       // Se estiver em produção e não houver parâmetros, redireciona
-      router.push({ name: '/public/RequestPassword' })
+      // router.push({ name: '/public/RequestPassword' })
     }
+
+    verifyToken()
   })
 
   async function handleReset () {
@@ -48,17 +55,61 @@
     successMessage.value = ''
 
     try {
-      await resetPassword(email.value, pin.value, password.value)
-      successMessage.value = t('resetPassword.successMessage')
-      setTimeout(() => {
-        router.push({ name: '/public/Login' })
-      }, 2000)
+      const response = await requestSetNewPassord(token.value, password.value)
+      console.log('Resposta da redefinição de senha:', response)
+      if (response.data.success) {
+        showSnackbar(t('resetPassword.successMessage'), '#4caf50')
+        // Redireciona para a página de login após um breve atraso
+        setTimeout(() => {
+          router.push({ name: '/public/Login' })
+        }, 2000)
+        return
+      }
+      // setTimeout(() => {
+      //   router.push({ name: '/public/Login' })
+      // }, 2000)
     } catch (error: any) {
-      errorMessage.value = error.response?.data?.message || t('resetPassword.errors.generic')
+      const errorMessage = error.response?.data?.message || t('resetPassword.errors.generic')
+      showSnackbar(errorMessage, '#f44336')
     } finally {
       isLoading.value = false
     }
   }
+
+  function showSnackbar (message: string, color = '#ff9800') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+
+    if (snackbarVisible.value) {
+      snackbarVisible.value = false
+      requestAnimationFrame(() => {
+        snackbarVisible.value = true
+      })
+      return
+    }
+
+    snackbarVisible.value = true
+  }
+
+  async function verifyToken () {
+    try {
+      const response = await requestVerifyToken(email.value, token.value)
+      if (response.data.success) {
+        showSnackbar('Token verificado com sucesso!', '#4caf50')
+        return
+      }
+      throw new Error('Token inválido')
+    } catch (error: any) {
+      const localErrorMessage = error.response?.data?.message || t('resetPassword.errors.invalidToken')
+      errorMessage.value = localErrorMessage
+      // Redireciona de volta para a página de solicitação de senha após um breve atraso
+      showSnackbar(localErrorMessage, '#f44336')
+      setTimeout(() => {
+        router.push({ name: '/public/RequestPassword' })
+      }, 3000)
+    }
+  }
+
 </script>
 
 <template>
@@ -85,6 +136,8 @@
           <span v-else>{{ t('resetPassword.button') }}</span>
         </button>
       </form>
+
+      <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />
     </template>
 
   </AuthLayout>

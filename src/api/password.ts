@@ -5,7 +5,7 @@ import { callApi } from './index'
  * @param email - O e-mail do usuário.
  */
 export function requestPasswordReset (email: string) {
-  return callApi('POST', '/auth/forgot-password', { email })
+  return callApi('POST', '/password/request-password-reset', { email })
 }
 
 /**
@@ -13,16 +13,16 @@ export function requestPasswordReset (email: string) {
  * @param email - O e-mail do usuário.
  * @param pin - O PIN recebido por e-mail.
  */
-export function verifyPasswordResetPin (email: string, pin: string) {
-  return callApi('POST', '/auth/verify-pin', { email, pin })
+export function requestVerifyToken (email: string, token: string) {
+  return callApi('POST', '/password/verify-token', { email, token })
 }
 
 /**
  * Define uma nova senha.
  * @param email - O e-mail do usuário.
- * @param pin - O PIN verificado.
+ * @param token - O token verificado.
  * @param password - A nova senha.
  */
-export function resetPassword (email: string, pin: string, password: string) {
-  return callApi('POST', '/auth/reset-password', { email, pin, password })
+export function requestSetNewPassord (token: string, newPassword: string) {
+  return callApi('POST', '/password/set-new-password', { token, newPassword })
 }

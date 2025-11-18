@@ -256,7 +256,7 @@
         </button>
       </div>
 
-      <button class="btn-primary" :disabled="isFinishing || selected.size === 0" type="button" @click="finish">
+      <button class="btn-primary" type="button" @click="finish">
         <span v-if="isFinishing">Salvando...</span>
         <span v-else>{{ t('interest.finishButton') }}</span>
       </button>

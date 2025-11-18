@@ -164,8 +164,9 @@
   },
   "verifyPin": {
     "title": "Verificar Código",
-    "subtitle": "Enviamos um código de 6 dígitos para {email}. Digite-o abaixo.",
+    "subtitle": "Enviamos o link de redefinição para o email <b>{email}</b>. <br/><br/> Basta clicar no link do email para criar uma nova senha.",
     "button": "Verificar",
+    "btn_back_to_login": "Voltar ao login",
     "errors": {
       "invalidPin": "O código deve ter 6 dígitos.",
       "generic": "Código inválido ou expirado. Tente novamente."
