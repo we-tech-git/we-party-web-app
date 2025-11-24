@@ -134,3 +134,8 @@ export async function getUserRecomendations () {
     throw error
   }
 }
+
+export function checkUserExists (email: string) {
+  // A ordem provável dos parâmetros do seu callApi é: (URL, MÉTODO, DADOS)
+  return callApi('POST', '/users/check-exists', { email })
+}

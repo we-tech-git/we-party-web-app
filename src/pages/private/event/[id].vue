@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { computed } from 'vue'
   import { useRoute } from 'vue-router/auto'
-  import EventDetails from '@/components/modules/Feed/EventDetails.vue'
+  import EventView from '@/components/modules/Feed/EventView.vue'
 
   definePage({
     meta: {
@@ -11,9 +11,8 @@
 
   const route = useRoute('/private/event/[id]')
   const eventId = computed(() => route.params.id)
-
 </script>
 
 <template>
-  <EventDetails :event-id="eventId" />
+  <EventView :event-id="eventId" />
 </template>

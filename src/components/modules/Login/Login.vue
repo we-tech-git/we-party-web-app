@@ -22,12 +22,16 @@
   // ===============================
   // GERADOR DE DADOS DE TESTE
   // ===============================
+  /**
+   * Gera dados de login para teste.
+   * Retorna um objeto com email e senha pré-definidos.
+   */
   function generateTestLoginData () {
     // Gera email fixo com número randômico de 3 dígitos
     // const randomNumber = Math.floor(Math.random() * 900) + 100
     // Gera email fixo
     // const emailGenerated = `teste776@gmail.com`
-    const emailGenerated = `contact@wepartyapp.com`
+    const emailGenerated = `jonathan.nwokolo@gmail.com`
     const passwordGenerated = 'Teste12345@'
 
     return {
@@ -36,6 +40,10 @@
     }
   }
 
+  /**
+   * Preenche o formulário com dados de teste.
+   * Pode usar dados fixos ou gerar dados aleatórios se isRandom for true.
+   */
   function fillFormWithTestData (isRandom = false) {
     if (isRandom) {
       const randomNumber = Math.floor(Math.random() * 900) + 100
@@ -76,6 +84,10 @@
     return email.value.trim() && password.value.trim() && email.value.includes('@')
   })
 
+  /**
+   * Exibe o componente Snackbar com uma mensagem e cor específicas.
+   * Gerencia a visibilidade para garantir que a animação ocorra corretamente.
+   */
   function showSnackbar (message: string, color = '#ff9800') {
     snackbarMessage.value = message
     snackbarColor.value = color
@@ -91,6 +103,9 @@
     snackbarVisible.value = true
   }
 
+  /**
+   * Reseta os erros de validação do formulário.
+   */
   function resetErrors () {
     formErrors.value = {
       email: '',
@@ -98,6 +113,10 @@
     }
   }
 
+  /**
+   * Valida os campos do formulário antes do envio.
+   * Verifica se email e senha estão preenchidos e se o email é válido.
+   */
   async function validateForm () {
     if (isSubmitting.value) return
 
@@ -127,6 +146,10 @@
     await submitForm()
   }
 
+  /**
+   * Envia os dados do formulário para a API de login.
+   * Gerencia o estado de carregamento, sucesso e falha.
+   */
   async function submitForm () {
     if (isSubmitting.value) return
 
@@ -164,19 +187,24 @@
           router.push('/private/feed')
         }, 1500)
       } else {
-        // --- LÓGICA DE FALHA (MAS SEM ERRO DE REDE) ---
         // Extrai a mensagem de erro da resposta, como "Email não verificado"
-        const errorMessage = data?.message || 'Email não verificado.'
+        const errorMessage = response.response.data.message
 
         // Verifica se o erro é sobre e-mail não verificado
         // Usamos uma verificação mais flexível para evitar problemas com espaços ou pontuação
-        if (errorMessage.toLowerCase().includes('email não verificado')) {
+        if (errorMessage === 'Email não verificado. Por favor, verifique seu email antes de fazer login.') {
           showSnackbar(errorMessage, '#ff9800')
           localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
           setTimeout(() => {
             router.push('/public/ConfirmEmail')
           }, 3000)
         } else {
+          // console.error('error =======>', {
+          //   test1: response,
+          //   test2: response.response,
+          //   test3: response.response.data,
+          //   test4: response.response.data.message,
+          // })
           // Trata outros erros lógicos que podem vir do backend
           showSnackbar(errorMessage, '#ef4444')
         }

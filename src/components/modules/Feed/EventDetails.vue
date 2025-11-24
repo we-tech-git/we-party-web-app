@@ -32,6 +32,17 @@
   })
 
   const infoExpanded = ref(true)
+  const selectedCategories = ref<Set<string>>(new Set())
+
+  function toggleCategory (category: string) {
+    if (selectedCategories.value.has(category)) {
+      selectedCategories.value.delete(category)
+    } else {
+      selectedCategories.value.add(category)
+    }
+    // Força atualização da reatividade
+    selectedCategories.value = new Set(selectedCategories.value)
+  }
 
   onMounted(() => {
     // Aqui você pode buscar os dados do evento usando o eventId
@@ -76,7 +87,15 @@
       <div class="categories-section">
         <h2>Categorias do evento</h2>
         <div class="tags">
-          <span v-for="category in event.categories" :key="category" class="tag">{{ category }}</span>
+          <button
+            v-for="category in event.categories"
+            :key="category"
+            :class="['category-chip', { 'selected': selectedCategories.has(category) }]"
+            type="button"
+            @click="toggleCategory(category)"
+          >
+            {{ category }}
+          </button>
         </div>
       </div>
 
@@ -92,162 +111,184 @@
 
 <style scoped>
 .event-details {
-    background-color: #FFF;
-    border-radius: 20px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    overflow: hidden;
-    max-width: 800px;
-    margin: 2rem auto;
+  background-color: #FFF;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  max-width: 800px;
+  margin: 2rem auto;
 }
 
 .event-banner {
-    width: 100%;
-    height: 300px;
-    object-fit: cover;
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
 }
 
 .event-content {
-    padding: 2rem;
+  padding: 2rem;
 }
 
 .event-title {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 0.5rem;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 0.5rem;
 }
 
 .event-info {
-    color: #666;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .info-section,
 .doubts-section,
 .location-section,
 .categories-section {
-    margin-bottom: 2rem;
+  margin-bottom: 2rem;
 }
 
 .info-header {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background-color: #f9f9f9;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    font-size: 1.1rem;
-    font-weight: bold;
-    cursor: pointer;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
 }
 
 .chevron {
-    transition: transform 0.3s;
-    font-weight: bold;
+  transition: transform 0.3s;
+  font-weight: bold;
 }
 
 .chevron.expanded {
-    transform: rotate(180deg);
+  transform: rotate(180deg);
 }
 
 .info-body {
-    padding: 1.5rem 1rem;
-    border: 1px solid #eee;
-    border-top: none;
-    border-radius: 0 0 8px 8px;
+  padding: 1.5rem 1rem;
+  border: 1px solid #eee;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
 }
 
 .info-body ul {
-    list-style: none;
-    padding: 0;
-    margin-top: 1rem;
-    columns: 2;
-    gap: 1rem;
+  list-style: none;
+  padding: 0;
+  margin-top: 1rem;
+  columns: 2;
+  gap: 1rem;
 }
 
 .info-body li {
-    margin-bottom: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 h2 {
-    font-size: 1.2rem;
-    font-weight: bold;
-    margin-bottom: 1rem;
-    border-bottom: 2px solid #f0f0f0;
-    padding-bottom: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 0.5rem;
 }
 
 .map-button {
-    background: none;
-    border: 1px solid #ddd;
-    border-radius: 20px;
-    padding: 0.5rem 1.5rem;
-    cursor: pointer;
-    margin-top: 1rem;
-    font-weight: 600;
-    transition: all 0.2s ease;
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  padding: 0.5rem 1.5rem;
+  cursor: pointer;
+  margin-top: 1rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
 .map-button:hover {
-    background-color: #f5f5f5;
-    border-color: #ccc;
+  background-color: #f5f5f5;
+  border-color: #ccc;
 }
 
 .tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
-.tag {
-    background-color: #ffebee;
-    color: #c62828;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    font-weight: 500;
+.category-chip {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1.5px solid #FF8CB5;
+  color: #1F2937;
+  background: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .05);
+}
+
+.category-chip:hover {
+  transform: translateY(-1px);
+}
+
+.category-chip.selected {
+  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  background-size: 100% 100%;
+  color: #fff;
+  border: 1.5px solid transparent;
+  /* Mantém o tamanho consistente */
+  box-shadow: 0 10px 20px rgba(255, 95, 166, .2);
 }
 
 .footer-links {
-    display: flex;
-    gap: 1.5rem;
-    justify-content: center;
-    margin: 2rem 0;
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  margin: 2rem 0;
 }
 
 .footer-links a {
-    color: #666;
-    text-decoration: none;
-    cursor: pointer;
+  color: #666;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .footer-links a:hover {
-    text-decoration: underline;
+  text-decoration: underline;
 }
 
 .main-action-button {
-    width: 100%;
-    padding: 1.2rem;
-    background: linear-gradient(to right, #FFC25B, #FF5FA6);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-size: 1.2rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
+  width: 100%;
+  padding: 1.2rem;
+  background: linear-gradient(to right, #FFC25B, #FF5FA6);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .main-action-button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 </style>

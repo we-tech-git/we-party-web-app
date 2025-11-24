@@ -5,7 +5,7 @@
   import confetti from 'canvas-confetti'
   import { computed, nextTick, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
-  import { useRoute } from 'vue-router'
+  // VOLTAMOS AO ORIGINAL: Apenas as rotas de PIN
   import { reqeustResendPin, reqeustSendPin } from '@/api/users'
   import { STORAGE_KEYS } from '@/common/storage'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
@@ -15,25 +15,20 @@
   import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
   const { t } = useI18n()
-  const route = useRoute()
 
   // ===============================
   // ESTADO DO PIN E CONFIRMAÇÃO
   // ===============================
 
-  // Estado dos 6 dígitos do PIN
   const pinDigits = ref(['', '', '', '', '', ''])
   const pinInputs = ref<HTMLInputElement[]>([])
 
-  // Estado do email do usuário (pode vir da URL ou localStorage)
   const userEmail = ref('')
 
-  // Estados do componente
   const isVerifying = ref(false)
   const canResendPin = ref(true)
   const resendCooldown = ref(0)
 
-  // Estados do snackbar
   const snackbarVisible = ref(false)
   const snackbarMessage = ref('')
   const snackbarColor = ref('#ff9800')
@@ -73,16 +68,13 @@
     const target = event.target as HTMLInputElement
     const value = target.value
 
-    // Permite apenas dígitos
     if (!/^\d*$/.test(value)) {
       target.value = pinDigits.value[index] || ''
       return
     }
 
-    // Atualiza o dígito no array
-    pinDigits.value[index] = value.slice(-1) // Apenas último dígito
+    pinDigits.value[index] = value.slice(-1)
 
-    // Auto-foco para o próximo campo se houver dígito inserido
     if (value && index < 5) {
       const nextInput = pinInputs.value[index + 1]
       if (nextInput) {
@@ -90,7 +82,6 @@
       }
     }
 
-    // Verifica se PIN está completo para auto-submit
     if (isPinComplete.value) {
       setTimeout(() => {
         verifyPin()
@@ -99,7 +90,6 @@
   }
 
   function handleKeyDown (index: number, event: KeyboardEvent) {
-    // Backspace: limpa campo atual e move para anterior
     if (event.key === 'Backspace' && !pinDigits.value[index] && index > 0) {
       const prevInput = pinInputs.value[index - 1]
       if (prevInput) {
@@ -107,8 +97,6 @@
         pinDigits.value[index - 1] = ''
       }
     }
-
-    // Arrow keys para navegação
     if (event.key === 'ArrowLeft' && index > 0) {
       pinInputs.value[index - 1]?.focus()
     }
@@ -123,19 +111,18 @@
     isVerifying.value = true
 
     try {
-      // Simula API call para verificar PIN
       const response = await reqeustSendPin({
         email: userEmail.value,
         code: fullPin.value,
       })
-      console.log({ response })
       const data = response.data
 
-      if (response.status === 200) {
+      // Verifica sucesso tanto pelo status quanto pelo campo success (depende do seu backend)
+      if (response.status === 200 && (data.success !== false)) {
         triggerConfetti()
         showSnackbar(t('confirmEmail.success'), '#22c55e')
 
-        if (data.success && !!data.data.token) {
+        if (data.data?.token) {
           AuthService.saveAuthData({
             success: true,
             message: 'Login realizado com sucesso',
@@ -148,25 +135,14 @@
           router.push('/public/Congratulations')
         }, 1500)
       } else {
+        // Se o backend retornar 200 mas success: false
         showSnackbar(t('confirmEmail.invalidPin'), '#ef4444')
         clearPin()
       }
-
-      // Mock: PIN válido é "123456"
-      // if (fullPin.value === '123456') {
-      //   triggerConfetti()
-      //   showSnackbar(t('confirmEmail.success'), '#22c55e')
-
-      //   setTimeout(() => {
-      //     router.push('/public/Congratulations')
-      //   }, 1500)
-      // } else {
-      //   showSnackbar(t('confirmEmail.invalidPin'), '#ef4444')
-      //   clearPin()
-      // }
     } catch (error: any) {
       console.error('Erro ao verificar PIN:', error)
       showSnackbar(t('confirmEmail.verifyError'), '#ef4444')
+      clearPin()
     } finally {
       isVerifying.value = false
     }
@@ -177,17 +153,21 @@
     pinInputs.value[0]?.focus()
   }
 
+  /**
+   * Tenta reenviar o PIN.
+   * AQUI ESTÁ A LÓGICA DE SEGURANÇA: Se der erro aqui, o usuário não existe.
+   */
   async function resendPin () {
     if (!canResendPin.value) return
 
     try {
-      // Simula API call para reenviar PIN
+      // Tenta enviar. Se o email não existir, o backend DEVE retornar erro (400 ou 404)
       const response = await reqeustResendPin(userEmail.value)
-      console.log({ response })
+      console.log('Resend response:', response)
 
+      // Se chegamos aqui, o email existe e o PIN foi enviado!
       showSnackbar(t('confirmEmail.pinSent'), '#22c55e')
 
-      // Inicia cooldown de 60 segundos
       canResendPin.value = false
       resendCooldown.value = 60
 
@@ -198,9 +178,20 @@
           canResendPin.value = true
         }
       }, 1000)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao reenviar PIN:', error)
-      showSnackbar(t('confirmEmail.resendError'), '#ef4444')
+
+      // Pega a mensagem do backend
+      const errorMsg = error.response?.data?.message || 'Erro ao enviar código.'
+
+      showSnackbar(errorMsg, '#ef4444')
+
+      // SE O ERRO FOR CRÍTICO (Usuário não encontrado), travamos a tela
+      // Verifique se a mensagem contém "encontrado" ou "exist" ou check o status 404
+      if (error.response?.status === 404 || errorMsg.toLowerCase().includes('não encontrado')) {
+        userEmail.value = 'Usuário Inválido'
+        for (const input of pinInputs.value) input.disabled = true
+      }
     }
   }
 
@@ -217,22 +208,28 @@
   // INICIALIZAÇÃO DO COMPONENTE
   // ===============================
   onMounted(() => {
-    // Recupera email da URL ou localStorage
-    // const emailFromQuery = route.query.email as string
     const emailFromStorage = localStorage?.getItem(STORAGE_KEYS.NEW_CREATED_USER)
 
-    userEmail.value = JSON.parse(emailFromStorage || '') || 'usuario@exemplo.com'
+    // Garante string vazia se falhar
+    userEmail.value = JSON.parse(emailFromStorage || '""')
 
-    // Foca no primeiro input do PIN
     nextTick(() => {
       if (pinInputs.value[0]) {
         pinInputs.value[0].focus()
       }
     })
 
-    resendPin()
+    // MUDANÇA PRINCIPAL:
+    // Chamamos resendPin direto.
+    // - Se o usuário for legítimo (mesmo não verificado): O email CHEGA.
+    // - Se o usuário for fake: O resendPin cai no CATCH e bloqueia.
+    if (userEmail.value) {
+      resendPin()
+    } else {
+      showSnackbar('Email não identificado.', '#ef4444')
+    }
 
-    console.log('🚀 Tela de confirmação de email carregada para:', userEmail.value)
+    console.log('🚀 Tela carregada para:', userEmail.value)
   })
 </script>
 

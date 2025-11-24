@@ -99,24 +99,28 @@
 
 .brand {
   font-family: 'Baloo Thambi 2', cursive;
-  font-size: 2.35rem;
+  font-size: 2rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   background: linear-gradient(120deg, #ff9a62 0%, #ff5fa6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 .user-summary {
   display: inline-flex;
   align-items: center;
   gap: 1rem;
-  padding: 0.9rem 1.4rem;
+  padding: 0.5rem 0.75rem 0.5rem 1rem;
   border-radius: 999px;
   background: linear-gradient(120deg, #ff996238 0%, #ff5fa733 100%);
   box-shadow: inset 0 0 0 1px rgba(129, 25, 72, 0.158);
+  flex-shrink: 0;
 }
 
 .points {
