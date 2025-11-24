@@ -26,6 +26,7 @@ declare module 'vue' {
     ResetPassword: typeof import('./components/modules/PasswordRecovery/ResetPassword.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SelectableChip: typeof import('./components/UI/SelectableChip/SelectableChip.vue')['default']
     Signup: typeof import('./components/modules/Signup/Signup.vue')['default']
     Snackbar: typeof import('./components/UI/Snackbar/Snackbar.vue')['default']
     VerifyPin: typeof import('./components/modules/PasswordRecovery/VerifyPin.vue')['default']

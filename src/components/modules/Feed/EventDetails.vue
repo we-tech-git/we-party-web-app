@@ -1,5 +1,6 @@
 <script setup lang="ts">
-  import { computed, onMounted, ref } from 'vue'
+  import { onMounted, ref } from 'vue'
+  import SelectableChip from '@/components/UI/SelectableChip/SelectableChip.vue'
 
   const props = defineProps<{
     eventId: string | string[]
@@ -87,15 +88,13 @@
       <div class="categories-section">
         <h2>Categorias do evento</h2>
         <div class="tags">
-          <button
+          <SelectableChip
             v-for="category in event.categories"
             :key="category"
-            :class="['category-chip', { 'selected': selectedCategories.has(category) }]"
-            type="button"
-            @click="toggleCategory(category)"
-          >
-            {{ category }}
-          </button>
+            :is-selected="selectedCategories.has(category)"
+            :label="category"
+            @toggle="toggleCategory(category)"
+          />
         </div>
       </div>
 
@@ -224,37 +223,6 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
-}
-
-.category-chip {
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 10px;
-  border: 1.5px solid #FF8CB5;
-  color: #1F2937;
-  background: #fff;
-  font-weight: 700;
-  font-size: 0.9rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 0 rgba(0, 0, 0, .05);
-}
-
-.category-chip:hover {
-  transform: translateY(-1px);
-}
-
-.category-chip.selected {
-  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
-  background-size: 100% 100%;
-  color: #fff;
-  border: 1.5px solid transparent;
-  /* Mantém o tamanho consistente */
-  box-shadow: 0 10px 20px rgba(255, 95, 166, .2);
 }
 
 .footer-links {

@@ -26,7 +26,6 @@
     { id: 'home', label: t('feed.nav.home'), icon: 'home' },
     { id: 'top-events', label: t('feed.nav.topEvents'), icon: 'top' },
     { id: 'favorites', label: t('feed.nav.favorites'), icon: 'bookmark' },
-    { id: 'favorites', label: t('feed.nav.favorites'), icon: 'bookmark' },
     { id: 'notifications', label: t('feed.nav.notifications'), icon: 'bell' },
     { id: 'profile', label: t('feed.nav.profile'), icon: 'profile' },
   ])
