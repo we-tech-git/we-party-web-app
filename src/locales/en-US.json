@@ -108,6 +108,21 @@
       "title": "New Request",
       "line1": "Thanks for adding a new interest. We'll review this event type and add it to the public list within 24h.",
       "line2": "We'll also add it to your personal interests for personalization."
+    },
+    "searching": "Searching...",
+    "noResults": "No results found",
+    "loading": "Loading interests...",
+    "noResultsTitle": "No interests found",
+    "noResultsDescription": "We couldn't find any interests with that name. How about requesting WE Party to add it?",
+    "requestNewInterest": "Request new interest",
+    "requestModal": {
+      "title": "Request New Interest",
+      "description": "Enter the name of the interest you'd like us to add:",
+      "label": "Interest name",
+      "placeholder": "E.g: Electronic Party, Rock Concert...",
+      "cancel": "Cancel",
+      "submit": "Request",
+      "submitting": "Submitting..."
     }
   },
   "congratulations": {

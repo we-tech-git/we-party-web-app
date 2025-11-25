@@ -9,6 +9,15 @@ export function getInterests () {
 }
 
 /**
+ * Busca interesses por nome.
+ * Rota autenticada.
+ * @param query - O termo de busca para filtrar interesses por nome.
+ */
+export function searchInterestsByName (query: string) {
+  return callApi('GET', `/interest/search-by-name?q=${encodeURIComponent(query)}`, undefined, true)
+}
+
+/**
  * Adiciona um interesse para o usuário logado.
  * Rota autenticada.
  * @param interestId - O ID do interesse a ser adicionado.

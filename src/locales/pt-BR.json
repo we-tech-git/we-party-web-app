@@ -108,6 +108,21 @@
       "title": "Nova Solicitação",
       "line1": "Obrigado por adicionar um novo interesse, iremos analisar este novo tipo de evento e em até 24h iremos adicionar a lista de interesses para todos.",
       "line2": "Também vamos adicionar aos seus interesses pessoais para eventos personalizados"
+    },
+    "searching": "Buscando...",
+    "noResults": "Nenhum resultado encontrado",
+    "loading": "Carregando interesses...",
+    "noResultsTitle": "Nenhum interesse encontrado",
+    "noResultsDescription": "Não encontramos nenhum interesse com esse nome. Que tal solicitar ao WE Party para adicionar?",
+    "requestNewInterest": "Solicitar novo interesse",
+    "requestModal": {
+      "title": "Solicitar Novo Interesse",
+      "description": "Digite o nome do interesse que você gostaria que adicionássemos:",
+      "label": "Nome do interesse",
+      "placeholder": "Ex: Festa Eletrônica, Show de Rock...",
+      "cancel": "Cancelar",
+      "submit": "Solicitar",
+      "submitting": "Enviando..."
     }
   },
   "congratulations": {
@@ -149,8 +164,9 @@
   },
   "verifyPin": {
     "title": "Verificar Código",
-    "subtitle": "Enviamos um código de 6 dígitos para {email}. Digite-o abaixo.",
+    "subtitle": "Enviamos o link de redefinição para o email <b>{email}</b>. <br/><br/> Basta clicar no link do email para criar uma nova senha.",
     "button": "Verificar",
+    "btn_back_to_login": "Voltar ao login",
     "errors": {
       "invalidPin": "O código deve ter 6 dígitos.",
       "generic": "Código inválido ou expirado. Tente novamente."

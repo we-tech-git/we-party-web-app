@@ -3,6 +3,7 @@
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import { requestPasswordReset } from '@/api/password'
+  import { STORAGE_KEYS } from '@/common/storage'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
 
@@ -25,9 +26,12 @@
     successMessage.value = ''
 
     try {
-      await requestPasswordReset(email.value)
-      successMessage.value = t('forgotPassword.successMessage')
+      const response = await requestPasswordReset(email.value)
+
+      // successMessage.value = t('forgotPassword.successMessage')
+      successMessage.value = response.data.message
       // Aguarda um pouco para o usuário ler a mensagem e então redireciona
+      localStorage.setItem(STORAGE_KEYS.RESET_PASSWORD_EMAIL, JSON.stringify(email.value))
       setTimeout(() => {
         router.push({ name: '/public/VerifyPin', query: { email: email.value } })
       }, 2000)
