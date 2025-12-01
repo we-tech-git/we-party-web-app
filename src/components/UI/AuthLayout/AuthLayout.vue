@@ -1,8 +1,8 @@
 <script setup lang="ts">
-  defineProps<{
-    title?: string // Título opcional para personalizar cada página
-    brandLeft?: boolean // Quando true, inverte a ordem para brand à esquerda
-  }>()
+defineProps<{
+  title?: string // Título opcional para personalizar cada página
+  brandLeft?: boolean // Quando true, inverte a ordem para brand à esquerda
+}>()
 </script>
 
 <template>
@@ -84,7 +84,7 @@
 
   .form-section {
     width: 100%;
-    padding: 32px 24px 48px;
+    padding: 80px 24px 48px;
   }
 
   .brand-section {

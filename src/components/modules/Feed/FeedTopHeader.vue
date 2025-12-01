@@ -1,24 +1,24 @@
 <script setup lang="ts">
-  import { useI18n } from 'vue-i18n'
+import { useI18n } from 'vue-i18n'
 
-  interface UserSummary {
-    name: string
-    avatar: string
-    points: number
-  }
+interface UserSummary {
+  name: string
+  avatar: string
+  points: number
+}
 
-  defineProps<{
-    user: UserSummary
-  }>()
-  const { t } = useI18n()
+defineProps<{
+  user: UserSummary
+}>()
+const { t } = useI18n()
 
-  function changePicture () {
+function changePicture() {
   // TODO: Implement picture change logic
-  }
+}
 
-  function logout () {
+function logout() {
   // TODO: Implement logout logic
-  }
+}
 </script>
 
 <template>
@@ -29,19 +29,10 @@
       <div class="user-summary">
         <span class="points">
           <svg fill="none" height="18" viewBox="0 0 24 24" width="18">
-            <path
-              d="m12 3 2.09 4.74 5.16.45-3.9 3.37 1.16 5.02L12 14.92l-4.51 3.66 1.16-5.02-3.9-3.37 5.16-.45z"
-              fill="url(#starGradient)"
-            />
+            <path d="m12 3 2.09 4.74 5.16.45-3.9 3.37 1.16 5.02L12 14.92l-4.51 3.66 1.16-5.02-3.9-3.37 5.16-.45z"
+              fill="url(#starGradient)" />
             <defs>
-              <linearGradient
-                id="starGradient"
-                gradientUnits="userSpaceOnUse"
-                x1="12"
-                x2="12"
-                y1="3"
-                y2="21"
-              >
+              <linearGradient id="starGradient" gradientUnits="userSpaceOnUse" x1="12" x2="12" y1="3" y2="21">
                 <stop stop-color="#ffba4b" />
                 <stop offset="1" stop-color="#ff5fa6" />
               </linearGradient>
@@ -52,13 +43,7 @@
 
         <v-menu location="bottom" transition="slide-y-transition">
           <template #activator="{ props }">
-            <img
-              v-bind="props"
-              :alt="user.name"
-              class="avatar"
-              loading="lazy"
-              :src="user.avatar"
-            >
+            <img v-bind="props" :alt="user.name" class="avatar" loading="lazy" :src="user.avatar">
           </template>
 
           <v-list density="compact" :lines="false">
@@ -156,45 +141,73 @@
   }
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1100px) {
   .feed-top-header {
-    padding: 1.95rem 0 1.6rem;
-    box-shadow: 0 22px 42px rgba(15, 23, 42, 0.1);
+    padding: 1rem 0;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
   }
 
   .header-inner {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1.25rem;
-    padding: 0 clamp(1.5rem, 5vw, 2rem);
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0 1.25rem;
+  }
+
+  .brand {
+    order: 1;
+    flex: 1;
   }
 
   .user-summary {
-    padding: 0.85rem 1.2rem;
+    order: 2;
+    padding: 0.35rem 0.35rem 0.35rem 0.75rem;
+    margin-left: auto;
+  }
+
+  /* Target the slot content (feed-controls) */
+  .header-inner> :nth-child(2) {
+    order: 3;
+    width: 100%;
+    margin-top: 0.5rem;
   }
 }
 
 @media (max-width: 640px) {
   .feed-top-header {
-    padding: 1.7rem 0 1.4rem;
+    padding: 0.5rem 0;
   }
 
   .header-inner {
-    padding: 0 clamp(1.25rem, 6vw, 1.5rem);
+    padding: 0 1rem;
+    gap: 0.5rem;
   }
 
   .brand {
-    font-size: 1.85rem;
-    letter-spacing: 0.08em;
+    font-size: 1.25rem;
   }
 
   .user-summary {
-    gap: 0.75rem;
+    gap: 0.25rem;
+    padding: 0.25rem 0.25rem 0.25rem 0.5rem;
   }
 
   .avatar {
-    width: 38px;
-    height: 38px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .points {
+    font-size: 0.8rem;
+  }
+
+  .header-inner> :nth-child(2) {
+    margin-top: 0.25rem;
   }
 }
 </style>

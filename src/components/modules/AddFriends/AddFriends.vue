@@ -1,9 +1,4 @@
 <script setup lang="ts">
-// Imports principais
-// - vue: reatividade e computeds
-// - vue-i18n: traduções (t)
-// - AuthLayout: layout base com seção de marca (direita) e slot de formulário (esquerda)
-// - svgIcons: set de ícones (ver src/utils/svgSet.ts)
   import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
@@ -42,19 +37,6 @@
 
   async function requestUserRecomendations () {
     const userToFollowRecomendations = await getUserRecomendations()
-    // selectedUsers.value = userToFollowRecomendations.data.data.users.map((user: User) => {
-    //   if (user.isFollowing) {
-    //     return {
-    //       ...user,
-    //       currentStatus: 'sent',
-    //     }
-    //   }
-
-    //   return {
-    //     ...user,
-    //     currentStatus: 'pending',
-    //   }
-    // })
 
     users.value = userToFollowRecomendations.data.data.users
   }
@@ -74,16 +56,6 @@
     } else {
       followUser(user)
     }
-    // selectedUsers.value = selectedUsers.value.map(u => {
-    //   if (u.id === user.id) {
-    //     return {
-    //       ...u,
-    //       isFollowing: !u.isFollowing,
-    //       currentStatus: u.currentStatus === 'pending' ? 'sent' : 'pending',
-    //     }
-    //   }
-    //   return u
-    // })
     user.isFollowing = !user.isFollowing
   }
 
@@ -99,19 +71,12 @@
     requestUserRecomendations()
   })
 
-// watch(selectedUsers, (newSelectedUsers: User[]) => {
-//   console.log('Selected users updated:', newSelectedUsers)
-// })
-
-// watch(users, (newSelectedUsers: User[]) => {
-//   console.log('users ====>', newSelectedUsers)
-// })
-
 </script>
 
 <template>
   <AuthLayout>
     <template #form-content>
+      <h2 class="mobile-brand-title">WE PARTY</h2>
       <!-- Título e subtítulo -->
       <h1 class="auth-title">
         {{ t('addFriends.title') }}
@@ -183,6 +148,10 @@
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&family=Poppins:wght@400;500;600;700&display=swap');
+
+.mobile-brand-title {
+  display: none;
+}
 
 /* Tema rosa para InputLabel dentro desta página */
 .il-theme--pink {
@@ -545,6 +514,23 @@
     min-width: 120px;
     padding: 0.5rem 1.1rem;
     font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 960px) {
+  .mobile-brand-title {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-family: 'Baloo Thambi 2', cursive;
+    font-weight: 800;
+    font-size: 2.75rem;
+    line-height: 1.1;
+    text-transform: uppercase;
+    background: linear-gradient(to right, #FFC947, #F978A3);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-align: center;
   }
 }
 </style>

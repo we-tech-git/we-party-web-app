@@ -5,210 +5,206 @@
   Data: 13/10/2025
 -->
 <script setup lang="ts">
-  import { computed, onMounted, ref, watch } from 'vue'
-  import { useI18n } from 'vue-i18n'
-  import { useRouter } from 'vue-router'
-  import { callApi } from '@/api'
-  import { addUserInterest, removeUserInterest, searchInterestsByName } from '@/api/interest'
-  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-  import { svgIcons } from '@/utils/svgSet'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { callApi } from '@/api'
+import { addUserInterest, removeUserInterest, searchInterestsByName } from '@/api/interest'
+import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+import { svgIcons } from '@/utils/svgSet'
 
-  const { t } = useI18n()
-  const router = useRouter()
+const { t } = useI18n()
+const router = useRouter()
 
-  const STORAGE_KEY = 'weparty_selected_interests'
+const STORAGE_KEY = 'weparty_selected_interests'
 
-  interface IInterest {
-    name: string
-    createdBy: string
-    id: string
-    hasInterest: boolean
+interface IInterest {
+  name: string
+  createdBy: string
+  id: string
+  hasInterest: boolean
+}
+
+const allChips = ref<IInterest[]>([])
+const selected = ref<Set<string>>(new Set())
+const isLoading = ref(false)
+const isFinishing = ref(false)
+const isSearching = ref(false)
+
+const query = ref('')
+const searchResults = ref<IInterest[]>([])
+const debounceTimeout = ref<number | null>(null)
+
+// Computed para mostrar os chips no grid
+const displayedChips = computed(() => {
+  // Se não tem query, mostra todos os interesses
+  if (query.value.trim().length === 0) {
+    return allChips.value
   }
 
-  const allChips = ref<IInterest[]>([])
-  const selected = ref<Set<string>>(new Set())
-  const isLoading = ref(false)
-  const isFinishing = ref(false)
-  const isSearching = ref(false)
+  // Se tem query, mostra os resultados da busca
+  return searchResults.value
+})
 
-  const query = ref('')
-  const searchResults = ref<IInterest[]>([])
-  const debounceTimeout = ref<number | null>(null)
+const showNoResults = computed(() => {
+  return !isSearching.value && query.value.trim().length > 0 && searchResults.value.length === 0
+})
 
-  // Computed para mostrar os chips no grid
-  const displayedChips = computed(() => {
-    // Se não tem query, mostra todos os interesses
-    if (query.value.trim().length === 0) {
-      return allChips.value
-    }
+async function fetchInterests() {
+  try {
+    isLoading.value = true
+    const response = await callApi('GET', '/interest/recommendations', undefined, true)
 
-    // Se tem query, mostra os resultados da busca
-    return searchResults.value
-  })
+    allChips.value = response?.data?.data?.interests
+  } catch (error) {
+    console.error('Erro ao buscar interesses:', error)
+    allChips.value = []
+  } finally {
+    isLoading.value = false
+  }
+}
 
-  const showNoResults = computed(() => {
-    return !isSearching.value && query.value.trim().length > 0 && searchResults.value.length === 0
-  })
-
-  async function fetchInterests () {
-    try {
-      isLoading.value = true
-      const response = await callApi('GET', '/interest/recommendations', undefined, true)
-
-      allChips.value = response?.data?.data?.interests
-    } catch (error) {
-      console.error('Erro ao buscar interesses:', error)
-      allChips.value = []
-    } finally {
-      isLoading.value = false
-    }
+async function searchInterests(searchQuery: string) {
+  if (!searchQuery.trim()) {
+    searchResults.value = []
+    return
   }
 
-  async function searchInterests (searchQuery: string) {
-    if (!searchQuery.trim()) {
-      searchResults.value = []
-      return
-    }
+  try {
+    isSearching.value = true
+    const response = await searchInterestsByName(searchQuery.trim())
+    searchResults.value = response?.data?.data?.interests || []
+  } catch (error) {
+    console.error('Erro ao buscar interesses:', error)
+    searchResults.value = []
+  } finally {
+    isSearching.value = false
+    isLoading.value = false
+  }
+}
 
-    try {
-      isSearching.value = true
-      const response = await searchInterestsByName(searchQuery.trim())
-      searchResults.value = response?.data?.data?.interests || []
-    } catch (error) {
-      console.error('Erro ao buscar interesses:', error)
-      searchResults.value = []
-    } finally {
-      isSearching.value = false
-      isLoading.value = false
-    }
+function debouncedSearch(searchQuery: string) {
+  // Limpa o timeout anterior
+  if (debounceTimeout.value) {
+    clearTimeout(debounceTimeout.value)
   }
 
-  function debouncedSearch (searchQuery: string) {
-    // Limpa o timeout anterior
-    if (debounceTimeout.value) {
-      clearTimeout(debounceTimeout.value)
-    }
-
-    // Se a query estiver vazia, limpa os resultados imediatamente
-    if (!searchQuery.trim()) {
-      searchResults.value = []
-      isLoading.value = false
-      isSearching.value = false
-      return
-    }
-
-    // Define um novo timeout de 500ms
-    debounceTimeout.value = setTimeout(() => {
-      searchInterests(searchQuery)
-    }, 500)
+  // Se a query estiver vazia, limpa os resultados imediatamente
+  if (!searchQuery.trim()) {
+    searchResults.value = []
+    isLoading.value = false
+    isSearching.value = false
+    return
   }
 
-  async function addFromSuggestion (selectedInterest: IInterest) {
-    if (selectedInterest.hasInterest) {
-      removeUserInterest(selectedInterest.id)
-    } else {
-      addUserInterest(selectedInterest.id)
-    }
-    selectedInterest.hasInterest = !selectedInterest.hasInterest
+  // Define um novo timeout de 500ms
+  debounceTimeout.value = setTimeout(() => {
+    searchInterests(searchQuery)
+  }, 500)
+}
+
+async function addFromSuggestion(selectedInterest: IInterest) {
+  if (selectedInterest.hasInterest) {
+    removeUserInterest(selectedInterest.id)
+  } else {
+    addUserInterest(selectedInterest.id)
   }
+  selectedInterest.hasInterest = !selectedInterest.hasInterest
+}
 
-  onMounted(() => {
-    fetchInterests()
-  })
+onMounted(() => {
+  fetchInterests()
+})
 
-  // Watch para executar busca com debounce quando query mudar
-  watch(query, newQuery => {
-    // Só ativa loading se a query não estiver vazia
-    if (newQuery.trim().length > 0) {
-      isLoading.value = true
-    }
-    debouncedSearch(newQuery)
-  })
-
-  const showModal = ref(false)
-  const showRequestModal = ref(false)
-  const newInterestName = ref('')
-  const isSubmittingRequest = ref(false)
-  function finish () {
-    isFinishing.value = true
-    const interestsToSave = Array.from(selected.value).map(name => {
-      const chip = allChips.value.find(c => c.name.toUpperCase() === name)
-      return chip ? { id: chip.id, name: chip.name } : null
-    }).filter(Boolean)
-
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(interestsToSave))
-      router.push({ name: '/private/feed' })
-    } catch (error) {
-      console.error('Erro ao salvar interesses:', error)
-    } finally {
-      isFinishing.value = false
-    }
+// Watch para executar busca com debounce quando query mudar
+watch(query, newQuery => {
+  // Só ativa loading se a query não estiver vazia
+  if (newQuery.trim().length > 0) {
+    isLoading.value = true
   }
+  debouncedSearch(newQuery)
+})
 
-  function skipStep () {
-    router.push('/private/feed')
-  }
-  function closeModal () {
-    showModal.value = false
-  }
+const showModal = ref(false)
+const showRequestModal = ref(false)
+const newInterestName = ref('')
+const isSubmittingRequest = ref(false)
+function finish() {
+  isFinishing.value = true
+  const interestsToSave = Array.from(selected.value).map(name => {
+    const chip = allChips.value.find(c => c.name.toUpperCase() === name)
+    return chip ? { id: chip.id, name: chip.name } : null
+  }).filter(Boolean)
 
-  function openRequestModal () {
-    newInterestName.value = query.value.trim()
-    showRequestModal.value = true
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(interestsToSave))
+    router.push({ name: '/private/feed' })
+  } catch (error) {
+    console.error('Erro ao salvar interesses:', error)
+  } finally {
+    isFinishing.value = false
   }
+}
 
-  function closeRequestModal () {
-    showRequestModal.value = false
-    newInterestName.value = ''
+function skipStep() {
+  router.push('/private/feed')
+}
+function closeModal() {
+  showModal.value = false
+}
+
+function openRequestModal() {
+  newInterestName.value = query.value.trim()
+  showRequestModal.value = true
+}
+
+function closeRequestModal() {
+  showRequestModal.value = false
+  newInterestName.value = ''
+  isSubmittingRequest.value = false
+}
+
+async function submitNewInterestRequest() {
+  if (!newInterestName.value.trim()) return
+
+  try {
+    isSubmittingRequest.value = true
+
+    // Aqui você pode fazer a chamada para a API para solicitar o novo interesse
+    // Por exemplo: await requestNewInterest(newInterestName.value)
+
+    console.log('Solicitando novo interesse:', newInterestName.value)
+
+    // Simula delay da API
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // Fecha o modal e mostra mensagem de sucesso
+    closeRequestModal()
+    showModal.value = true
+
+    // Limpa a busca
+    query.value = ''
+  } catch (error) {
+    console.error('Erro ao solicitar novo interesse:', error)
+  } finally {
     isSubmittingRequest.value = false
   }
-
-  async function submitNewInterestRequest () {
-    if (!newInterestName.value.trim()) return
-
-    try {
-      isSubmittingRequest.value = true
-
-      // Aqui você pode fazer a chamada para a API para solicitar o novo interesse
-      // Por exemplo: await requestNewInterest(newInterestName.value)
-
-      console.log('Solicitando novo interesse:', newInterestName.value)
-
-      // Simula delay da API
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Fecha o modal e mostra mensagem de sucesso
-      closeRequestModal()
-      showModal.value = true
-
-      // Limpa a busca
-      query.value = ''
-    } catch (error) {
-      console.error('Erro ao solicitar novo interesse:', error)
-    } finally {
-      isSubmittingRequest.value = false
-    }
-  }
+}
 
 </script>
 
 <template>
   <AuthLayout>
     <template #form-content>
+      <h2 class="mobile-brand-title">WE PARTY</h2>
       <h1 class="title">{{ t('interest.title') }}</h1>
       <p class="subtitle">{{ t('interest.subtitle') }}</p>
 
       <!-- Campo de busca -->
       <div class="search-wrapper">
         <svg v-if="svgIcons.searchIcon" class="search-icon" fill="currentColor" :viewBox="svgIcons.searchIcon.viewBox">
-          <path
-            v-for="(p, i) in svgIcons.searchIcon.paths"
-            :key="i"
-            :clip-rule="p.clipRule"
-            :d="p.d"
-            :fill-rule="p.fillRule"
-          />
+          <path v-for="(p, i) in svgIcons.searchIcon.paths" :key="i" :clip-rule="p.clipRule" :d="p.d"
+            :fill-rule="p.fillRule" />
         </svg>
 
         <input v-model="query" class="search-input" :placeholder="t('interest.searchPlaceholder')" type="text">
@@ -224,34 +220,17 @@
         <h3 class="no-results-title">{{ t('interest.noResultsTitle') }}</h3>
         <p class="no-results-text">{{ t('interest.noResultsDescription') }}</p>
         <button class="btn-request-interest" type="button" @click="openRequestModal">
-          <svg
-            v-if="svgIcons.plusIcon"
-            class="plus-icon-btn"
-            fill="none"
-            stroke="currentColor"
-            :viewBox="svgIcons.plusIcon.viewBox"
-          >
-            <path
-              v-for="(p, i) in svgIcons.plusIcon.paths"
-              :key="i"
-              :d="p.d"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-            />
+          <svg v-if="svgIcons.plusIcon" class="plus-icon-btn" fill="none" stroke="currentColor"
+            :viewBox="svgIcons.plusIcon.viewBox">
+            <path v-for="(p, i) in svgIcons.plusIcon.paths" :key="i" :d="p.d" stroke-linecap="round"
+              stroke-linejoin="round" stroke-width="2" />
           </svg>
           {{ t('interest.requestNewInterest') }}
         </button>
       </div>
       <div v-else class="chips-grid">
-        <button
-          v-for="chip in displayedChips"
-          :key="chip.id"
-          :class="['chip', chip.hasInterest ? 'selected' : '']"
-          :title="chip.name"
-          type="button"
-          @click="addFromSuggestion(chip)"
-        >
+        <button v-for="chip in displayedChips" :key="chip.id" :class="['chip', chip.hasInterest ? 'selected' : '']"
+          :title="chip.name" type="button" @click="addFromSuggestion(chip)">
           {{ chip.name }}
         </button>
       </div>
@@ -298,30 +277,17 @@
             <p class="modal-description">{{ t('interest.requestModal.description') }}</p>
             <div class="input-wrapper">
               <label class="input-label" for="newInterest">{{ t('interest.requestModal.label') }}</label>
-              <input
-                id="newInterest"
-                v-model="newInterestName"
-                class="modal-input"
-                :placeholder="t('interest.requestModal.placeholder')"
-                type="text"
-                @keyup.enter="submitNewInterestRequest"
-              >
+              <input id="newInterest" v-model="newInterestName" class="modal-input"
+                :placeholder="t('interest.requestModal.placeholder')" type="text"
+                @keyup.enter="submitNewInterestRequest">
             </div>
           </div>
           <div class="modal-footer">
-            <button
-              class="btn-secondary"
-              type="button"
-              @click="closeRequestModal"
-            >
+            <button class="btn-secondary" type="button" @click="closeRequestModal">
               {{ t('interest.requestModal.cancel') }}
             </button>
-            <button
-              class="finish-btn"
-              :disabled="!newInterestName.trim() || isSubmittingRequest"
-              type="button"
-              @click="submitNewInterestRequest"
-            >
+            <button class="finish-btn" :disabled="!newInterestName.trim() || isSubmittingRequest" type="button"
+              @click="submitNewInterestRequest">
               <span v-if="isSubmittingRequest">{{ t('interest.requestModal.submitting') }}</span>
               <span v-else>{{ t('interest.requestModal.submit') }}</span>
             </button>
@@ -347,6 +313,10 @@
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&family=Poppins:wght@400;600;700&display=swap');
+
+.mobile-brand-title {
+  display: none;
+}
 
 /* ===============================
    TIPOGRAFIA E TÍTULOS
@@ -801,6 +771,21 @@
 }
 
 @media (max-width: 960px) {
+  .mobile-brand-title {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-family: 'Baloo Thambi 2', cursive;
+    font-weight: 800;
+    font-size: 2.75rem;
+    line-height: 1.1;
+    text-transform: uppercase;
+    background: linear-gradient(to right, #FFC947, #F978A3);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-align: center;
+  }
+
   .brand-wrap {
     padding: 0 16px;
     margin-top: 0;

@@ -1,24 +1,24 @@
 <script setup lang="ts">
-  export interface NavItem {
-    id: string
-    label: string
-    icon: 'home' | 'top' | 'bookmark' | 'bell' | 'profile'
-  }
+export interface NavItem {
+  id: string
+  label: string
+  icon: 'home' | 'top' | 'bookmark' | 'bell' | 'profile'
+}
 
-  const props = defineProps<{
-    items: NavItem[]
-    active: string
-  }>()
+const props = defineProps<{
+  items: NavItem[]
+  active: string
+}>()
 
-  const emit = defineEmits<{
-    (e: 'select', value: string): void
-  }>()
+const emit = defineEmits<{
+  (e: 'select', value: string): void
+}>()
 
-  function handleSelect (id: string) {
-    if (id === props.active) return
+function handleSelect(id: string) {
+  if (id === props.active) return
 
-    emit('select', id)
-  }
+  emit('select', id)
+}
 </script>
 
 <template>
@@ -28,56 +28,23 @@
         <li v-for="item in props.items" :key="item.id">
           <button :class="{ active: props.active === item.id }" type="button" @click="handleSelect(item.id)">
             <span aria-hidden="true" class="icon">
-              <svg
-                v-if="item.icon === 'home'"
-                fill="none"
-                height="20"
-                viewBox="0 0 24 24"
-                width="20"
-              >
+              <svg v-if="item.icon === 'home'" fill="none" height="20" viewBox="0 0 24 24" width="20">
                 <path d="M4 9.5 12 4l8 5.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z" fill="currentColor" />
               </svg>
-              <svg
-                v-else-if="item.icon === 'top'"
-                fill="none"
-                height="20"
-                viewBox="0 0 24 24"
-                width="20"
-              >
+              <svg v-else-if="item.icon === 'top'" fill="none" height="20" viewBox="0 0 24 24" width="20">
                 <path d="m4 17 4.5-10 3.5 7 2.5-5 5 8z" fill="currentColor" />
               </svg>
-              <svg
-                v-else-if="item.icon === 'bookmark'"
-                fill="none"
-                height="20"
-                viewBox="0 0 24 24"
-                width="20"
-              >
+              <svg v-else-if="item.icon === 'bookmark'" fill="none" height="20" viewBox="0 0 24 24" width="20">
                 <path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1z" fill="currentColor" />
               </svg>
-              <svg
-                v-else-if="item.icon === 'bell'"
-                fill="none"
-                height="20"
-                viewBox="0 0 24 24"
-                width="20"
-              >
-                <path
-                  d="M18 15v-3a6 6 0 0 0-12 0v3l-1.5 1.5a1 1 0 0 0 .7 1.7H18.8a1 1 0 0 0 .7-1.7z"
-                  fill="currentColor"
-                />
+              <svg v-else-if="item.icon === 'bell'" fill="none" height="20" viewBox="0 0 24 24" width="20">
+                <path d="M18 15v-3a6 6 0 0 0-12 0v3l-1.5 1.5a1 1 0 0 0 .7 1.7H18.8a1 1 0 0 0 .7-1.7z"
+                  fill="currentColor" />
               </svg>
-              <svg
-                v-else
-                fill="none"
-                height="20"
-                viewBox="0 0 24 24"
-                width="20"
-              >
+              <svg v-else fill="none" height="20" viewBox="0 0 24 24" width="20">
                 <path
                   d="M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 10c-4.418 0-8 2.015-8 4.5V20h16v-1.5c0-2.485-3.582-4.5-8-4.5z"
-                  fill="currentColor"
-                />
+                  fill="currentColor" />
               </svg>
             </span>
             <span>{{ item.label }}</span>
@@ -180,6 +147,78 @@ button.active .icon {
 
 @media (max-width: 960px) {
   .feed-sidebar {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    min-height: auto;
+    padding: 0.75rem 1rem 1.5rem;
+    /* Extra padding bottom for safe area */
+    border-radius: 24px 24px 0 0;
+    z-index: 100;
+    flex-direction: row;
+    justify-content: center;
+    box-shadow: 0 -10px 40px rgba(20, 27, 68, 0.15);
+    gap: 0;
+    background: #ffffff;
+  }
+
+  nav {
+    width: 100%;
+    max-width: 500px;
+  }
+
+  ul {
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+    gap: 0;
+  }
+
+  li {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+  }
+
+  button {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    background: transparent;
+    font-size: 0.75rem;
+    width: auto;
+    min-width: 60px;
+  }
+
+  button:hover {
+    transform: none;
+    background: transparent;
+  }
+
+  button.active {
+    background: transparent;
+    color: #ff5fa6;
+    box-shadow: none;
+  }
+
+  button.active .icon {
+    background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 95, 166, 0.4);
+  }
+
+  .icon {
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border-radius: 10px;
+  }
+
+  button span:not(.icon) {
     display: none;
   }
 }
