@@ -1,24 +1,29 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
+  import { useI18n } from 'vue-i18n'
+  import { useRouter } from 'vue-router'
+  import { useAuth } from '@/composables/useAuth'
 
-interface UserSummary {
-  name: string
-  avatar: string
-  points: number
-}
+  interface UserSummary {
+    name: string
+    avatar: string
+    points: number
+  }
 
-defineProps<{
-  user: UserSummary
-}>()
-const { t } = useI18n()
+  defineProps<{
+    user: UserSummary
+  }>()
+  const { t } = useI18n()
+  const router = useRouter()
+  const { logout: authLogout } = useAuth()
 
-function changePicture() {
+  function changePicture () {
   // TODO: Implement picture change logic
-}
+  }
 
-function logout() {
-  // TODO: Implement logout logic
-}
+  function logout () {
+    authLogout()
+    router.push('/public/Login')
+  }
 </script>
 
 <template>
@@ -29,10 +34,19 @@ function logout() {
       <div class="user-summary">
         <span class="points">
           <svg fill="none" height="18" viewBox="0 0 24 24" width="18">
-            <path d="m12 3 2.09 4.74 5.16.45-3.9 3.37 1.16 5.02L12 14.92l-4.51 3.66 1.16-5.02-3.9-3.37 5.16-.45z"
-              fill="url(#starGradient)" />
+            <path
+              d="m12 3 2.09 4.74 5.16.45-3.9 3.37 1.16 5.02L12 14.92l-4.51 3.66 1.16-5.02-3.9-3.37 5.16-.45z"
+              fill="url(#starGradient)"
+            />
             <defs>
-              <linearGradient id="starGradient" gradientUnits="userSpaceOnUse" x1="12" x2="12" y1="3" y2="21">
+              <linearGradient
+                id="starGradient"
+                gradientUnits="userSpaceOnUse"
+                x1="12"
+                x2="12"
+                y1="3"
+                y2="21"
+              >
                 <stop stop-color="#ffba4b" />
                 <stop offset="1" stop-color="#ff5fa6" />
               </linearGradient>
@@ -43,7 +57,13 @@ function logout() {
 
         <v-menu location="bottom" transition="slide-y-transition">
           <template #activator="{ props }">
-            <img v-bind="props" :alt="user.name" class="avatar" loading="lazy" :src="user.avatar">
+            <img
+              v-bind="props"
+              :alt="user.name"
+              class="avatar"
+              loading="lazy"
+              :src="user.avatar"
+            >
           </template>
 
           <v-list density="compact" :lines="false">
@@ -95,6 +115,8 @@ function logout() {
   white-space: nowrap;
   flex-shrink: 0;
   line-height: 1;
+  width: 240px;
+  text-align: center;
 }
 
 .user-summary {
@@ -162,6 +184,8 @@ function logout() {
   .brand {
     order: 1;
     flex: 1;
+    width: auto;
+    text-align: left;
   }
 
   .user-summary {

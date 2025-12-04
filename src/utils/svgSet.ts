@@ -97,6 +97,28 @@ export const svgIcons: Record<string, SvgIcon> = {
       },
     ],
   },
+  // infoIcon
+  // Origem: ícone de informação (estilo outline)
+  // Uso: botão de informação em Interest.vue
+  infoIcon: {
+    viewBox: '0 0 256 256',
+    paths: [
+      {
+        d: 'M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z',
+      },
+    ],
+  },
+  // shareIcon
+  // Origem: ícone de compartilhamento (estilo outline)
+  // Uso: botão de compartilhamento em Interest.vue
+  shareIcon: {
+    viewBox: '0 0 256 256',
+    paths: [
+      {
+        d: 'M237.66,106.35l-80-80A8,8,0,0,0,144,32V72.35c-25.94,2.22-54.59,14.92-78.16,34.91-28.38,24.08-46.05,55.11-49.76,87.37a12,12,0,0,0,20.68,9.58h0c11-11.71,50.14-48.74,107.24-52V192a8,8,0,0,0,13.66,5.65l80-80A8,8,0,0,0,237.66,106.35ZM160,172.69V144a8,8,0,0,0-8-8c-28.08,0-55.43,7.33-81.29,21.8a196.17,196.17,0,0,0-36.57,26.52c5.8-23.84,20.42-46.51,42.05-64.86C99.41,99.77,127.75,88,152,88a8,8,0,0,0,8-8V51.32L220.69,112Z',
+      },
+    ],
+  },
   // filterIcon
   // Origem: ícone de filtro/deslizadores
   // Uso: botão à direita no campo de busca de Interest.vue

@@ -374,7 +374,7 @@ const filteredItems = computed(() => {
     --feed-sticky-offset: 180px;
     padding-top: 1rem;
   }
-  
+
   .feed-controls {
     background: transparent;
     backdrop-filter: none;
