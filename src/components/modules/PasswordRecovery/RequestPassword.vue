@@ -1,46 +1,46 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
-import { requestPasswordReset } from '@/api/password'
-import { STORAGE_KEYS } from '@/common/storage'
-import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
+  import { ref } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import { useRouter } from 'vue-router'
+  import { requestPasswordReset } from '@/api/password'
+  import { STORAGE_KEYS } from '@/common/storage'
+  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
 
-const { t } = useI18n()
-const router = useRouter()
+  const { t } = useI18n()
+  const router = useRouter()
 
-const email = ref('')
-const isLoading = ref(false)
-const errorMessage = ref('')
-const successMessage = ref('')
+  const email = ref('')
+  const isLoading = ref(false)
+  const errorMessage = ref('')
+  const successMessage = ref('')
 
-async function handleRequest() {
-  if (!email.value) {
-    errorMessage.value = t('forgotPassword.errors.emailRequired')
-    return
+  async function handleRequest () {
+    if (!email.value) {
+      errorMessage.value = t('forgotPassword.errors.emailRequired')
+      return
+    }
+
+    isLoading.value = true
+    errorMessage.value = ''
+    successMessage.value = ''
+
+    try {
+      const response = await requestPasswordReset(email.value)
+
+      // successMessage.value = t('forgotPassword.successMessage')
+      successMessage.value = response.data.message
+      // Aguarda um pouco para o usuário ler a mensagem e então redireciona
+      localStorage.setItem(STORAGE_KEYS.RESET_PASSWORD_EMAIL, JSON.stringify(email.value))
+      setTimeout(() => {
+        router.push({ name: '/public/VerifyPin', query: { email: email.value } })
+      }, 2000)
+    } catch (error: any) {
+      errorMessage.value = error.response?.data?.message || t('forgotPassword.errors.generic')
+    } finally {
+      isLoading.value = false
+    }
   }
-
-  isLoading.value = true
-  errorMessage.value = ''
-  successMessage.value = ''
-
-  try {
-    const response = await requestPasswordReset(email.value)
-
-    // successMessage.value = t('forgotPassword.successMessage')
-    successMessage.value = response.data.message
-    // Aguarda um pouco para o usuário ler a mensagem e então redireciona
-    localStorage.setItem(STORAGE_KEYS.RESET_PASSWORD_EMAIL, JSON.stringify(email.value))
-    setTimeout(() => {
-      router.push({ name: '/public/VerifyPin', query: { email: email.value } })
-    }, 2000)
-  } catch (error: any) {
-    errorMessage.value = error.response?.data?.message || t('forgotPassword.errors.generic')
-  } finally {
-    isLoading.value = false
-  }
-}
 </script>
 
 <template>

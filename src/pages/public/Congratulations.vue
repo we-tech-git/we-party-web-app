@@ -1,5 +1,5 @@
 <template>
-  <Congratulations />
+  <Congratulations continue-to="/private/feed" />
 </template>
 
 <script setup>

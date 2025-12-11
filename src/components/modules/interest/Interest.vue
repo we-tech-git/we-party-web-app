@@ -5,191 +5,239 @@
   Data: 13/10/2025
 -->
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
-import { callApi } from '@/api'
-import { addUserInterest, removeUserInterest, searchInterestsByName } from '@/api/interest'
-import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-import { svgIcons } from '@/utils/svgSet'
+  import { computed, onMounted, ref, watch } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import { useRouter } from 'vue-router'
+  import { callApi } from '@/api'
+  import { addUserInterest, removeUserInterest, searchInterestsByName } from '@/api/interest'
+  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import { svgIcons } from '@/utils/svgSet'
 
-const { t } = useI18n()
-const router = useRouter()
+  const { t } = useI18n()
+  const router = useRouter()
 
-const STORAGE_KEY = 'weparty_selected_interests'
+  const STORAGE_KEY = 'weparty_selected_interests'
+  const PENDING_STORAGE_KEY = 'weparty_pending_interests'
 
-interface IInterest {
-  name: string
-  createdBy: string
-  id: string
-  hasInterest: boolean
-}
-
-const allChips = ref<IInterest[]>([])
-const selected = ref<Set<string>>(new Set())
-const isLoading = ref(false)
-const isFinishing = ref(false)
-const isSearching = ref(false)
-
-const query = ref('')
-const searchResults = ref<IInterest[]>([])
-const debounceTimeout = ref<number | null>(null)
-
-// Computed para mostrar os chips no grid
-const displayedChips = computed(() => {
-  // Se não tem query, mostra todos os interesses
-  if (query.value.trim().length === 0) {
-    return allChips.value
+  interface IInterest {
+    name: string
+    createdBy: string
+    id: string
+    hasInterest: boolean
   }
 
-  // Se tem query, mostra os resultados da busca
-  return searchResults.value
-})
+  const allChips = ref<IInterest[]>([])
+  const selected = ref<Set<string>>(new Set())
+  const isLoading = ref(false)
+  const hasError = ref(false)
+  const isFinishing = ref(false)
+  const isSearching = ref(false)
 
-const showNoResults = computed(() => {
-  return !isSearching.value && query.value.trim().length > 0 && searchResults.value.length === 0
-})
+  const query = ref('')
+  const searchResults = ref<IInterest[]>([])
+  const debounceTimeout = ref<number | null>(null)
 
-async function fetchInterests() {
-  try {
-    isLoading.value = true
-    const response = await callApi('GET', '/interest/recommendations', undefined, true)
+  // Computed para mostrar os chips no grid
+  const displayedChips = computed(() => {
+    // Se não tem query, mostra todos os interesses
+    if (query.value.trim().length === 0) {
+      return allChips.value
+    }
 
-    allChips.value = response?.data?.data?.interests
-  } catch (error) {
-    console.error('Erro ao buscar interesses:', error)
-    allChips.value = []
-  } finally {
-    isLoading.value = false
-  }
-}
+    // Se tem query, mostra os resultados da busca
+    return searchResults.value
+  })
 
-async function searchInterests(searchQuery: string) {
-  if (!searchQuery.trim()) {
-    searchResults.value = []
-    return
-  }
+  const showNoResults = computed(() => {
+    return !isSearching.value && query.value.trim().length > 0 && searchResults.value.length === 0
+  })
 
-  try {
-    isSearching.value = true
-    const response = await searchInterestsByName(searchQuery.trim())
-    searchResults.value = response?.data?.data?.interests || []
-  } catch (error) {
-    console.error('Erro ao buscar interesses:', error)
-    searchResults.value = []
-  } finally {
-    isSearching.value = false
-    isLoading.value = false
-  }
-}
+  async function fetchInterests () {
+    try {
+      isLoading.value = true
+      hasError.value = false
+      const response = await callApi('GET', '/interest/recommendations', undefined, true)
 
-function debouncedSearch(searchQuery: string) {
-  // Limpa o timeout anterior
-  if (debounceTimeout.value) {
-    clearTimeout(debounceTimeout.value)
+      allChips.value = response?.data?.data?.interests
+    } catch (error) {
+      console.error('Erro ao buscar interesses:', error)
+      hasError.value = true
+      allChips.value = []
+    } finally {
+      isLoading.value = false
+    }
   }
 
-  // Se a query estiver vazia, limpa os resultados imediatamente
-  if (!searchQuery.trim()) {
-    searchResults.value = []
-    isLoading.value = false
-    isSearching.value = false
-    return
+  async function searchInterests (searchQuery: string) {
+    if (!searchQuery.trim()) {
+      searchResults.value = []
+      return
+    }
+
+    try {
+      isSearching.value = true
+      const response = await searchInterestsByName(searchQuery.trim())
+      searchResults.value = response?.data?.data?.interests || []
+    } catch (error) {
+      console.error('Erro ao buscar interesses:', error)
+      searchResults.value = []
+    } finally {
+      isSearching.value = false
+      isLoading.value = false
+    }
   }
 
-  // Define um novo timeout de 500ms
-  debounceTimeout.value = setTimeout(() => {
-    searchInterests(searchQuery)
-  }, 500)
-}
+  function debouncedSearch (searchQuery: string) {
+    // Limpa o timeout anterior
+    if (debounceTimeout.value) {
+      clearTimeout(debounceTimeout.value)
+    }
 
-async function addFromSuggestion(selectedInterest: IInterest) {
-  if (selectedInterest.hasInterest) {
-    removeUserInterest(selectedInterest.id)
-  } else {
-    addUserInterest(selectedInterest.id)
+    // Se a query estiver vazia, limpa os resultados imediatamente
+    if (!searchQuery.trim()) {
+      searchResults.value = []
+      isLoading.value = false
+      isSearching.value = false
+      return
+    }
+
+    // Define um novo timeout de 500ms
+    debounceTimeout.value = setTimeout(() => {
+      searchInterests(searchQuery)
+    }, 500)
   }
-  selectedInterest.hasInterest = !selectedInterest.hasInterest
-}
 
-onMounted(() => {
-  fetchInterests()
-})
-
-// Watch para executar busca com debounce quando query mudar
-watch(query, newQuery => {
-  // Só ativa loading se a query não estiver vazia
-  if (newQuery.trim().length > 0) {
-    isLoading.value = true
+  async function addFromSuggestion (selectedInterest: IInterest) {
+    if (selectedInterest.hasInterest) {
+      removeUserInterest(selectedInterest.id)
+    } else {
+      addUserInterest(selectedInterest.id)
+    }
+    selectedInterest.hasInterest = !selectedInterest.hasInterest
   }
-  debouncedSearch(newQuery)
-})
 
-const showModal = ref(false)
-const showRequestModal = ref(false)
-const newInterestName = ref('')
-const isSubmittingRequest = ref(false)
-function finish() {
-  isFinishing.value = true
-  const interestsToSave = Array.from(selected.value).map(name => {
-    const chip = allChips.value.find(c => c.name.toUpperCase() === name)
-    return chip ? { id: chip.id, name: chip.name } : null
-  }).filter(Boolean)
+  onMounted(() => {
+    fetchInterests()
+  })
 
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(interestsToSave))
-    router.push({ name: '/private/feed' })
-  } catch (error) {
-    console.error('Erro ao salvar interesses:', error)
-  } finally {
-    isFinishing.value = false
+  // Watch para executar busca com debounce quando query mudar
+  watch(query, newQuery => {
+    // Só ativa loading se a query não estiver vazia
+    if (newQuery.trim().length > 0) {
+      isLoading.value = true
+    }
+    debouncedSearch(newQuery)
+  })
+
+  const showModal = ref(false)
+  const showRequestModal = ref(false)
+  const newInterestName = ref('')
+  const pendingInterests = ref<string[]>([])
+  const isSubmittingRequest = ref(false)
+
+  // Persiste automaticamente pendingInterests no localStorage
+  watch(pendingInterests, val => {
+    try {
+      localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(val || []))
+    } catch (error) {
+      console.error('Erro ao salvar pendingInterests no localStorage:', error)
+    }
+  }, { deep: true })
+
+  function finish () {
+    isFinishing.value = true
+    const interestsToSave = Array.from(selected.value).map(name => {
+      const chip = allChips.value.find(c => c.name.toUpperCase() === name)
+      return chip ? { id: chip.id, name: chip.name } : null
+    }).filter(Boolean)
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(interestsToSave))
+      router.push('/public/AddFriends')
+    } catch (error) {
+      console.error('Erro ao salvar interesses:', error)
+    } finally {
+      isFinishing.value = false
+    }
   }
-}
 
-function skipStep() {
-  router.push('/private/feed')
-}
-function closeModal() {
-  showModal.value = false
-}
+  function skipStep () {
+    router.push('/public/AddFriends')
+  }
+  function closeModal () {
+    showModal.value = false
+  }
 
-function openRequestModal() {
-  newInterestName.value = query.value.trim()
-  showRequestModal.value = true
-}
+  function openRequestModal () {
+    newInterestName.value = query.value.trim()
+    // Carrega pendentes previamente salvos (se houver)
+    try {
+      const stored = localStorage.getItem(PENDING_STORAGE_KEY)
+      pendingInterests.value = stored ? JSON.parse(stored) : []
+    } catch (error) {
+      pendingInterests.value = []
+      console.error('Erro ao ler pendingInterests do localStorage:', error)
+    }
+    showRequestModal.value = true
+  }
 
-function closeRequestModal() {
-  showRequestModal.value = false
-  newInterestName.value = ''
-  isSubmittingRequest.value = false
-}
-
-async function submitNewInterestRequest() {
-  if (!newInterestName.value.trim()) return
-
-  try {
-    isSubmittingRequest.value = true
-
-    // Aqui você pode fazer a chamada para a API para solicitar o novo interesse
-    // Por exemplo: await requestNewInterest(newInterestName.value)
-
-    console.log('Solicitando novo interesse:', newInterestName.value)
-
-    // Simula delay da API
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    // Fecha o modal e mostra mensagem de sucesso
-    closeRequestModal()
-    showModal.value = true
-
-    // Limpa a busca
-    query.value = ''
-  } catch (error) {
-    console.error('Erro ao solicitar novo interesse:', error)
-  } finally {
+  function closeRequestModal () {
+    showRequestModal.value = false
+    newInterestName.value = ''
+    // Não limpamos pendingInterests aqui para manter a persistência caso o usuário feche sem querer
+    // pendingInterests.value = []
     isSubmittingRequest.value = false
   }
-}
+
+  function addToPending () {
+    const name = newInterestName.value.trim()
+    if (name && !pendingInterests.value.includes(name)) {
+      pendingInterests.value.push(name)
+      newInterestName.value = ''
+    }
+  }
+
+  function removePending (index: number) {
+    pendingInterests.value.splice(index, 1)
+  }
+
+  async function submitNewInterestRequest () {
+    // Adiciona o que estiver no input se o usuário esqueceu de clicar no +
+    addToPending()
+
+    if (pendingInterests.value.length === 0) return
+
+    try {
+      isSubmittingRequest.value = true
+
+      // limpa pendentes salvos após envio bem sucedido
+      try {
+        localStorage.removeItem(PENDING_STORAGE_KEY)
+        pendingInterests.value = [] // Limpa a lista da memória também
+      } catch (error) {
+        console.error('Erro ao limpar pendingInterests do localStorage:', error)
+      }
+
+      // Aqui você pode fazer a chamada para a API para solicitar o novo interesse
+      // Por exemplo: await requestNewInterest(pendingInterests.value)
+
+      console.log('Solicitando novos interesses:', pendingInterests.value)
+
+      // Simula delay da API
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Fecha o modal e mostra mensagem de sucesso
+      closeRequestModal()
+      showModal.value = true
+
+      // Limpa a busca
+      query.value = ''
+    } catch (error) {
+      console.error('Erro ao solicitar novo interesse:', error)
+    } finally {
+      isSubmittingRequest.value = false
+    }
+  }
 
 </script>
 
@@ -203,8 +251,13 @@ async function submitNewInterestRequest() {
       <!-- Campo de busca -->
       <div class="search-wrapper">
         <svg v-if="svgIcons.searchIcon" class="search-icon" fill="currentColor" :viewBox="svgIcons.searchIcon.viewBox">
-          <path v-for="(p, i) in svgIcons.searchIcon.paths" :key="i" :clip-rule="p.clipRule" :d="p.d"
-            :fill-rule="p.fillRule" />
+          <path
+            v-for="(p, i) in svgIcons.searchIcon.paths"
+            :key="i"
+            :clip-rule="p.clipRule"
+            :d="p.d"
+            :fill-rule="p.fillRule"
+          />
         </svg>
 
         <input v-model="query" class="search-input" :placeholder="t('interest.searchPlaceholder')" type="text">
@@ -215,22 +268,46 @@ async function submitNewInterestRequest() {
         <div class="loading-spinner" />
         <p>{{ isSearching ? t('interest.searching') : t('interest.loading') }}</p>
       </div>
+      <div v-else-if="hasError" class="error-state">
+        <div class="error-icon">⚠️</div>
+        <p>{{ t('interest.errorLoading') || 'Erro ao carregar interesses' }}</p>
+        <button class="retry-btn" type="button" @click="fetchInterests">
+          Tentar novamente
+        </button>
+      </div>
       <div v-else-if="showNoResults" class="no-results-container">
         <div class="no-results-icon">🔍</div>
         <h3 class="no-results-title">{{ t('interest.noResultsTitle') }}</h3>
         <p class="no-results-text">{{ t('interest.noResultsDescription') }}</p>
         <button class="btn-request-interest" type="button" @click="openRequestModal">
-          <svg v-if="svgIcons.plusIcon" class="plus-icon-btn" fill="none" stroke="currentColor"
-            :viewBox="svgIcons.plusIcon.viewBox">
-            <path v-for="(p, i) in svgIcons.plusIcon.paths" :key="i" :d="p.d" stroke-linecap="round"
-              stroke-linejoin="round" stroke-width="2" />
+          <svg
+            v-if="svgIcons.plusIcon"
+            class="plus-icon-btn"
+            fill="none"
+            stroke="currentColor"
+            :viewBox="svgIcons.plusIcon.viewBox"
+          >
+            <path
+              v-for="(p, i) in svgIcons.plusIcon.paths"
+              :key="i"
+              :d="p.d"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+            />
           </svg>
           {{ t('interest.requestNewInterest') }}
         </button>
       </div>
       <div v-else class="chips-grid">
-        <button v-for="chip in displayedChips" :key="chip.id" :class="['chip', chip.hasInterest ? 'selected' : '']"
-          :title="chip.name" type="button" @click="addFromSuggestion(chip)">
+        <button
+          v-for="chip in displayedChips"
+          :key="chip.id"
+          :class="['chip', chip.hasInterest ? 'selected' : '']"
+          :title="chip.name"
+          type="button"
+          @click="addFromSuggestion(chip)"
+        >
           {{ chip.name }}
         </button>
       </div>
@@ -277,17 +354,38 @@ async function submitNewInterestRequest() {
             <p class="modal-description">{{ t('interest.requestModal.description') }}</p>
             <div class="input-wrapper">
               <label class="input-label" for="newInterest">{{ t('interest.requestModal.label') }}</label>
-              <input id="newInterest" v-model="newInterestName" class="modal-input"
-                :placeholder="t('interest.requestModal.placeholder')" type="text"
-                @keyup.enter="submitNewInterestRequest">
+              <div class="input-group">
+                <input
+                  id="newInterest"
+                  v-model="newInterestName"
+                  class="modal-input"
+                  :placeholder="t('interest.requestModal.placeholder')"
+                  type="text"
+                  @keyup.enter="addToPending"
+                >
+                <button class="add-btn" type="button" @click="addToPending">
+                  +
+                </button>
+              </div>
+            </div>
+
+            <div v-if="pendingInterests.length > 0" class="pending-list">
+              <span v-for="(item, index) in pendingInterests" :key="index" class="pending-chip">
+                {{ item }}
+                <button class="remove-pending-btn" type="button" @click="removePending(index)">×</button>
+              </span>
             </div>
           </div>
           <div class="modal-footer">
             <button class="btn-secondary" type="button" @click="closeRequestModal">
               {{ t('interest.requestModal.cancel') }}
             </button>
-            <button class="finish-btn" :disabled="!newInterestName.trim() || isSubmittingRequest" type="button"
-              @click="submitNewInterestRequest">
+            <button
+              class="finish-btn"
+              :disabled="(pendingInterests.length === 0 && !newInterestName.trim()) || isSubmittingRequest"
+              type="button"
+              @click="submitNewInterestRequest"
+            >
               <span v-if="isSubmittingRequest">{{ t('interest.requestModal.submitting') }}</span>
               <span v-else>{{ t('interest.requestModal.submit') }}</span>
             </button>
@@ -683,6 +781,66 @@ async function submitNewInterestRequest() {
   box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
 }
 
+.input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.add-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  border: none;
+  background: #F3F4F6;
+  color: #4B5563;
+  font-size: 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.add-btn:hover {
+  background: #E5E7EB;
+  color: #1F2937;
+}
+
+.pending-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pending-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #FFF0F5;
+  color: #D61F69;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.remove-pending-btn {
+  border: none;
+  background: none;
+  color: #D61F69;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.remove-pending-btn:hover {
+  opacity: 1;
+}
+
 .finish-btn {
   padding: 10px 20px;
   border-radius: 8px;
@@ -739,6 +897,36 @@ async function submitNewInterestRequest() {
   color: #3F3D56;
   text-align: left;
   letter-spacing: -.3px;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: #EF4444;
+  gap: 1rem;
+}
+
+.error-icon {
+  font-size: 2rem;
+}
+
+.retry-btn {
+  padding: 0.5rem 1rem;
+  background-color: #EF4444;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retry-btn:hover {
+  background-color: #DC2626;
 }
 
 .brand-title .line-1 {

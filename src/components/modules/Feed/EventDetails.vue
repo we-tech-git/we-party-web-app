@@ -1,73 +1,73 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+  import { onMounted, ref } from 'vue'
 
-const props = defineProps<{
-  eventId: string | string[]
-}>()
+  const props = defineProps<{
+    eventId: string | string[]
+  }>()
 
-// Dados mocados com base no design do Figma
-const event = ref({
-  title: 'MANDELÃO DOS CRIA',
-  date: 'DIA 27/06 ÀS 2PM',
-  location: 'Av. Salgado Filho, Centro, 123 - Guarulhos, SP',
-  image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1400&q=80',
-  description: 'Evento para aproveitar com todos os amigos, familiares e parentes, vem aproveitar no melhor espaço de festas da américa latina e aproveitar um dia insano com diversas musicas, bebidas e comidas exoticas.',
-  attractions: [
-    'Aniversariantes pagam meia',
-    'Ano novo com surpresa',
-    'Atrações surpresas para todos',
-    'O brilho vai chegar para todos',
-    'Festa garantida para familia',
-    'DJ Vintage',
-    'DJ Deolanches',
-    'MC Ryan de SP',
-    'MC Cris',
-    'WC',
-    'Borges',
-    'MC Drika',
-    'DJ PH black',
-    'Revoada',
-  ],
-  contactInfo: 'Entrar em contato com o SAC através do telefone (71) 3957-7161 das 10h às 18h ou através do e-mail contato@bienaldolivrobahia.com.br',
-  categories: ['MANDELÃO', 'COMUNITÁRIO', 'TABACARIA', 'FUNK'],
-})
+  // Dados mocados com base no design do Figma
+  const event = ref({
+    title: 'MANDELÃO DOS CRIA',
+    date: 'DIA 27/06 ÀS 2PM',
+    location: 'Av. Salgado Filho, Centro, 123 - Guarulhos, SP',
+    image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1400&q=80',
+    description: 'Evento para aproveitar com todos os amigos, familiares e parentes, vem aproveitar no melhor espaço de festas da américa latina e aproveitar um dia insano com diversas musicas, bebidas e comidas exoticas.',
+    attractions: [
+      'Aniversariantes pagam meia',
+      'Ano novo com surpresa',
+      'Atrações surpresas para todos',
+      'O brilho vai chegar para todos',
+      'Festa garantida para familia',
+      'DJ Vintage',
+      'DJ Deolanches',
+      'MC Ryan de SP',
+      'MC Cris',
+      'WC',
+      'Borges',
+      'MC Drika',
+      'DJ PH black',
+      'Revoada',
+    ],
+    contactInfo: 'Entrar em contato com o SAC através do telefone (71) 3957-7161 das 10h às 18h ou através do e-mail contato@bienaldolivrobahia.com.br',
+    categories: ['MANDELÃO', 'COMUNITÁRIO', 'TABACARIA', 'FUNK'],
+  })
 
-const infoExpanded = ref(true)
+  const infoExpanded = ref(true)
 
-onMounted(() => {
-  // Aqui você pode buscar os dados do evento usando o eventId
-  console.log('Buscando detalhes para o evento ID:', props.eventId)
-})
+  onMounted(() => {
+    // Aqui você pode buscar os dados do evento usando o eventId
+    console.log('Buscando detalhes para o evento ID:', props.eventId)
+  })
 
-function openMap() {
-  const loc = event.value?.location
-  if (!loc) return
-  const query = encodeURIComponent(loc)
-  const url = `https://www.google.com/maps/search/?api=1&query=${query}`
-  window.open(url, '_blank', 'noopener')
-}
+  function openMap () {
+    const loc = event.value?.location
+    if (!loc) return
+    const query = encodeURIComponent(loc)
+    const url = `https://www.google.com/maps/search/?api=1&query=${query}`
+    window.open(url, '_blank', 'noopener')
+  }
 </script>
 
 <template>
   <div class="event-details-container">
     <!-- Header Image -->
     <div class="image-wrapper">
-      <img :src="event.image" alt="Banner do Evento" class="event-image">
-      <div class="image-overlay"></div>
+      <img alt="Banner do Evento" class="event-image" :src="event.image">
+      <div class="image-overlay" />
 
       <div class="image-actions">
         <div class="action-badge">
-          <i class="mdi mdi-heart-outline"></i> 23039
+          <i class="mdi mdi-heart-outline" /> 23039
         </div>
         <div class="action-badge">
-          <i class="mdi mdi-comment-outline"></i> 2091
+          <i class="mdi mdi-comment-outline" /> 2091
         </div>
-        <div class="spacer"></div>
+        <div class="spacer" />
         <div class="action-badge">
-          <i class="mdi mdi-calendar-check"></i>
+          <i class="mdi mdi-calendar-check" />
         </div>
         <div class="action-badge">
-          <i class="mdi mdi-share-variant"></i>
+          <i class="mdi mdi-share-variant" />
         </div>
       </div>
     </div>
@@ -79,11 +79,11 @@ function openMap() {
 
         <div class="meta-info">
           <div class="meta-item">
-            <i class="mdi mdi-calendar-clock text-purple-500"></i>
+            <i class="mdi mdi-calendar-clock text-purple-500" />
             <span>{{ event.date }}</span>
           </div>
           <div class="meta-item">
-            <i class="mdi mdi-map-marker text-purple-500"></i>
+            <i class="mdi mdi-map-marker text-purple-500" />
             <span>{{ event.location }}</span>
           </div>
         </div>
@@ -93,7 +93,7 @@ function openMap() {
       <div class="accordion-wrapper">
         <button class="accordion-header" @click="infoExpanded = !infoExpanded">
           <span class="font-bold text-gray-800">Informações do Evento</span>
-          <i class="mdi mdi-chevron-down transition-transform duration-300" :class="{ 'rotate-180': infoExpanded }"></i>
+          <i class="mdi mdi-chevron-down transition-transform duration-300" :class="{ 'rotate-180': infoExpanded }" />
         </button>
 
         <div class="accordion-content" :class="{ 'expanded': infoExpanded }">
@@ -103,7 +103,7 @@ function openMap() {
 
             <div class="lineup-list">
               <div v-for="(attraction, index) in event.attractions" :key="index" class="lineup-item">
-                <i class="mdi mdi-star-four-points text-orange-400 text-xs"></i>
+                <i class="mdi mdi-star-four-points text-orange-400 text-xs" />
                 <span>{{ attraction }}</span>
               </div>
             </div>
@@ -125,16 +125,16 @@ function openMap() {
         <div class="location-card">
           <div class="loc-details">
             <div class="loc-row">
-              <i class="mdi mdi-calendar text-purple-600"></i>
+              <i class="mdi mdi-calendar text-purple-600" />
               <span>{{ event.date }}</span>
             </div>
             <div class="loc-row">
-              <i class="mdi mdi-map-marker text-purple-600"></i>
+              <i class="mdi mdi-map-marker text-purple-600" />
               <span>{{ event.location }}</span>
             </div>
           </div>
           <button class="map-btn" @click="openMap">
-            <i class="mdi mdi-map-legend mr-1"></i> VER NO MAPA
+            <i class="mdi mdi-map-legend mr-1" /> VER NO MAPA
           </button>
         </div>
       </div>

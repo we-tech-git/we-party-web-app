@@ -2,255 +2,247 @@
 // ===============================
 // CONFIRMAÇÃO DE EMAIL - PIN
 // ===============================
-  import confetti from 'canvas-confetti'
-  import { computed, nextTick, onMounted, ref } from 'vue'
-  import { useI18n } from 'vue-i18n'
-  // VOLTAMOS AO ORIGINAL: Apenas as rotas de PIN
-  import { reqeustResendPin, reqeustSendPin } from '@/api/users'
-  import { STORAGE_KEYS } from '@/common/storage'
-  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-  import router from '@/router'
-  import { AuthService } from '@/services/auth'
-  import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
+import confetti from 'canvas-confetti'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+// VOLTAMOS AO ORIGINAL: Apenas as rotas de PIN
+import { reqeustResendPin, reqeustSendPin } from '@/api/users'
+import { STORAGE_KEYS } from '@/common/storage'
+import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+import router from '@/router'
+import { AuthService } from '@/services/auth'
+import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
-  const { t } = useI18n()
+const { t } = useI18n()
 
-  // ===============================
-  // ESTADO DO PIN E CONFIRMAÇÃO
-  // ===============================
+// ===============================
+// ESTADO DO PIN E CONFIRMAÇÃO
+// ===============================
 
-  const pinDigits = ref(['', '', '', '', '', ''])
-  const pinInputs = ref<HTMLInputElement[]>([])
+const pinDigits = ref(['', '', '', '', '', ''])
+const pinInputs = ref<HTMLInputElement[]>([])
 
-  const userEmail = ref('')
+const userEmail = ref('')
 
-  const isVerifying = ref(false)
-  const canResendPin = ref(true)
-  const resendCooldown = ref(0)
+const isVerifying = ref(false)
+const canResendPin = ref(true)
+const resendCooldown = ref(0)
 
-  const snackbarVisible = ref(false)
-  const snackbarMessage = ref('')
-  const snackbarColor = ref('#ff9800')
+const snackbarVisible = ref(false)
+const snackbarMessage = ref('')
+const snackbarColor = ref('#ff9800')
 
-  // ===============================
-  // COMPUTED E FUNÇÕES AUXILIARES
-  // ===============================
+// ===============================
+// COMPUTED E FUNÇÕES AUXILIARES
+// ===============================
 
-  const isPinComplete = computed(() => {
-    return pinDigits.value.every(digit => digit !== '' && /^\d$/.test(digit))
-  })
+const isPinComplete = computed(() => {
+  return pinDigits.value.every(digit => digit !== '' && /^\d$/.test(digit))
+})
 
-  const fullPin = computed(() => {
-    return pinDigits.value.join('')
-  })
+const fullPin = computed(() => {
+  return pinDigits.value.join('')
+})
 
-  function showSnackbar (message: string, color = '#ff9800') {
-    snackbarMessage.value = message
-    snackbarColor.value = color
+function showSnackbar(message: string, color = '#ff9800') {
+  snackbarMessage.value = message
+  snackbarColor.value = color
 
-    if (snackbarVisible.value) {
-      snackbarVisible.value = false
-      requestAnimationFrame(() => {
-        snackbarVisible.value = true
-      })
-      return
-    }
-
-    snackbarVisible.value = true
+  if (snackbarVisible.value) {
+    snackbarVisible.value = false
+    requestAnimationFrame(() => {
+      snackbarVisible.value = true
+    })
+    return
   }
 
-  // ===============================
-  // FUNÇÕES DO PIN
-  // ===============================
+  snackbarVisible.value = true
+}
 
-  function handlePinInput (index: number, event: Event) {
-    const target = event.target as HTMLInputElement
-    const value = target.value
+// ===============================
+// FUNÇÕES DO PIN
+// ===============================
 
-    if (!/^\d*$/.test(value)) {
-      target.value = pinDigits.value[index] || ''
-      return
+function handlePinInput(index: number, event: Event) {
+  const target = event.target as HTMLInputElement
+  const value = target.value
+
+  if (!/^\d*$/.test(value)) {
+    target.value = pinDigits.value[index] || ''
+    return
+  }
+
+  pinDigits.value[index] = value.slice(-1)
+
+  if (value && index < 5) {
+    const nextInput = pinInputs.value[index + 1]
+    if (nextInput) {
+      nextInput.focus()
     }
+  }
 
-    pinDigits.value[index] = value.slice(-1)
+  if (isPinComplete.value) {
+    setTimeout(() => {
+      verifyPin()
+    }, 200)
+  }
+}
 
-    if (value && index < 5) {
-      const nextInput = pinInputs.value[index + 1]
-      if (nextInput) {
-        nextInput.focus()
+function handleKeyDown(index: number, event: KeyboardEvent) {
+  if (event.key === 'Backspace' && !pinDigits.value[index] && index > 0) {
+    const prevInput = pinInputs.value[index - 1]
+    if (prevInput) {
+      prevInput.focus()
+      pinDigits.value[index - 1] = ''
+    }
+  }
+  if (event.key === 'ArrowLeft' && index > 0) {
+    pinInputs.value[index - 1]?.focus()
+  }
+  if (event.key === 'ArrowRight' && index < 5) {
+    pinInputs.value[index + 1]?.focus()
+  }
+}
+
+async function verifyPin() {
+  if (!isPinComplete.value || isVerifying.value) return
+
+  isVerifying.value = true
+
+  try {
+    const response = await reqeustSendPin({
+      email: userEmail.value,
+      code: fullPin.value,
+    })
+    const data = response.data
+
+    // Verifica sucesso tanto pelo status quanto pelo campo success (depende do seu backend)
+    if (response.status === 200 && (data.success !== false)) {
+      triggerConfetti()
+      showSnackbar(t('confirmEmail.success'), '#22c55e')
+
+      if (data.data?.token) {
+        AuthService.saveAuthData({
+          success: true,
+          message: 'Login realizado com sucesso',
+          token: data.data.token,
+          user: data.data,
+        })
       }
-    }
 
-    if (isPinComplete.value) {
       setTimeout(() => {
-        verifyPin()
-      }, 200)
-    }
-  }
-
-  function handleKeyDown (index: number, event: KeyboardEvent) {
-    if (event.key === 'Backspace' && !pinDigits.value[index] && index > 0) {
-      const prevInput = pinInputs.value[index - 1]
-      if (prevInput) {
-        prevInput.focus()
-        pinDigits.value[index - 1] = ''
-      }
-    }
-    if (event.key === 'ArrowLeft' && index > 0) {
-      pinInputs.value[index - 1]?.focus()
-    }
-    if (event.key === 'ArrowRight' && index < 5) {
-      pinInputs.value[index + 1]?.focus()
-    }
-  }
-
-  async function verifyPin () {
-    if (!isPinComplete.value || isVerifying.value) return
-
-    isVerifying.value = true
-
-    try {
-      const response = await reqeustSendPin({
-        email: userEmail.value,
-        code: fullPin.value,
-      })
-      const data = response.data
-
-      // Verifica sucesso tanto pelo status quanto pelo campo success (depende do seu backend)
-      if (response.status === 200 && (data.success !== false)) {
-        triggerConfetti()
-        showSnackbar(t('confirmEmail.success'), '#22c55e')
-
-        if (data.data?.token) {
-          AuthService.saveAuthData({
-            success: true,
-            message: 'Login realizado com sucesso',
-            token: data.data.token,
-            user: data.data,
-          })
-        }
-
-        setTimeout(() => {
-          router.push('/public/Congratulations')
-        }, 1500)
-      } else {
-        // Se o backend retornar 200 mas success: false
-        showSnackbar(t('confirmEmail.invalidPin'), '#ef4444')
-        clearPin()
-      }
-    } catch (error: any) {
-      console.error('Erro ao verificar PIN:', error)
-      showSnackbar(t('confirmEmail.verifyError'), '#ef4444')
-      clearPin()
-    } finally {
-      isVerifying.value = false
-    }
-  }
-
-  function clearPin () {
-    pinDigits.value = ['', '', '', '', '', '']
-    pinInputs.value[0]?.focus()
-  }
-
-  /**
-   * Tenta reenviar o PIN.
-   * AQUI ESTÁ A LÓGICA DE SEGURANÇA: Se der erro aqui, o usuário não existe.
-   */
-  async function resendPin () {
-    if (!canResendPin.value) return
-
-    try {
-      // Tenta enviar. Se o email não existir, o backend DEVE retornar erro (400 ou 404)
-      const response = await reqeustResendPin(userEmail.value)
-      console.log('Resend response:', response)
-
-      // Se chegamos aqui, o email existe e o PIN foi enviado!
-      showSnackbar(t('confirmEmail.pinSent'), '#22c55e')
-
-      canResendPin.value = false
-      resendCooldown.value = 60
-
-      const countdown = setInterval(() => {
-        resendCooldown.value--
-        if (resendCooldown.value <= 0) {
-          clearInterval(countdown)
-          canResendPin.value = true
-        }
-      }, 1000)
-    } catch (error: any) {
-      console.error('Erro ao reenviar PIN:', error)
-
-      // Pega a mensagem do backend
-      const errorMsg = error.response?.data?.message || 'Erro ao enviar código.'
-
-      showSnackbar(errorMsg, '#ef4444')
-
-      // SE O ERRO FOR CRÍTICO (Usuário não encontrado), travamos a tela
-      // Verifique se a mensagem contém "encontrado" ou "exist" ou check o status 404
-      if (error.response?.status === 404 || errorMsg.toLowerCase().includes('não encontrado')) {
-        userEmail.value = 'Usuário Inválido'
-        for (const input of pinInputs.value) input.disabled = true
-      }
-    }
-  }
-
-  function triggerConfetti (): void {
-    confetti({
-      particleCount: 150,
-      spread: 90,
-      origin: { y: 0.6 },
-      colors: ['#FFC947', '#F978A3', '#FF629F', '#FFFFFF'],
-    })
-  }
-
-  // ===============================
-  // INICIALIZAÇÃO DO COMPONENTE
-  // ===============================
-  onMounted(() => {
-    const emailFromStorage = localStorage?.getItem(STORAGE_KEYS.NEW_CREATED_USER)
-
-    // Garante string vazia se falhar
-    userEmail.value = JSON.parse(emailFromStorage || '""')
-
-    nextTick(() => {
-      if (pinInputs.value[0]) {
-        pinInputs.value[0].focus()
-      }
-    })
-
-    // MUDANÇA PRINCIPAL:
-    // Chamamos resendPin direto.
-    // - Se o usuário for legítimo (mesmo não verificado): O email CHEGA.
-    // - Se o usuário for fake: O resendPin cai no CATCH e bloqueia.
-    if (userEmail.value) {
-      resendPin()
+        router.push('/public/Interest')
+      }, 1500)
     } else {
-      showSnackbar('Email não identificado.', '#ef4444')
+      // Se o backend retornar 200 mas success: false
+      showSnackbar(t('confirmEmail.invalidPin'), '#ef4444')
+      clearPin()
     }
+  } catch (error: any) {
+    console.error('Erro ao verificar PIN:', error)
+    showSnackbar(t('confirmEmail.verifyError'), '#ef4444')
+    clearPin()
+  } finally {
+    isVerifying.value = false
+  }
+}
 
-    console.log('🚀 Tela carregada para:', userEmail.value)
+function clearPin() {
+  pinDigits.value = ['', '', '', '', '', '']
+  pinInputs.value[0]?.focus()
+}
+
+/**
+ * Tenta reenviar o PIN.
+ * AQUI ESTÁ A LÓGICA DE SEGURANÇA: Se der erro aqui, o usuário não existe.
+ */
+async function resendPin() {
+  if (!canResendPin.value) return
+
+  try {
+    // Tenta enviar. Se o email não existir, o backend DEVE retornar erro (400 ou 404)
+    const response = await reqeustResendPin(userEmail.value)
+    console.log('Resend response:', response)
+
+    // Se chegamos aqui, o email existe e o PIN foi enviado!
+    showSnackbar(t('confirmEmail.pinSent'), '#22c55e')
+
+    canResendPin.value = false
+    resendCooldown.value = 60
+
+    const countdown = setInterval(() => {
+      resendCooldown.value--
+      if (resendCooldown.value <= 0) {
+        clearInterval(countdown)
+        canResendPin.value = true
+      }
+    }, 1000)
+  } catch (error: any) {
+    console.error('Erro ao reenviar PIN:', error)
+
+    // Pega a mensagem do backend
+    const errorMsg = error.response?.data?.message || 'Erro ao enviar código.'
+
+    showSnackbar(errorMsg, '#ef4444')
+
+    // SE O ERRO FOR CRÍTICO (Usuário não encontrado), travamos a tela
+    // Verifique se a mensagem contém "encontrado" ou "exist" ou check o status 404
+    if (error.response?.status === 404 || errorMsg.toLowerCase().includes('não encontrado')) {
+      userEmail.value = 'Usuário Inválido'
+      for (const input of pinInputs.value) input.disabled = true
+    }
+  }
+}
+
+function triggerConfetti(): void {
+  confetti({
+    particleCount: 150,
+    spread: 90,
+    origin: { y: 0.6 },
+    colors: ['#FFC947', '#F978A3', '#FF629F', '#FFFFFF'],
   })
+}
+
+// ===============================
+// INICIALIZAÇÃO DO COMPONENTE
+// ===============================
+onMounted(() => {
+  const emailFromStorage = localStorage?.getItem(STORAGE_KEYS.NEW_CREATED_USER)
+
+  // Garante string vazia se falhar
+  userEmail.value = JSON.parse(emailFromStorage || '""')
+
+  nextTick(() => {
+    if (pinInputs.value[0]) {
+      pinInputs.value[0].focus()
+    }
+  })
+
+  // MUDANÇA PRINCIPAL:
+  // Chamamos resendPin direto.
+  // - Se o usuário for legítimo (mesmo não verificado): O email CHEGA.
+  // - Se o usuário for fake: O resendPin cai no CATCH e bloqueia.
+  if (userEmail.value) {
+    resendPin()
+  } else {
+    showSnackbar('Email não identificado.', '#ef4444')
+  }
+
+  console.log('🚀 Tela carregada para:', userEmail.value)
+})
 </script>
 
 <template>
   <AuthLayout>
     <template #form-content>
       <a class="back-link" href="#" @click="router.back()">
-        <svg
-          class="back-arrow"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          :viewBox="svgIcons.backArrow ? svgIcons.backArrow.viewBox : '0 0 24 24'"
-        >
+        <svg class="back-arrow" fill="none" stroke="currentColor" stroke-width="1.5"
+          :viewBox="svgIcons.backArrow ? svgIcons.backArrow.viewBox : '0 0 24 24'">
           <path
             v-for="(path, index) in (svgIcons.backArrow ? svgIcons.backArrow.paths : [{ d: 'M10 19l-7-7m0 0l7-7m-7 7h18', strokeLinecap: 'round', strokeLinejoin: 'round' }])"
-            :key="index"
-            :d="path.d"
-            :stroke-linecap="path.strokeLinecap as StrokeLinecap"
-            :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin"
-          />
+            :key="index" :d="path.d" :stroke-linecap="path.strokeLinecap as StrokeLinecap"
+            :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin" />
         </svg>
       </a>
       <h2 class="mobile-brand-title">WE PARTY</h2>
@@ -269,22 +261,12 @@
         <!-- PIN Input Grid -->
         <div class="pin-container">
           <div class="pin-inputs">
-            <input
-              v-for="(digit, index) in pinDigits"
-              :key="index"
-              ref="pinInputs"
-              v-model="pinDigits[index]"
-              class="pin-input"
-              :class="{
+            <input v-for="(digit, index) in pinDigits" :key="index" ref="pinInputs" v-model="pinDigits[index]"
+              class="pin-input" :class="{
                 'pin-filled': digit,
                 'pin-error': !isPinComplete && pinDigits.some(d => d !== '') && pinDigits.some(d => d === '')
-              }"
-              inputmode="numeric"
-              maxlength="1"
-              type="text"
-              @input="handlePinInput(index, $event)"
-              @keydown="handleKeyDown(index, $event)"
-            >
+              }" inputmode="numeric" maxlength="1" type="text" @input="handlePinInput(index, $event)"
+              @keydown="handleKeyDown(index, $event)">
           </div>
           <p class="pin-hint">{{ $t('confirmEmail.pinHint') }}</p>
         </div>
@@ -292,29 +274,18 @@
         <!-- Resend Section -->
         <div class="resend-section">
           <p class="resend-text">{{ $t('confirmEmail.didntReceive') }}</p>
-          <button
-            class="resend-btn"
-            :class="{ disabled: !canResendPin }"
-            :disabled="!canResendPin"
-            type="button"
-            @click="resendPin"
-          >
+          <button class="resend-btn" :class="{ disabled: !canResendPin }" :disabled="!canResendPin" type="button"
+            @click="resendPin">
             <span v-if="canResendPin">{{ $t('confirmEmail.resend') }}</span>
             <span v-else>{{ $t('confirmEmail.resendIn', { seconds: resendCooldown }) }}</span>
           </button>
         </div>
 
         <!-- Verify Button -->
-        <button
-          class="verify-button"
-          :class="{
-            active: isPinComplete && !isVerifying,
-            loading: isVerifying
-          }"
-          :disabled="!isPinComplete || isVerifying"
-          type="button"
-          @click="verifyPin"
-        >
+        <button class="verify-button" :class="{
+          active: isPinComplete && !isVerifying,
+          loading: isVerifying
+        }" :disabled="!isPinComplete || isVerifying" type="button" @click="verifyPin">
           <span v-if="isVerifying" aria-hidden="true" class="loader" />
           <span>{{ isVerifying ? $t('confirmEmail.verifying') : $t('confirmEmail.verify') }}</span>
         </button>

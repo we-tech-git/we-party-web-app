@@ -15,7 +15,7 @@
   const confettiCount = ref(0)
 
   function launchConfettiBurst () {
-    if (confettiCount.value >= 3) {
+    if (confettiCount.value >= 5) {
       if (confettiInterval) {
         window.clearInterval(confettiInterval)
         confettiInterval = undefined
@@ -32,6 +32,7 @@
       scalar: 0.9,
       colors: [...confettiColors],
       angle: 90,
+      zIndex: 9999,
     }
 
     const lanes = [0.05, 0.2, 0.4, 0.6, 0.8, 0.95]
@@ -83,7 +84,7 @@
   <section class="congratulations">
     <div class="content">
       <div aria-hidden="true" class="icon" role="presentation">
-        <img alt="" class="success-gif" src="/email.gif">
+        <img alt="" class="success-gif" loading="eager" src="/Trophy.gif">
       </div>
       <h1 class="title">
         {{ t('congratulations.title') }}

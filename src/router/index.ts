@@ -54,7 +54,8 @@ router.beforeEach((to, from, next) => {
   }
 
   // Verifica se é uma rota pública e usuário já está logado
-  if (to.path.startsWith('/public') && (to.path.includes('Login') || to.path.includes('Signup'))) {
+  const path = to.path.toLowerCase()
+  if (path.startsWith('/public') && (path.includes('login') || path.includes('signup'))) {
     const shouldRedirect = publicRouteGuard()
     if (typeof shouldRedirect === 'string') {
       console.log('✅ Usuário já logado, redirecionando para área privada:', shouldRedirect)

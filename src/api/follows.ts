@@ -7,12 +7,12 @@ export async function requestFollowUser (user: User) {
       'POST',
       '/follow',
       {
-        followingId: user.id
+        followingId: user.id,
       },
       true,
       {
-        'Authorization': `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      }
+        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
+      },
     )
     return response
   } catch (error) {
@@ -27,12 +27,12 @@ export async function requestUnFollowUser (user: User) {
       'DELETE',
       '/follow',
       {
-        followingId: user.id
+        followingId: user.id,
       },
       true,
       {
-        'Authorization': `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      }
+        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
+      },
     )
     return response
   } catch (error) {

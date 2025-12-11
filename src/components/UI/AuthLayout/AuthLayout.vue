@@ -1,12 +1,17 @@
 <script setup lang="ts">
-defineProps<{
-  title?: string // Título opcional para personalizar cada página
-  brandLeft?: boolean // Quando true, inverte a ordem para brand à esquerda
-}>()
+  import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+
+  defineProps<{
+    title?: string // Título opcional para personalizar cada página
+    brandLeft?: boolean // Quando true, inverte a ordem para brand à esquerda
+  }>()
 </script>
 
 <template>
   <div class="page-container" :class="{ reverse: !!$props.brandLeft }">
+    <div class="auth-language-switcher">
+      <LanguageSwitcher />
+    </div>
     <div class="form-section">
       <div class="form-content">
         <slot name="form-content" /> <!-- Slot nomeado para o conteúdo do formulário -->
@@ -53,6 +58,13 @@ defineProps<{
 </template>
 
 <style scoped>
+.auth-language-switcher {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 100;
+}
+
 /* ----- FONTES E ESTILOS GLOBAIS ----- */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&display=swap');

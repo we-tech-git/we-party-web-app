@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
+  import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
   import { useAuth } from '@/composables/useAuth'
 
   interface UserSummary {
@@ -32,6 +33,7 @@
       <span aria-hidden="true" class="brand">WE PARTY</span>
       <slot name="center-content" />
       <div class="user-summary">
+        <LanguageSwitcher />
         <span class="points">
           <svg fill="none" height="18" viewBox="0 0 24 24" width="18">
             <path

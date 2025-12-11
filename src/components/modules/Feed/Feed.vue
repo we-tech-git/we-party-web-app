@@ -1,157 +1,157 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
+  import { computed, ref } from 'vue'
+  import { useI18n } from 'vue-i18n'
 
-import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
+  import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
 
-import FeedCard from './FeedCard.vue'
-import FeedSidebarNav from './FeedSidebarNav.vue'
-import FeedTopHeader from './FeedTopHeader.vue'
+  import FeedCard from './FeedCard.vue'
+  import FeedSidebarNav from './FeedSidebarNav.vue'
+  import FeedTopHeader from './FeedTopHeader.vue'
 
-interface NavItem {
-  id: string
-  label: string
-  icon: 'home' | 'top' | 'bookmark' | 'bell' | 'profile'
-}
-
-interface TabItem {
-  id: string
-  label: string
-}
-
-interface FeedItem {
-  id: number
-  banner: string
-  hostName: string
-  hostAvatar: string
-  schedule: string
-  title: string
-  description: string
-  confirmed: number
-  interested: number
-}
-
-interface TrendItem {
-  id: number
-  title: string
-  highlight: string
-  engagement: string
-}
-
-const { t } = useI18n()
-
-const activeNav = ref('home')
-const activeTab = ref('for-you')
-const searchQuery = ref('')
-
-const navItems = computed<NavItem[]>(() => [
-  { id: 'home', label: t('feed.nav.home'), icon: 'home' },
-  { id: 'top-events', label: t('feed.nav.topEvents'), icon: 'top' },
-  { id: 'favorites', label: t('feed.nav.favorites'), icon: 'bookmark' },
-  { id: 'notifications', label: t('feed.nav.notifications'), icon: 'bell' },
-  { id: 'profile', label: t('feed.nav.profile'), icon: 'profile' },
-])
-
-const tabs = computed<TabItem[]>(() => [
-  { id: 'for-you', label: t('feed.tabs.forYou') },
-  { id: 'today', label: t('feed.tabs.today') },
-])
-const items = ref<FeedItem[]>([
-  {
-    id: 1,
-    banner: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1400&q=80',
-    hostName: 'Pedro Lopes',
-    hostAvatar: 'https://i.pravatar.cc/72?img=12',
-    schedule: 'Sexta-feira às 8PM',
-    title: 'Grupo de estudos em Filosofia',
-    description: '300 confirmados · 123 interessados',
-    confirmed: 9230,
-    interested: 3120,
-  },
-  {
-    id: 2,
-    banner: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1400&q=80',
-    hostName: 'Malcon S.',
-    hostAvatar: 'https://i.pravatar.cc/72?img=5',
-    schedule: 'Sábado às 20h',
-    title: 'Baile da madrugada',
-    description: '500 confirmados · 312 interessados',
-    confirmed: 7540,
-    interested: 1820,
-  },
-  {
-    id: 3,
-    banner: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=1400&q=80',
-    hostName: 'DJ Anny',
-    hostAvatar: 'https://i.pravatar.cc/72?img=45',
-    schedule: 'Domingo às 17h',
-    title: 'Festival de verão na cidade',
-    description: '2k confirmados · 890 interessados',
-    confirmed: 6120,
-    interested: 980,
-  },
-])
-
-const trends = ref<TrendItem[]>([
-  {
-    id: 1,
-    title: 'Baile de máscaras',
-    highlight: t('feed.trending.cityHighlight'),
-    engagement: '18k pessoas comentando',
-  },
-  {
-    id: 2,
-    title: 'Mandelõ dos Cria',
-    highlight: t('feed.trending.cityHighlight'),
-    engagement: '7k pessoas comentando',
-  },
-  {
-    id: 3,
-    title: 'Invasão de poder',
-    highlight: t('feed.trending.cityHighlight'),
-    engagement: '1k pessoas comentando',
-  },
-  {
-    id: 4,
-    title: 'Expo síndico São Paulo',
-    highlight: t('feed.trending.cityHighlight'),
-    engagement: '5k pessoas comentando',
-  },
-])
-
-const user = {
-  name: 'Amanda Costa',
-  avatar: 'https://i.pravatar.cc/80?img=32',
-  points: 356,
-}
-
-const isSearching = computed(() => searchQuery.value.trim().length > 0)
-
-function selectTab(id: string) {
-  if (activeTab.value === id) return
-
-  activeTab.value = id
-}
-
-function clearSearch() {
-  searchQuery.value = ''
-}
-
-const filteredItems = computed(() => {
-  const normalized = searchQuery.value.trim().toLowerCase()
-
-  if (!normalized) {
-    return items.value
+  interface NavItem {
+    id: string
+    label: string
+    icon: 'home' | 'top' | 'bookmark' | 'bell' | 'profile'
   }
 
-  return items.value.filter(item => {
-    return (
-      item.title.toLowerCase().includes(normalized)
-      || item.description.toLowerCase().includes(normalized)
-      || item.hostName.toLowerCase().includes(normalized)
-    )
+  interface TabItem {
+    id: string
+    label: string
+  }
+
+  interface FeedItem {
+    id: number
+    banner: string
+    hostName: string
+    hostAvatar: string
+    schedule: string
+    title: string
+    description: string
+    confirmed: number
+    interested: number
+  }
+
+  interface TrendItem {
+    id: number
+    title: string
+    highlight: string
+    engagement: string
+  }
+
+  const { t } = useI18n()
+
+  const activeNav = ref('home')
+  const activeTab = ref('for-you')
+  const searchQuery = ref('')
+
+  const navItems = computed<NavItem[]>(() => [
+    { id: 'home', label: t('feed.nav.home'), icon: 'home' },
+    { id: 'top-events', label: t('feed.nav.topEvents'), icon: 'top' },
+    { id: 'favorites', label: t('feed.nav.favorites'), icon: 'bookmark' },
+    { id: 'notifications', label: t('feed.nav.notifications'), icon: 'bell' },
+    { id: 'profile', label: t('feed.nav.profile'), icon: 'profile' },
+  ])
+
+  const tabs = computed<TabItem[]>(() => [
+    { id: 'for-you', label: t('feed.tabs.forYou') },
+    { id: 'today', label: t('feed.tabs.today') },
+  ])
+  const items = ref<FeedItem[]>([
+    {
+      id: 1,
+      banner: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1400&q=80',
+      hostName: 'Pedro Lopes',
+      hostAvatar: 'https://i.pravatar.cc/72?img=12',
+      schedule: 'Sexta-feira às 8PM',
+      title: 'Grupo de estudos em Filosofia',
+      description: '300 confirmados · 123 interessados',
+      confirmed: 9230,
+      interested: 3120,
+    },
+    {
+      id: 2,
+      banner: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1400&q=80',
+      hostName: 'Malcon S.',
+      hostAvatar: 'https://i.pravatar.cc/72?img=5',
+      schedule: 'Sábado às 20h',
+      title: 'Baile da madrugada',
+      description: '500 confirmados · 312 interessados',
+      confirmed: 7540,
+      interested: 1820,
+    },
+    {
+      id: 3,
+      banner: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=1400&q=80',
+      hostName: 'DJ Anny',
+      hostAvatar: 'https://i.pravatar.cc/72?img=45',
+      schedule: 'Domingo às 17h',
+      title: 'Festival de verão na cidade',
+      description: '2k confirmados · 890 interessados',
+      confirmed: 6120,
+      interested: 980,
+    },
+  ])
+
+  const trends = ref<TrendItem[]>([
+    {
+      id: 1,
+      title: 'Baile de máscaras',
+      highlight: t('feed.trending.cityHighlight'),
+      engagement: '18k pessoas comentando',
+    },
+    {
+      id: 2,
+      title: 'Mandelõ dos Cria',
+      highlight: t('feed.trending.cityHighlight'),
+      engagement: '7k pessoas comentando',
+    },
+    {
+      id: 3,
+      title: 'Invasão de poder',
+      highlight: t('feed.trending.cityHighlight'),
+      engagement: '1k pessoas comentando',
+    },
+    {
+      id: 4,
+      title: 'Expo síndico São Paulo',
+      highlight: t('feed.trending.cityHighlight'),
+      engagement: '5k pessoas comentando',
+    },
+  ])
+
+  const user = {
+    name: 'Amanda Costa',
+    avatar: 'https://i.pravatar.cc/80?img=32',
+    points: 356,
+  }
+
+  const isSearching = computed(() => searchQuery.value.trim().length > 0)
+
+  function selectTab (id: string) {
+    if (activeTab.value === id) return
+
+    activeTab.value = id
+  }
+
+  function clearSearch () {
+    searchQuery.value = ''
+  }
+
+  const filteredItems = computed(() => {
+    const normalized = searchQuery.value.trim().toLowerCase()
+
+    if (!normalized) {
+      return items.value
+    }
+
+    return items.value.filter(item => {
+      return (
+        item.title.toLowerCase().includes(normalized)
+        || item.description.toLowerCase().includes(normalized)
+        || item.hostName.toLowerCase().includes(normalized)
+      )
+    })
   })
-})
 </script>
 <template>
   <div class="feed-page">
@@ -161,21 +161,40 @@ const filteredItems = computed(() => {
           <label class="search" role="search">
             <span aria-hidden="true" class="search-icon">
               <svg fill="none" height="18" viewBox="0 0 24 24" width="18">
-                <path d="M21 21l-4.35-4.35m0 0A6.75 6.75 0 1 0 7.96 7.96a6.75 6.75 0 0 0 8.69 8.69z"
-                  stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
+                <path
+                  d="M21 21l-4.35-4.35m0 0A6.75 6.75 0 1 0 7.96 7.96a6.75 6.75 0 0 0 8.69 8.69z"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.8"
+                />
               </svg>
             </span>
-            <input v-model="searchQuery" :aria-label="t('feed.searchAria')" :placeholder="t('feed.searchPlaceholder')"
-              type="search">
-            <button v-if="isSearching" :aria-label="t('feed.actions.clearSearch')" class="clear" type="button"
-              @click="clearSearch">
+            <input
+              v-model="searchQuery"
+              :aria-label="t('feed.searchAria')"
+              :placeholder="t('feed.searchPlaceholder')"
+              type="search"
+            >
+            <button
+              v-if="isSearching"
+              :aria-label="t('feed.actions.clearSearch')"
+              class="clear"
+              type="button"
+              @click="clearSearch"
+            >
               ✕
             </button>
           </label>
 
           <nav aria-label="Seções do feed" class="tabs">
-            <button v-for="tab in tabs" :key="tab.id" :class="{ active: activeTab === tab.id }" type="button"
-              @click="selectTab(tab.id)">
+            <button
+              v-for="tab in tabs"
+              :key="tab.id"
+              :class="{ active: activeTab === tab.id }"
+              type="button"
+              @click="selectTab(tab.id)"
+            >
               {{ tab.label }}
             </button>
           </nav>
@@ -188,9 +207,19 @@ const filteredItems = computed(() => {
 
       <main class="feed-main">
         <section v-if="filteredItems.length > 0" class="cards-stack">
-          <FeedCard v-for="item in filteredItems" :id="item.id" :key="item.id" :banner="item.banner"
-            :confirmed="item.confirmed" :description="item.description" :host-avatar="item.hostAvatar"
-            :host-name="item.hostName" :interested="item.interested" :schedule="item.schedule" :title="item.title" />
+          <FeedCard
+            v-for="item in filteredItems"
+            :id="item.id"
+            :key="item.id"
+            :banner="item.banner"
+            :confirmed="item.confirmed"
+            :description="item.description"
+            :host-avatar="item.hostAvatar"
+            :host-name="item.hostName"
+            :interested="item.interested"
+            :schedule="item.schedule"
+            :title="item.title"
+          />
         </section>
         <p v-else class="empty">{{ t('feed.empty') }}</p>
       </main>

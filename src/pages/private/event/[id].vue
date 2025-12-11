@@ -1,8 +1,7 @@
 <script setup lang="ts">
   import { definePage } from 'unplugin-vue-router/runtime'
   import { computed } from 'vue'
-  import { useRoute } from 'vue-router/auto'
-  import EventView from '@/components/modules/Feed/EventView.vue'
+  import { useRoute } from 'vue-router'
 
   definePage({
     meta: {
