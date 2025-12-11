@@ -7,199 +7,250 @@
 // ESTADO E LÓGICA DO FORMULÁRIO
 // ===============================
 // Tela de Login – usa AuthLayout e InputLabel
-  import { computed, onMounted, ref } from 'vue'
-  import { useI18n } from 'vue-i18n'
-  import { loginUser } from '@/api/users'
-  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-  import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
-  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-  import router from '@/router'
-  import { AuthService } from '@/services/auth'
+import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { loginUser } from '@/api/users'
+import { STORAGE_KEYS } from '@/common/storage'
+import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
+import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+import router from '@/router'
+import { AuthService } from '@/services/auth'
 
-  const { t } = useI18n()
+const { t } = useI18n()
 
-  // ===============================
-  // GERADOR DE DADOS DE TESTE
-  // ===============================
-  function generateTestLoginData () {
-    // Gera email fixo com número randômico de 3 dígitos
-    // const randomNumber = Math.floor(Math.random() * 900) + 100
-    // Gera email fixo
-    // const emailGenerated = `teste776@gmail.com`
-    const emailGenerated = `contact@wepartyapp.com`
-    const passwordGenerated = 'Teste12345@'
+// ===============================
+// GERADOR DE DADOS DE TESTE
+// ===============================
+/**
+ * Gera dados de login para teste.
+ * Retorna um objeto com email e senha pré-definidos.
+ */
+function generateTestLoginData() {
+  // Gera email fixo com número randômico de 3 dígitos
+  // const randomNumber = Math.floor(Math.random() * 900) + 100
+  // Gera email fixo
+  // const emailGenerated = `teste776@gmail.com`
+  const emailGenerated = `jonathan.nwokolo@gmail.com`
+  const passwordGenerated = 'Teste12345@'
 
-    return {
-      email: emailGenerated,
-      password: passwordGenerated,
-    }
+  return {
+    email: emailGenerated,
+    password: passwordGenerated,
   }
+}
 
-  function fillFormWithTestData (isRandom = false) {
-    if (isRandom) {
-      const randomNumber = Math.floor(Math.random() * 900) + 100
-      email.value = `testuser${randomNumber}@example.com`
-      password.value = 'password123'
-    } else {
-      const testData = generateTestLoginData()
+/**
+ * Preenche o formulário com dados de teste.
+ * Pode usar dados fixos ou gerar dados aleatórios se isRandom for true.
+ */
+function fillFormWithTestData(isRandom = false) {
+  if (isRandom) {
+    const randomNumber = Math.floor(Math.random() * 900) + 100
+    email.value = `testuser${randomNumber}@example.com`
+    password.value = 'password123'
+  } else {
+    const testData = generateTestLoginData()
 
-      // Limpa os erros antes de preencher
-      resetErrors()
-
-      email.value = testData.email
-      password.value = testData.password
-
-      console.log('📝 Dados de teste de login gerados:', {
-        email: testData.email,
-        senha: testData.password,
-      })
-    }
-  }
-
-  // Estado do formulário de login
-  const email = ref('')
-  const password = ref('')
-  const rememberMe = ref(false)
-  const isSubmitting = ref(false)
-  const snackbarVisible = ref(false)
-  const snackbarMessage = ref('')
-  const snackbarColor = ref('#ff9800')
-
-  const formErrors = ref({
-    email: '',
-    password: '',
-  })
-
-  // Validação: e-mail + senha preenchidos
-  const isFormValid = computed(() => {
-    return email.value.trim() && password.value.trim() && email.value.includes('@')
-  })
-
-  function showSnackbar (message: string, color = '#ff9800') {
-    snackbarMessage.value = message
-    snackbarColor.value = color
-
-    if (snackbarVisible.value) {
-      snackbarVisible.value = false
-      requestAnimationFrame(() => {
-        snackbarVisible.value = true
-      })
-      return
-    }
-
-    snackbarVisible.value = true
-  }
-
-  function resetErrors () {
-    formErrors.value = {
-      email: '',
-      password: '',
-    }
-  }
-
-  async function validateForm () {
-    if (isSubmitting.value) return
-
+    // Limpa os erros antes de preencher
     resetErrors()
 
-    const missingFields: string[] = []
+    email.value = testData.email
+    password.value = testData.password
 
-    if (!email.value.trim()) {
-      formErrors.value.email = t('login.errors.required.email')
-      missingFields.push('Email')
-    } else if (!email.value.includes('@')) {
-      formErrors.value.email = t('login.errors.invalid.email')
-      showSnackbar('Por favor, insira um email válido')
-      return
-    }
+    console.log('📝 Dados de teste de login gerados:', {
+      email: testData.email,
+      senha: testData.password,
+    })
+  }
+}
 
-    if (!password.value.trim()) {
-      formErrors.value.password = t('login.errors.required.password')
-      missingFields.push('Senha')
-    }
+// Estado do formulário de login
+const email = ref('')
+const password = ref('')
+const rememberMe = ref(false)
+const isSubmitting = ref(false)
+const snackbarVisible = ref(false)
+const snackbarMessage = ref('')
+const snackbarColor = ref('#ff9800')
 
-    if (missingFields.length > 0) {
-      showSnackbar(`Campos obrigatórios: ${missingFields.join(', ')}`)
-      return
-    }
+const formErrors = ref({
+  email: '',
+  password: '',
+})
 
-    await submitForm()
+// Validação: e-mail + senha preenchidos
+const isFormValid = computed(() => {
+  return email.value.trim() && password.value.trim() && email.value.includes('@')
+})
+
+/**
+ * Exibe o componente Snackbar com uma mensagem e cor específicas.
+ * Gerencia a visibilidade para garantir que a animação ocorra corretamente.
+ */
+function showSnackbar(message: string, color = '#ff9800') {
+  snackbarMessage.value = message
+  snackbarColor.value = color
+
+  if (snackbarVisible.value) {
+    snackbarVisible.value = false
+    requestAnimationFrame(() => {
+      snackbarVisible.value = true
+    })
+    return
   }
 
-  async function submitForm () {
-    if (isSubmitting.value) return
+  snackbarVisible.value = true
+}
 
-    if (!isFormValid.value) {
-      showSnackbar('Por favor, preencha todos os campos obrigatórios')
-      return
+/**
+ * Reseta os erros de validação do formulário.
+ */
+function resetErrors() {
+  formErrors.value = {
+    email: '',
+    password: '',
+  }
+}
+
+/**
+ * Valida os campos do formulário antes do envio.
+ * Verifica se email e senha estão preenchidos e se o email é válido.
+ */
+async function validateForm() {
+  if (isSubmitting.value) return
+
+  resetErrors()
+
+  const missingFields: string[] = []
+
+  if (!email.value.trim()) {
+    formErrors.value.email = t('login.errors.required.email')
+    missingFields.push('Email')
+  } else if (!email.value.includes('@')) {
+    formErrors.value.email = t('login.errors.invalid.email')
+    showSnackbar('Por favor, insira um email válido')
+    return
+  }
+
+  if (!password.value.trim()) {
+    formErrors.value.password = t('login.errors.required.password')
+    missingFields.push('Senha')
+  }
+
+  if (missingFields.length > 0) {
+    showSnackbar(`Campos obrigatórios: ${missingFields.join(', ')}`)
+    return
+  }
+
+  await submitForm()
+}
+
+/**
+ * Envia os dados do formulário para a API de login.
+ * Gerencia o estado de carregamento, sucesso e falha.
+ */
+async function submitForm() {
+  if (isSubmitting.value) return
+
+  if (!isFormValid.value) {
+    showSnackbar('Por favor, preencha todos os campos obrigatórios')
+    return
+  }
+
+  const minLoadingMs = 2000
+  const start = Date.now()
+  isSubmitting.value = true
+
+  try {
+    const credentials = {
+      email: email.value.trim(),
+      password: password.value,
     }
 
-    const minLoadingMs = 2000
-    const start = Date.now()
-    isSubmitting.value = true
+    const response = await loginUser(credentials)
+    const data = response?.data
 
-    try {
-      const credentials = {
-        email: email.value.trim(),
-        password: password.value,
-      }
-
-      console.log('Tentativa de login:', { email: credentials.email })
-
-      const response = await loginUser(credentials)
-      const data = response.data
-
-      console.log('Resposta do login:', {
-        data,
-        test: data.success,
+    // PRIMEIRO, VERIFICAMOS SE O LOGIN FOI UM SUCESSO REAL
+    if (data?.success && !!data?.data?.token) {
+      // --- LÓGICA DE SUCESSO ---
+      AuthService.saveAuthData({
+        success: true,
+        message: 'Login realizado com sucesso',
         token: data.data.token,
-        boolean: (data.success && !!data.data.token),
+        user: data.data,
       })
-      // Salvar dados do usuário logado usando AuthService
-      if (data.success && !!data.data.token) {
-        AuthService.saveAuthData({
-          success: true,
-          message: 'Login realizado com sucesso',
-          token: data.data.token,
-          user: data.data,
-        })
+
+      // Salva o e-mail se "Lembrar-me" estiver ativo
+      if (rememberMe.value) {
+        localStorage.setItem('REMEMBERED_EMAIL', credentials.email)
+      } else {
+        localStorage.removeItem('REMEMBERED_EMAIL')
       }
 
       showSnackbar('Login realizado com sucesso! 🎉', '#22c55e')
 
       setTimeout(() => {
-        router.push('/private/feed') // ou rota do dashboard
+        router.push('/private/feed')
       }, 1500)
-    } catch (error: any) {
-      console.error('Erro ao fazer login:', error)
+    } else {
+      // Extrai a mensagem de erro da resposta, como "Email não verificado"
+      const errorMessage = response.response.data.message
 
-      const errorMessage = error?.response?.data?.message || 'Erro ao fazer login. Verifique suas credenciais.'
-      showSnackbar(errorMessage, '#ef4444')
-    } finally {
-      const elapsed = Date.now() - start
-      const remaining = minLoadingMs - elapsed
-      if (remaining > 0) {
-        await new Promise(resolve => setTimeout(resolve, remaining))
+      // Verifica se o erro é sobre e-mail não verificado
+      // Usamos uma verificação mais flexível para evitar problemas com espaços ou pontuação
+      if (errorMessage === 'Email não verificado. Por favor, verifique seu email antes de fazer login.') {
+        showSnackbar(errorMessage, '#ff9800')
+        localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
+        setTimeout(() => {
+          router.push('/public/ConfirmEmail')
+        }, 3000)
+      } else {
+        // console.error('error =======>', {
+        //   test1: response,
+        //   test2: response.response,
+        //   test3: response.response.data,
+        //   test4: response.response.data.message,
+        // })
+        // Trata outros erros lógicos que podem vir do backend
+        showSnackbar(errorMessage, '#ef4444')
       }
-      isSubmitting.value = false
     }
+  } catch (error: any) {
+    // Este bloco agora só será ativado para erros de rede (4xx, 5xx)
+    const errorMessage = error?.response?.data?.message || 'Erro ao fazer login. Verifique suas credenciais.'
+
+    // Verifica se o erro é sobre e-mail não verificado (mesmo lógica do bloco else)
+    if (errorMessage.toLowerCase().includes('email não verificado')) {
+      showSnackbar(errorMessage, '#ff9800')
+      localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
+      setTimeout(() => {
+        router.push('/public/ConfirmEmail')
+      }, 3000)
+    } else {
+      showSnackbar(errorMessage, '#ef4444')
+    }
+  } finally {
+    const elapsed = Date.now() - start
+    const remaining = minLoadingMs - elapsed
+    if (remaining > 0) {
+      await new Promise(resolve => setTimeout(resolve, remaining))
+    }
+    isSubmitting.value = false
   }
+}
 
-  // ===============================
-  // INICIALIZAÇÃO DO COMPONENTE
-  // ===============================
-  onMounted(() => {
-    // Preenche automaticamente com dados de teste ao carregar a página
-    const testData = generateTestLoginData()
-
-    email.value = testData.email
-    password.value = testData.password
-
-    console.log('🚀 Página de login carregada com dados de teste:', {
-      email: testData.email,
-      senha: testData.password,
-    })
-  })
+// ===============================
+// INICIALIZAÇÃO DO COMPONENTE
+// ===============================
+onMounted(() => {
+  // Verifica se há um e-mail salvo para "Lembrar-me"
+  const rememberedEmail = localStorage.getItem('REMEMBERED_EMAIL')
+  if (rememberedEmail) {
+    email.value = rememberedEmail
+    rememberMe.value = true // Marca a caixa para refletir o estado salvo
+  }
+})
 </script>
 
 <!--
@@ -223,37 +274,20 @@
       <h2 class="mobile-brand-title">WE PARTY</h2>
       <div class="title-container">
         <h1 class="text-3xl font-bold">{{ $t('login.title') }}</h1>
-        <button
-          class="regenerate-btn"
-          title="Gerar novos dados de teste"
-          type="button"
-          @click="() => fillFormWithTestData(true)"
-        >
+        <button class="regenerate-btn" title="Gerar novos dados de teste" type="button"
+          @click="() => fillFormWithTestData(true)">
           🎲
         </button>
       </div>
 
       <form @submit.prevent="validateForm">
         <div class="inputs-container il-theme--pink">
-          <InputLabel
-            id="email"
-            v-model="email"
-            :error="!!formErrors.email"
-            :label="$t('login.emailPlaceholder')"
-            type="email"
-            @update:model-value="formErrors.email = ''"
-          />
+          <InputLabel id="email" v-model="email" :error="!!formErrors.email" :label="$t('login.emailPlaceholder')"
+            type="email" @update:model-value="formErrors.email = ''" />
           <span v-if="formErrors.email" class="error-message">{{ formErrors.email }}</span>
 
-          <InputLabel
-            id="password"
-            v-model="password"
-            :error="!!formErrors.password"
-            :input-password="true"
-            :label="$t('login.passwordPlaceholder')"
-            type="password"
-            @update:model-value="formErrors.password = ''"
-          />
+          <InputLabel id="password" v-model="password" :error="!!formErrors.password" :input-password="true"
+            :label="$t('login.passwordPlaceholder')" type="password" @update:model-value="formErrors.password = ''" />
           <span v-if="formErrors.password" class="error-message">{{ formErrors.password }}</span>
 
           <div class="login-options">
@@ -275,7 +309,7 @@
 
       <div class="footer-row">
         <p class="login-link-text">
-          {{ $t('login.noAccount') }} <a href="/public/Signup">{{ $t('login.signupLink') }}</a>
+          {{ $t('login.noAccount') }} <router-link to="/public/Signup">{{ $t('login.signupLink') }}</router-link>
         </p>
         <p class="free-text">É de graça <span class="heart">❤</span></p>
       </div>
@@ -594,7 +628,7 @@
 
 .brand-subtitle {
   font-family: 'Poppins', sans-serif;
-  font-weight: 600;
+  font-weight: 800;
   font-size: 65px;
   line-height: 80px;
   letter-spacing: 0.3px;

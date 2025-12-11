@@ -58,6 +58,18 @@ export default defineConfig({
           },
         ],
       },
+      google: {
+        families: [
+          {
+            name: 'Baloo Thambi 2',
+            styles: 'wght@400;500;600;700;800',
+          },
+          {
+            name: 'Poppins',
+            styles: 'wght@400;500;600;700',
+          },
+        ],
+      },
     }),
   ],
   optimizeDeps: {

@@ -46,6 +46,7 @@
 <template>
   <AuthLayout>
     <template #form-content>
+      <h2 class="mobile-brand-title">WE PARTY</h2>
       <h1 class="auth-title">{{ t('forgotPassword.title') }}</h1>
       <p class="auth-subtitle">{{ t('forgotPassword.subtitle') }}</p>
 
@@ -71,6 +72,10 @@
 </template>
 
 <style scoped>
+.mobile-brand-title {
+  display: none;
+}
+
 .btn-primary {
   margin-top: 1.5rem;
 }
@@ -91,5 +96,22 @@
 .success-message {
   background-color: #d4edda;
   color: #155724;
+}
+
+@media (max-width: 960px) {
+  .mobile-brand-title {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-family: 'Baloo Thambi 2', cursive;
+    font-weight: 800;
+    font-size: 2.75rem;
+    line-height: 1.1;
+    text-transform: uppercase;
+    background: linear-gradient(to right, #FFC947, #F978A3);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-align: center;
+  }
 }
 </style>

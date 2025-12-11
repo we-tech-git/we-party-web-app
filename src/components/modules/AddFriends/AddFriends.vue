@@ -1,117 +1,82 @@
 <script setup lang="ts">
-// Imports principais
-// - vue: reatividade e computeds
-// - vue-i18n: traduções (t)
-// - AuthLayout: layout base com seção de marca (direita) e slot de formulário (esquerda)
-// - svgIcons: set de ícones (ver src/utils/svgSet.ts)
-  import { computed, onMounted, ref } from 'vue'
-  import { useI18n } from 'vue-i18n'
-  import { useRouter } from 'vue-router'
-  import { requestFollowUser, requestUnFollowUser } from '@/api/follows'
-  import { getUserRecomendations } from '@/api/users'
-  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-  import { svgIcons } from '@/utils/svgSet'
+import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { requestFollowUser, requestUnFollowUser } from '@/api/follows'
+import { getUserRecomendations } from '@/api/users'
+import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+import { svgIcons } from '@/utils/svgSet'
 
-  // i18n
-  const { t } = useI18n()
-  const router = useRouter()
+// i18n
+const { t } = useI18n()
+const router = useRouter()
 
-  // Modelo de dados do usuário listado para convite
-  export interface User {
-    id: number
-    name: string
-    profileImage: string
-    isFollowing: boolean
-    currentStatus: string
+// Modelo de dados do usuário listado para convite
+export interface User {
+  id: number
+  name: string
+  profileImage: string
+  isFollowing: boolean
+  currentStatus: string
+}
+
+// Estado reativo
+const searchQuery = ref('')
+
+// Fonte de dados mockada (apenas para UI)
+const users = ref<User[]>([])
+// const selectedUsers = ref<User[]>([])
+
+async function followUser(user: User) {
+  await requestFollowUser(user)
+}
+
+async function unFollowUser(user: User) {
+  await requestUnFollowUser(user)
+}
+
+async function requestUserRecomendations() {
+  const userToFollowRecomendations = await getUserRecomendations()
+
+  users.value = userToFollowRecomendations.data.data.users
+}
+
+// Filtro de usuários por nome (case-insensitive)
+const filteredUsers = computed(() => {
+  if (!searchQuery.value) return users.value
+  return users.value.filter(user =>
+    user.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
+  )
+})
+
+// Alterna status do convite (pending <-> sent)
+function toggleInvite(user: User) {
+  if (user.isFollowing) {
+    unFollowUser(user)
+  } else {
+    followUser(user)
   }
+  user.isFollowing = !user.isFollowing
+}
 
-  // Estado reativo
-  const searchQuery = ref('')
+function finishSelection() {
+  router.push('/public/Congratulations')
+}
 
-  // Fonte de dados mockada (apenas para UI)
-  const users = ref<User[]>([])
-  // const selectedUsers = ref<User[]>([])
+function skipStep() {
+  router.push('/public/Congratulations')
+}
 
-  async function followUser (user: User) {
-    await requestFollowUser(user)
-  }
-
-  async function unFollowUser (user: User) {
-    await requestUnFollowUser(user)
-  }
-
-  async function requestUserRecomendations () {
-    const userToFollowRecomendations = await getUserRecomendations()
-    // selectedUsers.value = userToFollowRecomendations.data.data.users.map((user: User) => {
-    //   if (user.isFollowing) {
-    //     return {
-    //       ...user,
-    //       currentStatus: 'sent',
-    //     }
-    //   }
-
-    //   return {
-    //     ...user,
-    //     currentStatus: 'pending',
-    //   }
-    // })
-
-    users.value = userToFollowRecomendations.data.data.users
-  }
-
-  // Filtro de usuários por nome (case-insensitive)
-  const filteredUsers = computed(() => {
-    if (!searchQuery.value) return users.value
-    return users.value.filter(user =>
-      user.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
-    )
-  })
-
-  // Alterna status do convite (pending <-> sent)
-  function toggleInvite (user: User) {
-    if (user.isFollowing) {
-      unFollowUser(user)
-    } else {
-      followUser(user)
-    }
-    // selectedUsers.value = selectedUsers.value.map(u => {
-    //   if (u.id === user.id) {
-    //     return {
-    //       ...u,
-    //       isFollowing: !u.isFollowing,
-    //       currentStatus: u.currentStatus === 'pending' ? 'sent' : 'pending',
-    //     }
-    //   }
-    //   return u
-    // })
-    user.isFollowing = !user.isFollowing
-  }
-
-  function finishSelection () {
-    router.push('/private/Interest')
-  }
-
-  function skipStep () {
-    router.push('/private/Interest')
-  }
-
-  onMounted(() => {
-    requestUserRecomendations()
-  })
-
-// watch(selectedUsers, (newSelectedUsers: User[]) => {
-//   console.log('Selected users updated:', newSelectedUsers)
-// })
-
-// watch(users, (newSelectedUsers: User[]) => {
-//   console.log('users ====>', newSelectedUsers)
-// })
+onMounted(() => {
+  requestUserRecomendations()
+})
 
 </script>
 
 <template>
   <AuthLayout>
     <template #form-content>
+      <h2 class="mobile-brand-title">WE PARTY</h2>
       <!-- Título e subtítulo -->
       <h1 class="auth-title">
         {{ t('addFriends.title') }}
@@ -124,19 +89,10 @@
              Origem: ícone de busca (ver svgSet.ts -> searchIcon)
              Uso: campo de busca desta tela
         -->
-        <svg
-          v-if="svgIcons.searchIcon"
-          class="search-input-icon"
-          fill="currentColor"
-          :viewBox="svgIcons.searchIcon.viewBox"
-        >
-          <path
-            v-for="(path, index) in svgIcons.searchIcon.paths"
-            :key="index"
-            :clip-rule="path.clipRule"
-            :d="path.d"
-            :fill-rule="path.fillRule"
-          />
+        <svg v-if="svgIcons.searchIcon" class="search-input-icon" fill="currentColor"
+          :viewBox="svgIcons.searchIcon.viewBox">
+          <path v-for="(path, index) in svgIcons.searchIcon.paths" :key="index" :clip-rule="path.clipRule" :d="path.d"
+            :fill-rule="path.fillRule" />
         </svg>
         <input v-model="searchQuery" class="search-input" :placeholder="t('addFriends.searchPlaceholder')" type="text">
       </div>
@@ -183,6 +139,10 @@
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&family=Poppins:wght@400;500;600;700&display=swap');
+
+.mobile-brand-title {
+  display: none;
+}
 
 /* Tema rosa para InputLabel dentro desta página */
 .il-theme--pink {
@@ -545,6 +505,23 @@
     min-width: 120px;
     padding: 0.5rem 1.1rem;
     font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 960px) {
+  .mobile-brand-title {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-family: 'Baloo Thambi 2', cursive;
+    font-weight: 800;
+    font-size: 2.75rem;
+    line-height: 1.1;
+    text-transform: uppercase;
+    background: linear-gradient(to right, #FFC947, #F978A3);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-align: center;
   }
 }
 </style>

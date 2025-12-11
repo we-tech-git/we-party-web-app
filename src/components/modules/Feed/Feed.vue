@@ -209,6 +209,7 @@
         <section v-if="filteredItems.length > 0" class="cards-stack">
           <FeedCard
             v-for="item in filteredItems"
+            :id="item.id"
             :key="item.id"
             :banner="item.banner"
             :confirmed="item.confirmed"
@@ -396,18 +397,36 @@
   }
 }
 
+@media (max-width: 1100px) {
+  .feed-shell {
+    /* Increase sticky offset because header is taller (stacked) in this range */
+    --feed-sticky-offset: 180px;
+    padding-top: 1rem;
+  }
+
+  .feed-controls {
+    background: transparent;
+    backdrop-filter: none;
+    padding: 0;
+  }
+}
+
 @media (max-width: 960px) {
   .feed-shell {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      'sidebar'
-      'main';
+    grid-template-areas: 'main';
     width: 100%;
-    padding: 2.5rem 1.75rem 2.75rem;
+    padding: 1rem 1.25rem 6rem;
+    /* Added bottom padding for bottom nav */
     margin: 0;
     border-radius: 0;
     box-shadow: none;
     background: transparent;
+  }
+
+  .feed-sidebar {
+    /* Sidebar is now fixed bottom nav, handled in FeedSidebarNav.vue */
+    grid-area: auto;
   }
 
   .feed-controls {
@@ -418,6 +437,17 @@
     backdrop-filter: none;
     background: transparent;
     border-radius: 0;
+    gap: 1rem;
+  }
+
+  .search {
+    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    box-shadow: 0 4px 20px rgba(14, 23, 58, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .search-icon {
+    left: 1rem;
   }
 
   .feed-shell {
@@ -427,16 +457,45 @@
 
 @media (max-width: 640px) {
   .feed-shell {
-    padding: 2.75rem 1.25rem 2.25rem;
+    padding: 0.5rem 1rem 6rem;
   }
 
   .feed-controls {
-    gap: 1.25rem;
+    gap: 0.5rem;
+  }
+
+  .search {
+    padding: 0.6rem 1rem 0.6rem 2.5rem;
+    font-size: 0.9rem;
+  }
+
+  .search-icon {
+    left: 0.8rem;
+  }
+
+  .search-icon svg {
+    width: 16px;
+    height: 16px;
   }
 
   .tabs {
     overflow-x: auto;
     gap: 1rem;
+    padding-bottom: 0.25rem;
+    /* Space for scrollbar if needed */
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    /* Firefox */
+  }
+
+  .tabs button {
+    font-size: 0.95rem;
+    padding: 0.15rem 0;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
   }
 }
 </style>

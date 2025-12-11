@@ -1,13 +1,13 @@
 <template>
-  <Congratulations />
+  <Congratulations continue-to="/private/feed" />
 </template>
 
 <script setup>
-import Congratulations from '@/components/modules/Congratulations/Congratulations.vue'
+  import Congratulations from '@/components/modules/Congratulations/Congratulations.vue'
 
-definePage({
-  meta: {
-    layout: 'blank',
-  },
-})
+  definePage({
+    meta: {
+      layout: 'blank',
+    },
+  })
 </script>

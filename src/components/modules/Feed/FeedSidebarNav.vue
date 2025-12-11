@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  interface NavItem {
+  export interface NavItem {
     id: string
     label: string
     icon: 'home' | 'top' | 'bookmark' | 'bell' | 'profile'
@@ -180,6 +180,78 @@ button.active .icon {
 
 @media (max-width: 960px) {
   .feed-sidebar {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    min-height: auto;
+    padding: 0.75rem 1rem 1.5rem;
+    /* Extra padding bottom for safe area */
+    border-radius: 24px 24px 0 0;
+    z-index: 100;
+    flex-direction: row;
+    justify-content: center;
+    box-shadow: 0 -10px 40px rgba(20, 27, 68, 0.15);
+    gap: 0;
+    background: #ffffff;
+  }
+
+  nav {
+    width: 100%;
+    max-width: 500px;
+  }
+
+  ul {
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+    gap: 0;
+  }
+
+  li {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+  }
+
+  button {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    background: transparent;
+    font-size: 0.75rem;
+    width: auto;
+    min-width: 60px;
+  }
+
+  button:hover {
+    transform: none;
+    background: transparent;
+  }
+
+  button.active {
+    background: transparent;
+    color: #ff5fa6;
+    box-shadow: none;
+  }
+
+  button.active .icon {
+    background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 95, 166, 0.4);
+  }
+
+  .icon {
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border-radius: 10px;
+  }
+
+  button span:not(.icon) {
     display: none;
   }
 }

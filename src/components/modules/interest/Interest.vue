@@ -17,6 +17,7 @@
   const router = useRouter()
 
   const STORAGE_KEY = 'weparty_selected_interests'
+  const PENDING_STORAGE_KEY = 'weparty_pending_interests'
 
   interface IInterest {
     name: string
@@ -28,6 +29,7 @@
   const allChips = ref<IInterest[]>([])
   const selected = ref<Set<string>>(new Set())
   const isLoading = ref(false)
+  const hasError = ref(false)
   const isFinishing = ref(false)
   const isSearching = ref(false)
 
@@ -53,11 +55,13 @@
   async function fetchInterests () {
     try {
       isLoading.value = true
+      hasError.value = false
       const response = await callApi('GET', '/interest/recommendations', undefined, true)
 
       allChips.value = response?.data?.data?.interests
     } catch (error) {
       console.error('Erro ao buscar interesses:', error)
+      hasError.value = true
       allChips.value = []
     } finally {
       isLoading.value = false
@@ -128,7 +132,18 @@
   const showModal = ref(false)
   const showRequestModal = ref(false)
   const newInterestName = ref('')
+  const pendingInterests = ref<string[]>([])
   const isSubmittingRequest = ref(false)
+
+  // Persiste automaticamente pendingInterests no localStorage
+  watch(pendingInterests, val => {
+    try {
+      localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(val || []))
+    } catch (error) {
+      console.error('Erro ao salvar pendingInterests no localStorage:', error)
+    }
+  }, { deep: true })
+
   function finish () {
     isFinishing.value = true
     const interestsToSave = Array.from(selected.value).map(name => {
@@ -138,7 +153,7 @@
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(interestsToSave))
-      router.push({ name: '/private/feed' })
+      router.push('/public/AddFriends')
     } catch (error) {
       console.error('Erro ao salvar interesses:', error)
     } finally {
@@ -147,7 +162,7 @@
   }
 
   function skipStep () {
-    router.push('/private/feed')
+    router.push('/public/AddFriends')
   }
   function closeModal () {
     showModal.value = false
@@ -155,25 +170,58 @@
 
   function openRequestModal () {
     newInterestName.value = query.value.trim()
+    // Carrega pendentes previamente salvos (se houver)
+    try {
+      const stored = localStorage.getItem(PENDING_STORAGE_KEY)
+      pendingInterests.value = stored ? JSON.parse(stored) : []
+    } catch (error) {
+      pendingInterests.value = []
+      console.error('Erro ao ler pendingInterests do localStorage:', error)
+    }
     showRequestModal.value = true
   }
 
   function closeRequestModal () {
     showRequestModal.value = false
     newInterestName.value = ''
+    // Não limpamos pendingInterests aqui para manter a persistência caso o usuário feche sem querer
+    // pendingInterests.value = []
     isSubmittingRequest.value = false
   }
 
+  function addToPending () {
+    const name = newInterestName.value.trim()
+    if (name && !pendingInterests.value.includes(name)) {
+      pendingInterests.value.push(name)
+      newInterestName.value = ''
+    }
+  }
+
+  function removePending (index: number) {
+    pendingInterests.value.splice(index, 1)
+  }
+
   async function submitNewInterestRequest () {
-    if (!newInterestName.value.trim()) return
+    // Adiciona o que estiver no input se o usuário esqueceu de clicar no +
+    addToPending()
+
+    if (pendingInterests.value.length === 0) return
 
     try {
       isSubmittingRequest.value = true
 
-      // Aqui você pode fazer a chamada para a API para solicitar o novo interesse
-      // Por exemplo: await requestNewInterest(newInterestName.value)
+      // limpa pendentes salvos após envio bem sucedido
+      try {
+        localStorage.removeItem(PENDING_STORAGE_KEY)
+        pendingInterests.value = [] // Limpa a lista da memória também
+      } catch (error) {
+        console.error('Erro ao limpar pendingInterests do localStorage:', error)
+      }
 
-      console.log('Solicitando novo interesse:', newInterestName.value)
+      // Aqui você pode fazer a chamada para a API para solicitar o novo interesse
+      // Por exemplo: await requestNewInterest(pendingInterests.value)
+
+      console.log('Solicitando novos interesses:', pendingInterests.value)
 
       // Simula delay da API
       await new Promise(resolve => setTimeout(resolve, 1000))
@@ -196,6 +244,7 @@
 <template>
   <AuthLayout>
     <template #form-content>
+      <h2 class="mobile-brand-title">WE PARTY</h2>
       <h1 class="title">{{ t('interest.title') }}</h1>
       <p class="subtitle">{{ t('interest.subtitle') }}</p>
 
@@ -218,6 +267,13 @@
       <div v-if="isLoading || isSearching" class="loading-state">
         <div class="loading-spinner" />
         <p>{{ isSearching ? t('interest.searching') : t('interest.loading') }}</p>
+      </div>
+      <div v-else-if="hasError" class="error-state">
+        <div class="error-icon">⚠️</div>
+        <p>{{ t('interest.errorLoading') || 'Erro ao carregar interesses' }}</p>
+        <button class="retry-btn" type="button" @click="fetchInterests">
+          Tentar novamente
+        </button>
       </div>
       <div v-else-if="showNoResults" class="no-results-container">
         <div class="no-results-icon">🔍</div>
@@ -298,27 +354,35 @@
             <p class="modal-description">{{ t('interest.requestModal.description') }}</p>
             <div class="input-wrapper">
               <label class="input-label" for="newInterest">{{ t('interest.requestModal.label') }}</label>
-              <input
-                id="newInterest"
-                v-model="newInterestName"
-                class="modal-input"
-                :placeholder="t('interest.requestModal.placeholder')"
-                type="text"
-                @keyup.enter="submitNewInterestRequest"
-              >
+              <div class="input-group">
+                <input
+                  id="newInterest"
+                  v-model="newInterestName"
+                  class="modal-input"
+                  :placeholder="t('interest.requestModal.placeholder')"
+                  type="text"
+                  @keyup.enter="addToPending"
+                >
+                <button class="add-btn" type="button" @click="addToPending">
+                  +
+                </button>
+              </div>
+            </div>
+
+            <div v-if="pendingInterests.length > 0" class="pending-list">
+              <span v-for="(item, index) in pendingInterests" :key="index" class="pending-chip">
+                {{ item }}
+                <button class="remove-pending-btn" type="button" @click="removePending(index)">×</button>
+              </span>
             </div>
           </div>
           <div class="modal-footer">
-            <button
-              class="btn-secondary"
-              type="button"
-              @click="closeRequestModal"
-            >
+            <button class="btn-secondary" type="button" @click="closeRequestModal">
               {{ t('interest.requestModal.cancel') }}
             </button>
             <button
               class="finish-btn"
-              :disabled="!newInterestName.trim() || isSubmittingRequest"
+              :disabled="(pendingInterests.length === 0 && !newInterestName.trim()) || isSubmittingRequest"
               type="button"
               @click="submitNewInterestRequest"
             >
@@ -347,6 +411,10 @@
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&family=Poppins:wght@400;600;700&display=swap');
+
+.mobile-brand-title {
+  display: none;
+}
 
 /* ===============================
    TIPOGRAFIA E TÍTULOS
@@ -713,6 +781,66 @@
   box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
 }
 
+.input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.add-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  border: none;
+  background: #F3F4F6;
+  color: #4B5563;
+  font-size: 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.add-btn:hover {
+  background: #E5E7EB;
+  color: #1F2937;
+}
+
+.pending-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pending-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #FFF0F5;
+  color: #D61F69;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.remove-pending-btn {
+  border: none;
+  background: none;
+  color: #D61F69;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.remove-pending-btn:hover {
+  opacity: 1;
+}
+
 .finish-btn {
   padding: 10px 20px;
   border-radius: 8px;
@@ -771,6 +899,36 @@
   letter-spacing: -.3px;
 }
 
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: #EF4444;
+  gap: 1rem;
+}
+
+.error-icon {
+  font-size: 2rem;
+}
+
+.retry-btn {
+  padding: 0.5rem 1rem;
+  background-color: #EF4444;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retry-btn:hover {
+  background-color: #DC2626;
+}
+
 .brand-title .line-1 {
   white-space: nowrap;
 }
@@ -801,6 +959,21 @@
 }
 
 @media (max-width: 960px) {
+  .mobile-brand-title {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-family: 'Baloo Thambi 2', cursive;
+    font-weight: 800;
+    font-size: 2.75rem;
+    line-height: 1.1;
+    text-transform: uppercase;
+    background: linear-gradient(to right, #FFC947, #F978A3);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-align: center;
+  }
+
   .brand-wrap {
     padding: 0 16px;
     margin-top: 0;

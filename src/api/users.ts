@@ -107,8 +107,8 @@ export async function deleteUser () {
       {},
       true,
       {
-        'Authorization': `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      }
+        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
+      },
     )
     return response
   } catch (error) {
@@ -125,12 +125,17 @@ export async function getUserRecomendations () {
       {},
       true,
       {
-        'Authorization': `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      }
+        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
+      },
     )
     return response
   } catch (error) {
     console.error('Erro ao fazer login:', error)
     throw error
   }
+}
+
+export function checkUserExists (email: string) {
+  // A ordem provável dos parâmetros do seu callApi é: (URL, MÉTODO, DADOS)
+  return callApi('POST', '/users/check-exists', { email })
 }

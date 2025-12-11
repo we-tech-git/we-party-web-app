@@ -36,6 +36,7 @@ export async function callApi (
       url,
       data,
       headers,
+      timeout: 15000,
     })
     return response
   } catch (error: any) {

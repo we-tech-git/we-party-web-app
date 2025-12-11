@@ -3,7 +3,7 @@
  * Gerencia estado reativo de autenticação e navegação
  */
 
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { AuthService, type LoggedUser } from '@/services/auth'
 
 // Estado global reativo da autenticação
@@ -12,9 +12,9 @@ const accessToken = ref(AuthService.getToken())
 const loggedUser = ref(AuthService.getUser())
 
 // Watcher para monitorar mudanças no localStorage
-const startAuthWatcher = () => {
+function startAuthWatcher () {
   // Monitora mudanças no localStorage
-  window.addEventListener('storage', (e) => {
+  window.addEventListener('storage', e => {
     if (e.key === 'ACCESS_TOKEN' || e.key === 'LOGGED_USER') {
       refreshAuthState()
     }
@@ -25,8 +25,8 @@ const startAuthWatcher = () => {
     const currentToken = AuthService.getToken()
     const currentUser = AuthService.getUser()
 
-    if (currentToken !== accessToken.value ||
-        JSON.stringify(currentUser) !== JSON.stringify(loggedUser.value)) {
+    if (currentToken !== accessToken.value
+      || JSON.stringify(currentUser) !== JSON.stringify(loggedUser.value)) {
       refreshAuthState()
     }
   }, 1000) // Verifica a cada segundo
@@ -38,7 +38,7 @@ const startAuthWatcher = () => {
 }
 
 // Atualiza o estado reativo com dados atuais do localStorage
-const refreshAuthState = () => {
+function refreshAuthState () {
   accessToken.value = AuthService.getToken()
   loggedUser.value = AuthService.getUser()
   isAuthenticated.value = AuthService.isAuthenticated()
@@ -47,15 +47,15 @@ const refreshAuthState = () => {
 export function useAuth () {
   // Estados reativos
   const isFullyAuthenticated = computed(() =>
-    !!(accessToken.value && loggedUser.value)
+    !!(accessToken.value && loggedUser.value),
   )
 
   const userDisplayName = computed(() =>
-    loggedUser.value?.name || loggedUser.value?.username || 'Usuário'
+    loggedUser.value?.name || loggedUser.value?.username || 'Usuário',
   )
 
   const userRoles = computed(() =>
-    loggedUser.value?.roles || []
+    loggedUser.value?.roles || [],
   )
 
   // Funções de autenticação
@@ -112,19 +112,26 @@ export function useAuth () {
 /**
  * Guards de navegação para uso no router
  */
-export const privateRouteGuard = () => {
+export function privateRouteGuard () {
   const authenticated = AuthService.isAuthenticated()
+  const user = AuthService.getUser()
 
   if (!authenticated) {
     console.log('🔒 Acesso negado - usuário não autenticado')
     return '/public/Login' // Redireciona para login
   }
 
-  console.log('✅ Acesso permitido - usuário autenticado')
+  // Adicionado: Verifica se o email do usuário foi verificado
+  if (user && user.isEmailVerified === false) {
+    console.log('🔒 Acesso negado - e-mail não verificado')
+    return '/public/ConfirmEmail' // Redireciona para a página de confirmação
+  }
+
+  console.log('✅ Acesso permitido - usuário autenticado e verificado')
   return true // Permite acesso
 }
 
-export const publicRouteGuard = () => {
+export function publicRouteGuard () {
   const authenticated = AuthService.isAuthenticated()
 
   if (authenticated) {
@@ -138,7 +145,7 @@ export const publicRouteGuard = () => {
 /**
  * Guard para roles específicas
  */
-export const roleGuard = (requiredRoles: string[]) => {
+export function roleGuard (requiredRoles: string[]) {
   if (!AuthService.isAuthenticated()) {
     console.log('🔒 Acesso negado - usuário não autenticado')
     return '/public/Login'

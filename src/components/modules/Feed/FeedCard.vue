@@ -1,5 +1,8 @@
 <script setup lang="ts">
+  import { svgIcons } from '@/utils/svgSet'
+
   defineProps<{
+    id: number
     banner: string
     hostName: string
     hostAvatar: string
@@ -21,131 +24,134 @@
 </script>
 
 <template>
-  <article class="feed-card">
-    <figure class="media">
-      <img :alt="title" class="banner" loading="lazy" :src="banner">
+  <router-link class="feed-card-link" :to="`/private/event/${id}`">
+    <article class="feed-card">
+      <figure class="media">
+        <img :alt="title" class="banner" loading="lazy" :src="banner">
 
-      <div class="host-tag">
-        <img :alt="hostName" class="host-avatar" loading="lazy" :src="hostAvatar">
-        <span>{{ hostName }}</span>
-      </div>
+        <div class="host-tag">
+          <img :alt="hostName" class="host-avatar" loading="lazy" :src="hostAvatar">
+          <span>{{ hostName }}</span>
+        </div>
 
-      <button aria-label="Salvar evento" class="bookmark" type="button">
-        <svg
-          aria-hidden="true"
-          fill="none"
-          height="22"
-          role="presentation"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          viewBox="0 0 24 24"
-          width="22"
-        >
-          <path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z" />
-        </svg>
-      </button>
+        <button aria-label="Salvar evento" class="bookmark" type="button" @click.prevent>
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="22"
+            role="presentation"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="22"
+          >
+            <path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z" />
+          </svg>
+        </button>
 
-      <figcaption class="overlay">
-        <p class="schedule">{{ schedule }}</p>
-        <h3 class="title">{{ title }}</h3>
-        <p class="description">{{ description }}</p>
+        <figcaption class="overlay">
+          <p class="schedule">{{ schedule }}</p>
+          <h3 class="title">{{ title }}</h3>
+          <p class="description">{{ description }}</p>
 
-        <footer class="footer">
-          <div aria-label="Indicadores do evento" class="stats">
-            <span class="stat">
-              <svg
-                aria-hidden="true"
-                fill="none"
-                height="18"
-                role="presentation"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.8"
-                viewBox="0 0 24 24"
-                width="18"
-              >
-                <path
-                  d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
-                />
-              </svg>
-              {{ formatCount(confirmed) }}
-            </span>
-            <span class="stat">
-              <svg
-                aria-hidden="true"
-                fill="none"
-                height="18"
-                role="presentation"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.8"
-                viewBox="0 0 24 24"
-                width="18"
-              >
-                <path
-                  d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"
-                />
-              </svg>
-              {{ formatCount(interested) }}
-            </span>
-          </div>
-
-          <div class="actions">
-            <button aria-label="Adicionar na agenda" class="icon-button" type="button">
-              <svg fill="none" height="18" viewBox="0 0 24 24" width="18">
-                <path
-                  d="M7 3v2H4a1 1 0 0 0-1 1v14h18V6a1 1 0 0 0-1-1h-3V3"
+          <footer class="footer">
+            <div aria-label="Indicadores do evento" class="stats">
+              <span class="stat">
+                <svg
+                  aria-hidden="true"
+                  fill="none"
+                  height="18"
+                  role="presentation"
                   stroke="currentColor"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="1.8"
-                />
-                <path
-                  d="M16 11h-8v6h8z"
+                  viewBox="0 0 24 24"
+                  width="18"
+                >
+                  <path
+                    d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
+                  />
+                </svg>
+                {{ formatCount(confirmed) }}
+              </span>
+              <span class="stat">
+                <svg
+                  aria-hidden="true"
+                  fill="none"
+                  height="18"
+                  role="presentation"
                   stroke="currentColor"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="1.8"
-                />
-              </svg>
-            </button>
-            <button aria-label="Compartilhar" class="icon-button" type="button">
-              <svg fill="none" height="18" viewBox="0 0 24 24" width="18">
-                <path
-                  d="M15 7a2 2 0 1 0-2-2 2 2 0 0 0 2 2zM7 14a2 2 0 1 0-2-2 2 2 0 0 0 2 2zm8 7a2 2 0 1 0-2-2 2 2 0 0 0 2 2z"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.8"
-                />
-                <path
-                  d="m9 12 6-4"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.8"
-                />
-                <path
-                  d="m9 12 6 4"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.8"
-                />
-              </svg>
-            </button>
-          </div>
-        </footer>
-      </figcaption>
-    </figure>
-  </article>
+                  viewBox="0 0 24 24"
+                  width="18"
+                >
+                  <path
+                    d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"
+                  />
+                </svg>
+                {{ formatCount(interested) }}
+              </span>
+            </div>
+
+            <div class="actions">
+              <router-link aria-label="Ver detalhes" class="icon-button" :to="`/private/event/${id}`">
+                <svg
+                  v-if="svgIcons.infoIcon"
+                  fill="none"
+                  height="18"
+                  viewBox="0 0 256 256"
+                  width="18"
+                >
+                  <path
+                    v-for="(path, index) in svgIcons.infoIcon.paths"
+                    :key="index"
+                    :d="path.d"
+                    fill="#ffffff"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="16"
+                  />
+                </svg>
+              </router-link>
+              <button aria-label="Compartilhar" class="icon-button" type="button" @click.prevent>
+                <svg
+                  v-if="svgIcons.shareIcon"
+                  fill="none"
+                  height="18"
+                  viewBox="0 0 256 256"
+                  width="18"
+                >
+                  <path
+                    v-for="(path, index) in svgIcons.shareIcon.paths"
+                    :key="index"
+                    :d="path.d"
+                    fill="#ffffff"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="16"
+                  />
+                </svg>
+              </button>
+            </div>
+          </footer>
+        </figcaption>
+      </figure>
+    </article>
+  </router-link>
 </template>
 
 <style scoped>
+.feed-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
 .feed-card {
   position: relative;
   border-radius: 32px;
@@ -153,8 +159,14 @@
   background: #0a0f1f;
   box-shadow: 0 28px 58px rgba(12, 16, 37, 0.356);
   isolation: isolate;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
   padding: 0.45rem;
-  width: 49rem;
+  width: 100%;
+}
+
+.feed-card-link:hover .feed-card {
+  transform: translateY(-5px);
+  box-shadow: 0 36px 68px rgba(12, 16, 37, 0.45);
 }
 
 .media {
@@ -169,7 +181,7 @@
   height: clamp(320px, 35vw, 420px);
   object-fit: cover;
   border-radius: 24px;
-  padding:0rem;
+  padding: 0rem;
 
 }
 
@@ -223,10 +235,11 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 2.65rem;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, rgba(13, 16, 43, 0.92) 65%, rgba(8, 13, 30, 0.98) 100%);
+  gap: 0.5rem;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(13, 16, 43, 0.8) 50%, rgba(8, 13, 30, 0.98) 100%);
   color: #ffffff;
-
+  padding: clamp(1.4rem, 4vw, 2rem);
+  padding-top: 5rem;
 }
 
 .schedule {
@@ -240,8 +253,8 @@
 
 .title {
   margin: 0;
-  font-size: clamp(1.85rem, 1.2vw + 1.45rem, 2.55rem);
-  line-height: 1.3;
+  font-size: clamp(1.5rem, 1.2vw + 1.45rem, 2.55rem);
+  line-height: 1.2;
   font-weight: 700;
 }
 
@@ -254,42 +267,43 @@
 
 .footer {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: clamp(1rem, 1.5vw, 1.8rem);
+  align-items: center;
+  gap: 1rem;
   margin-top: clamp(0.75rem, 1vw, 1.5rem);
 }
 
 .stats {
   display: flex;
   align-items: center;
-  gap: clamp(1rem, 1.6vw, 2rem);
-  font-size: clamp(0.96rem, 0.35vw + 0.9rem, 1.14rem);
+  gap: 1.2rem;
   font-weight: 600;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .stat {
   display: inline-flex;
   align-items: center;
-  gap: clamp(0.4rem, 0.5vw, 0.7rem);
-  color: rgba(255, 255, 255, 0.9);
+  gap: 0.5rem;
 }
 
 .actions {
-  display: inline-flex;
-  gap: clamp(0.65rem, 1vw, 0.9rem);
+  display: flex;
+  gap: 0.5rem;
+  position: relative;
+  z-index: 1;
 }
 
 .icon-button {
+  display: grid;
+  place-items: center;
   width: clamp(38px, 3vw, 48px);
   height: clamp(38px, 3vw, 48px);
   border-radius: clamp(12px, 2vw, 16px);
   border: none;
   background: rgba(255, 255, 255, 0.18);
   color: #ffffff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
   transition: background 0.2s ease, transform 0.2s ease;
 }
@@ -328,17 +342,26 @@
   }
 
   .banner {
-    height: clamp(210px, 52vw, 260px);
+    height: clamp(300px, 90vw, 380px);
     border-radius: 20px;
   }
 
   .footer {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
   }
 
   .actions {
-    margin-top: 0.5rem;
+    margin-top: 0;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .description {
+    font-size: 0.9rem;
+    line-height: 1.4;
   }
 }
 </style>
