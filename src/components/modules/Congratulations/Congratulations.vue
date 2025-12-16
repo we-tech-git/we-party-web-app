@@ -84,7 +84,7 @@
   <section class="congratulations">
     <div class="content">
       <div aria-hidden="true" class="icon" role="presentation">
-        <img alt="" class="success-gif" loading="eager" src="/Trophy.gif">
+        <img alt="" class="success-gif" src="/Trophy.gif">
       </div>
       <h1 class="title">
         {{ t('congratulations.title') }}

@@ -1,51 +1,79 @@
 <script setup lang="ts">
-  import { ref } from 'vue'
-  import { useI18n } from 'vue-i18n'
-  import { useRouter } from 'vue-router'
-  import { requestPasswordReset } from '@/api/password'
-  import { STORAGE_KEYS } from '@/common/storage'
-  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-  import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
+import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { requestPasswordReset } from '@/api/password'
+import { STORAGE_KEYS } from '@/common/storage'
+import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
+import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
 
-  const { t } = useI18n()
-  const router = useRouter()
+const { t } = useI18n()
+const router = useRouter()
 
-  const email = ref('')
-  const isLoading = ref(false)
-  const errorMessage = ref('')
-  const successMessage = ref('')
+const email = ref('')
+const isLoading = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
 
-  async function handleRequest () {
-    if (!email.value) {
-      errorMessage.value = t('forgotPassword.errors.emailRequired')
-      return
-    }
+const snackbarVisible = ref(false)
+const snackbarMessage = ref('')
+const snackbarColor = ref('#ff9800')
 
-    isLoading.value = true
-    errorMessage.value = ''
-    successMessage.value = ''
+function showSnackbar(message: string, color = '#ff9800') {
+  snackbarMessage.value = message
+  snackbarColor.value = color
 
-    try {
-      const response = await requestPasswordReset(email.value)
-
-      // successMessage.value = t('forgotPassword.successMessage')
-      successMessage.value = response.data.message
-      // Aguarda um pouco para o usuário ler a mensagem e então redireciona
-      localStorage.setItem(STORAGE_KEYS.RESET_PASSWORD_EMAIL, JSON.stringify(email.value))
-      setTimeout(() => {
-        router.push({ name: '/public/VerifyPin', query: { email: email.value } })
-      }, 2000)
-    } catch (error: any) {
-      errorMessage.value = error.response?.data?.message || t('forgotPassword.errors.generic')
-    } finally {
-      isLoading.value = false
-    }
+  if (snackbarVisible.value) {
+    snackbarVisible.value = false
+    requestAnimationFrame(() => {
+      snackbarVisible.value = true
+    })
+    return
   }
+
+  snackbarVisible.value = true
+}
+
+async function handleRequest() {
+  if (!email.value) {
+    errorMessage.value = t('forgotPassword.errors.emailRequired')
+    return
+  }
+
+  isLoading.value = true
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  try {
+    const response = await requestPasswordReset(email.value)
+
+    const message = response.data.message || t('forgotPassword.successMessage')
+    successMessage.value = message
+    showSnackbar(message, '#4caf50')
+    // Aguarda um pouco para o usuário ler a mensagem e então redireciona
+    localStorage.setItem(STORAGE_KEYS.RESET_PASSWORD_EMAIL, JSON.stringify(email.value))
+    setTimeout(() => {
+      router.push({ name: '/public/VerifyPin', query: { email: email.value } })
+    }, 2000)
+  } catch (error: any) {
+    const localErrorMessage = error.response?.data?.message || t('forgotPassword.errors.generic')
+    errorMessage.value = localErrorMessage
+    showSnackbar(localErrorMessage, '#f44336')
+  } finally {
+    isLoading.value = false
+  }
+}
 </script>
 
 <template>
   <AuthLayout>
     <template #form-content>
+      <a class="back-link" href="#" @click.prevent="router.back()">
+        <svg class="back-arrow" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path d="M10 19l-7-7m0 0l7-7m-7 7h18" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </a>
       <h2 class="mobile-brand-title">WE PARTY</h2>
       <h1 class="auth-title">{{ t('forgotPassword.title') }}</h1>
       <p class="auth-subtitle">{{ t('forgotPassword.subtitle') }}</p>
@@ -66,6 +94,13 @@
           <span v-if="isLoading">{{ t('form.loading') }}</span>
           <span v-else>{{ t('forgotPassword.button') }}</span>
         </button>
+
+        <Snackbar
+          v-model="snackbarVisible"
+          :color="snackbarColor"
+          :message="snackbarMessage"
+          :timeout="4000"
+        />
       </form>
     </template>
   </AuthLayout>
@@ -96,6 +131,25 @@
 .success-message {
   background-color: #d4edda;
   color: #155724;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 0.5rem;
+  color: #FFB37B;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: #FF9A44;
+}
+
+.back-arrow {
+  width: 32px;
+  height: 32px;
 }
 
 @media (max-width: 960px) {
