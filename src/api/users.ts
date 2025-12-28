@@ -121,7 +121,7 @@ export async function getUserRecomendations () {
   try {
     const response = await callApi(
       'GET',
-      '/users/recommendations',
+      '/social/recommendations',
       {},
       true,
       {

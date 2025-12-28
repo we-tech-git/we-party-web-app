@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
+  import router from '@/router'
 
   interface TrendItem {
     id: number
@@ -13,6 +14,11 @@
   }>()
 
   const { t } = useI18n()
+
+  function goToMainEvent (eventItem: TrendItem) {
+    router.push(`/private/event/${eventItem.id}`)
+  }
+
 </script>
 
 <template>
@@ -25,7 +31,7 @@
     <ul>
       <li v-for="item in items" :key="item.id">
         <span class="label">{{ item.highlight }}</span>
-        <strong>{{ item.title }}</strong>
+        <button class="main-trending-button" @click="goToMainEvent(item)">{{ item.title }}</button>
         <span class="meta">{{ item.engagement }}</span>
       </li>
     </ul>
@@ -46,7 +52,7 @@
   background: transparent;
   box-shadow: none;
   min-width: 280px;
-  margin-left: 9rem;
+  margin-left: 6rem;
 
 }
 
@@ -98,6 +104,15 @@ strong {
 .meta {
   font-size: 0.82rem;
   color: #9ca2ba;
+}
+
+.main-trending-button {
+  text-align: left;
+  font-weight: 700;
+}
+
+.main-trending-button:hover {
+  text-decoration: underline;
 }
 
 .more {

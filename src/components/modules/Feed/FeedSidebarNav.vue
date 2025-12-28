@@ -98,8 +98,8 @@
   gap: 2rem;
   padding: 1.75rem 1.5rem 2rem;
   border-radius: 32px;
-  background: #ffffff;
-  box-shadow: 0 20px 60px rgba(20, 27, 68, 0.12);
+  /* background: #ffffff; */
+  /* box-shadow: 0 20px 60px rgba(20, 27, 68, 0.12); */
   min-height: 540px;
 
 }
@@ -121,7 +121,7 @@ button {
   padding: 0.9rem 1rem;
   border: 0;
   border-radius: 18px;
-  background: #f5f6ff;
+  background: #fff;
   color: #707799;
   font-weight: 600;
   font-size: 0.95rem;
@@ -195,7 +195,7 @@ button.active .icon {
     justify-content: center;
     box-shadow: 0 -10px 40px rgba(20, 27, 68, 0.15);
     gap: 0;
-    background: #ffffff;
+    /* background: #ffffff; */
   }
 
   nav {

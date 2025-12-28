@@ -29,6 +29,10 @@ const router = createRouter({
   routes: [
     // Redirect da rota raiz para o login
     {
+      path: '',
+      redirect: '/public/Login',
+    },
+    {
       path: '/',
       redirect: '/public/Login',
     },

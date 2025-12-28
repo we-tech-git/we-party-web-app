@@ -86,7 +86,7 @@
 .feed-top-header {
   box-sizing: border-box;
   width: 100%;
-  padding: 1.9rem 0 1.6rem;
+  padding: .7rem 0 1.6rem;
   /* backdrop-filter: blur(18px); */
   position: sticky;
   top: 0;
@@ -96,7 +96,7 @@
 .header-inner {
   box-sizing: border-box;
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 1.5rem;
   width: min(100%, 1280px);

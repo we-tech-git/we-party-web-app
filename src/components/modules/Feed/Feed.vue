@@ -2,8 +2,9 @@
   import { computed, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
 
-  import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
+  import { getEventRecomendations, searchByEvents } from '@/api/ event'
 
+  import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
   import FeedCard from './FeedCard.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
   import FeedTopHeader from './FeedTopHeader.vue'
@@ -56,6 +57,11 @@
     { id: 'for-you', label: t('feed.tabs.forYou') },
     { id: 'today', label: t('feed.tabs.today') },
   ])
+
+  const filteredItems = ref<FeedItem[]>([
+
+  ])
+
   const items = ref<FeedItem[]>([
     {
       id: 1,
@@ -137,21 +143,31 @@
     searchQuery.value = ''
   }
 
-  const filteredItems = computed(() => {
-    const normalized = searchQuery.value.trim().toLowerCase()
+  async function requestSearchEvents (normalizedSearch: string) {
+    const resp = await searchByEvents(normalizedSearch)
+    return resp.data.events
+  }
 
+  watch(searchQuery, async (newQuerySearch: string) => {
+    const normalized = newQuerySearch.trim().toLowerCase()
+    const resp = await requestSearchEvents(normalized)
+
+    console.log('2222222 ===========>', resp)
     if (!normalized) {
-      return items.value
+      filteredItems.value = items.value
     }
-
-    return items.value.filter(item => {
-      return (
-        item.title.toLowerCase().includes(normalized)
-        || item.description.toLowerCase().includes(normalized)
-        || item.hostName.toLowerCase().includes(normalized)
-      )
-    })
   })
+
+  async function requestGetEventRecomendations () {
+    const { data } = await getEventRecomendations()
+    console.log(data.events)
+  }
+
+  onMounted(() => {
+    filteredItems.value = items.value
+    requestGetEventRecomendations()
+  })
+
 </script>
 <template>
   <div class="feed-page">
@@ -256,6 +272,9 @@
 .feed-sidebar {
   grid-area: sidebar;
   align-self: start;
+  position: fixed;
+  top: 100px;
+  z-index: 999999;
 }
 
 .feed-main {
