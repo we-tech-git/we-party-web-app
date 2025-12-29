@@ -1,3 +1,5 @@
+import defaultTheme from 'tailwindcss/defaultTheme'
+
 // tailwind.config.ts (Tailwind v4)
 export default {
   // prefixa todas as utilities pra evitar colisão: tw-mx-4, tw-text-lg, etc.
@@ -10,9 +12,9 @@ export default {
           500: '#6366f1',
           600: '#4f46e5',
         },
-        fontFamily: {
-          sans: ['Poppins', ...fontFamily.sans],
-        },
+      },
+      fontFamily: {
+        sans: ['Poppins', ...defaultTheme.fontFamily.sans],
       },
     },
   },

@@ -545,8 +545,15 @@
 .footer-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 12px;
   margin-top: 32px;
+  flex-wrap: wrap;
+}
+
+.login-link-text,
+.free-text {
+  margin: 0;
 }
 
 .free-text {

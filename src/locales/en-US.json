@@ -175,10 +175,13 @@
     "title": "Create New Password",
     "subtitle": "Create a strong and secure password.",
     "button": "Save New Password",
+    "tokenVerified": "Token verified successfully!",
     "successMessage": "Password changed successfully! Redirecting to login...",
     "errors": {
       "passwordMismatch": "The passwords do not match.",
       "passwordTooShort": "Password must be at least 6 characters long.",
+      "passwordRules": "Password must meet all the requirements.",
+      "invalidToken": "Invalid or expired token. Please request a new email.",
       "generic": "Could not change password. Please try again."
     }
   }

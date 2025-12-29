@@ -24,8 +24,7 @@
 </script>
 
 <template>
-  <router-link class="feed-card-link" :to="`/private/event/${id}`">
-    <article class="feed-card">
+  <article class="feed-card">
       <figure class="media">
         <img :alt="title" class="banner" loading="lazy" :src="banner">
 
@@ -142,16 +141,9 @@
         </figcaption>
       </figure>
     </article>
-  </router-link>
 </template>
 
 <style scoped>
-.feed-card-link {
-  text-decoration: none;
-  color: inherit;
-  display: block;
-}
-
 .feed-card {
   position: relative;
   border-radius: 32px;
@@ -164,7 +156,7 @@
   width: 100%;
 }
 
-.feed-card-link:hover .feed-card {
+.feed-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 36px 68px rgba(12, 16, 37, 0.45);
 }
@@ -293,6 +285,7 @@
   gap: 0.5rem;
   position: relative;
   z-index: 1;
+  justify-content: center;
 }
 
 .icon-button {

@@ -176,10 +176,13 @@
     "title": "Criar Nova Senha",
     "subtitle": "Crie uma senha forte e segura.",
     "button": "Salvar Nova Senha",
+    "tokenVerified": "Token verificado com sucesso!",
     "successMessage": "Senha alterada com sucesso! Redirecionando para o login...",
     "errors": {
       "passwordMismatch": "As senhas não são iguais.",
       "passwordTooShort": "A senha deve ter pelo menos 6 caracteres.",
+      "passwordRules": "A senha precisa atender a todos os requisitos.",
+      "invalidToken": "Token inválido ou expirado. Solicite um novo email.",
       "generic": "Não foi possível alterar a senha. Tente novamente."
     }
   }

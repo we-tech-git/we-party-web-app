@@ -2,106 +2,57 @@
 // ===============================
 // CONFIRMAÇÃO DE EMAIL - PIN
 // ===============================
-import confetti from 'canvas-confetti'
-import { computed, nextTick, onMounted, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
-import { STORAGE_KEYS } from '@/common/storage'
-import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-import router from '@/router'
-import { AuthService } from '@/services/auth'
-import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
+  import { onMounted, ref } from 'vue'
+  import { STORAGE_KEYS } from '@/common/storage'
+  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import router from '@/router'
+  import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
-const { t } = useI18n()
-const route = useRoute()
+  // ===============================
+  // ESTADO DO PIN E CONFIRMAÇÃO
+  // ===============================
+  const userEmail = ref('')
+  const isVerifying = ref(false)
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
 
-// ===============================
-// ESTADO DO PIN E CONFIRMAÇÃO
-// ===============================
-
-// Estado dos 6 dígitos do PIN
-const pinDigits = ref(['', '', '', '', '', ''])
-const pinInputs = ref<HTMLInputElement[]>([])
-
-// Estado do email do usuário (pode vir da URL ou localStorage)
-const userEmail = ref('')
-
-// Estados do componente
-const isVerifying = ref(false)
-const canResendPin = ref(true)
-const resendCooldown = ref(0)
-
-// Estados do snackbar
-const snackbarVisible = ref(false)
-const snackbarMessage = ref('')
-const snackbarColor = ref('#ff9800')
-
-// ===============================
-// COMPUTED E FUNÇÕES AUXILIARES
-// ===============================
-
-const isPinComplete = computed(() => {
-  return pinDigits.value.every(digit => digit !== '' && /^\d$/.test(digit))
-})
-
-const fullPin = computed(() => {
-  return pinDigits.value.join('')
-})
-
-function showSnackbar(message: string, color = '#ff9800') {
-  snackbarMessage.value = message
-  snackbarColor.value = color
-
-  if (snackbarVisible.value) {
-    snackbarVisible.value = false
-    requestAnimationFrame(() => {
-      snackbarVisible.value = true
-    })
-    return
+  function backToLogin () {
+    router.push({ name: '/public/Login' })
   }
 
-  snackbarVisible.value = true
-}
+  // ===============================
+  // INICIALIZAÇÃO DO COMPONENTE
+  // ===============================
+  onMounted(() => {
+    // Recupera email da URL ou localStorage
+    // const emailFromQuery = route.query.email as string
+    const emailFromStorage = localStorage?.getItem(STORAGE_KEYS.RESET_PASSWORD_EMAIL)
+    console.log('Email do localStorage:', emailFromStorage)
 
-function backToLogin() {
-  router.push({ name: '/public/Login' })
-}
-
-// ===============================
-// INICIALIZAÇÃO DO COMPONENTE
-// ===============================
-onMounted(() => {
-  // Recupera email da URL ou localStorage
-  // const emailFromQuery = route.query.email as string
-  const emailFromStorage = localStorage?.getItem(STORAGE_KEYS.RESET_PASSWORD_EMAIL)
-  console.log('Email do localStorage:', emailFromStorage)
-
-  userEmail.value = JSON.parse(emailFromStorage || '') || 'usuario@exemplo.com'
-
-  // Foca no primeiro input do PIN
-  nextTick(() => {
-    if (pinInputs.value[0]) {
-      pinInputs.value[0].focus()
-    }
+    userEmail.value = JSON.parse(emailFromStorage || '') || 'usuario@exemplo.com'
   })
-
-  // resendPin()
-
-  console.log('🚀 Tela de confirmação de email carregada para:', userEmail.value)
-})
 </script>
 
 <template>
   <AuthLayout>
     <template #form-content>
       <a class="back-link" href="#" @click="router.back()">
-        <svg class="back-arrow" fill="none" stroke="currentColor" stroke-width="1.5"
-          :viewBox="svgIcons.backArrow ? svgIcons.backArrow.viewBox : '0 0 24 24'">
+        <svg
+          class="back-arrow"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          :viewBox="svgIcons.backArrow ? svgIcons.backArrow.viewBox : '0 0 24 24'"
+        >
           <path
             v-for="(path, index) in (svgIcons.backArrow ? svgIcons.backArrow.paths : [{ d: 'M10 19l-7-7m0 0l7-7m-7 7h18', strokeLinecap: 'round', strokeLinejoin: 'round' }])"
-            :key="index" :d="path.d" :stroke-linecap="path.strokeLinecap as StrokeLinecap"
-            :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin" />
+            :key="index"
+            :d="path.d"
+            :stroke-linecap="path.strokeLinecap as StrokeLinecap"
+            :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin"
+          />
         </svg>
       </a>
       <h2 class="mobile-brand-title">WE PARTY</h2>

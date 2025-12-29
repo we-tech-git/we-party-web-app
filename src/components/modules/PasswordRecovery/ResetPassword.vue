@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { requestSetNewPassord, requestVerifyToken } from '@/api/password'
@@ -18,6 +18,15 @@ const token = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
+
+const passwordRules = ref({
+  hasLowercase: false,
+  hasUppercase: false,
+  hasTenChars: false,
+  hasSpecial: false,
+})
+
+const allPasswordRulesMet = computed(() => Object.values(passwordRules.value).every(Boolean))
 
 const snackbarVisible = ref(false)
 const snackbarMessage = ref('')
@@ -45,8 +54,8 @@ async function handleReset() {
     errorMessage.value = t('resetPassword.errors.passwordMismatch')
     return
   }
-  if (password.value.length < 6) {
-    errorMessage.value = t('resetPassword.errors.passwordTooShort')
+  if (!allPasswordRulesMet.value) {
+    errorMessage.value = t('resetPassword.errors.passwordRules')
     return
   }
 
@@ -95,10 +104,10 @@ async function verifyToken() {
   try {
     const response = await requestVerifyToken(email.value, token.value)
     if (response.data.success) {
-      showSnackbar('Token verificado com sucesso!', '#4caf50')
+      showSnackbar(t('resetPassword.tokenVerified'), '#4caf50')
       return
     }
-    throw new Error('Token inválido')
+    throw new Error(t('resetPassword.errors.invalidToken'))
   } catch (error: any) {
     const localErrorMessage = error.response?.data?.message || t('resetPassword.errors.invalidToken')
     errorMessage.value = localErrorMessage
@@ -109,6 +118,15 @@ async function verifyToken() {
     }, 3000)
   }
 }
+
+function updatePasswordRules(newValue: string): void {
+  passwordRules.value.hasLowercase = /[a-z]/.test(newValue)
+  passwordRules.value.hasUppercase = /[A-Z]/.test(newValue)
+  passwordRules.value.hasTenChars = newValue.length >= 10
+  passwordRules.value.hasSpecial = /[^A-Za-z0-9]/.test(newValue)
+}
+
+watch(password, updatePasswordRules)
 
 </script>
 
@@ -127,6 +145,32 @@ async function verifyToken() {
         <div class="form-fields">
           <InputLabel v-model="password" :input-password="true" :label="t('form.newPassword')" required
             type="password" />
+          <ul v-if="password.length > 0" class="password-rules-container">
+            <li :class="{ completed: passwordRules.hasLowercase }">
+              <svg class="check-icon" fill="none" viewBox="0 0 12 12">
+                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" />
+              </svg>
+              {{ t('signup.rules.lowercase') }}
+            </li>
+            <li :class="{ completed: passwordRules.hasUppercase }">
+              <svg class="check-icon" fill="none" viewBox="0 0 12 12">
+                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" />
+              </svg>
+              {{ t('signup.rules.uppercase') }}
+            </li>
+            <li :class="{ completed: passwordRules.hasTenChars }">
+              <svg class="check-icon" fill="none" viewBox="0 0 12 12">
+                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" />
+              </svg>
+              {{ t('signup.rules.minChars') }}
+            </li>
+            <li :class="{ completed: passwordRules.hasSpecial }">
+              <svg class="check-icon" fill="none" viewBox="0 0 12 12">
+                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" />
+              </svg>
+              {{ t('signup.rules.specialChar') }}
+            </li>
+          </ul>
           <InputLabel v-model="passwordConfirm" :input-password="true" :label="t('form.confirmPassword')" required
             type="password" />
         </div>
@@ -196,5 +240,32 @@ async function verifyToken() {
 .success-message {
   background-color: #d4edda;
   color: #155724;
+}
+
+.password-rules-container {
+  list-style: none;
+  padding: 0;
+  margin: -12px 0 12px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.password-rules-container li {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  color: #9ca3af;
+  transition: color 0.3s ease;
+}
+
+.password-rules-container li.completed {
+  color: #22c55e;
+}
+
+.check-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
 }
 </style>
