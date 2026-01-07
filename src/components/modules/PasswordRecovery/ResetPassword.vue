@@ -148,25 +148,29 @@ watch(password, updatePasswordRules)
           <ul v-if="password.length > 0" class="password-rules-container">
             <li :class="{ completed: passwordRules.hasLowercase }">
               <svg class="check-icon" fill="none" viewBox="0 0 12 12">
-                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" />
+                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                  stroke-width="1.5" />
               </svg>
               {{ t('signup.rules.lowercase') }}
             </li>
             <li :class="{ completed: passwordRules.hasUppercase }">
               <svg class="check-icon" fill="none" viewBox="0 0 12 12">
-                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" />
+                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                  stroke-width="1.5" />
               </svg>
               {{ t('signup.rules.uppercase') }}
             </li>
             <li :class="{ completed: passwordRules.hasTenChars }">
               <svg class="check-icon" fill="none" viewBox="0 0 12 12">
-                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" />
+                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                  stroke-width="1.5" />
               </svg>
               {{ t('signup.rules.minChars') }}
             </li>
             <li :class="{ completed: passwordRules.hasSpecial }">
               <svg class="check-icon" fill="none" viewBox="0 0 12 12">
-                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" />
+                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                  stroke-width="1.5" />
               </svg>
               {{ t('signup.rules.specialChar') }}
             </li>

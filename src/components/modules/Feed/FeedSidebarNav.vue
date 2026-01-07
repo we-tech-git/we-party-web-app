@@ -190,12 +190,14 @@ button.active .icon {
     padding: 0.75rem 1rem 1.5rem;
     /* Extra padding bottom for safe area */
     border-radius: 24px 24px 0 0;
-    z-index: 100;
+    z-index: 1000;
+    /* Increased z-index */
     flex-direction: row;
     justify-content: center;
     box-shadow: 0 -10px 40px rgba(20, 27, 68, 0.15);
     gap: 0;
-    /* background: #ffffff; */
+    background: #ffffff;
+    /* Ensure solid background */
   }
 
   nav {

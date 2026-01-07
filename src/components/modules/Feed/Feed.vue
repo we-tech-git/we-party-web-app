@@ -1,10 +1,11 @@
 <script setup lang="ts">
-  import { computed, ref } from 'vue'
+  import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
 
-  import { getEventRecomendations, searchByEvents } from '@/api/ event'
-
+  import { getEventRecomendations, searchByEvents } from '@/api/event'
   import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
+
+  import { useEventsStore } from '@/stores/events'
   import FeedCard from './FeedCard.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
   import FeedTopHeader from './FeedTopHeader.vue'
@@ -21,9 +22,11 @@
   }
 
   interface FeedItem {
-    id: number
+    id: string | number
     banner: string
-    hostName: string
+    creator: {
+      name: string
+    }
     hostAvatar: string
     schedule: string
     title: string
@@ -40,6 +43,7 @@
   }
 
   const { t } = useI18n()
+  const eventsStore = useEventsStore()
 
   const activeNav = ref('home')
   const activeTab = ref('for-you')
@@ -62,41 +66,37 @@
 
   ])
 
-  const items = ref<FeedItem[]>([
-    {
-      id: 1,
-      banner: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1400&q=80',
-      hostName: 'Pedro Lopes',
-      hostAvatar: 'https://i.pravatar.cc/72?img=12',
-      schedule: 'Sexta-feira às 8PM',
-      title: 'Grupo de estudos em Filosofia',
-      description: '300 confirmados · 123 interessados',
-      confirmed: 9230,
-      interested: 3120,
-    },
-    {
-      id: 2,
-      banner: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1400&q=80',
-      hostName: 'Malcon S.',
-      hostAvatar: 'https://i.pravatar.cc/72?img=5',
-      schedule: 'Sábado às 20h',
-      title: 'Baile da madrugada',
-      description: '500 confirmados · 312 interessados',
-      confirmed: 7540,
-      interested: 1820,
-    },
-    {
-      id: 3,
-      banner: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=1400&q=80',
-      hostName: 'DJ Anny',
-      hostAvatar: 'https://i.pravatar.cc/72?img=45',
-      schedule: 'Domingo às 17h',
-      title: 'Festival de verão na cidade',
-      description: '2k confirmados · 890 interessados',
-      confirmed: 6120,
-      interested: 980,
-    },
-  ])
+  const items = ref<FeedItem[]>([])
+  const loading = ref(false)
+
+  async function fetchEvents () {
+    loading.value = true
+    try {
+      const response = await getEventRecomendations()
+      const events = response.data.events || response.data.content || response.data || []
+
+      items.value = events.map((event: any) => ({
+        id: event.id,
+        banner: event.bannerUrl || event.banner || event.photos?.[0] || 'https://via.placeholder.com/400x200',
+        creator: event.creator || {},
+        hostAvatar: event.organizer?.avatar || event.hostAvatar || event.creator?.profileImage || '',
+        schedule: event.date ? new Date(event.date).toLocaleString() : 'TBA',
+        title: event.title || 'Untitled Event',
+        description: event.description || '',
+        confirmed: event.confirmedCount || 0,
+        interested: event.interestedCount || 0,
+      }))
+      filteredItems.value = items.value
+    } catch (error) {
+      console.error('Failed to fetch events', error)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  onMounted(() => {
+    fetchEvents()
+  })
 
   const trends = ref<TrendItem[]>([
     {
@@ -150,23 +150,43 @@
 
   watch(searchQuery, async (newQuerySearch: string) => {
     const normalized = newQuerySearch.trim().toLowerCase()
-    const resp = await requestSearchEvents(normalized)
 
-    console.log('2222222 ===========>', resp)
     if (!normalized) {
       filteredItems.value = items.value
+      return
+    }
+
+    try {
+      const events = await requestSearchEvents(normalized)
+      filteredItems.value = (events || []).map((event: any) => ({
+        id: event.id,
+        banner: event.bannerUrl || event.banner || event.photos?.[0] || 'https://via.placeholder.com/400x200',
+        hostName: event.organizer?.name || event.hostName || event.creator?.name || 'Unknown Host',
+        hostAvatar: event.organizer?.avatar || event.hostAvatar || event.creator?.profileImage || '',
+        schedule: event.date ? new Date(event.date).toLocaleString() : 'TBA',
+        title: event.name || event.title || 'Untitled Event',
+        description: event.description || '',
+        confirmed: event.confirmedCount || 0,
+        interested: event.interestedCount || 0,
+      }))
+    } catch (error) {
+      console.error(error)
     }
   })
 
-  async function requestGetEventRecomendations () {
-    const { data } = await getEventRecomendations()
-    console.log(data.events)
-  }
+  watch(activeNav, val => {
+    if (searchQuery.value) {
+      searchQuery.value = ''
+    }
 
-  onMounted(() => {
-    filteredItems.value = items.value
-    requestGetEventRecomendations()
+    filteredItems.value = val === 'favorites' ? eventsStore.savedEvents : items.value
   })
+
+  watch(() => eventsStore.savedEvents, val => {
+    if (activeNav.value === 'favorites') {
+      filteredItems.value = val
+    }
+  }, { deep: true })
 
 </script>
 <template>
@@ -231,10 +251,15 @@
             :confirmed="item.confirmed"
             :description="item.description"
             :host-avatar="item.hostAvatar"
-            :host-name="item.hostName"
+            :host-name="item.creator.name"
             :interested="item.interested"
+            :is-saved="eventsStore.isSaved(item.id)"
+            :liked="eventsStore.isLiked(item.id)"
+            :likes="item.confirmed + (eventsStore.isLiked(item.id) ? 1 : 0)"
             :schedule="item.schedule"
             :title="item.title"
+            @toggle-like="eventsStore.toggleLike(item.id)"
+            @toggle-save="eventsStore.toggleSave(item)"
           />
         </section>
         <p v-else class="empty">{{ t('feed.empty') }}</p>
@@ -271,10 +296,7 @@
 
 .feed-sidebar {
   grid-area: sidebar;
-  align-self: start;
-  position: fixed;
-  top: 100px;
-  z-index: 999999;
+  z-index: 99;
 }
 
 .feed-main {
@@ -457,6 +479,8 @@
     background: transparent;
     border-radius: 0;
     gap: 1rem;
+    width: 100%;
+    /* Ensure it takes full width */
   }
 
   .search {

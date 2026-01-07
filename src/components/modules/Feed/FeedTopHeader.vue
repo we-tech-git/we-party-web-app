@@ -31,9 +31,13 @@
   <header aria-label="Brand header" class="feed-top-header">
     <div class="header-inner">
       <span aria-hidden="true" class="brand">WE PARTY</span>
-      <slot name="center-content" />
+      <div class="center-container">
+        <slot name="center-content" />
+      </div>
       <div class="user-summary">
-        <LanguageSwitcher />
+        <div class="lang-switch-wrapper">
+          <LanguageSwitcher />
+        </div>
         <span class="points">
           <svg fill="none" height="18" viewBox="0 0 24 24" width="18">
             <path
@@ -87,153 +91,127 @@
   box-sizing: border-box;
   width: 100%;
   padding: .7rem 0 1.6rem;
-  /* backdrop-filter: blur(18px); */
+  /* Added horizontal padding */
   position: sticky;
   top: 0;
   z-index: 10;
+  /* background: rgba(255, 255, 255, 0.8); */
+  /* Ensure background for sticky */
+  /* backdrop-filter: blur(10px); */
 }
 
 .header-inner {
   box-sizing: border-box;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1.5rem;
-  width: min(100%, 1280px);
+  display: grid;
+  grid-template-columns: 240px minmax(0, 720px) 320px;
+  align-items: center;
+  column-gap: 1rem;
+  row-gap: 0.5rem;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 0;
+  width: 100%;
 }
 
 .brand {
-  font-family: 'Baloo Thambi 2', cursive;
-  font-size: 2rem;
+  font-family: "Baloo Thambi 2", serif;
   font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  background: linear-gradient(120deg, #ff9a62 0%, #ff5fa6 100%);
+  font-size: 2.8rem;
+  background: linear-gradient(90deg, #ffba4b 0%, #ff5fa6 100%);
   -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   background-clip: text;
-  color: transparent;
   white-space: nowrap;
-  flex-shrink: 0;
-  line-height: 1;
-  width: 240px;
-  text-align: center;
+}
+
+.center-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  /* Allows shrinking */
 }
 
 .user-summary {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.5rem 0.75rem 0.5rem 1rem;
-  border-radius: 999px;
-  background: linear-gradient(120deg, #ff996238 0%, #ff5fa733 100%);
-  box-shadow: inset 0 0 0 1px rgba(129, 25, 72, 0.158);
+  gap: 1.25rem;
   flex-shrink: 0;
+  justify-self: end;
+  padding: 0.5rem 0.75rem 0.5rem 1.25rem;
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.281) 0%, rgba(255, 95, 167, 0.308) 100%);
+  border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(14, 23, 58, 0.08);
+  /* Similar shadow to generic cards */
 }
 
 .points {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
   font-weight: 700;
-  color: #b450ff;
+  color: #2d2f55;
+  font-size: 0.95rem;
+  white-space: nowrap;
 }
 
 .avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(14, 23, 58, 0.1);
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .avatar:hover {
   transform: scale(1.05);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
 }
 
-@media (max-width: 1200px) {
-  .feed-top-header {
-    padding: 1.8rem 0 1.5rem;
-  }
-
-  .brand {
-    font-size: 2.1rem;
-  }
-}
-
-@media (max-width: 1100px) {
-  .feed-top-header {
-    padding: 1rem 0;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(12px);
-  }
-
+@media (max-width: 1240px) {
   .header-inner {
-    display: flex;
-    flex-wrap: wrap;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0 1.25rem;
-  }
-
-  .brand {
-    order: 1;
-    flex: 1;
-    width: auto;
-    text-align: left;
+    grid-template-columns: 220px minmax(0, 1fr);
   }
 
   .user-summary {
-    order: 2;
-    padding: 0.35rem 0.35rem 0.35rem 0.75rem;
-    margin-left: auto;
-  }
-
-  /* Target the slot content (feed-controls) */
-  .header-inner> :nth-child(2) {
-    order: 3;
-    width: 100%;
-    margin-top: 0.5rem;
+    justify-self: end;
   }
 }
 
-@media (max-width: 640px) {
-  .feed-top-header {
-    padding: 0.5rem 0;
-  }
-
+@media (max-width: 960px) {
   .header-inner {
-    padding: 0 1rem;
-    gap: 0.5rem;
+    grid-template-columns: 1fr;
+    justify-items: center;
   }
 
   .brand {
-    font-size: 1.25rem;
+    display: none;
+    /* Hide brand on mobile to save space */
   }
 
-  .user-summary {
-    gap: 0.25rem;
-    padding: 0.25rem 0.25rem 0.25rem 0.5rem;
-  }
-
-  .avatar {
-    width: 32px;
-    height: 32px;
+  .lang-switch-wrapper {
+    display: none;
+    /* Hide language switcher on mobile if needed */
   }
 
   .points {
-    font-size: 0.8rem;
+    display: none;
+    /* Hide points on very small screens if needed, or keep it */
   }
 
-  .header-inner> :nth-child(2) {
-    margin-top: 0.25rem;
+  .user-summary {
+    justify-self: center;
+  }
+
+  .feed-top-header {
+    padding: 0.5rem 1rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .points {
+    display: none;
   }
 }
 </style>

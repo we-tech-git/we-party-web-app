@@ -1,43 +1,89 @@
 <script setup lang="ts">
-  import { onMounted, ref } from 'vue'
+  import { onMounted, ref, watch } from 'vue'
+  import { getEventById } from '@/api/event'
 
   const props = defineProps<{
     eventId: string | string[]
   }>()
 
-  // Dados mocados com base no design do Figma
-  const event = ref({
-    title: 'MANDELÃO DOS CRIA',
-    date: 'DIA 27/06 ÀS 2PM',
-    location: 'Av. Salgado Filho, Centro, 123 - Guarulhos, SP',
-    image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1400&q=80',
-    description: 'Evento para aproveitar com todos os amigos, familiares e parentes, vem aproveitar no melhor espaço de festas da américa latina e aproveitar um dia insano com diversas musicas, bebidas e comidas exoticas.',
-    attractions: [
-      'Aniversariantes pagam meia',
-      'Ano novo com surpresa',
-      'Atrações surpresas para todos',
-      'O brilho vai chegar para todos',
-      'Festa garantida para familia',
-      'DJ Vintage',
-      'DJ Deolanches',
-      'MC Ryan de SP',
-      'MC Cris',
-      'WC',
-      'Borges',
-      'MC Drika',
-      'DJ PH black',
-      'Revoada',
-    ],
-    contactInfo: 'Entrar em contato com o SAC através do telefone (71) 3957-7161 das 10h às 18h ou através do e-mail contato@bienaldolivrobahia.com.br',
-    categories: ['MANDELÃO', 'COMUNITÁRIO', 'TABACARIA', 'FUNK'],
+  type EventDetail = {
+    title: string
+    date: string
+    location: string
+    image: string
+    description: string
+    attractions: string[]
+    contactInfo: string
+    categories: string[]
+  }
+
+  const fallbackImage = 'https://via.placeholder.com/1200x600?text=Evento'
+
+  function resolveAsset (val?: string) {
+    if (!val) return fallbackImage
+    if (/^https?:\/\//i.test(val)) return val
+    const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
+    const path = val.startsWith('/') ? val : `/${val}`
+    return `${base}${path}`
+  }
+
+  const event = ref<EventDetail>({
+    title: 'Carregando evento...',
+    date: '',
+    location: '',
+    image: fallbackImage,
+    description: '',
+    attractions: [],
+    contactInfo: '',
+    categories: [],
   })
 
+  const loading = ref(false)
   const infoExpanded = ref(true)
+  const errorMessage = ref('')
+
+  function mapEventPayload (data: any): EventDetail {
+    return {
+      title: data?.name || data?.title || 'Evento sem título',
+      date: data?.date
+        ? new Date(data.date).toLocaleString()
+        : data?.schedule || 'Data não informada',
+      location: data?.location || data?.address || data?.place || 'Local não informado',
+      image: resolveAsset(data?.bannerUrl || data?.banner || data?.photos?.[0]),
+      description: data?.description || 'Sem descrição disponível.',
+      attractions: data?.attractions || data?.lineup || [],
+      contactInfo: data?.contactInfo || 'Informações de contato não disponíveis.',
+      categories: data?.categories || data?.tags || [],
+    }
+  }
+
+  async function fetchEventDetails (id: string | number) {
+    loading.value = true
+    errorMessage.value = ''
+    try {
+      const response = await getEventById(id)
+      const payload = response?.data?.event || response?.data || response
+      event.value = mapEventPayload(payload)
+    } catch (error) {
+      console.error(error)
+      errorMessage.value = 'Não foi possível carregar os detalhes do evento.'
+    } finally {
+      loading.value = false
+    }
+  }
 
   onMounted(() => {
-    // Aqui você pode buscar os dados do evento usando o eventId
-    console.log('Buscando detalhes para o evento ID:', props.eventId)
+    const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
+    if (id) fetchEventDetails(id)
   })
+
+  watch(
+    () => props.eventId,
+    newId => {
+      const id = Array.isArray(newId) ? newId[0] : newId
+      if (id) fetchEventDetails(id)
+    },
+  )
 
   function openMap () {
     const loc = event.value?.location
@@ -73,92 +119,96 @@
     </div>
 
     <div class="content-body">
-      <!-- Title Section -->
-      <div class="header-section">
-        <h1 class="event-title">{{ event.title }}</h1>
+      <div v-if="loading" class="state-message">Carregando evento...</div>
+      <div v-else-if="errorMessage" class="state-message error">{{ errorMessage }}</div>
+      <div v-else class="content-wrapper">
+        <!-- Title Section -->
+        <div class="header-section">
+          <h1 class="event-title">{{ event.title }}</h1>
 
-        <div class="meta-info">
-          <div class="meta-item">
-            <i class="mdi mdi-calendar-clock text-purple-500" />
-            <span>{{ event.date }}</span>
-          </div>
-          <div class="meta-item">
-            <i class="mdi mdi-map-marker text-purple-500" />
-            <span>{{ event.location }}</span>
+          <div class="meta-info">
+            <div class="meta-item">
+              <i class="mdi mdi-calendar-clock text-purple-500" />
+              <span>{{ event.date }}</span>
+            </div>
+            <div class="meta-item">
+              <i class="mdi mdi-map-marker text-purple-500" />
+              <span>{{ event.location }}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Accordion Info -->
-      <div class="accordion-wrapper">
-        <button class="accordion-header" @click="infoExpanded = !infoExpanded">
-          <span class="font-bold text-gray-800">Informações do Evento</span>
-          <i class="mdi mdi-chevron-down transition-transform duration-300" :class="{ 'rotate-180': infoExpanded }" />
-        </button>
+        <!-- Accordion Info -->
+        <div class="accordion-wrapper">
+          <button class="accordion-header" @click="infoExpanded = !infoExpanded">
+            <span class="font-bold text-gray-800">Informações do Evento</span>
+            <i class="mdi mdi-chevron-down transition-transform duration-300" :class="{ 'rotate-180': infoExpanded }" />
+          </button>
 
-        <div class="accordion-content" :class="{ 'expanded': infoExpanded }">
-          <div class="inner-content">
-            <h3 class="subsection-title">Descrição do evento</h3>
-            <p class="description-text">{{ event.description }}</p>
+          <div class="accordion-content" :class="{ 'expanded': infoExpanded }">
+            <div class="inner-content">
+              <h3 class="subsection-title">Descrição do evento</h3>
+              <p class="description-text">{{ event.description }}</p>
 
-            <div class="lineup-list">
-              <div v-for="(attraction, index) in event.attractions" :key="index" class="lineup-item">
-                <i class="mdi mdi-star-four-points text-orange-400 text-xs" />
-                <span>{{ attraction }}</span>
+              <div class="lineup-list">
+                <div v-for="(attraction, index) in event.attractions" :key="index" class="lineup-item">
+                  <i class="mdi mdi-star-four-points text-orange-400 text-xs" />
+                  <span>{{ attraction }}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Doubts -->
-      <div class="section-block">
-        <h3 class="section-title">Dúvidas relacionadas ao evento:</h3>
-        <p class="text-gray-600 text-sm leading-relaxed">
-          {{ event.contactInfo }}
-        </p>
-      </div>
+        <!-- Doubts -->
+        <div class="section-block">
+          <h3 class="section-title">Dúvidas relacionadas ao evento:</h3>
+          <p class="text-gray-600 text-sm leading-relaxed">
+            {{ event.contactInfo }}
+          </p>
+        </div>
 
-      <!-- Location -->
-      <div class="section-block">
-        <h3 class="section-title">Local e Data</h3>
-        <div class="location-card">
-          <div class="loc-details">
-            <div class="loc-row">
-              <i class="mdi mdi-calendar text-purple-600" />
-              <span>{{ event.date }}</span>
+        <!-- Location -->
+        <div class="section-block">
+          <h3 class="section-title">Local e Data</h3>
+          <div class="location-card">
+            <div class="loc-details">
+              <div class="loc-row">
+                <i class="mdi mdi-calendar text-purple-600" />
+                <span>{{ event.date }}</span>
+              </div>
+              <div class="loc-row">
+                <i class="mdi mdi-map-marker text-purple-600" />
+                <span>{{ event.location }}</span>
+              </div>
             </div>
-            <div class="loc-row">
-              <i class="mdi mdi-map-marker text-purple-600" />
-              <span>{{ event.location }}</span>
-            </div>
+            <button class="map-btn" @click="openMap">
+              <i class="mdi mdi-map-legend mr-1" /> VER NO MAPA
+            </button>
           </div>
-          <button class="map-btn" @click="openMap">
-            <i class="mdi mdi-map-legend mr-1" /> VER NO MAPA
+        </div>
+
+        <!-- Categories -->
+        <div class="section-block">
+          <h3 class="section-title">Categorias do evento</h3>
+          <div class="categories-wrapper">
+            <span v-for="cat in event.categories" :key="cat" class="category-chip">
+              {{ cat }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-section">
+          <div class="legal-links">
+            <a href="#">Termos de uso</a>
+            <a href="#">Política e privacidade</a>
+          </div>
+
+          <button class="cta-button">
+            EU VOU!
           </button>
         </div>
-      </div>
-
-      <!-- Categories -->
-      <div class="section-block">
-        <h3 class="section-title">Categorias do evento</h3>
-        <div class="categories-wrapper">
-          <span v-for="cat in event.categories" :key="cat" class="category-chip">
-            {{ cat }}
-          </span>
-        </div>
-      </div>
-
-      <!-- Footer -->
-      <div class="footer-section">
-        <div class="legal-links">
-          <a href="#">Termos de uso</a>
-          <a href="#">Política e privacidade</a>
-        </div>
-
-        <button class="cta-button">
-          EU VOU!
-        </button>
       </div>
     </div>
   </div>
@@ -228,6 +278,16 @@
 /* Content Body */
 .content-body {
   padding: 24px;
+}
+
+.state-message {
+  padding: 1rem 0;
+  font-weight: 600;
+  color: #4a4a4a;
+}
+
+.state-message.error {
+  color: #c62828;
 }
 
 .header-section {
