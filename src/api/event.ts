@@ -54,6 +54,25 @@ export async function getTrendingEvents (page = 1, limit = 10) {
   }
 }
 
+export async function getEventsToday (page = 1, limit = 10) {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const response = await callApi(
+      'GET',
+      `/events/search/date?date=${today}&page=${page}&limit=${limit}`,
+      {},
+      true,
+      {
+        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
+      },
+    )
+    return response
+  } catch (error) {
+    console.error('Erro ao buscar eventos de hoje:', error)
+    throw error
+  }
+}
+
 export async function getEventById (id: string | number) {
   try {
     const response = await callApi(

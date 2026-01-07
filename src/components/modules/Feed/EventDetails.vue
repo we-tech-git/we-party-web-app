@@ -1,12 +1,17 @@
 <script setup lang="ts">
-  import { onMounted, ref, watch } from 'vue'
+  import { computed, onMounted, ref, watch } from 'vue'
   import { getEventById } from '@/api/event'
+  import { useEventsStore } from '@/stores/events'
+  import { useShareStore } from '@/stores/share'
 
   const props = defineProps<{
     eventId: string | string[]
   }>()
 
+  const eventsStore = useEventsStore()
+
   type EventDetail = {
+    id: string | number
     title: string
     date: string
     location: string
@@ -15,6 +20,8 @@
     attractions: string[]
     contactInfo: string
     categories: string[]
+    confirmedCount: number
+    organizer?: { name: string, avatar: string }
   }
 
   const fallbackImage = 'https://via.placeholder.com/1200x600?text=Evento'
@@ -28,6 +35,7 @@
   }
 
   const event = ref<EventDetail>({
+    id: '',
     title: 'Carregando evento...',
     date: '',
     location: '',
@@ -36,6 +44,8 @@
     attractions: [],
     contactInfo: '',
     categories: [],
+    confirmedCount: 0,
+    organizer: { name: '', avatar: '' },
   })
 
   const loading = ref(false)
@@ -44,6 +54,7 @@
 
   function mapEventPayload (data: any): EventDetail {
     return {
+      id: data?.id,
       title: data?.name || data?.title || 'Evento sem título',
       date: data?.date
         ? new Date(data.date).toLocaleString()
@@ -54,7 +65,42 @@
       attractions: data?.attractions || data?.lineup || [],
       contactInfo: data?.contactInfo || 'Informações de contato não disponíveis.',
       categories: data?.categories || data?.tags || [],
+      confirmedCount: data?.confirmedCount || data?.confirmed || 0,
+      organizer: {
+        name: data?.organizer?.name || data?.hostName || data?.creator?.name || 'Unknown',
+        avatar: data?.organizer?.avatar || data?.hostAvatar || data?.creator?.profileImage || '',
+      },
     }
+  }
+
+  const isLiked = computed(() => eventsStore.isLiked(event.value.id))
+  const isSaved = computed(() => eventsStore.isSaved(event.value.id))
+  const displayLikes = computed(() => {
+    return event.value.confirmedCount + (isLiked.value ? 1 : 0)
+  })
+
+  function toggleLike () {
+    if (event.value.id) {
+      eventsStore.toggleLike(event.value.id)
+    }
+  }
+
+  function toggleSave () {
+    if (!event.value.id) return
+
+    const feedItem = {
+      id: event.value.id,
+      banner: event.value.image,
+      creator: event.value.organizer ? { name: event.value.organizer.name } : { name: 'Unknown' },
+      hostAvatar: event.value.organizer ? event.value.organizer.avatar : '',
+      schedule: event.value.date,
+      location: event.value.location,
+      title: event.value.title,
+      description: event.value.description,
+      confirmed: event.value.confirmedCount,
+      interested: 0,
+    }
+    eventsStore.toggleSave(feedItem)
   }
 
   async function fetchEventDetails (id: string | number) {
@@ -92,6 +138,17 @@
     const url = `https://www.google.com/maps/search/?api=1&query=${query}`
     window.open(url, '_blank', 'noopener')
   }
+
+  const shareStore = useShareStore()
+
+  function handleShare () {
+    const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
+    shareStore.open({
+      title: event.value.title,
+      text: event.value.description,
+      url: `${window.location.origin}/private/event/${id}`,
+    })
+  }
 </script>
 
 <template>
@@ -102,19 +159,39 @@
       <div class="image-overlay" />
 
       <div class="image-actions">
-        <div class="action-badge">
-          <i class="mdi mdi-heart-outline" /> 23039
-        </div>
-        <div class="action-badge">
-          <i class="mdi mdi-comment-outline" /> 2091
-        </div>
+        <button
+          class="action-badge"
+          style="border: none; cursor: pointer; color: white; background: rgba(0,0,0,0.5);"
+          @click="toggleLike"
+        >
+          <i
+            class="mdi"
+            :class="isLiked ? 'mdi-heart' : 'mdi-heart-outline'"
+            :style="{ color: isLiked ? '#ff4757' : 'inherit' }"
+          />
+          {{ displayLikes }}
+        </button>
+
         <div class="spacer" />
-        <div class="action-badge">
-          <i class="mdi mdi-calendar-check" />
-        </div>
-        <div class="action-badge">
+
+        <button
+          class="action-badge"
+          style="border: none; cursor: pointer; color: white; background: rgba(0,0,0,0.5);"
+          @click="toggleSave"
+        >
+          <i
+            class="mdi"
+            :class="isSaved ? 'mdi-bookmark' : 'mdi-bookmark-outline'"
+            :style="{ color: isSaved ? '#ffa502' : 'inherit' }"
+          />
+        </button>
+        <button
+          class="action-badge"
+          style="border: none; cursor: pointer; color: white; background: rgba(0,0,0,0.5);"
+          @click="handleShare"
+        >
           <i class="mdi mdi-share-variant" />
-        </div>
+        </button>
       </div>
     </div>
 
@@ -220,11 +297,9 @@
   border-radius: 24px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
   overflow: hidden;
-  max-width: 600px;
-  /* Mobile-first feel like inspiration */
+  width: 90%;
   margin: 0 auto;
   font-family: 'Poppins', sans-serif;
-  /* Assuming Poppins is available or fallback */
 }
 
 /* Image Header */

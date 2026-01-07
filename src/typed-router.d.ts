@@ -22,6 +22,7 @@ declare module 'vue-router/auto-routes' {
     '/private/AddFriends': RouteRecordInfo<'/private/AddFriends', '/private/AddFriends', Record<never, never>, Record<never, never>>,
     '/private/event/[id]': RouteRecordInfo<'/private/event/[id]', '/private/event/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     '/private/feed': RouteRecordInfo<'/private/feed', '/private/feed', Record<never, never>, Record<never, never>>,
+    '/private/profile': RouteRecordInfo<'/private/profile', '/private/profile', Record<never, never>, Record<never, never>>,
     '/private/test-auth': RouteRecordInfo<'/private/test-auth', '/private/test-auth', Record<never, never>, Record<never, never>>,
     '/public/AddFriends': RouteRecordInfo<'/public/AddFriends', '/public/AddFriends', Record<never, never>, Record<never, never>>,
     '/public/ConfirmEmail': RouteRecordInfo<'/public/ConfirmEmail', '/public/ConfirmEmail', Record<never, never>, Record<never, never>>,
@@ -59,6 +60,10 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/private/feed.vue': {
       routes: '/private/feed'
+      views: never
+    }
+    'src/pages/private/profile.vue': {
+      routes: '/private/profile'
       views: never
     }
     'src/pages/private/test-auth.vue': {

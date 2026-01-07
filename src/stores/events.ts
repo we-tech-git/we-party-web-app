@@ -11,6 +11,7 @@ export interface FeedItem {
   }
   hostAvatar: string
   schedule: string
+  location?: string
   title: string
   description: string
   confirmed: number

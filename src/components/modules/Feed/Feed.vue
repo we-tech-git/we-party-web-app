@@ -2,7 +2,9 @@
   import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
 
-  import { getEventRecomendations, searchByEvents } from '@/api/event'
+  import { useRouter } from 'vue-router'
+
+  import { getEventRecomendations, getEventsToday, getTrendingEvents, searchByEvents } from '@/api/event'
   import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
 
   import { useEventsStore } from '@/stores/events'
@@ -29,6 +31,7 @@
     }
     hostAvatar: string
     schedule: string
+    location?: string
     title: string
     description: string
     confirmed: number
@@ -39,11 +42,12 @@
     id: number
     title: string
     highlight: string
-    engagement: string
+    baseCount: number
   }
 
   const { t } = useI18n()
   const eventsStore = useEventsStore()
+  const router = useRouter()
 
   const activeNav = ref('home')
   const activeTab = ref('for-you')
@@ -53,7 +57,6 @@
     { id: 'home', label: t('feed.nav.home'), icon: 'home' },
     { id: 'top-events', label: t('feed.nav.topEvents'), icon: 'top' },
     { id: 'favorites', label: t('feed.nav.favorites'), icon: 'bookmark' },
-    { id: 'notifications', label: t('feed.nav.notifications'), icon: 'bell' },
     { id: 'profile', label: t('feed.nav.profile'), icon: 'profile' },
   ])
 
@@ -69,23 +72,39 @@
   const items = ref<FeedItem[]>([])
   const loading = ref(false)
 
+  function mapEventToFeedItem (event: any): FeedItem {
+    const rawBanner = event.bannerUrl || event.banner || event.photos?.[0] || event.image || event.imageUrl || event.cover || event.thumbnail
+    const calculatedHostName = event.organizer?.name || event.hostName || event.creator?.name || 'Unknown Host'
+
+    return {
+      id: event.id,
+      banner: rawBanner || '',
+      creator: { name: calculatedHostName },
+      hostAvatar: event.organizer?.avatar || event.hostAvatar || event.creator?.profileImage || '',
+      schedule: event.date ? new Date(event.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Data a definir',
+      location: event.location || event.address || event.place || 'Local a definir',
+      title: event.name || event.title || 'Untitled Event',
+      description: event.description || '',
+      confirmed: event.confirmedCount || 0,
+      interested: event.interestedCount || 0,
+    }
+  }
+
   async function fetchEvents () {
     loading.value = true
     try {
-      const response = await getEventRecomendations()
+      let response
+      if (activeNav.value === 'top-events') {
+        response = await getTrendingEvents()
+      } else if (activeTab.value === 'today') {
+        response = await getEventsToday()
+      } else {
+        response = await getEventRecomendations()
+      }
+
       const events = response.data.events || response.data.content || response.data || []
 
-      items.value = events.map((event: any) => ({
-        id: event.id,
-        banner: event.bannerUrl || event.banner || event.photos?.[0] || 'https://via.placeholder.com/400x200',
-        creator: event.creator || {},
-        hostAvatar: event.organizer?.avatar || event.hostAvatar || event.creator?.profileImage || '',
-        schedule: event.date ? new Date(event.date).toLocaleString() : 'TBA',
-        title: event.title || 'Untitled Event',
-        description: event.description || '',
-        confirmed: event.confirmedCount || 0,
-        interested: event.interestedCount || 0,
-      }))
+      items.value = events.map((event: any) => mapEventToFeedItem(event))
       filteredItems.value = items.value
     } catch (error) {
       console.error('Failed to fetch events', error)
@@ -96,34 +115,41 @@
 
   onMounted(() => {
     fetchEvents()
+    fetchTrends()
   })
 
-  const trends = ref<TrendItem[]>([
-    {
-      id: 1,
-      title: 'Baile de máscaras',
-      highlight: t('feed.trending.cityHighlight'),
-      engagement: '18k pessoas comentando',
-    },
-    {
-      id: 2,
-      title: 'Mandelõ dos Cria',
-      highlight: t('feed.trending.cityHighlight'),
-      engagement: '7k pessoas comentando',
-    },
-    {
-      id: 3,
-      title: 'Invasão de poder',
-      highlight: t('feed.trending.cityHighlight'),
-      engagement: '1k pessoas comentando',
-    },
-    {
-      id: 4,
-      title: 'Expo síndico São Paulo',
-      highlight: t('feed.trending.cityHighlight'),
-      engagement: '5k pessoas comentando',
-    },
-  ])
+  const trends = ref<TrendItem[]>([])
+
+  async function fetchTrends () {
+    try {
+      const response = await getTrendingEvents()
+      const data = response.data.events || response.data || []
+
+      trends.value = data.map((evt: any) => ({
+        id: evt.id,
+        title: evt.name || evt.title || 'Evento sem nome',
+        highlight: evt.location || evt.city || t('feed.trending.cityHighlight'),
+        baseCount: evt.confirmedCount || 0,
+      }))
+    } catch (error) {
+      console.error('Error fetching trends', error)
+    }
+  }
+
+  const displayedTrends = computed(() => {
+    return trends.value.map(item => {
+      const isLiked = eventsStore.isLiked(item.id)
+      const total = item.baseCount + (isLiked ? 1 : 0)
+      return {
+        id: item.id,
+        title: item.title,
+        highlight: item.highlight,
+        engagement: `${total} curtidas`,
+        rawCount: total,
+      }
+    // eslint-disable-next-line unicorn/no-array-sort
+    }).slice().sort((a: any, b: any) => b.rawCount - a.rawCount)
+  })
 
   const user = {
     name: 'Amanda Costa',
@@ -145,10 +171,14 @@
 
   async function requestSearchEvents (normalizedSearch: string) {
     const resp = await searchByEvents(normalizedSearch)
-    return resp.data.events
+    return resp.data.events || resp.data || []
   }
 
-  watch(searchQuery, async (newQuerySearch: string) => {
+  let searchTimeout: ReturnType<typeof setTimeout>
+
+  watch(searchQuery, (newQuerySearch: string) => {
+    clearTimeout(searchTimeout)
+
     const normalized = newQuerySearch.trim().toLowerCase()
 
     if (!normalized) {
@@ -156,30 +186,37 @@
       return
     }
 
-    try {
-      const events = await requestSearchEvents(normalized)
-      filteredItems.value = (events || []).map((event: any) => ({
-        id: event.id,
-        banner: event.bannerUrl || event.banner || event.photos?.[0] || 'https://via.placeholder.com/400x200',
-        hostName: event.organizer?.name || event.hostName || event.creator?.name || 'Unknown Host',
-        hostAvatar: event.organizer?.avatar || event.hostAvatar || event.creator?.profileImage || '',
-        schedule: event.date ? new Date(event.date).toLocaleString() : 'TBA',
-        title: event.name || event.title || 'Untitled Event',
-        description: event.description || '',
-        confirmed: event.confirmedCount || 0,
-        interested: event.interestedCount || 0,
-      }))
-    } catch (error) {
-      console.error(error)
+    searchTimeout = setTimeout(async () => {
+      try {
+        const events = await requestSearchEvents(normalized)
+        filteredItems.value = (events || []).map((event: any) => mapEventToFeedItem(event))
+      } catch (error) {
+        console.error(error)
+      }
+    }, 500)
+  })
+
+  watch(activeTab, () => {
+    if (activeNav.value === 'home') {
+      fetchEvents()
     }
   })
 
   watch(activeNav, val => {
+    if (val === 'profile') {
+      router.push('/private/profile')
+      return
+    }
+
     if (searchQuery.value) {
       searchQuery.value = ''
     }
 
-    filteredItems.value = val === 'favorites' ? eventsStore.savedEvents : items.value
+    if (val === 'favorites') {
+      filteredItems.value = eventsStore.savedEvents
+    } else {
+      fetchEvents()
+    }
   })
 
   watch(() => eventsStore.savedEvents, val => {
@@ -256,6 +293,7 @@
             :is-saved="eventsStore.isSaved(item.id)"
             :liked="eventsStore.isLiked(item.id)"
             :likes="item.confirmed + (eventsStore.isLiked(item.id) ? 1 : 0)"
+            :location="item.location"
             :schedule="item.schedule"
             :title="item.title"
             @toggle-like="eventsStore.toggleLike(item.id)"
@@ -265,7 +303,7 @@
         <p v-else class="empty">{{ t('feed.empty') }}</p>
       </main>
 
-      <FeedTrendsPanel class="feed-trends" :items="trends" />
+      <FeedTrendsPanel class="feed-trends" :items="displayedTrends" />
     </section>
   </div>
 </template>

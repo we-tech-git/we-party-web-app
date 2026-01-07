@@ -1,7 +1,10 @@
 <script setup lang="ts">
   import type { NavItem } from './FeedSidebarNav.vue'
-  import { computed, ref } from 'vue'
+  import { computed, onMounted, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import { useRouter } from 'vue-router'
+  import { getTrendingEvents } from '@/api/event'
+  import { useEventsStore } from '@/stores/events' // Import store
   import EventDetails from './EventDetails.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
   import FeedTopHeader from './FeedTopHeader.vue'
@@ -12,9 +15,20 @@
   }>()
 
   const { t } = useI18n()
+  const router = useRouter()
+  const eventsStore = useEventsStore() // Initialize store
 
   // --- Lógica de Layout (Copiada do Feed) ---
-  const activeNav = ref('home')
+  const activeNav = ref('')
+
+  function handleNavSelect (id: string) {
+    activeNav.value = id
+    if (id === 'home' || id === 'top-events' || id === 'favorites') {
+      router.push('/private/feed')
+    } else if (id === 'profile') {
+      router.push('/private/profile')
+    }
+  }
 
   const user = {
     name: 'Amanda Costa',
@@ -26,36 +40,45 @@
     { id: 'home', label: t('feed.nav.home'), icon: 'home' },
     { id: 'top-events', label: t('feed.nav.topEvents'), icon: 'top' },
     { id: 'favorites', label: t('feed.nav.favorites'), icon: 'bookmark' },
-    { id: 'notifications', label: t('feed.nav.notifications'), icon: 'bell' },
     { id: 'profile', label: t('feed.nav.profile'), icon: 'profile' },
   ])
 
-  const trends = ref([
-    {
-      id: 1,
-      title: 'Baile de máscaras',
-      highlight: t('feed.trending.cityHighlight'),
-      engagement: '18k pessoas comentando',
-    },
-    {
-      id: 2,
-      title: 'Mandelõ dos Cria',
-      highlight: t('feed.trending.cityHighlight'),
-      engagement: '7k pessoas comentando',
-    },
-    {
-      id: 3,
-      title: 'Invasão de poder',
-      highlight: t('feed.trending.cityHighlight'),
-      engagement: '1k pessoas comentando',
-    },
-    {
-      id: 4,
-      title: 'Expo síndico São Paulo',
-      highlight: t('feed.trending.cityHighlight'),
-      engagement: '5k pessoas comentando',
-    },
-  ])
+  const trends = ref<any[]>([])
+
+  async function fetchTrends () {
+    try {
+      const response = await getTrendingEvents()
+      const data = response.data.events || response.data || []
+
+      trends.value = data.map((evt: any) => ({
+        id: evt.id,
+        title: evt.name || evt.title || 'Evento sem nome',
+        highlight: evt.location || evt.city || t('feed.trending.cityHighlight'),
+        baseCount: evt.confirmedCount || 0,
+      }))
+    } catch (error) {
+      console.error('Error fetching trends', error)
+    }
+  }
+
+  const displayedTrends = computed(() => {
+    return trends.value.map(item => {
+      const isLiked = eventsStore.isLiked(item.id)
+      const total = item.baseCount + (isLiked ? 1 : 0)
+      return {
+        id: item.id,
+        title: item.title,
+        highlight: item.highlight,
+        engagement: `${total} curtidas`,
+        rawCount: total,
+      }
+      // eslint-disable-next-line unicorn/no-array-sort
+    }).slice().sort((a: any, b: any) => b.rawCount - a.rawCount)
+  })
+
+  onMounted(() => {
+    fetchTrends()
+  })
 </script>
 
 <template>
@@ -70,7 +93,7 @@
 
     <section class="layout-shell">
       <!-- Sidebar -->
-      <FeedSidebarNav :active="activeNav" class="layout-sidebar" :items="navItems" @select="activeNav = $event" />
+      <FeedSidebarNav :active="activeNav" class="layout-sidebar" :items="navItems" @select="handleNavSelect" />
 
       <!-- Conteúdo Principal (Detalhes do Evento) -->
       <main class="layout-main">
@@ -78,7 +101,7 @@
       </main>
 
       <!-- Trends (Lateral Direita) -->
-      <FeedTrendsPanel class="layout-trends" :items="trends" />
+      <FeedTrendsPanel class="layout-trends" :items="displayedTrends" />
     </section>
   </div>
 </template>

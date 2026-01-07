@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import { computed } from 'vue'
+  import { useShareStore } from '@/stores/share'
   import { svgIcons } from '@/utils/svgSet'
 
   const props = defineProps<{
@@ -10,6 +11,7 @@
     title: string
     description: string
     schedule: string
+    location?: string
     confirmed: number
     interested: number
     isSaved?: boolean
@@ -68,6 +70,16 @@
     const index = Math.abs(hash % avatarColors.length)
     return avatarColors[index]
   })
+
+  const shareStore = useShareStore()
+
+  function handleShare () {
+    shareStore.open({
+      title: props.title,
+      text: props.description,
+      url: `${window.location.origin}/private/event/${props.id}`,
+    })
+  }
 </script>
 
 <template>
@@ -108,11 +120,18 @@
         >
           <path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z" />
         </svg>
+        <v-tooltip activator="parent" content-class="feed-card-tooltip" location="start" offset="10">
+          Favoritar
+        </v-tooltip>
       </button>
 
       <figcaption class="overlay">
-        <p class="schedule">{{ schedule }}</p>
+
         <h3 class="title">{{ title }}</h3>
+        <div class="meta-wrapper">
+          <span class="schedule">{{ schedule }}</span>
+          <span v-if="location" class="location"> • {{ location }}</span>
+        </div>
         <p class="description">{{ description }}</p>
 
         <footer class="footer">
@@ -142,25 +161,6 @@
               </svg>
               {{ formatCount(likes ?? confirmed) }}
             </button>
-            <span class="stat">
-              <svg
-                aria-hidden="true"
-                fill="none"
-                height="18"
-                role="presentation"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.8"
-                viewBox="0 0 24 24"
-                width="18"
-              >
-                <path
-                  d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"
-                />
-              </svg>
-              {{ formatCount(interested) }}
-            </span>
           </div>
 
           <div class="actions">
@@ -182,8 +182,11 @@
                   stroke-width="16"
                 />
               </svg>
+              <v-tooltip activator="parent" content-class="feed-card-tooltip" location="top" offset="10">
+                Detalhes
+              </v-tooltip>
             </router-link>
-            <button aria-label="Compartilhar" class="icon-button" type="button" @click.prevent>
+            <button aria-label="Compartilhar" class="icon-button" type="button" @click.prevent="handleShare">
               <svg
                 v-if="svgIcons.shareIcon"
                 fill="none"
@@ -201,6 +204,9 @@
                   stroke-width="16"
                 />
               </svg>
+              <v-tooltip activator="parent" content-class="feed-card-tooltip" location="top" offset="10">
+                Compartilhar
+              </v-tooltip>
             </button>
           </div>
         </footer>
@@ -208,6 +214,23 @@
     </figure>
   </article>
 </template>
+
+<style>
+/* Global style strictly scoped to this component's tooltip usage via content-class */
+.v-overlay__content.feed-card-tooltip {
+  background: rgba(14, 20, 38, 0.85) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border-radius: 12px !important;
+  padding: 6px 12px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #ffba4b !important;
+}
+</style>
 
 <style scoped>
 .feed-card {
@@ -252,11 +275,14 @@
   gap: 0.6rem;
   padding: 0.45rem 0.85rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
   color: #23253f;
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.02em;
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 .host-avatar.placeholder {
@@ -274,6 +300,7 @@
   height: 28px;
   border-radius: 999px;
   object-fit: cover;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .bookmark {
@@ -286,17 +313,19 @@
   width: clamp(46px, 3.8vw, 56px);
   height: clamp(46px, 3.8vw, 56px);
   border-radius: 50%;
-  border: none;
-  background: rgba(7, 10, 22, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(7, 10, 22, 0.6);
+  backdrop-filter: blur(8px);
   color: #ffffff;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .bookmark:hover {
   background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(255, 95, 166, 0.3);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 20px rgba(255, 95, 166, 0.4);
+  border-color: transparent;
 }
 
 .bookmark.saved {
@@ -311,8 +340,8 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 0.5rem;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(13, 16, 43, 0.8) 50%, rgba(8, 13, 30, 0.98) 100%);
+  gap: 0.35rem;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 20%, rgba(13, 16, 43, 0.85) 60%, rgba(8, 13, 30, 0.98) 100%);
   color: #ffffff;
   padding: clamp(1.4rem, 4vw, 2rem);
   padding-top: 5rem;
@@ -321,17 +350,43 @@
 .schedule {
   margin: 0;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 600;
-  font-size: clamp(0.86rem, 0.3vw + 0.8rem, 1.05rem);
-  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #ffba4b;
+}
+
+.location {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.meta-wrapper {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+  margin-bottom: 0.4rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  padding: 0.35rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  align-self: flex-start;
 }
 
 .title {
   margin: 0;
   font-size: clamp(1.5rem, 1.2vw + 1.45rem, 2.55rem);
-  line-height: 1.2;
-  font-weight: 700;
+  line-height: 1.15;
+  font-weight: 800;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .description {
@@ -395,18 +450,19 @@
   width: clamp(38px, 3vw, 48px);
   height: clamp(38px, 3vw, 48px);
   border-radius: clamp(12px, 2vw, 16px);
-  border: none;
-  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
   color: #ffffff;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .icon-button:hover {
   background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: 0 8px 16px rgba(255, 95, 166, 0.3);
-  border: none;
+  border-color: transparent;
 }
 
 .bookmark svg,
