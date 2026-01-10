@@ -1,90 +1,91 @@
 <script setup lang="ts">
-  import type { NavItem } from './FeedSidebarNav.vue'
-  import { computed, onMounted, ref } from 'vue'
-  import { useI18n } from 'vue-i18n'
-  import { useRouter } from 'vue-router'
-  import { getTrendingEvents } from '@/api/event'
-  import { useEventsStore } from '@/stores/events' // Import store
-  import EventDetails from './EventDetails.vue'
-  import FeedSidebarNav from './FeedSidebarNav.vue'
-  import FeedTopHeader from './FeedTopHeader.vue'
-  import FeedTrendsPanel from './FeedTrendsPanel.vue'
+import type { NavItem } from './FeedSidebarNav.vue'
+import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { getTrendingEvents } from '@/api/event'
+import { useEventsStore } from '@/stores/events' // Import store
+import EventDetails from './EventDetails.vue'
+import FeedSidebarNav from './FeedSidebarNav.vue'
+import FeedTopHeader from './FeedTopHeader.vue'
+import FeedTrendsPanel from './FeedTrendsPanel.vue'
+import AppFooter from '@/components/AppFooter.vue'
 
-  defineProps<{
-    eventId: string | string[]
-  }>()
+defineProps<{
+  eventId: string | string[]
+}>()
 
-  const { t } = useI18n()
-  const router = useRouter()
-  const eventsStore = useEventsStore() // Initialize store
+const { t } = useI18n()
+const router = useRouter()
+const eventsStore = useEventsStore() // Initialize store
 
-  // --- Lógica de Layout (Copiada do Feed) ---
-  const activeNav = ref('')
+// --- Lógica de Layout (Copiada do Feed) ---
+const activeNav = ref('')
 
-  function handleNavSelect (id: string) {
-    activeNav.value = id
-    if (id === 'home' || id === 'top-events' || id === 'favorites') {
-      router.push('/private/feed')
-    } else if (id === 'profile') {
-      router.push('/private/profile')
+function handleNavSelect(id: string) {
+  activeNav.value = id
+  if (id === 'home' || id === 'top-events' || id === 'favorites') {
+    router.push('/private/feed')
+  } else if (id === 'profile') {
+    router.push('/private/profile')
+  }
+}
+
+const user = {
+  name: 'Amanda Costa',
+  avatar: 'https://i.pravatar.cc/80?img=32',
+  points: 356,
+}
+
+const navItems = computed<NavItem[]>(() => [
+  { id: 'home', label: t('feed.nav.home'), icon: 'home' },
+  { id: 'top-events', label: t('feed.nav.topEvents'), icon: 'top' },
+  { id: 'favorites', label: t('feed.nav.favorites'), icon: 'bookmark' },
+  { id: 'profile', label: t('feed.nav.profile'), icon: 'profile' },
+])
+
+const trends = ref<any[]>([])
+
+async function fetchTrends() {
+  try {
+    const response = await getTrendingEvents()
+    const data = response.data.events || response.data || []
+
+    trends.value = data.map((evt: any) => ({
+      id: evt.id,
+      title: evt.name || evt.title || 'Evento sem nome',
+      highlight: evt.location || evt.city || t('feed.trending.cityHighlight'),
+      baseCount: evt.confirmedCount || 0,
+    }))
+  } catch (error) {
+    console.error('Error fetching trends', error)
+  }
+}
+
+const displayedTrends = computed(() => {
+  return trends.value.map(item => {
+    const isLiked = eventsStore.isLiked(item.id)
+    const total = item.baseCount + (isLiked ? 1 : 0)
+    return {
+      id: item.id,
+      title: item.title,
+      highlight: item.highlight,
+      engagement: `${total} curtidas`,
+      rawCount: total,
     }
-  }
+    // eslint-disable-next-line unicorn/no-array-sort
+  }).slice().sort((a: any, b: any) => b.rawCount - a.rawCount)
+})
 
-  const user = {
-    name: 'Amanda Costa',
-    avatar: 'https://i.pravatar.cc/80?img=32',
-    points: 356,
-  }
-
-  const navItems = computed<NavItem[]>(() => [
-    { id: 'home', label: t('feed.nav.home'), icon: 'home' },
-    { id: 'top-events', label: t('feed.nav.topEvents'), icon: 'top' },
-    { id: 'favorites', label: t('feed.nav.favorites'), icon: 'bookmark' },
-    { id: 'profile', label: t('feed.nav.profile'), icon: 'profile' },
-  ])
-
-  const trends = ref<any[]>([])
-
-  async function fetchTrends () {
-    try {
-      const response = await getTrendingEvents()
-      const data = response.data.events || response.data || []
-
-      trends.value = data.map((evt: any) => ({
-        id: evt.id,
-        title: evt.name || evt.title || 'Evento sem nome',
-        highlight: evt.location || evt.city || t('feed.trending.cityHighlight'),
-        baseCount: evt.confirmedCount || 0,
-      }))
-    } catch (error) {
-      console.error('Error fetching trends', error)
-    }
-  }
-
-  const displayedTrends = computed(() => {
-    return trends.value.map(item => {
-      const isLiked = eventsStore.isLiked(item.id)
-      const total = item.baseCount + (isLiked ? 1 : 0)
-      return {
-        id: item.id,
-        title: item.title,
-        highlight: item.highlight,
-        engagement: `${total} curtidas`,
-        rawCount: total,
-      }
-      // eslint-disable-next-line unicorn/no-array-sort
-    }).slice().sort((a: any, b: any) => b.rawCount - a.rawCount)
-  })
-
-  onMounted(() => {
-    fetchTrends()
-  })
+onMounted(() => {
+  fetchTrends()
+})
 </script>
 
 <template>
   <div class="event-page-layout">
     <!-- Header Global -->
-    <FeedTopHeader :user="user">
+    <FeedTopHeader :user="user" show-back-btn>
       <template #center-content>
         <!-- Barra de busca simplificada para manter consistência visual -->
         <div class="header-spacer" />
@@ -103,6 +104,8 @@
       <!-- Trends (Lateral Direita) -->
       <FeedTrendsPanel class="layout-trends" :items="displayedTrends" />
     </section>
+
+    <AppFooter />
   </div>
 </template>
 

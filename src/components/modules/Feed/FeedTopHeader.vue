@@ -3,6 +3,7 @@
   import { useRouter } from 'vue-router'
   import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
   import { useAuth } from '@/composables/useAuth'
+  import { svgIcons } from '@/utils/svgSet'
 
   interface UserSummary {
     name: string
@@ -12,6 +13,7 @@
 
   defineProps<{
     user: UserSummary
+    showBackBtn?: boolean
   }>()
   const { t } = useI18n()
   const router = useRouter()
@@ -30,7 +32,27 @@
 <template>
   <header aria-label="Brand header" class="feed-top-header">
     <div class="header-inner">
-      <span aria-hidden="true" class="brand">WE PARTY</span>
+      <div class="brand-wrapper">
+        <button
+          v-if="showBackBtn"
+          :aria-label="t('common.back') || 'Voltar'"
+          class="nav-back-btn"
+          type="button"
+          @click="router.back()"
+        >
+          <svg
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-width="2.5"
+            :viewBox="svgIcons.backArrow.viewBox"
+            width="24"
+          >
+            <path v-for="(path, idx) in svgIcons.backArrow.paths" :key="idx" v-bind="path" />
+          </svg>
+        </button>
+        <span aria-hidden="true" class="brand">WE PARTY</span>
+      </div>
       <div class="center-container">
         <slot name="center-content" />
       </div>
@@ -94,10 +116,10 @@
   /* Added horizontal padding */
   position: sticky;
   top: 0;
-  z-index: 10;
-  /* background: rgba(255, 255, 255, 0.8); */
-  /* Ensure background for sticky */
-  /* backdrop-filter: blur(10px); */
+  z-index: 50; /* Increased z-index to ensure it stays on top */
+  background: rgba(255, 245, 247, 0.85); /* Semi-transparent background matching the theme */
+  backdrop-filter: blur(12px); /* Blur effect for better readability */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3); /* Subtle separator */
 }
 
 .header-inner {
@@ -110,6 +132,42 @@
   max-width: 1280px;
   margin: 0 auto;
   width: 100%;
+}
+
+.brand-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.nav-back-btn {
+  background: white;
+  border: none;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.15);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: #ff5fa6;
+}
+
+.nav-back-btn:hover {
+  transform: translateX(-2px) scale(1.05);
+  background: linear-gradient(135deg, #fff0f5 0%, #fff 100%);
+  color: #ff3385;
+  box-shadow: 0 6px 16px rgba(255, 95, 166, 0.3);
+}
+
+.nav-back-btn:active {
+  transform: scale(0.95);
+}
+
+.nav-back-btn svg {
+  display: block;
 }
 
 .brand {

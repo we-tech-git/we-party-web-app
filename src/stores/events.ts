@@ -16,6 +16,7 @@ export interface FeedItem {
   description: string
   confirmed: number
   interested: number
+  likes?: number
 }
 
 export const useEventsStore = defineStore('events', () => {

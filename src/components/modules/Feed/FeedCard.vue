@@ -17,6 +17,8 @@
     isSaved?: boolean
     likes?: number
     liked?: boolean
+    highlight?: boolean
+    rank?: number
   }>()
 
   const emit = defineEmits<{
@@ -83,7 +85,10 @@
 </script>
 
 <template>
-  <article class="feed-card">
+  <article class="feed-card" :class="{ 'highlight-card': highlight }">
+    <div v-if="highlight && rank" class="rank-badge">
+      <span>#</span>{{ rank }}
+    </div>
     <figure class="media">
       <img :alt="title" class="banner" loading="lazy" :src="bannerSrc">
 
@@ -236,13 +241,67 @@
 .feed-card {
   position: relative;
   border-radius: 32px;
-  overflow: hidden;
+  overflow: visible;
   background: #0a0f1f;
   box-shadow: 0 28px 58px rgba(12, 16, 37, 0.356);
   isolation: isolate;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   padding: 0.45rem;
   width: 100%;
+}
+
+.feed-card.highlight-card {
+  box-shadow: 0 30px 60px rgba(255, 95, 166, 0.15), 0 0 0 1px rgba(255, 186, 75, 0.3);
+}
+
+/* Gradient border effect via pseudo-element to respect border-radius */
+.feed-card.highlight-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6, #9C27B0);
+  border-radius: 34px; /* feed-card radius (32px) + 2px offset */
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+.feed-card.highlight-card:hover::before {
+  opacity: 1;
+}
+
+.rank-badge {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  z-index: 50;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  color: white;
+  font-weight: 800;
+  font-size: 1.8rem;
+  border-radius: 20px;
+  box-shadow: 0 4px 15px rgba(255, 95, 166, 0.5);
+  transform: rotate(-10deg) scale(1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.rank-badge span {
+  font-size: 1rem;
+  margin-right: 2px;
+  opacity: 0.8;
+  vertical-align: top;
+  margin-top: -8px;
+}
+
+.feed-card.highlight-card:hover .rank-badge {
+  transform: rotate(0deg) scale(1.1);
 }
 
 .feed-card:hover {
@@ -254,6 +313,10 @@
   position: relative;
   margin: 0;
   height: 100%;
+  border-radius: 24px;
+  overflow: hidden;
+  /* Ensure mask for Safari/Webkit if needed */
+  transform: translateZ(0);
 }
 
 .banner {
@@ -261,9 +324,8 @@
   width: 100%;
   height: clamp(320px, 35vw, 420px);
   object-fit: cover;
-  border-radius: 24px;
+  /* border-radius removed here as it is handled by parent .media */
   padding: 0rem;
-
 }
 
 .host-tag {

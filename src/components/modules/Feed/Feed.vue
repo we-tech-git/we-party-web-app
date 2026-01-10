@@ -8,6 +8,7 @@
   import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
 
   import { useEventsStore } from '@/stores/events'
+  import { svgIcons } from '@/utils/svgSet'
   import FeedCard from './FeedCard.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
   import FeedTopHeader from './FeedTopHeader.vue'
@@ -36,6 +37,7 @@
     description: string
     confirmed: number
     interested: number
+    likes?: number
   }
 
   interface TrendItem {
@@ -60,10 +62,20 @@
     { id: 'profile', label: t('feed.nav.profile'), icon: 'profile' },
   ])
 
-  const tabs = computed<TabItem[]>(() => [
-    { id: 'for-you', label: t('feed.tabs.forYou') },
-    { id: 'today', label: t('feed.tabs.today') },
-  ])
+  const tabs = computed<TabItem[]>(() => {
+    if (activeNav.value === 'top-events') {
+      return [
+        { id: 'for-you', label: t('feed.tabs.forYou') },
+        { id: 'trends', label: t('feed.tabs.trends') },
+        { id: 'news', label: t('feed.tabs.news') },
+      ]
+    }
+
+    return [
+      { id: 'for-you', label: t('feed.tabs.forYou') },
+      { id: 'today', label: t('feed.tabs.today') },
+    ]
+  })
 
   const filteredItems = ref<FeedItem[]>([
 
@@ -85,8 +97,9 @@
       location: event.location || event.address || event.place || 'Local a definir',
       title: event.name || event.title || 'Untitled Event',
       description: event.description || '',
-      confirmed: event.confirmedCount || 0,
+      confirmed: event.confirmedCount || event._count?.attendances || 0,
       interested: event.interestedCount || 0,
+      likes: event.likesCount || event.likes || event._count?.likes || 0,
     }
   }
 
@@ -129,7 +142,7 @@
         id: evt.id,
         title: evt.name || evt.title || 'Evento sem nome',
         highlight: evt.location || evt.city || t('feed.trending.cityHighlight'),
-        baseCount: evt.confirmedCount || 0,
+        baseCount: evt.likesCount || evt.likes || evt._count?.likes || evt.confirmedCount || 0,
       }))
     } catch (error) {
       console.error('Error fetching trends', error)
@@ -208,6 +221,11 @@
       return
     }
 
+    // Reset active tab to 'for-you' when switching nav sections
+    // This ensures consistency since different sections might have different tabs
+    // and 'for-you' is common to all of them currently.
+    activeTab.value = 'for-you'
+
     if (searchQuery.value) {
       searchQuery.value = ''
     }
@@ -262,6 +280,24 @@
 
           <nav aria-label="Seções do feed" class="tabs">
             <button
+              v-if="activeNav !== 'home'"
+              :aria-label="t('common.back') || 'Voltar'"
+              class="tab-back-btn"
+              type="button"
+              @click="activeNav = 'home'"
+            >
+              <svg
+                fill="none"
+                height="20"
+                stroke="currentColor"
+                stroke-width="2.5"
+                :viewBox="svgIcons.backArrow.viewBox"
+                width="20"
+              >
+                <path v-for="(path, idx) in svgIcons.backArrow.paths" :key="idx" v-bind="path" />
+              </svg>
+            </button>
+            <button
               v-for="tab in tabs"
               :key="tab.id"
               :class="{ active: activeTab === tab.id }"
@@ -281,19 +317,21 @@
       <main class="feed-main">
         <section v-if="filteredItems.length > 0" class="cards-stack">
           <FeedCard
-            v-for="item in filteredItems"
+            v-for="(item, index) in filteredItems"
             :id="item.id"
             :key="item.id"
             :banner="item.banner"
             :confirmed="item.confirmed"
             :description="item.description"
+            :highlight="activeNav === 'top-events'"
             :host-avatar="item.hostAvatar"
             :host-name="item.creator.name"
             :interested="item.interested"
             :is-saved="eventsStore.isSaved(item.id)"
             :liked="eventsStore.isLiked(item.id)"
-            :likes="item.confirmed + (eventsStore.isLiked(item.id) ? 1 : 0)"
+            :likes="(item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0)"
             :location="item.location"
+            :rank="activeNav === 'top-events' ? index + 1 : undefined"
             :schedule="item.schedule"
             :title="item.title"
             @toggle-like="eventsStore.toggleLike(item.id)"
@@ -408,8 +446,10 @@
 .tabs {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1.5rem;
-  padding-left: 0.25rem;
+  padding-left: 0;
+  width: 100%;
 }
 
 .tabs button {
@@ -442,6 +482,26 @@
 
 .tabs button.active::after {
   background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+}
+
+.tab-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 95, 166, 0.1);
+  color: #ff5fa6;
+  cursor: pointer;
+  margin-right: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.tab-back-btn:hover {
+  background: rgba(255, 95, 166, 0.2);
+  transform: translateX(-2px);
 }
 
 .cards-stack {

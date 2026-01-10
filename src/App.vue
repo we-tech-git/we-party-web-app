@@ -6,5 +6,5 @@
 </template>
 
 <script lang="ts" setup>
-import ShareSheet from '@/components/modules/UI/ShareSheet/ShareSheet.vue'
+  import ShareSheet from '@/components/modules/UI/ShareSheet/ShareSheet.vue'
 </script>

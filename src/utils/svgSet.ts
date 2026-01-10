@@ -15,7 +15,7 @@ export type SvgIcon = {
   paths: SvgPath[]
 }
 
-export const svgIcons: Record<string, SvgIcon> = {
+export const svgIcons = {
   // searchIcon
   // Origem: SVG de ícone de busca (estilo Heroicons / ícone custom)
   // Uso: campo de busca em AddFriends.vue (barra de pesquisa)
@@ -153,4 +153,4 @@ export const svgIcons: Record<string, SvgIcon> = {
       },
     ],
   },
-}
+} as const

@@ -69,7 +69,9 @@
     "tabs": {
       "forYou": "Para você",
       "today": "Acontecendo hoje",
-      "friends": "Com amigos"
+      "friends": "Com amigos",
+      "trends": "Tendências",
+      "news": "Novidades"
     },
     "trending": {
       "title": "O que tá rolando?",
@@ -187,3 +189,5 @@
     }
   }
 }
+
+
