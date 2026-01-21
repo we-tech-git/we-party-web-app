@@ -56,10 +56,16 @@ export async function getTrendingEvents (page = 1, limit = 10) {
 
 export async function getEventsToday (page = 1, limit = 10) {
   try {
-    const today = new Date().toISOString().split('T')[0]
+    const now = new Date()
+    const startDate = now.toISOString().split('T')[0]
+
+    const nextDay = new Date(now)
+    nextDay.setDate(now.getDate() + 1)
+    const endDate = nextDay.toISOString().split('T')[0]
+
     const response = await callApi(
       'GET',
-      `/events/search/date?date=${today}&page=${page}&limit=${limit}`,
+      `/events/by-date-range?startDate=${startDate}&endDate=${endDate}&page=${page}&limit=${limit}`,
       {},
       true,
       {
@@ -87,6 +93,24 @@ export async function getEventById (id: string | number) {
     return response
   } catch (error) {
     console.error('Erro ao buscar evento:', error)
+    throw error
+  }
+}
+
+export async function toggleLikeEvent (id: string | number) {
+  try {
+    const response = await callApi(
+      'POST',
+      `/events/${id}/likes`,
+      {},
+      true,
+      {
+        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
+      },
+    )
+    return response
+  } catch (error) {
+    console.error('Erro ao curtir evento:', error)
     throw error
   }
 }

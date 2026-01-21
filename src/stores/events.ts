@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { toggleLikeEvent } from '@/api/event'
 
 export type EventId = string | number
 
@@ -56,14 +57,31 @@ export const useEventsStore = defineStore('events', () => {
     return savedEvents.value.some(e => e.id === id)
   }
 
-  function toggleLike (id: EventId) {
+  async function toggleLike (id: EventId) {
+    // Optimistic update
     const index = likedEvents.value.indexOf(id)
-    if (index === -1) {
+    const isAdding = index === -1
+
+    if (isAdding) {
       likedEvents.value.push(id)
     } else {
       likedEvents.value.splice(index, 1)
     }
     localStorage.setItem('LIKED_EVENTS', JSON.stringify(likedEvents.value))
+
+    try {
+      await toggleLikeEvent(id)
+    } catch (error) {
+      // Revert if API fails
+      console.error('Failed to toggle like on server', error)
+      const revertIndex = likedEvents.value.indexOf(id)
+      if (isAdding && revertIndex !== -1) {
+        likedEvents.value.splice(revertIndex, 1)
+      } else if (!isAdding && revertIndex === -1) {
+        likedEvents.value.push(id)
+      }
+      localStorage.setItem('LIKED_EVENTS', JSON.stringify(likedEvents.value))
+    }
   }
 
   function isLiked (id: EventId) {

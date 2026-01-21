@@ -106,14 +106,20 @@
   async function fetchEvents () {
     loading.value = true
     try {
-      let response
-      if (activeNav.value === 'top-events') {
-        response = await getTrendingEvents()
-      } else if (activeTab.value === 'today') {
-        response = await getEventsToday()
-      } else {
-        response = await getEventRecomendations()
-      }
+      const fetchPromise = (async () => {
+        if (activeNav.value === 'top-events') {
+          return await getTrendingEvents()
+        } else if (activeTab.value === 'today') {
+          return await getEventsToday()
+        } else {
+          return await getEventRecomendations()
+        }
+      })()
+
+      const [response] = await Promise.all([
+        fetchPromise,
+        new Promise(resolve => setTimeout(resolve, 1000)),
+      ])
 
       const events = response.data.events || response.data.content || response.data || []
 
@@ -121,6 +127,8 @@
       filteredItems.value = items.value
     } catch (error) {
       console.error('Failed to fetch events', error)
+      items.value = []
+      filteredItems.value = []
     } finally {
       loading.value = false
     }
@@ -183,7 +191,7 @@
   }
 
   async function requestSearchEvents (normalizedSearch: string) {
-    const resp = await searchByEvents(normalizedSearch)
+    const resp = await searchByEvents(normalizedSearch, 1, 20)
     return resp.data.events || resp.data || []
   }
 
@@ -192,12 +200,15 @@
   watch(searchQuery, (newQuerySearch: string) => {
     clearTimeout(searchTimeout)
 
-    const normalized = newQuerySearch.trim().toLowerCase()
+    const normalized = newQuerySearch.trim()
 
     if (!normalized) {
+      loading.value = false
       filteredItems.value = items.value
       return
     }
+
+    loading.value = true
 
     searchTimeout = setTimeout(async () => {
       try {
@@ -205,6 +216,9 @@
         filteredItems.value = (events || []).map((event: any) => mapEventToFeedItem(event))
       } catch (error) {
         console.error(error)
+        filteredItems.value = []
+      } finally {
+        loading.value = false
       }
     }, 500)
   })
@@ -231,6 +245,7 @@
     }
 
     if (val === 'favorites') {
+      loading.value = false
       filteredItems.value = eventsStore.savedEvents
     } else {
       fetchEvents()
@@ -284,7 +299,7 @@
               :aria-label="t('common.back') || 'Voltar'"
               class="tab-back-btn"
               type="button"
-              @click="activeNav = 'home'"
+              @click="handleBackNavigation"
             >
               <svg
                 fill="none"
@@ -297,15 +312,17 @@
                 <path v-for="(path, idx) in svgIcons.backArrow.paths" :key="idx" v-bind="path" />
               </svg>
             </button>
-            <button
-              v-for="tab in tabs"
-              :key="tab.id"
-              :class="{ active: activeTab === tab.id }"
-              type="button"
-              @click="selectTab(tab.id)"
-            >
-              {{ tab.label }}
-            </button>
+            <template v-if="activeNav !== 'top-events'">
+              <button
+                v-for="tab in tabs"
+                :key="tab.id"
+                :class="{ active: activeTab === tab.id }"
+                type="button"
+                @click="selectTab(tab.id)"
+              >
+                {{ tab.label }}
+              </button>
+            </template>
           </nav>
         </section>
       </template>
@@ -315,7 +332,10 @@
       <FeedSidebarNav :active="activeNav" class="feed-sidebar" :items="navItems" @select="activeNav = $event" />
 
       <main class="feed-main">
-        <section v-if="filteredItems.length > 0" class="cards-stack">
+        <div v-if="loading" class="loading-state">
+          <v-progress-circular color="#ff5fa6" indeterminate size="64" />
+        </div>
+        <section v-else-if="filteredItems.length > 0" class="cards-stack">
           <FeedCard
             v-for="(item, index) in filteredItems"
             :id="item.id"
@@ -519,6 +539,14 @@
   box-shadow: inset 0 0 0 1px rgba(122, 129, 153, 0.15);
   text-align: center;
   font-weight: 600;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  width: 100%;
 }
 
 @media (max-width: 1240px) {
