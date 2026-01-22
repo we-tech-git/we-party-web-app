@@ -40,7 +40,7 @@ export async function getTrendingEvents (page = 1, limit = 10) {
   try {
     const response = await callApi(
       'GET',
-      `/events/trending?page=${page}&limit=${limit}`,
+      `/events/top?page=${page}&limit=${limit}`,
       {},
       true,
       {

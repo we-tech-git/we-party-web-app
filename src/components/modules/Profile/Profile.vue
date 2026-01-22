@@ -1,61 +1,61 @@
 <script setup lang="ts">
-import type { NavItem } from '@/components/modules/Feed/FeedSidebarNav.vue'
-import { computed, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
-import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
-import FeedTopHeader from '@/components/modules/Feed/FeedTopHeader.vue'
-import AppFooter from '@/components/AppFooter.vue'
+  import type { NavItem } from '@/components/modules/Feed/FeedSidebarNav.vue'
+  import { computed, ref } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import { useRouter } from 'vue-router'
+  import AppFooter from '@/components/AppFooter.vue'
+  import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
+  import FeedTopHeader from '@/components/modules/Feed/FeedTopHeader.vue'
 
-const { t } = useI18n()
-const router = useRouter()
+  const { t } = useI18n()
+  const router = useRouter()
 
-const user = {
-  name: 'Amanda Costa',
-  username: '@amandacosta',
-  avatar: 'https://i.pravatar.cc/150?img=32', // Higher res for profile
-  banner: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&h=400&fit=crop', // Party/Social vibe
-  points: 356,
-  bio: 'Amante de música eletrônica e festivais ao ar livre. Sempre pronta para a próxima festa! 💃✨',
-  stats: {
-    events: 42,
-    following: 128,
-    followers: 95,
-  },
-}
-
-const activeNav = ref('profile')
-
-const navItems = computed<NavItem[]>(() => [
-  { id: 'home', label: t('feed.nav.home'), icon: 'home' },
-  { id: 'top-events', label: t('feed.nav.topEvents'), icon: 'top' },
-  { id: 'favorites', label: t('feed.nav.favorites'), icon: 'bookmark' },
-  { id: 'profile', label: t('feed.nav.profile'), icon: 'profile' },
-])
-
-function handleNavSelect(id: string) {
-  if (id === 'home' || id === 'top-events' || id === 'favorites') {
-    router.push({ path: '/private/feed', query: { tab: id } })
+  const user = {
+    name: 'Amanda Costa',
+    username: '@amandacosta',
+    avatar: 'https://i.pravatar.cc/150?img=32', // Higher res for profile
+    banner: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&h=400&fit=crop', // Party/Social vibe
+    points: 356,
+    bio: 'Amante de música eletrônica e festivais ao ar livre. Sempre pronta para a próxima festa! 💃✨',
+    stats: {
+      events: 42,
+      following: 128,
+      followers: 95,
+    },
   }
-}
 
-function handleBackNavigation() {
-  router.push({ path: '/private/feed', query: { tab: 'favorites' } })
-}
+  const activeNav = ref('profile')
 
-const activeTab = ref('badges')
-const tabs = [
-  { id: 'badges', label: 'Conquistas' },
-  { id: 'history', label: 'Histórico' },
-  { id: 'settings', label: 'Preferências' },
-]
+  const navItems = computed<NavItem[]>(() => [
+    { id: 'home', label: t('feed.nav.home'), icon: 'home' },
+    { id: 'top-events', label: t('feed.nav.topEvents'), icon: 'top' },
+    { id: 'favorites', label: t('feed.nav.favorites'), icon: 'bookmark' },
+    { id: 'profile', label: t('feed.nav.profile'), icon: 'profile' },
+  ])
 
-const badges = [
-  { icon: 'mdi-party-popper', color: '#FF4081', name: 'Party Animal', desc: 'Foi em 10 festas este mês' },
-  { icon: 'mdi-map-marker-check', color: '#7C4DFF', name: 'Explorador', desc: 'Visitou 5 locais diferentes' },
-  { icon: 'mdi-fire', color: '#FF9800', name: 'Em Chamas', desc: 'Sequência de 3 finais de semana seguidos' },
-  { icon: 'mdi-crown', color: '#FFD700', name: 'VIP', desc: 'Membro premium da comunidade' },
-]
+  function handleNavSelect (id: string) {
+    if (id === 'home' || id === 'top-events' || id === 'favorites') {
+      router.push({ path: '/private/feed', query: { tab: id } })
+    }
+  }
+
+  function handleBackNavigation () {
+    router.push({ path: '/private/feed', query: { tab: 'favorites' } })
+  }
+
+  const activeTab = ref('badges')
+  const tabs = [
+    { id: 'badges', label: 'Conquistas' },
+    { id: 'history', label: 'Histórico' },
+    { id: 'settings', label: 'Preferências' },
+  ]
+
+  const badges = [
+    { icon: 'mdi-party-popper', color: '#FF4081', name: 'Party Animal', desc: 'Foi em 10 festas este mês' },
+    { icon: 'mdi-map-marker-check', color: '#7C4DFF', name: 'Explorador', desc: 'Visitou 5 locais diferentes' },
+    { icon: 'mdi-fire', color: '#FF9800', name: 'Em Chamas', desc: 'Sequência de 3 finais de semana seguidos' },
+    { icon: 'mdi-crown', color: '#FFD700', name: 'VIP', desc: 'Membro premium da comunidade' },
+  ]
 
 </script>
 
@@ -149,8 +149,13 @@ const badges = [
 
         <!-- Content Tabs -->
         <div class="content-tabs">
-          <button v-for="tab in tabs" :key="tab.id" class="tab-btn" :class="{ active: activeTab === tab.id }"
-            @click="activeTab = tab.id">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            class="tab-btn"
+            :class="{ active: activeTab === tab.id }"
+            @click="activeTab = tab.id"
+          >
             {{ tab.label }}
           </button>
         </div>

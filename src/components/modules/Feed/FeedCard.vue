@@ -1,88 +1,88 @@
 <script setup lang="ts">
-  import { computed } from 'vue'
-  import { useShareStore } from '@/stores/share'
-  import { svgIcons } from '@/utils/svgSet'
+import { computed } from 'vue'
+import { useShareStore } from '@/stores/share'
+import { svgIcons } from '@/utils/svgSet'
 
-  const props = defineProps<{
-    id: string | number
-    banner: string
-    hostName: string
-    hostAvatar: string
-    title: string
-    description: string
-    schedule: string
-    location?: string
-    confirmed: number
-    interested: number
-    isSaved?: boolean
-    likes?: number
-    liked?: boolean
-    highlight?: boolean
-    rank?: number
-  }>()
+const props = defineProps<{
+  id: string | number
+  banner: string
+  hostName: string
+  hostAvatar: string
+  title: string
+  description: string
+  schedule: string
+  location?: string
+  confirmed: number
+  interested: number
+  isSaved?: boolean
+  likes?: number
+  liked?: boolean
+  highlight?: boolean
+  rank?: number
+}>()
 
-  const emit = defineEmits<{
-    (e: 'toggle-save' | 'toggle-like'): void
-  }>()
+const emit = defineEmits<{
+  (e: 'toggle-save' | 'toggle-like'): void
+}>()
 
-  function formatCount (value: number | undefined | null): string {
-    const num = Number(value) || 0
-    if (num < 1000) return num.toString()
+function formatCount(value: number | undefined | null): string {
+  const num = Number(value) || 0
+  if (num < 1000) return num.toString()
 
-    const rounded = num / 1000
-    const formatted = rounded % 1 === 0 ? Math.trunc(rounded).toString() : rounded.toFixed(1)
+  const rounded = num / 1000
+  const formatted = rounded % 1 === 0 ? Math.trunc(rounded).toString() : rounded.toFixed(1)
 
-    return `${formatted}k`
+  return `${formatted}k`
+}
+
+const fallbackBanner = 'https://via.placeholder.com/1200x600?text=Evento'
+
+function resolveAsset(val?: string) {
+  if (!val) return '' // Mudança aqui: não retorna fallback padrão se for vazio
+  if (/^https?:\/\//i.test(val)) return val
+  const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
+  const path = val.startsWith('/') ? val : `/${val}`
+  return `${base}${path}`
+}
+
+const bannerSrc = computed(() => {
+  const src = resolveAsset(props.banner)
+  return src || fallbackBanner
+})
+
+const hostAvatarSrc = computed(() => resolveAsset(props.hostAvatar))
+
+// Lógica para avatar gerado (iniciais + cor)
+const hostInitial = computed(() => {
+  return (props.hostName || 'U').charAt(0).toUpperCase()
+})
+
+// Lista de cores pastel / material design
+const avatarColors = [
+  '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
+  '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
+  '#8BC34A', '#CDDC39', '#FFC107', '#FF9800', '#FF5722',
+]
+
+const avatarColor = computed(() => {
+  if (!props.hostName) return avatarColors[0]
+  let hash = 0
+  for (let i = 0; i < props.hostName.length; i++) {
+    hash = (props.hostName.codePointAt(i) || 0) + ((hash << 5) - hash)
   }
+  const index = Math.abs(hash % avatarColors.length)
+  return avatarColors[index]
+})
 
-  const fallbackBanner = 'https://via.placeholder.com/1200x600?text=Evento'
+const shareStore = useShareStore()
 
-  function resolveAsset (val?: string) {
-    if (!val) return '' // Mudança aqui: não retorna fallback padrão se for vazio
-    if (/^https?:\/\//i.test(val)) return val
-    const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
-    const path = val.startsWith('/') ? val : `/${val}`
-    return `${base}${path}`
-  }
-
-  const bannerSrc = computed(() => {
-    const src = resolveAsset(props.banner)
-    return src || fallbackBanner
+function handleShare() {
+  shareStore.open({
+    title: props.title,
+    text: props.description,
+    url: `${window.location.origin}/private/event/${props.id}`,
   })
-
-  const hostAvatarSrc = computed(() => resolveAsset(props.hostAvatar))
-
-  // Lógica para avatar gerado (iniciais + cor)
-  const hostInitial = computed(() => {
-    return (props.hostName || 'U').charAt(0).toUpperCase()
-  })
-
-  // Lista de cores pastel / material design
-  const avatarColors = [
-    '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
-    '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
-    '#8BC34A', '#CDDC39', '#FFC107', '#FF9800', '#FF5722',
-  ]
-
-  const avatarColor = computed(() => {
-    if (!props.hostName) return avatarColors[0]
-    let hash = 0
-    for (let i = 0; i < props.hostName.length; i++) {
-      hash = (props.hostName.codePointAt(i) || 0) + ((hash << 5) - hash)
-    }
-    const index = Math.abs(hash % avatarColors.length)
-    return avatarColors[index]
-  })
-
-  const shareStore = useShareStore()
-
-  function handleShare () {
-    shareStore.open({
-      title: props.title,
-      text: props.description,
-      url: `${window.location.origin}/private/event/${props.id}`,
-    })
-  }
+}
 </script>
 
 <template>
@@ -105,25 +105,11 @@
         <span>{{ hostName }}</span>
       </div>
 
-      <button
-        aria-label="Salvar evento"
-        class="bookmark"
-        :class="{ saved: isSaved }"
-        type="button"
-        @click.stop="emit('toggle-save')"
-      >
-        <svg
-          aria-hidden="true"
-          :fill="isSaved ? 'currentColor' : 'none'"
-          height="22"
-          role="presentation"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          viewBox="0 0 24 24"
-          width="22"
-        >
+      <button aria-label="Salvar evento" class="bookmark" :class="{ saved: isSaved }" type="button"
+        @click.stop="emit('toggle-save')">
+        <svg aria-hidden="true" :fill="isSaved ? 'currentColor' : 'none'" height="22" role="presentation"
+          stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"
+          width="22">
           <path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z" />
         </svg>
         <v-tooltip activator="parent" content-class="feed-card-tooltip" location="start" offset="10">
@@ -142,28 +128,12 @@
 
         <footer class="footer">
           <div aria-label="Indicadores do evento" class="stats">
-            <button
-              class="stat stat-action"
-              :class="{ liked }
-              "
-              type="button"
-              @click.stop="emit('toggle-like')"
-            >
-              <svg
-                aria-hidden="true"
-                fill="none"
-                height="18"
-                role="presentation"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.8"
-                viewBox="0 0 24 24"
-                width="18"
-              >
+            <button class="stat stat-action" :class="{ liked }
+              " type="button" @click.stop="emit('toggle-like')">
+              <svg aria-hidden="true" fill="none" height="18" role="presentation" stroke="currentColor"
+                stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="18">
                 <path
-                  d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
-                />
+                  d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z" />
               </svg>
               {{ formatCount(likes) }}
             </button>
@@ -171,44 +141,18 @@
 
           <div class="actions">
             <router-link aria-label="Ver detalhes" class="icon-button" :to="`/private/event/${id}`">
-              <svg
-                v-if="svgIcons.infoIcon"
-                fill="none"
-                height="18"
-                viewBox="0 0 256 256"
-                width="18"
-              >
-                <path
-                  v-for="(path, index) in svgIcons.infoIcon.paths"
-                  :key="index"
-                  :d="path.d"
-                  fill="#ffffff"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="16"
-                />
+              <svg v-if="svgIcons.infoIcon" fill="none" height="18" viewBox="0 0 256 256" width="18">
+                <path v-for="(path, index) in svgIcons.infoIcon.paths" :key="index" :d="path.d" fill="#ffffff"
+                  stroke-linecap="round" stroke-linejoin="round" stroke-width="16" />
               </svg>
               <v-tooltip activator="parent" content-class="feed-card-tooltip" location="top" offset="10">
                 Detalhes
               </v-tooltip>
             </router-link>
             <button aria-label="Compartilhar" class="icon-button" type="button" @click.prevent="handleShare">
-              <svg
-                v-if="svgIcons.shareIcon"
-                fill="none"
-                height="18"
-                viewBox="0 0 256 256"
-                width="18"
-              >
-                <path
-                  v-for="(path, index) in svgIcons.shareIcon.paths"
-                  :key="index"
-                  :d="path.d"
-                  fill="#ffffff"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="16"
-                />
+              <svg v-if="svgIcons.shareIcon" fill="none" height="18" viewBox="0 0 256 256" width="18">
+                <path v-for="(path, index) in svgIcons.shareIcon.paths" :key="index" :d="path.d" fill="#ffffff"
+                  stroke-linecap="round" stroke-linejoin="round" stroke-width="16" />
               </svg>
               <v-tooltip activator="parent" content-class="feed-card-tooltip" location="top" offset="10">
                 Compartilhar
@@ -262,7 +206,8 @@
   inset: -2px;
   z-index: -1;
   background: linear-gradient(135deg, #ffba4b, #ff5fa6, #9C27B0);
-  border-radius: 34px; /* feed-card radius (32px) + 2px offset */
+  border-radius: 34px;
+  /* feed-card radius (32px) + 2px offset */
   opacity: 0.6;
   transition: opacity 0.3s ease;
 }
@@ -289,7 +234,7 @@
   box-shadow: 0 4px 15px rgba(255, 95, 166, 0.5);
   transform: rotate(-10deg) scale(1);
   border: 2px solid rgba(255, 255, 255, 0.3);
-  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 

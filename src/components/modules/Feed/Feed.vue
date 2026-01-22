@@ -89,15 +89,49 @@
   const hasMore = ref(true)
 
   function mapEventToFeedItem (event: any): FeedItem {
-    const rawBanner = event.bannerUrl || event.banner || event.photos?.[0] || event.image || event.imageUrl || event.cover || event.thumbnail
+    // Helper to get first non-empty string
+    const getFirstValid = (...values: any[]): string => {
+      for (const val of values) {
+        if (val && typeof val === 'string' && val.trim() !== '') {
+          return val
+        }
+      }
+      return ''
+    }
+
+    // Handle photos - can be array or object with numeric keys
+    let photoUrl = ''
+    if (event.photos) {
+      if (Array.isArray(event.photos) && event.photos.length > 0) {
+        photoUrl = event.photos[0] || ''
+      } else if (typeof event.photos === 'object') {
+        // Handle object with numeric keys like { 0: "url", 1: "url2" }
+        const keys = Object.keys(event.photos)
+        const firstKey = keys[0]
+        if (firstKey !== undefined) {
+          photoUrl = event.photos[firstKey] || ''
+        }
+      }
+    }
+
+    const rawBanner = getFirstValid(
+      event.bannerUrl,
+      event.banner,
+      photoUrl,
+      event.image,
+      event.imageUrl,
+      event.cover,
+      event.thumbnail,
+    )
+
     const calculatedHostName = event.organizer?.name || event.hostName || event.creator?.name || 'Unknown Host'
 
     return {
       id: event.id,
-      banner: rawBanner || '',
+      banner: rawBanner,
       creator: { name: calculatedHostName },
       hostAvatar: event.organizer?.avatar || event.hostAvatar || event.creator?.profileImage || '',
-      schedule: event.date ? new Date(event.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Data a definir',
+      schedule: event.date || event.startDate ? new Date(event.date || event.startDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Data a definir',
       location: event.location || event.address || event.place || 'Local a definir',
       title: event.name || event.title || 'Untitled Event',
       description: event.description || '',
@@ -381,7 +415,9 @@
             </svg>
           </span>
           <span class="breadcrumb-current">
-            {{ activeNav === 'top-events' ? t('feed.nav.topEvents') : activeNav === 'favorites' ? t('feed.nav.favorites') : '' }}
+            {{ activeNav === 'top-events' ? t('feed.nav.topEvents') : activeNav === 'favorites' ?
+              t('feed.nav.favorites') :
+              '' }}
           </span>
         </div>
 
