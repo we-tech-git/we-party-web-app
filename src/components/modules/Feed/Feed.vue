@@ -2,13 +2,12 @@
   import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
 
-  import { useRouter } from 'vue-router'
+  import { useRoute, useRouter } from 'vue-router'
 
   import { getEventRecomendations, getEventsToday, getTrendingEvents, searchByEvents } from '@/api/event'
   import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
 
   import { useEventsStore } from '@/stores/events'
-  import { svgIcons } from '@/utils/svgSet'
   import FeedCard from './FeedCard.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
   import FeedTopHeader from './FeedTopHeader.vue'
@@ -50,8 +49,9 @@
   const { t } = useI18n()
   const eventsStore = useEventsStore()
   const router = useRouter()
+  const route = useRoute()
 
-  const activeNav = ref('home')
+  const activeNav = ref((route.query.tab as string) || 'home')
   const activeTab = ref('for-you')
   const searchQuery = ref('')
 
@@ -83,6 +83,10 @@
 
   const items = ref<FeedItem[]>([])
   const loading = ref(false)
+  const loadingMore = ref(false)
+  const page = ref(1)
+  const limit = 10
+  const hasMore = ref(true)
 
   function mapEventToFeedItem (event: any): FeedItem {
     const rawBanner = event.bannerUrl || event.banner || event.photos?.[0] || event.image || event.imageUrl || event.cover || event.thumbnail
@@ -103,34 +107,56 @@
     }
   }
 
-  async function fetchEvents () {
-    loading.value = true
+  async function fetchEvents (isLoadMore = false) {
+    if (isLoadMore) {
+      loadingMore.value = true
+      page.value = page.value + 1
+    } else {
+      loading.value = true
+      page.value = 1
+      items.value = []
+      hasMore.value = true
+    }
+
     try {
       const fetchPromise = (async () => {
         if (activeNav.value === 'top-events') {
-          return await getTrendingEvents()
+          return await getTrendingEvents(page.value, limit)
         } else if (activeTab.value === 'today') {
-          return await getEventsToday()
+          return await getEventsToday(page.value, limit)
         } else {
-          return await getEventRecomendations()
+          return await getEventRecomendations(page.value, limit)
         }
       })()
 
+      // Only delay on initial load to avoid flickering, not on load more
+      const waitPromise = isLoadMore ? Promise.resolve() : new Promise(resolve => setTimeout(resolve, 1000))
+
       const [response] = await Promise.all([
         fetchPromise,
-        new Promise(resolve => setTimeout(resolve, 1000)),
+        waitPromise,
       ])
 
       const events = response.data.events || response.data.content || response.data || []
 
-      items.value = events.map((event: any) => mapEventToFeedItem(event))
+      if (events.length < limit) {
+        hasMore.value = false
+      }
+
+      const mappedEvents = events.map((event: any) => mapEventToFeedItem(event))
+
+      items.value = isLoadMore ? [...items.value, ...mappedEvents] : mappedEvents
+
       filteredItems.value = items.value
     } catch (error) {
       console.error('Failed to fetch events', error)
-      items.value = []
-      filteredItems.value = []
+      if (!isLoadMore) {
+        items.value = []
+        filteredItems.value = []
+      }
     } finally {
       loading.value = false
+      loadingMore.value = false
     }
   }
 
@@ -184,6 +210,16 @@
     if (activeTab.value === id) return
 
     activeTab.value = id
+  }
+
+  function handleBackNavigation () {
+    if (activeNav.value === 'favorites') {
+      activeNav.value = 'top-events'
+    } else if (activeNav.value === 'top-events') {
+      activeNav.value = 'home'
+    } else {
+      activeNav.value = 'home'
+    }
   }
 
   function clearSearch () {
@@ -247,6 +283,7 @@
     if (val === 'favorites') {
       loading.value = false
       filteredItems.value = eventsStore.savedEvents
+      hasMore.value = false
     } else {
       fetchEvents()
     }
@@ -294,24 +331,6 @@
           </label>
 
           <nav aria-label="Seções do feed" class="tabs">
-            <button
-              v-if="activeNav !== 'home'"
-              :aria-label="t('common.back') || 'Voltar'"
-              class="tab-back-btn"
-              type="button"
-              @click="handleBackNavigation"
-            >
-              <svg
-                fill="none"
-                height="20"
-                stroke="currentColor"
-                stroke-width="2.5"
-                :viewBox="svgIcons.backArrow.viewBox"
-                width="20"
-              >
-                <path v-for="(path, idx) in svgIcons.backArrow.paths" :key="idx" v-bind="path" />
-              </svg>
-            </button>
             <template v-if="activeNav !== 'top-events'">
               <button
                 v-for="tab in tabs"
@@ -332,6 +351,40 @@
       <FeedSidebarNav :active="activeNav" class="feed-sidebar" :items="navItems" @select="activeNav = $event" />
 
       <main class="feed-main">
+        <!-- Breadcrumb Navigation -->
+        <div v-if="activeNav !== 'home'" class="breadcrumb-nav">
+          <button class="breadcrumb-back" type="button" @click="handleBackNavigation">
+            <span class="back-icon">
+              <svg
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <span class="back-text">Voltar</span>
+          </button>
+          <span class="breadcrumb-separator">
+            <svg
+              fill="none"
+              height="14"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="14"
+            >
+              <path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <span class="breadcrumb-current">
+            {{ activeNav === 'top-events' ? t('feed.nav.topEvents') : activeNav === 'favorites' ? t('feed.nav.favorites') : '' }}
+          </span>
+        </div>
+
         <div v-if="loading" class="loading-state">
           <v-progress-circular color="#ff5fa6" indeterminate size="64" />
         </div>
@@ -358,7 +411,15 @@
             @toggle-save="eventsStore.toggleSave(item)"
           />
         </section>
-        <p v-else class="empty">{{ t('feed.empty') }}</p>
+
+        <div v-if="!loading && hasMore && filteredItems.length > 0 && !isSearching" class="load-more-container">
+          <button class="load-more-btn" :disabled="loadingMore" type="button" @click="fetchEvents(true)">
+            <span v-if="loadingMore" class="spinner" />
+            {{ loadingMore ? 'Carregando' : 'Carregar mais eventos' }}
+          </button>
+        </div>
+
+        <p v-else-if="!loading && filteredItems.length === 0" class="empty">{{ t('feed.empty') }}</p>
       </main>
 
       <FeedTrendsPanel class="feed-trends" :items="displayedTrends" />
@@ -524,6 +585,79 @@
   transform: translateX(-2px);
 }
 
+/* Breadcrumb Navigation */
+.breadcrumb-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 248, 250, 0.95) 100%);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(255, 95, 166, 0.08);
+  border: 1px solid rgba(255, 186, 75, 0.15);
+  margin-bottom: 0.5rem;
+}
+
+.breadcrumb-back {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.15) 0%, rgba(255, 95, 166, 0.15) 100%);
+  color: #ff5fa6;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.breadcrumb-back:hover {
+  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  color: white;
+  transform: translateX(-3px);
+  box-shadow: 0 4px 15px rgba(255, 95, 166, 0.3);
+}
+
+.breadcrumb-back:active {
+  transform: scale(0.97);
+}
+
+.back-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.breadcrumb-back:hover .back-icon {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.back-text {
+  letter-spacing: 0.02em;
+}
+
+.breadcrumb-separator {
+  display: flex;
+  align-items: center;
+  color: #c4c9de;
+}
+
+.breadcrumb-current {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #2d2f55;
+  padding: 0.35rem 0.85rem;
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.1) 0%, rgba(255, 95, 166, 0.1) 100%);
+  border-radius: 10px;
+}
+
 .cards-stack {
   display: flex;
   flex-direction: column;
@@ -547,6 +681,56 @@
   align-items: center;
   min-height: 200px;
   width: 100%;
+}
+
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+  width: 100%;
+}
+
+.load-more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.8rem 2.5rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  color: white;
+  border: none;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(255, 95, 166, 0.3);
+  transition: all 0.3s ease;
+}
+
+.load-more-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 95, 166, 0.4);
+}
+
+.load-more-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 1240px) {
@@ -665,6 +849,68 @@
   .tabs::-webkit-scrollbar {
     display: none;
     /* Chrome/Safari */
+  }
+
+  .breadcrumb-nav {
+    padding: 0.6rem 1rem;
+    border-radius: 14px;
+    gap: 0.5rem;
+  }
+
+  .breadcrumb-back {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.85rem;
+    gap: 0.4rem;
+  }
+
+  .back-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .back-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .breadcrumb-current {
+    font-size: 0.85rem;
+    padding: 0.3rem 0.7rem;
+  }
+
+  .breadcrumb-separator svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .breadcrumb-nav {
+    padding: 0.5rem 0.85rem;
+    border-radius: 12px;
+    gap: 0.4rem;
+  }
+
+  .breadcrumb-back {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8rem;
+    border-radius: 10px;
+  }
+
+  .back-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+  }
+
+  .back-text {
+    display: none;
+  }
+
+  .breadcrumb-current {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 8px;
   }
 }
 </style>

@@ -25,10 +25,11 @@
     (e: 'toggle-save' | 'toggle-like'): void
   }>()
 
-  function formatCount (value: number) {
-    if (value < 1000) return value.toString()
+  function formatCount (value: number | undefined | null): string {
+    const num = Number(value) || 0
+    if (num < 1000) return num.toString()
 
-    const rounded = value / 1000
+    const rounded = num / 1000
     const formatted = rounded % 1 === 0 ? Math.trunc(rounded).toString() : rounded.toFixed(1)
 
     return `${formatted}k`
@@ -164,7 +165,7 @@
                   d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
                 />
               </svg>
-              {{ formatCount(likes ?? confirmed) }}
+              {{ formatCount(likes) }}
             </button>
           </div>
 

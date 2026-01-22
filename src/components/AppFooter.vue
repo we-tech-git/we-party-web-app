@@ -4,12 +4,6 @@
 
 <template>
   <footer class="app-footer">
-    <div class="footer-top">
-      <div class="app-cta">
-        <a href="#">Baixe nosso app</a>
-      </div>
-    </div>
-
     <div class="footer-content">
       <div class="footer-links-grid">
         <div class="footer-column">
@@ -30,15 +24,6 @@
             <li><a href="#">São Paulo</a></li>
             <li><a href="#">Belo Horizonte</a></li>
             <li><a href="#">Rio de Janeiro</a></li>
-            <li><a href="#">Porto Alegre</a></li>
-            <li><a href="#">Brasília</a></li>
-            <li><a href="#">Salvador</a></li>
-            <li><a href="#">Curitiba</a></li>
-            <li><a href="#">Recife</a></li>
-            <li><a href="#">Florianópolis</a></li>
-            <li><a href="#">Campinas</a></li>
-            <li><a href="#">Fortaleza</a></li>
-            <li><a href="#">Goiânia</a></li>
           </ul>
         </div>
 

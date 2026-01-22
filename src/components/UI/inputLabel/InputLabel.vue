@@ -1,53 +1,53 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
+  import { computed, ref } from 'vue'
+  import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
-interface Props {
-  modelValue: string
-  label: string
-  type?: string
-  id?: string
-  placeholder?: string
-  required?: boolean
-  disabled?: boolean
-  inputPassword?: boolean
-  error?: boolean
-}
-
-interface Emits {
-  (e: 'update:modelValue', value: string): void
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  type: 'text',
-  id: '',
-  placeholder: '',
-  required: false,
-  disabled: false,
-  inputPassword: false,
-  error: false,
-})
-
-const emit = defineEmits<Emits>()
-
-const inputId = computed(() => props.id || `input-${Math.random().toString(36).slice(2, 11)}`)
-const showPassword = ref(false)
-
-const inputType = computed(() => {
-  if (props.inputPassword) {
-    return showPassword.value ? 'text' : 'password'
+  interface Props {
+    modelValue: string
+    label: string
+    type?: string
+    id?: string
+    placeholder?: string
+    required?: boolean
+    disabled?: boolean
+    inputPassword?: boolean
+    error?: boolean
   }
-  return props.type
-})
 
-function updateValue(event: Event) {
-  const target = event.target as HTMLInputElement
-  emit('update:modelValue', target.value)
-}
+  interface Emits {
+    (e: 'update:modelValue', value: string): void
+  }
 
-function togglePassword() {
-  showPassword.value = !showPassword.value
-}
+  const props = withDefaults(defineProps<Props>(), {
+    type: 'text',
+    id: '',
+    placeholder: '',
+    required: false,
+    disabled: false,
+    inputPassword: false,
+    error: false,
+  })
+
+  const emit = defineEmits<Emits>()
+
+  const inputId = computed(() => props.id || `input-${Math.random().toString(36).slice(2, 11)}`)
+  const showPassword = ref(false)
+
+  const inputType = computed(() => {
+    if (props.inputPassword) {
+      return showPassword.value ? 'text' : 'password'
+    }
+    return props.type
+  })
+
+  function updateValue (event: Event) {
+    const target = event.target as HTMLInputElement
+    emit('update:modelValue', target.value)
+  }
+
+  function togglePassword () {
+    showPassword.value = !showPassword.value
+  }
 </script>
 
 <template>
@@ -55,22 +55,49 @@ function togglePassword() {
     <label :class="{ 'active': modelValue, 'has-error': error }" :for="inputId">
       {{ label }}
     </label>
-    <input :id="inputId" class="input-field" :class="{ 'filled': modelValue, 'has-error': error }" :disabled="disabled"
-      :placeholder="placeholder" :required="required" :type="inputType" :value="modelValue" @input="updateValue">
+    <input
+      :id="inputId"
+      class="input-field"
+      :class="{ 'filled': modelValue, 'has-error': error }"
+      :disabled="disabled"
+      :placeholder="placeholder"
+      :required="required"
+      :type="inputType"
+      :value="modelValue"
+      @input="updateValue"
+    >
     <button v-if="inputPassword" class="eye-button" type="button" @click="togglePassword">
-      <svg v-if="!showPassword" class="eye-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg">
+      <svg
+        v-if="!showPassword"
+        class="eye-icon"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
         <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" />
         <path
           d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-          stroke-linecap="round" stroke-linejoin="round" />
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
       </svg>
-      <svg v-else class="eye-icon" fill="none" stroke="currentColor" stroke-width="2"
-        :viewBox="svgIcons.eyeClosed ? svgIcons.eyeClosed.viewBox : '0 0 24 24'">
+      <svg
+        v-else
+        class="eye-icon"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        :viewBox="svgIcons.eyeClosed ? svgIcons.eyeClosed.viewBox : '0 0 24 24'"
+      >
         <path
           v-for="(path, index) in (svgIcons.eyeClosed ? svgIcons.eyeClosed.paths : [{ d: 'M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21', strokeLinecap: 'round', strokeLinejoin: 'round' }])"
-          :key="index" :d="path.d" :stroke-linecap="path.strokeLinecap as StrokeLinecap"
-          :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin" />
+          :key="index"
+          :d="path.d"
+          :stroke-linecap="path.strokeLinecap as StrokeLinecap"
+          :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin"
+        />
       </svg>
     </button>
   </div>

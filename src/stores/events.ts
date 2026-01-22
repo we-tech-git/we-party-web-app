@@ -54,16 +54,18 @@ export const useEventsStore = defineStore('events', () => {
   }
 
   function isSaved (id: EventId) {
-    return savedEvents.value.some(e => e.id === id)
+    const normalizedId = String(id)
+    return savedEvents.value.some(e => String(e.id) === normalizedId)
   }
 
   async function toggleLike (id: EventId) {
+    const normalizedId = String(id)
     // Optimistic update
-    const index = likedEvents.value.indexOf(id)
+    const index = likedEvents.value.findIndex(likedId => String(likedId) === normalizedId)
     const isAdding = index === -1
 
     if (isAdding) {
-      likedEvents.value.push(id)
+      likedEvents.value.push(normalizedId)
     } else {
       likedEvents.value.splice(index, 1)
     }
@@ -74,18 +76,19 @@ export const useEventsStore = defineStore('events', () => {
     } catch (error) {
       // Revert if API fails
       console.error('Failed to toggle like on server', error)
-      const revertIndex = likedEvents.value.indexOf(id)
+      const revertIndex = likedEvents.value.findIndex(likedId => String(likedId) === normalizedId)
       if (isAdding && revertIndex !== -1) {
         likedEvents.value.splice(revertIndex, 1)
       } else if (!isAdding && revertIndex === -1) {
-        likedEvents.value.push(id)
+        likedEvents.value.push(normalizedId)
       }
       localStorage.setItem('LIKED_EVENTS', JSON.stringify(likedEvents.value))
     }
   }
 
   function isLiked (id: EventId) {
-    return likedEvents.value.includes(id)
+    const normalizedId = String(id)
+    return likedEvents.value.some(likedId => String(likedId) === normalizedId)
   }
 
   return {

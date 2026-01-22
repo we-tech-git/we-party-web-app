@@ -36,9 +36,7 @@
 
 <style scoped>
 .language-switcher {
-  /* position: absolute; removed to allow flexible positioning */
-  /* top: 1rem; removed */
-  /* right: 1rem; removed */
+
   z-index: 50;
 }
 </style>
