@@ -80,7 +80,7 @@
           <path d="M10 19l-7-7m0 0l7-7m-7 7h18" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </a>
-      <h2 class="mobile-brand-title">WE PARTY</h2>
+      <h2 class="mobile-brand-title notranslate" translate="no">WE PARTY</h2>
       <h1 class="auth-title">{{ t('forgotPassword.title') }}</h1>
       <p class="auth-subtitle">{{ t('forgotPassword.subtitle') }}</p>
 

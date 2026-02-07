@@ -253,7 +253,7 @@
           />
         </svg>
       </a>
-      <h2 class="mobile-brand-title">WE PARTY</h2>
+      <h2 class="mobile-brand-title notranslate" translate="no">WE PARTY</h2>
 
       <div class="confirm-email-content">
         <div class="email-icon">
@@ -324,7 +324,7 @@
     </template>
 
     <template #brand-content>
-      <h2 class="brand-title">WE PARTY</h2>
+      <h2 class="brand-title notranslate" translate="no">WE PARTY</h2>
       <i18n-t class="brand-subtitle" keypath="signup.brandSubtitle" tag="p">
         <template #default>
           <br>

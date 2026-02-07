@@ -30,7 +30,7 @@
         <div class="footer-column">
           <h4>Categorias</h4>
           <ul>
-            <li><a href="#">We Party Play</a></li>
+            <li><a class="notranslate" href="#" translate="no">We Party Play</a></li>
             <li><a href="#">Festas e shows</a></li>
             <li><a href="#">Teatros e espetáculos</a></li>
             <li><a href="#">Cursos e workshops</a></li>
@@ -68,7 +68,7 @@
       <hr class="footer-divider">
 
       <div class="footer-bottom">
-        <span class="copyright">we party © Copyright {{ currentYear }}</span>
+        <span class="copyright"><span class="notranslate" translate="no">we party</span> © Copyright {{ currentYear }}</span>
         <div class="social-icons">
           <a aria-label="Facebook" href="#">
             <svg fill="currentColor" height="24" viewBox="0 0 24 24" width="24">

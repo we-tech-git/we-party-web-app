@@ -91,6 +91,10 @@
     }
   }
 
+  function handleBackNavigation () {
+    router.back()
+  }
+
   const user = {
     name: 'Amanda Costa',
     avatar: 'https://i.pravatar.cc/80?img=32',
@@ -156,14 +160,14 @@
       <!-- Animated Particles -->
       <div class="particles">
         <div
-          v-for="i in 35"
+          v-for="i in 20"
           :key="i"
           class="particle"
           :style="{
             '--delay': `${Math.random() * 5}s`,
-            '--duration': `${5 + Math.random() * 10}s`,
+            '--duration': `${3 + Math.random() * 4}s`,
             '--x': `${Math.random() * 100}%`,
-            '--size': `${6 + Math.random() * 12}px`
+            '--size': `${2 + Math.random() * 4}px`
           }"
         />
       </div>
@@ -181,7 +185,7 @@
     </div>
 
     <!-- Header Global -->
-    <FeedTopHeader show-back-btn :user="user">
+    <FeedTopHeader :user="user">
       <template #center-content>
         <div class="header-spacer" />
       </template>
@@ -193,6 +197,40 @@
 
       <!-- Main Content -->
       <main class="layout-main">
+        <!-- Breadcrumb Navigation -->
+        <div class="breadcrumb-nav">
+          <button class="breadcrumb-back" type="button" @click="handleBackNavigation">
+            <span class="back-icon">
+              <svg
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <span class="back-text">Voltar</span>
+          </button>
+          <span class="breadcrumb-separator">
+            <svg
+              fill="none"
+              height="14"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="14"
+            >
+              <path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <span class="breadcrumb-current">
+            Detalhes do evento
+          </span>
+        </div>
+
         <EventDetails :event-id="eventId" />
       </main>
 
@@ -265,8 +303,7 @@
   left: var(--x);
   width: var(--size);
   height: var(--size);
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.9), rgba(255, 95, 166, 0.9));
-  box-shadow: 0 0 15px rgba(255, 186, 75, 0.5);
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.6), rgba(255, 95, 166, 0.6));
   border-radius: 50%;
   animation: floatUp var(--duration) ease-in-out infinite;
   animation-delay: var(--delay);
@@ -279,12 +316,12 @@
     opacity: 0;
   }
 
-  15% {
-    opacity: 1;
+  10% {
+    opacity: 0.8;
   }
 
-  85% {
-    opacity: 1;
+  90% {
+    opacity: 0.8;
   }
 
   100% {
@@ -509,6 +546,133 @@
 
   .floating-title-badge {
     display: none;
+  }
+}
+
+/* Breadcrumb Styles */
+.breadcrumb-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.75rem 1.25rem;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  width: fit-content;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 20px rgba(118, 59, 90, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  z-index: 10;
+}
+
+.breadcrumb-back {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255, 95, 166, 0.1);
+  color: #ff5fa6;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.breadcrumb-back:hover {
+  background: rgba(255, 95, 166, 0.18);
+  transform: translateX(-2px);
+}
+
+.back-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: #fff;
+  color: #ff5fa6;
+  box-shadow: 0 2px 6px rgba(255, 95, 166, 0.15);
+}
+
+.breadcrumb-separator {
+  color: #c4c9e0;
+  display: flex;
+  align-items: center;
+}
+
+.breadcrumb-current {
+  color: #2d2f55;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.35rem 0.8rem;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+  .breadcrumb-nav {
+    padding: 0.6rem 1rem;
+    border-radius: 14px;
+    gap: 0.5rem;
+  }
+
+  .breadcrumb-back {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.85rem;
+    gap: 0.4rem;
+  }
+
+  .back-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .back-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .breadcrumb-current {
+    font-size: 0.85rem;
+    padding: 0.3rem 0.7rem;
+  }
+
+  .breadcrumb-separator svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .breadcrumb-nav {
+    padding: 0.5rem 0.85rem;
+    border-radius: 12px;
+    gap: 0.4rem;
+  }
+
+  .breadcrumb-back {
+    padding: 0.35rem 0.7rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+  }
+
+  .back-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+  }
+
+  .back-text {
+    display: none;
+  }
+
+  .breadcrumb-current {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 8px;
   }
 }
 

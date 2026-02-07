@@ -244,7 +244,7 @@
 <template>
   <AuthLayout>
     <template #form-content>
-      <h2 class="mobile-brand-title">WE PARTY</h2>
+      <h2 class="mobile-brand-title notranslate" translate="no">WE PARTY</h2>
       <h1 class="title">{{ t('interest.title') }}</h1>
       <p class="subtitle">{{ t('interest.subtitle') }}</p>
 

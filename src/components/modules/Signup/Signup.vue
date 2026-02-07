@@ -309,7 +309,7 @@
           />
         </svg>
       </a>
-      <h2 class="mobile-brand-title">WE PARTY</h2>
+      <h2 class="mobile-brand-title notranslate" translate="no">WE PARTY</h2>
       <div class="title-container">
         <h1 class="text-3xl font-bold">{{ $t('signup.title') }}</h1>
         <button
@@ -441,7 +441,7 @@
     </template>
 
     <template #brand-content>
-      <h2 class="brand-title">WE PARTY</h2>
+      <h2 class="brand-title notranslate" translate="no">WE PARTY</h2>
       <i18n-t class="brand-subtitle" keypath="signup.brandSubtitle" tag="p">
         <template #default>
           <br>
