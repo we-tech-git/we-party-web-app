@@ -60,10 +60,13 @@
       if (photos) {
         if (Array.isArray(photos) && photos.length > 0) {
           photoUrl = photos[0]
-        } else if (typeof photos === 'object') {
+        } else if (typeof photos === 'object' && photos !== null) {
           const keys = Object.keys(photos)
           if (keys.length > 0) {
-            photoUrl = photos[keys[0]]
+            const firstKey = keys[0]
+            if (firstKey) {
+              photoUrl = (photos as Record<string, string>)[firstKey] || ''
+            }
           }
         }
       }
@@ -137,7 +140,7 @@
         engagement: `${total} curtidas`,
         rawCount: total,
       }
-    }).slice().sort((a: any, b: any) => b.rawCount - a.rawCount)
+    }).toSorted((a: any, b: any) => b.rawCount - a.rawCount)
   })
 </script>
 
