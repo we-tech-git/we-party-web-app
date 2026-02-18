@@ -1,5 +1,7 @@
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import Vue from '@vitejs/plugin-vue'
 // Plugins
 import AutoImport from 'unplugin-auto-import/vite'
@@ -47,6 +49,9 @@ export default defineConfig({
       styles: {
         configFile: 'src/styles/settings.scss',
       },
+    }),
+    VueI18nPlugin({
+      include: [resolve(dirname(fileURLToPath(import.meta.url)), './src/locales/**')],
     }),
     Fonts({
       fontsource: {
