@@ -187,6 +187,132 @@
       "invalidToken": "Token inválido ou expirado. Solicite um novo email.",
       "generic": "Não foi possível alterar a senha. Tente novamente."
     }
+  },
+  "landing": {
+    "nav": {
+      "login": "Entrar",
+      "signup": "Começar Agora",
+      "features": "Funcionalidades",
+      "events": "Eventos",
+      "testimonials": "Avaliações"
+    },
+    "hero": {
+      "badge": "A Plataforma #1 de Eventos",
+      "title1": "Descubra os Melhores",
+      "titleHighlight": "Eventos & Festas",
+      "title2": "Perto de Você",
+      "subtitle": "Encontre eventos incríveis, conecte-se com amigos e nunca perca uma experiência inesquecível. Sua próxima aventura começa aqui.",
+      "cta": "Começar Agora — É Grátis",
+      "demo": "Veja Como Funciona"
+    },
+    "floatingCards": {
+      "newEvent": "Novo Evento!",
+      "friendsGoing": "Amigos vão"
+    },
+    "stats": {
+      "events": "Eventos",
+      "users": "Usuários",
+      "cities": "Cidades"
+    },
+    "features": {
+      "badge": "Funcionalidades",
+      "title": "Tudo o Que Você Precisa",
+      "subtitle": "A plataforma mais completa para amantes de eventos",
+      "discover": {
+        "title": "Descoberta Inteligente",
+        "desc": "Recomendações com IA baseadas nas suas preferências e histórico."
+      },
+      "friends": {
+        "title": "Leve Amigos",
+        "desc": "Veja quais eventos seus amigos vão participar e planeje junto."
+      },
+      "nearby": {
+        "title": "Eventos Próximos",
+        "desc": "Encontre eventos acontecendo perto de você com geolocalização em tempo real."
+      },
+      "notify": {
+        "title": "Notificações Inteligentes",
+        "desc": "Receba avisos sobre eventos que você vai amar e nunca perca nada."
+      },
+      "save": {
+        "title": "Salve Favoritos",
+        "desc": "Marque eventos de seu interesse e acesse facilmente depois."
+      },
+      "create": {
+        "title": "Crie Eventos",
+        "desc": "Organize seus próprios eventos e alcance milhares de pessoas próximas."
+      }
+    },
+    "events": {
+      "badge": "Eventos Reais",
+      "title": "Eventos em Alta Agora",
+      "subtitle": "Veja alguns dos eventos mais quentes acontecendo. Cadastre-se para ver mais!",
+      "going": "vão",
+      "viewDetails": "Ver Detalhes",
+      "ctaText": "Esses são apenas alguns dos milhares de eventos esperando por você.",
+      "ctaButton": "Ver Todos os Eventos"
+    },
+    "howItWorks": {
+      "badge": "Como Funciona",
+      "title": "Comece em 3 Passos Simples",
+      "step1": {
+        "title": "Crie Sua Conta",
+        "desc": "Cadastre-se em segundos com seu email ou login social."
+      },
+      "step2": {
+        "title": "Descubra Eventos",
+        "desc": "Navegue por recomendações personalizadas baseadas nos seus interesses."
+      },
+      "step3": {
+        "title": "Divirta-se!",
+        "desc": "Participe de eventos incríveis e crie memórias inesquecíveis."
+      }
+    },
+    "demo": {
+      "badge": "Veja em Ação",
+      "title": "Uma Experiência Intuitiva",
+      "subtitle": "Interface moderna e simples, feita para você encontrar o evento perfeito em segundos.",
+      "feature1": "Feed personalizado baseado nos seus interesses",
+      "feature2": "Detalhes completos de eventos com fotos e avaliações",
+      "feature3": "Confirme presença com apenas um toque",
+      "feature4": "Chat em tempo real com participantes do evento",
+      "cta": "Criar Minha Conta"
+    },
+    "social": {
+      "title": "O Que Nossos Usuários Dizem",
+      "subtitle": "Milhares de pessoas já encontraram suas melhores experiências"
+    },
+    "testimonials": {
+      "t1": {
+        "text": "Encontrei eventos que nunca descobriria de outra forma. O app é incrível!",
+        "name": "Maria Silva",
+        "role": "São Paulo, SP"
+      },
+      "t2": {
+        "text": "A melhor forma de planejar fins de semana com amigos. Simples e intuitivo.",
+        "name": "João Santos",
+        "role": "Rio de Janeiro, RJ"
+      },
+      "t3": {
+        "text": "Criei meu próprio evento e alcancei 500 pessoas em apenas um dia!",
+        "name": "Ana Costa",
+        "role": "Belo Horizonte, MG"
+      }
+    },
+    "cta": {
+      "title": "Pronto Para Viver Experiências Inesquecíveis?",
+      "subtitle": "Junte-se a milhares de pessoas descobrindo os melhores eventos todos os dias.",
+      "button": "Começar Agora — É Grátis",
+      "trust": "Grátis para sempre. Sem cartão de crédito."
+    },
+    "footer": {
+      "tagline": "Conectando pessoas através de experiências inesquecíveis",
+      "about": "Sobre",
+      "terms": "Termos de Uso",
+      "privacy": "Privacidade",
+      "contact": "Contato",
+      "rights": "Todos os direitos reservados."
+    }
   }
 }
 

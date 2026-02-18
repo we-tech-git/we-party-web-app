@@ -23,7 +23,7 @@
 
 <template>
   <aside class="feed-sidebar">
-    <nav aria-label="We Party">
+    <nav aria-label="We Party" class="notranslate" translate="no">
       <ul>
         <li v-for="item in props.items" :key="item.id">
           <button :class="{ active: props.active === item.id }" type="button" @click="handleSelect(item.id)">

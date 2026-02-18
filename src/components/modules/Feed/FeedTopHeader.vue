@@ -51,7 +51,7 @@
             <path v-for="(path, idx) in svgIcons.backArrow.paths" :key="idx" v-bind="path" />
           </svg>
         </button>
-        <span aria-hidden="true" class="brand">WE PARTY</span>
+        <span aria-hidden="true" class="brand notranslate" translate="no">WE PARTY</span>
       </div>
       <div class="center-container">
         <slot name="center-content" />

@@ -186,5 +186,131 @@
       "invalidToken": "Invalid or expired token. Please request a new email.",
       "generic": "Could not change password. Please try again."
     }
+  },
+  "landing": {
+    "nav": {
+      "login": "Sign in",
+      "signup": "Get Started",
+      "features": "Features",
+      "events": "Events",
+      "testimonials": "Reviews"
+    },
+    "hero": {
+      "badge": "The #1 Events Platform",
+      "title1": "Discover the Best",
+      "titleHighlight": "Events & Parties",
+      "title2": "Near You",
+      "subtitle": "Find incredible events, connect with friends, and never miss an unforgettable experience. Your next adventure starts here.",
+      "cta": "Start Now — It's Free",
+      "demo": "See How It Works"
+    },
+    "floatingCards": {
+      "newEvent": "New Event!",
+      "friendsGoing": "Friends going"
+    },
+    "stats": {
+      "events": "Events",
+      "users": "Users",
+      "cities": "Cities"
+    },
+    "features": {
+      "badge": "Features",
+      "title": "Everything You Need",
+      "subtitle": "The most complete platform for event lovers",
+      "discover": {
+        "title": "Smart Discovery",
+        "desc": "AI-powered recommendations based on your preferences and history."
+      },
+      "friends": {
+        "title": "Bring Friends",
+        "desc": "See which events your friends are attending and plan together."
+      },
+      "nearby": {
+        "title": "Nearby Events",
+        "desc": "Find events happening close to you with real-time geolocation."
+      },
+      "notify": {
+        "title": "Smart Notifications",
+        "desc": "Get notified about events you'll love and never miss a thing."
+      },
+      "save": {
+        "title": "Save Favorites",
+        "desc": "Bookmark events you're interested in and access them easily later."
+      },
+      "create": {
+        "title": "Create Events",
+        "desc": "Host your own events and reach thousands of people nearby."
+      }
+    },
+    "events": {
+      "badge": "Real Events",
+      "title": "Trending Events Now",
+      "subtitle": "See some of the hottest events happening. Sign up to see more!",
+      "going": "going",
+      "viewDetails": "View Details",
+      "ctaText": "These are just a few of the thousands of events waiting for you.",
+      "ctaButton": "See All Events"
+    },
+    "howItWorks": {
+      "badge": "How It Works",
+      "title": "Get Started in 3 Simple Steps",
+      "step1": {
+        "title": "Create Your Account",
+        "desc": "Sign up in seconds with your email or social login."
+      },
+      "step2": {
+        "title": "Discover Events",
+        "desc": "Browse personalized recommendations based on your interests."
+      },
+      "step3": {
+        "title": "Have Fun!",
+        "desc": "Attend amazing events and create unforgettable memories."
+      }
+    },
+    "demo": {
+      "badge": "See in Action",
+      "title": "An Intuitive Experience",
+      "subtitle": "A modern, simple interface designed for you to find the perfect event in seconds.",
+      "feature1": "Personalized feed based on your interests",
+      "feature2": "Complete event details with photos and reviews",
+      "feature3": "Easy RSVP with a single tap",
+      "feature4": "Real-time chat with event attendees",
+      "cta": "Create My Account"
+    },
+    "social": {
+      "title": "What Our Users Say",
+      "subtitle": "Thousands of people have already found their best experiences"
+    },
+    "testimonials": {
+      "t1": {
+        "text": "I found events I'd never discover otherwise. The app is amazing!",
+        "name": "Maria Silva",
+        "role": "São Paulo, SP"
+      },
+      "t2": {
+        "text": "The best way to plan weekends with friends. Simple and intuitive.",
+        "name": "João Santos",
+        "role": "Rio de Janeiro, RJ"
+      },
+      "t3": {
+        "text": "I created my own event and reached 500 people in just one day!",
+        "name": "Ana Costa",
+        "role": "Belo Horizonte, MG"
+      }
+    },
+    "cta": {
+      "title": "Ready to Live Unforgettable Experiences?",
+      "subtitle": "Join thousands of people discovering the best events every day.",
+      "button": "Start Now — It's Free",
+      "trust": "Free forever. No credit card required."
+    },
+    "footer": {
+      "tagline": "Connecting people through unforgettable experiences",
+      "about": "About",
+      "terms": "Terms of Use",
+      "privacy": "Privacy",
+      "contact": "Contact",
+      "rights": "All rights reserved."
+    }
   }
 }

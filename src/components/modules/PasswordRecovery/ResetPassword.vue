@@ -1,132 +1,132 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
-import { requestSetNewPassord, requestVerifyToken } from '@/api/password'
-import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
-import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import { computed, onMounted, ref, watch } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import { useRoute, useRouter } from 'vue-router'
+  import { requestSetNewPassord, requestVerifyToken } from '@/api/password'
+  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
 
-const { t } = useI18n()
-const route = useRoute()
-const router = useRouter()
+  const { t } = useI18n()
+  const route = useRoute()
+  const router = useRouter()
 
-const password = ref('')
-const passwordConfirm = ref('')
-const email = ref('')
-const token = ref('')
-const isLoading = ref(false)
-const errorMessage = ref('')
-const successMessage = ref('')
+  const password = ref('')
+  const passwordConfirm = ref('')
+  const email = ref('')
+  const token = ref('')
+  const isLoading = ref(false)
+  const errorMessage = ref('')
+  const successMessage = ref('')
 
-const passwordRules = ref({
-  hasLowercase: false,
-  hasUppercase: false,
-  hasTenChars: false,
-  hasSpecial: false,
-})
+  const passwordRules = ref({
+    hasLowercase: false,
+    hasUppercase: false,
+    hasTenChars: false,
+    hasSpecial: false,
+  })
 
-const allPasswordRulesMet = computed(() => Object.values(passwordRules.value).every(Boolean))
+  const allPasswordRulesMet = computed(() => Object.values(passwordRules.value).every(Boolean))
 
-const snackbarVisible = ref(false)
-const snackbarMessage = ref('')
-const snackbarColor = ref('#ff9800')
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
 
-onMounted(() => {
-  // Se os parâmetros existem na URL, usa eles (comportamento normal)
-  if (typeof route.query.token === 'string' && typeof route.query.email === 'string') {
-    token.value = route.query.token
-    email.value = route.query.email
-  } else if (import.meta.env.DEV) {
+  onMounted(() => {
+    // Se os parâmetros existem na URL, usa eles (comportamento normal)
+    if (typeof route.query.token === 'string' && typeof route.query.email === 'string') {
+      token.value = route.query.token
+      email.value = route.query.email
+    } else if (import.meta.env.DEV) {
     // Se estiver em modo de desenvolvimento e os parâmetros não existirem, usa dados de teste
     // email.value = 'dev-email@teste.com'
     // pin.value = '123456' // PIN de teste
-  } else {
+    } else {
     // Se estiver em produção e não houver parâmetros, redireciona
     // router.push({ name: '/public/RequestPassword' })
-  }
+    }
 
-  verifyToken()
-})
+    verifyToken()
+  })
 
-async function handleReset() {
-  if (password.value !== passwordConfirm.value) {
-    errorMessage.value = t('resetPassword.errors.passwordMismatch')
-    return
-  }
-  if (!allPasswordRulesMet.value) {
-    errorMessage.value = t('resetPassword.errors.passwordRules')
-    return
-  }
-
-  isLoading.value = true
-  errorMessage.value = ''
-  successMessage.value = ''
-
-  try {
-    const response = await requestSetNewPassord(token.value, password.value)
-    console.log('Resposta da redefinição de senha:', response)
-    if (response.data.success) {
-      showSnackbar(t('resetPassword.successMessage'), '#4caf50')
-      // Redireciona para a página de login após um breve atraso
-      setTimeout(() => {
-        router.push({ name: '/public/Login' })
-      }, 2000)
+  async function handleReset () {
+    if (password.value !== passwordConfirm.value) {
+      errorMessage.value = t('resetPassword.errors.passwordMismatch')
       return
     }
+    if (!allPasswordRulesMet.value) {
+      errorMessage.value = t('resetPassword.errors.passwordRules')
+      return
+    }
+
+    isLoading.value = true
+    errorMessage.value = ''
+    successMessage.value = ''
+
+    try {
+      const response = await requestSetNewPassord(token.value, password.value)
+      console.log('Resposta da redefinição de senha:', response)
+      if (response.data.success) {
+        showSnackbar(t('resetPassword.successMessage'), '#4caf50')
+        // Redireciona para a página de login após um breve atraso
+        setTimeout(() => {
+          router.push({ name: '/public/Login' })
+        }, 2000)
+        return
+      }
     // setTimeout(() => {
     //   router.push({ name: '/public/Login' })
     // }, 2000)
-  } catch (error: any) {
-    const errorMessage = error.response?.data?.message || t('resetPassword.errors.generic')
-    showSnackbar(errorMessage, '#f44336')
-  } finally {
-    isLoading.value = false
-  }
-}
-
-function showSnackbar(message: string, color = '#ff9800') {
-  snackbarMessage.value = message
-  snackbarColor.value = color
-
-  if (snackbarVisible.value) {
-    snackbarVisible.value = false
-    requestAnimationFrame(() => {
-      snackbarVisible.value = true
-    })
-    return
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || t('resetPassword.errors.generic')
+      showSnackbar(errorMessage, '#f44336')
+    } finally {
+      isLoading.value = false
+    }
   }
 
-  snackbarVisible.value = true
-}
+  function showSnackbar (message: string, color = '#ff9800') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
 
-async function verifyToken() {
-  try {
-    const response = await requestVerifyToken(email.value, token.value)
-    if (response.data.success) {
-      showSnackbar(t('resetPassword.tokenVerified'), '#4caf50')
+    if (snackbarVisible.value) {
+      snackbarVisible.value = false
+      requestAnimationFrame(() => {
+        snackbarVisible.value = true
+      })
       return
     }
-    throw new Error(t('resetPassword.errors.invalidToken'))
-  } catch (error: any) {
-    const localErrorMessage = error.response?.data?.message || t('resetPassword.errors.invalidToken')
-    errorMessage.value = localErrorMessage
-    // Redireciona de volta para a página de solicitação de senha após um breve atraso
-    showSnackbar(localErrorMessage, '#f44336')
-    setTimeout(() => {
-      router.push({ name: '/public/RequestPassword' })
-    }, 3000)
+
+    snackbarVisible.value = true
   }
-}
 
-function updatePasswordRules(newValue: string): void {
-  passwordRules.value.hasLowercase = /[a-z]/.test(newValue)
-  passwordRules.value.hasUppercase = /[A-Z]/.test(newValue)
-  passwordRules.value.hasTenChars = newValue.length >= 10
-  passwordRules.value.hasSpecial = /[^A-Za-z0-9]/.test(newValue)
-}
+  async function verifyToken () {
+    try {
+      const response = await requestVerifyToken(email.value, token.value)
+      if (response.data.success) {
+        showSnackbar(t('resetPassword.tokenVerified'), '#4caf50')
+        return
+      }
+      throw new Error(t('resetPassword.errors.invalidToken'))
+    } catch (error: any) {
+      const localErrorMessage = error.response?.data?.message || t('resetPassword.errors.invalidToken')
+      errorMessage.value = localErrorMessage
+      // Redireciona de volta para a página de solicitação de senha após um breve atraso
+      showSnackbar(localErrorMessage, '#f44336')
+      setTimeout(() => {
+        router.push({ name: '/public/RequestPassword' })
+      }, 3000)
+    }
+  }
 
-watch(password, updatePasswordRules)
+  function updatePasswordRules (newValue: string): void {
+    passwordRules.value.hasLowercase = /[a-z]/.test(newValue)
+    passwordRules.value.hasUppercase = /[A-Z]/.test(newValue)
+    passwordRules.value.hasTenChars = newValue.length >= 10
+    passwordRules.value.hasSpecial = /[^A-Za-z0-9]/.test(newValue)
+  }
+
+  watch(password, updatePasswordRules)
 
 </script>
 
@@ -134,7 +134,13 @@ watch(password, updatePasswordRules)
   <AuthLayout>
     <template #form-content>
       <a class="back-link" href="#" @click.prevent="router.back()">
-        <svg class="back-arrow" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <svg
+          class="back-arrow"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          viewBox="0 0 24 24"
+        >
           <path d="M10 19l-7-7m0 0l7-7m-7 7h18" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </a>
@@ -143,40 +149,70 @@ watch(password, updatePasswordRules)
 
       <form @submit.prevent="handleReset">
         <div class="form-fields">
-          <InputLabel v-model="password" :input-password="true" :label="t('form.newPassword')" required
-            type="password" />
+          <InputLabel
+            v-model="password"
+            :input-password="true"
+            :label="t('form.newPassword')"
+            required
+            type="password"
+          />
           <ul v-if="password.length > 0" class="password-rules-container">
             <li :class="{ completed: passwordRules.hasLowercase }">
               <svg class="check-icon" fill="none" viewBox="0 0 12 12">
-                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                  stroke-width="1.5" />
+                <path
+                  d="M10 3L4.5 8.5L2 6"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                />
               </svg>
               {{ t('signup.rules.lowercase') }}
             </li>
             <li :class="{ completed: passwordRules.hasUppercase }">
               <svg class="check-icon" fill="none" viewBox="0 0 12 12">
-                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                  stroke-width="1.5" />
+                <path
+                  d="M10 3L4.5 8.5L2 6"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                />
               </svg>
               {{ t('signup.rules.uppercase') }}
             </li>
             <li :class="{ completed: passwordRules.hasTenChars }">
               <svg class="check-icon" fill="none" viewBox="0 0 12 12">
-                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                  stroke-width="1.5" />
+                <path
+                  d="M10 3L4.5 8.5L2 6"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                />
               </svg>
               {{ t('signup.rules.minChars') }}
             </li>
             <li :class="{ completed: passwordRules.hasSpecial }">
               <svg class="check-icon" fill="none" viewBox="0 0 12 12">
-                <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                  stroke-width="1.5" />
+                <path
+                  d="M10 3L4.5 8.5L2 6"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                />
               </svg>
               {{ t('signup.rules.specialChar') }}
             </li>
           </ul>
-          <InputLabel v-model="passwordConfirm" :input-password="true" :label="t('form.confirmPassword')" required
-            type="password" />
+          <InputLabel
+            v-model="passwordConfirm"
+            :input-password="true"
+            :label="t('form.confirmPassword')"
+            required
+            type="password"
+          />
         </div>
 
         <div v-if="errorMessage" class="error-message">
