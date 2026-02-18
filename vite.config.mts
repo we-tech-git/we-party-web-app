@@ -52,6 +52,7 @@ export default defineConfig({
     }),
     VueI18nPlugin({
       include: [resolve(dirname(fileURLToPath(import.meta.url)), './src/locales/**')],
+      strictMessage: false,
     }),
     Fonts({
       fontsource: {
