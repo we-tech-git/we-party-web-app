@@ -58,6 +58,52 @@
   const isConfirmed = ref(false)
   const activeTab = ref<'info' | 'location' | 'lineup'>('info')
 
+  // FAQs state
+  const openFaqIndex = ref<number | null>(null)
+
+  const faqs = ref([
+    {
+      icon: 'mdi-ticket-confirmation-outline',
+      question: 'Como faço para adquirir meu ingresso?',
+      answer: 'Os ingressos podem ser adquiridos diretamente nesta página. Após a confirmação, você receberá um e-mail com o QR Code para entrada no evento. Você também pode salvar o ingresso na sua carteira digital.',
+      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    },
+    {
+      icon: 'mdi-calendar-clock',
+      question: 'Qual o horário de abertura dos portões?',
+      answer: 'Os portões abrem 2 horas antes do horário oficial do evento. Recomendamos chegar com antecedência para evitar filas e aproveitar ao máximo a experiência.',
+      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    },
+    {
+      icon: 'mdi-food-fork-drink',
+      question: 'Posso levar comida e bebida?',
+      answer: 'Por questões de segurança, não é permitida a entrada com alimentos e bebidas. O evento contará com diversos food trucks e barracas com opções variadas de gastronomia. Garrafas de água lacradas são permitidas.',
+      gradient: 'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)',
+    },
+    {
+      icon: 'mdi-car-multiple',
+      question: 'O local oferece estacionamento?',
+      answer: 'Sim! Temos estacionamento próprio com mais de 500 vagas. O valor é de R$ 30,00 e pode ser pago no local (dinheiro ou cartão). Também recomendamos o uso de aplicativos de transporte para sua comodidade.',
+      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    },
+    {
+      icon: 'mdi-account-multiple-check',
+      question: 'Menores de idade podem participar?',
+      answer: 'Este evento é classificado para maiores de 18 anos. Menores entre 16-17 anos podem entrar acompanhados dos pais ou responsáveis legais com autorização autenticada. Crianças até 12 anos não pagam ingresso quando acompanhadas.',
+      gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    },
+    {
+      icon: 'mdi-weather-partly-cloudy',
+      question: 'E se chover? O evento será cancelado?',
+      answer: 'O evento acontece com chuva ou sol! Possuímos áreas cobertas e toda estrutura preparada para qualquer condição climática. Em caso de condições extremas, informaremos através dos nossos canais oficiais e redes sociais.',
+      gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+    },
+  ])
+
+  function toggleFaq (index: number) {
+    openFaqIndex.value = openFaqIndex.value === index ? null : index
+  }
+
   // Countdown timer
   const countdown = ref({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   let countdownInterval: ReturnType<typeof setInterval> | null = null
@@ -95,21 +141,42 @@
     if (countdownInterval) clearInterval(countdownInterval)
   })
 
+  function resolveEventDate (data: any): Date | null {
+    const candidates = [
+      data?.date,
+      data?.startDate,
+      data?.dateTime,
+      data?.startAt,
+      data?.eventDate,
+      data?.start_date,
+      data?.schedule,
+    ]
+    for (const val of candidates) {
+      if (!val) continue
+      const parsed = new Date(val)
+      if (!Number.isNaN(parsed.getTime())) return parsed
+    }
+    return null
+  }
+
+  function formatEventDate (d: Date | null): string {
+    if (!d) return 'Data não informada'
+    return d.toLocaleString('pt-BR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
   function mapEventPayload (data: any): EventDetail {
-    const rawDate = data?.date ? new Date(data.date) : null
+    const rawDate = resolveEventDate(data)
     return {
       id: data?.id,
       title: data?.name || data?.title || 'Evento sem título',
-      date: data?.date
-        ? new Date(data.date).toLocaleString('pt-BR', {
-          weekday: 'long',
-          day: '2-digit',
-          month: 'long',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-        : data?.schedule || 'Data não informada',
+      date: formatEventDate(rawDate),
       rawDate,
       location: data?.location || data?.address || data?.place || 'Local não informado',
       image: resolveAsset(data?.bannerUrl || data?.banner || data?.photos?.[0]),
@@ -485,6 +552,56 @@
             <div class="lineup-icon">
               <i class="mdi mdi-microphone-variant" />
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQs Section -->
+      <div class="faqs-section">
+        <div class="faqs-header">
+          <div class="faqs-icon-wrapper">
+            <i class="mdi mdi-help-circle" />
+          </div>
+          <div class="faqs-title-block">
+            <h2 class="faqs-title">Perguntas Frequentes</h2>
+            <p class="faqs-subtitle">Tire suas dúvidas sobre o evento</p>
+          </div>
+        </div>
+
+        <div class="faqs-list">
+          <div
+            v-for="(faq, index) in faqs"
+            :key="index"
+            class="faq-item"
+            :class="{ open: openFaqIndex === index }"
+            :style="{ animationDelay: `${index * 0.05}s` }"
+          >
+            <button class="faq-question" :style="{ background: faq.gradient }" @click="toggleFaq(index)">
+              <div class="faq-q-content">
+                <div class="faq-icon">
+                  <i :class="faq.icon" />
+                </div>
+                <span class="faq-q-text">{{ faq.question }}</span>
+              </div>
+              <div class="faq-toggle-icon" :class="{ rotated: openFaqIndex === index }">
+                <i class="mdi mdi-chevron-down" />
+              </div>
+            </button>
+            <Transition name="faq-expand">
+              <div v-if="openFaqIndex === index" class="faq-answer">
+                <div class="faq-answer-content">
+                  <i class="mdi mdi-chat-question-outline faq-answer-icon" />
+                  <p>{{ faq.answer }}</p>
+                </div>
+              </div>
+            </Transition>
+          </div>
+        </div>
+
+        <div class="faqs-footer">
+          <div class="faqs-footer-content">
+            <i class="mdi mdi-message-text-outline" />
+            <p>Não encontrou sua resposta? <a class="faqs-contact-link" href="#">Entre em contato conosco</a></p>
           </div>
         </div>
       </div>
@@ -1459,6 +1576,272 @@
   color: #ccc;
 }
 
+/* FAQs Section */
+.faqs-section {
+  padding: 3rem 1.5rem;
+  background: linear-gradient(180deg, #fafafa 0%, #ffffff 100%);
+  position: relative;
+}
+
+.faqs-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, #ff5fa6, #ffba4b);
+  border-image-slice: 1;
+}
+
+.faqs-icon-wrapper {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: white;
+  box-shadow: 0 8px 25px rgba(255, 95, 166, 0.3);
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.faqs-title-block {
+  flex: 1;
+}
+
+.faqs-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 0.25rem;
+  background: linear-gradient(135deg, #ff5fa6, #ffba4b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.faqs-subtitle {
+  font-size: 0.95rem;
+  color: #666;
+  margin: 0;
+}
+
+.faqs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.faq-item {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  animation: fadeInUp 0.5s ease backwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.faq-item:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.faq-item.open {
+  box-shadow: 0 10px 35px rgba(255, 95, 166, 0.15);
+}
+
+.faq-question {
+  width: 100%;
+  padding: 1.25rem 1.5rem;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.faq-question::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.faq-question:hover::before {
+  opacity: 1;
+}
+
+.faq-q-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  text-align: left;
+}
+
+.faq-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.faq-q-text {
+  line-height: 1.4;
+}
+
+.faq-toggle-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.faq-toggle-icon.rotated {
+  transform: rotate(180deg);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.faq-answer {
+  background: white;
+  overflow: hidden;
+}
+
+.faq-answer-content {
+  padding: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.faq-answer-icon {
+  font-size: 1.5rem;
+  color: #ff5fa6;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+
+.faq-answer-content p {
+  margin: 0;
+  color: #555;
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+.faqs-footer {
+  padding: 1.5rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #fff5f8 100%);
+  border: 2px dashed rgba(255, 95, 166, 0.2);
+}
+
+.faqs-footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.faqs-footer-content i {
+  font-size: 1.5rem;
+  color: #ff5fa6;
+}
+
+.faqs-contact-link {
+  color: #ff5fa6;
+  font-weight: 600;
+  text-decoration: none;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.faqs-contact-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #ff5fa6, #ffba4b);
+  transition: width 0.3s ease;
+}
+
+.faqs-contact-link:hover {
+  color: #ffba4b;
+}
+
+.faqs-contact-link:hover::after {
+  width: 100%;
+}
+
+/* FAQ Expand Transition */
+.faq-expand-enter-active,
+.faq-expand-leave-active {
+  transition: all 0.3s ease;
+}
+
+.faq-expand-enter-from,
+.faq-expand-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+
+.faq-expand-enter-to,
+.faq-expand-leave-from {
+  max-height: 500px;
+  opacity: 1;
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;
@@ -1651,6 +2034,43 @@
     width: 100%;
     justify-content: center;
   }
+
+  .faqs-section {
+    padding: 2rem 1rem;
+  }
+
+  .faqs-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .faqs-title {
+    font-size: 1.5rem;
+  }
+
+  .faq-question {
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+
+  .faq-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+  }
+
+  .faq-answer-content {
+    padding: 1rem;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .faqs-footer-content {
+    flex-direction: column;
+    text-align: center;
+    font-size: 0.85rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1693,6 +2113,22 @@
 
   .countdown-separator {
     font-size: 1.2rem;
+  }
+
+  .faqs-icon-wrapper {
+    width: 50px;
+    height: 50px;
+    font-size: 1.6rem;
+  }
+
+  .faq-q-text {
+    font-size: 0.85rem;
+  }
+
+  .faq-toggle-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1.3rem;
   }
 }
 </style>

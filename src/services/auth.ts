@@ -19,6 +19,7 @@ export interface LoggedUser {
   email: string
   roles: string[]
   isEmailVerified?: boolean
+  profileImage?: string
 }
 
 export const AuthService = {
@@ -84,6 +85,18 @@ export const AuthService = {
   hasValidUser (): boolean {
     const user = this.getUser()
     return !!(user && user.id && user.email)
+  },
+
+  /**
+   * Atualiza os dados do usuário no localStorage (mantém o token)
+   */
+  updateUser (userData: Partial<LoggedUser>): void {
+    const currentUser = this.getUser()
+    if (currentUser) {
+      const updatedUser = { ...currentUser, ...userData }
+      localStorage.setItem(STORAGE_KEYS.LOGGED_USER, JSON.stringify(updatedUser))
+      console.log('✅ Dados do usuário atualizados:', updatedUser)
+    }
   },
 
   /**

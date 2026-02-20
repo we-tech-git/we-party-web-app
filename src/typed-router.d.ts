@@ -28,7 +28,6 @@ declare module 'vue-router/auto-routes' {
     '/public/ConfirmEmail': RouteRecordInfo<'/public/ConfirmEmail', '/public/ConfirmEmail', Record<never, never>, Record<never, never>>,
     '/public/Congratulations': RouteRecordInfo<'/public/Congratulations', '/public/Congratulations', Record<never, never>, Record<never, never>>,
     '/public/Interest': RouteRecordInfo<'/public/Interest', '/public/Interest', Record<never, never>, Record<never, never>>,
-    '/public/Landing': RouteRecordInfo<'/public/Landing', '/public/Landing', Record<never, never>, Record<never, never>>,
     '/public/Login': RouteRecordInfo<'/public/Login', '/public/Login', Record<never, never>, Record<never, never>>,
     '/public/RequestPassword': RouteRecordInfo<'/public/RequestPassword', '/public/RequestPassword', Record<never, never>, Record<never, never>>,
     '/public/ResetPassword': RouteRecordInfo<'/public/ResetPassword', '/public/ResetPassword', Record<never, never>, Record<never, never>>,
@@ -85,10 +84,6 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/public/Interest.vue': {
       routes: '/public/Interest'
-      views: never
-    }
-    'src/pages/public/Landing.vue': {
-      routes: '/public/Landing'
       views: never
     }
     'src/pages/public/Login.vue': {

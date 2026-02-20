@@ -1,12 +1,14 @@
 <script setup lang="ts">
+  import type { FeedItem } from '@/stores/events'
   import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
 
   import { useRoute, useRouter } from 'vue-router'
 
-  import { getEventRecomendations, getEventsToday, getTrendingEvents, searchByEvents } from '@/api/event'
-  import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
+  import { getEventRecomendations, getEventsToday, getFavoriteEvents, getTrendingEvents, searchByEvents } from '@/api/event'
 
+  import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
+  import { useAuth } from '@/composables/useAuth'
   import { useEventsStore } from '@/stores/events'
   import FeedCard from './FeedCard.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
@@ -23,22 +25,6 @@
     label: string
   }
 
-  interface FeedItem {
-    id: string | number
-    banner: string
-    creator: {
-      name: string
-    }
-    hostAvatar: string
-    schedule: string
-    location?: string
-    title: string
-    description: string
-    confirmed: number
-    interested: number
-    likes?: number
-  }
-
   interface TrendItem {
     id: number
     title: string
@@ -50,6 +36,7 @@
   const eventsStore = useEventsStore()
   const router = useRouter()
   const route = useRoute()
+  const { loggedUser, userDisplayName } = useAuth()
 
   const activeNav = ref((route.query.tab as string) || 'home')
   const activeTab = ref('for-you')
@@ -88,56 +75,87 @@
   const limit = 10
   const hasMore = ref(true)
 
+  function getFirstValidString (...values: unknown[]): string {
+    for (const val of values) {
+      if (val && typeof val === 'string' && val.trim() !== '') {
+        return val
+      }
+    }
+    return ''
+  }
+
+  function extractPhotoUrl (photos: unknown): string {
+    if (!photos) return ''
+    if (Array.isArray(photos) && photos.length > 0) return photos[0] || ''
+    if (typeof photos === 'object' && photos !== null) {
+      const keys = Object.keys(photos as Record<string, unknown>)
+      const firstKey = keys[0]
+      if (firstKey !== undefined) return (photos as Record<string, string>)[firstKey] || ''
+    }
+    return ''
+  }
+
+  function resolveLikesCount (event: any): number {
+    if (typeof event.likesCount === 'number') return event.likesCount
+    if (typeof event.likes === 'number') return event.likes
+    if (Array.isArray(event.likes)) return event.likes.length
+    if (typeof event._count?.likes === 'number') return event._count.likes
+    if (typeof event.likes_count === 'number') return event.likes_count
+    if (typeof event.totalLikes === 'number') return event.totalLikes
+    if (typeof event.likeCount === 'number') return event.likeCount
+    if (typeof event.confirmedCount === 'number') return event.confirmedCount
+    if (typeof event._count?.attendances === 'number') return event._count.attendances
+    return 0
+  }
+
+  function resolveSchedule (event: any): string {
+    const candidates = [
+      event.date,
+      event.startDate,
+      event.dateTime,
+      event.startAt,
+      event.eventDate,
+      event.start_date,
+      event.schedule,
+    ]
+    for (const val of candidates) {
+      if (!val) continue
+      const parsed = new Date(val)
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+      }
+    }
+    return 'Data a definir'
+  }
+
   function mapEventToFeedItem (event: any): FeedItem {
-    // Helper to get first non-empty string
-    const getFirstValid = (...values: any[]): string => {
-      for (const val of values) {
-        if (val && typeof val === 'string' && val.trim() !== '') {
-          return val
-        }
-      }
-      return ''
-    }
-
-    // Handle photos - can be array or object with numeric keys
-    let photoUrl = ''
-    if (event.photos) {
-      if (Array.isArray(event.photos) && event.photos.length > 0) {
-        photoUrl = event.photos[0] || ''
-      } else if (typeof event.photos === 'object') {
-        // Handle object with numeric keys like { 0: "url", 1: "url2" }
-        const keys = Object.keys(event.photos)
-        const firstKey = keys[0]
-        if (firstKey !== undefined) {
-          photoUrl = event.photos[firstKey] || ''
-        }
-      }
-    }
-
-    const rawBanner = getFirstValid(
+    const rawBanner = getFirstValidString(
       event.bannerUrl,
       event.banner,
-      photoUrl,
+      extractPhotoUrl(event.photos),
       event.image,
       event.imageUrl,
       event.cover,
       event.thumbnail,
     )
 
-    const calculatedHostName = event.organizer?.name || event.hostName || event.creator?.name || 'Unknown Host'
+    const calculatedHostName = event.organizer?.name || event.hostName || event.creator?.name || 'Organizador'
+
+    const likesCount = resolveLikesCount(event)
 
     return {
       id: event.id,
       banner: rawBanner,
       creator: { name: calculatedHostName },
       hostAvatar: event.organizer?.avatar || event.hostAvatar || event.creator?.profileImage || '',
-      schedule: event.date || event.startDate ? new Date(event.date || event.startDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Data a definir',
+      schedule: resolveSchedule(event),
       location: event.location || event.address || event.place || 'Local a definir',
       title: event.name || event.title || 'Untitled Event',
       description: event.description || '',
       confirmed: event.confirmedCount || event._count?.attendances || 0,
       interested: event.interestedCount || 0,
-      likes: event.likesCount || event.likes || event._count?.likes || 0,
+      likes: likesCount,
+      interests: (event.eventInterests || event.interests || event.categories || event.tags || []).map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name).filter(Boolean),
     }
   }
 
@@ -195,7 +213,13 @@
   }
 
   onMounted(() => {
-    fetchEvents()
+    if (activeNav.value === 'favorites') {
+      fetchFavoriteEvents()
+      // Sincroniza favoritos com o servidor ao montar a página
+      eventsStore.syncFavoritesWithServer()
+    } else {
+      fetchEvents()
+    }
     fetchTrends()
   })
 
@@ -232,11 +256,10 @@
     }).slice().sort((a: any, b: any) => b.rawCount - a.rawCount)
   })
 
-  const user = {
-    name: 'Amanda Costa',
-    avatar: 'https://i.pravatar.cc/80?img=32',
-    points: 356,
-  }
+  const user = computed(() => ({
+    name: userDisplayName.value,
+    avatar: loggedUser.value?.profileImage || '',
+  }))
 
   const isSearching = computed(() => searchQuery.value.trim().length > 0)
 
@@ -315,19 +338,83 @@
     }
 
     if (val === 'favorites') {
-      loading.value = false
-      filteredItems.value = eventsStore.savedEvents
-      hasMore.value = false
+      fetchFavoriteEvents()
+      // Sincroniza favoritos com o servidor para garantir dados atualizados
+      eventsStore.syncFavoritesWithServer()
     } else {
       fetchEvents()
     }
   })
 
-  watch(() => eventsStore.savedEvents, val => {
-    if (activeNav.value === 'favorites') {
-      filteredItems.value = val
+  /**
+   * Busca eventos favoritos da API
+   */
+  async function fetchFavoriteEvents (isLoadMore = false) {
+    try {
+      if (isLoadMore) {
+        loadingMore.value = true
+        page.value = page.value + 1
+      } else {
+        loading.value = true
+        page.value = 1
+      }
+
+      const response = await getFavoriteEvents(page.value, limit)
+      const data = response.data
+
+      // Tenta extrair eventos de diferentes estruturas de resposta
+      let events: any[] = []
+      if (data?.data?.events) {
+        events = data.data.events
+      } else if (data?.events) {
+        events = data.events
+      } else if (Array.isArray(data?.data)) {
+        events = data.data
+      } else if (Array.isArray(data)) {
+        events = data
+      }
+
+      console.log('Eventos favoritos carregados:', events)
+
+      hasMore.value = events.length >= limit
+
+      const mappedEvents = events.map((evt: any) => mapEventToFeedItem(evt))
+
+      items.value = isLoadMore ? [...items.value, ...mappedEvents] : mappedEvents
+      filteredItems.value = items.value
+    } catch (error) {
+      console.error('Erro ao buscar eventos favoritos:', error)
+      if (!isLoadMore) {
+        items.value = []
+        filteredItems.value = []
+      }
+    } finally {
+      loading.value = false
+      loadingMore.value = false
     }
-  }, { deep: true })
+  }
+
+  /**
+   * Gerencia o toggle de favorito com atualização da lista quando necessário
+   */
+  async function handleToggleSave (item: FeedItem) {
+    const wasSaved = eventsStore.isSaved(item.id)
+
+    // Chama o toggleSave do store
+    await eventsStore.toggleSave(item)
+
+    // Se estava na aba de favoritos e foi desfavoritado, atualiza a lista
+    if (activeNav.value === 'favorites' && wasSaved) {
+      // Remove o item da lista imediatamente para feedback visual rápido
+      filteredItems.value = filteredItems.value.filter(e => e.id !== item.id)
+      items.value = items.value.filter(e => e.id !== item.id)
+
+      // Sincroniza com o servidor após um pequeno delay
+      setTimeout(() => {
+        eventsStore.syncFavoritesWithServer()
+      }, 500)
+    }
+  }
 
 </script>
 <template>
@@ -436,6 +523,7 @@
             :host-avatar="item.hostAvatar"
             :host-name="item.creator.name"
             :interested="item.interested"
+            :interests="item.interests"
             :is-saved="eventsStore.isSaved(item.id)"
             :liked="eventsStore.isLiked(item.id)"
             :likes="(item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0)"
@@ -444,12 +532,17 @@
             :schedule="item.schedule"
             :title="item.title"
             @toggle-like="eventsStore.toggleLike(item.id)"
-            @toggle-save="eventsStore.toggleSave(item)"
+            @toggle-save="handleToggleSave(item)"
           />
         </section>
 
         <div v-if="!loading && hasMore && filteredItems.length > 0 && !isSearching" class="load-more-container">
-          <button class="load-more-btn" :disabled="loadingMore" type="button" @click="fetchEvents(true)">
+          <button
+            class="load-more-btn"
+            :disabled="loadingMore"
+            type="button"
+            @click="activeNav === 'favorites' ? fetchFavoriteEvents(true) : fetchEvents(true)"
+          >
             <span v-if="loadingMore" class="spinner" />
             {{ loadingMore ? 'Carregando' : 'Carregar mais eventos' }}
           </button>

@@ -114,3 +114,70 @@ export async function toggleLikeEvent (id: string | number) {
     throw error
   }
 }
+
+/**
+ * Favorita ou desfavorita um evento.
+ * @param eventId - ID do evento a ser favoritado/desfavoritado.
+ */
+export async function toggleFavoriteEvent (eventId: string | number) {
+  try {
+    const response = await callApi(
+      'POST',
+      `/events/${eventId}/favorite`,
+      {},
+      true,
+      {
+        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
+      },
+    )
+    return response
+  } catch (error) {
+    console.error('Erro ao favoritar evento:', error)
+    throw error
+  }
+}
+
+/**
+ * Verifica se um evento está favoritado pelo usuário.
+ * @param eventId - ID do evento a ser verificado.
+ */
+export async function getFavoriteStatus (eventId: string | number) {
+  try {
+    const response = await callApi(
+      'GET',
+      `/events/${eventId}/favorite/status`,
+      {},
+      true,
+      {
+        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
+      },
+    )
+    return response
+  } catch (error) {
+    console.error('Erro ao verificar status de favorito:', error)
+    throw error
+  }
+}
+
+/**
+ * Lista os eventos favoritos do usuário.
+ * @param page - Página de resultados.
+ * @param limit - Quantidade de eventos por página.
+ */
+export async function getFavoriteEvents (page = 1, limit = 10) {
+  try {
+    const response = await callApi(
+      'GET',
+      `/events/favorites?page=${page}&limit=${limit}`,
+      {},
+      true,
+      {
+        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
+      },
+    )
+    return response
+  } catch (error) {
+    console.error('Erro ao buscar eventos favoritos:', error)
+    throw error
+  }
+}

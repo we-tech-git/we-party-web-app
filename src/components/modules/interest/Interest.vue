@@ -8,8 +8,7 @@
   import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
-  import { callApi } from '@/api'
-  import { addUserInterest, removeUserInterest, searchInterestsByName } from '@/api/interest'
+  import { addUserInterest, getRecommendedInterests, removeUserInterest, searchInterestsByName } from '@/api/interest'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import { svgIcons } from '@/utils/svgSet'
 
@@ -35,17 +34,20 @@
 
   const query = ref('')
   const searchResults = ref<IInterest[]>([])
-  const debounceTimeout = ref<number | null>(null)
+  const debounceTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 
-  // Computed para mostrar os chips no grid
+  // Máximo de interesses exibidos para não quebrar o layout
+  const MAX_DISPLAYED_INTERESTS = 9
+
+  // Computed para mostrar os chips no grid (máximo 9)
   const displayedChips = computed(() => {
-    // Se não tem query, mostra todos os interesses
+    // Se não tem query, mostra os interesses (limitado a 9)
     if (query.value.trim().length === 0) {
-      return allChips.value
+      return allChips.value.slice(0, MAX_DISPLAYED_INTERESTS)
     }
 
-    // Se tem query, mostra os resultados da busca
-    return searchResults.value
+    // Se tem query, mostra os resultados da busca (limitado a 9)
+    return searchResults.value.slice(0, MAX_DISPLAYED_INTERESTS)
   })
 
   const showNoResults = computed(() => {
@@ -56,9 +58,35 @@
     try {
       isLoading.value = true
       hasError.value = false
-      const response = await callApi('GET', '/interest/recommendations', undefined, true)
+      const response = await getRecommendedInterests(9)
 
-      allChips.value = response?.data?.data?.interests
+      // Tenta extrair os interesses de diferentes estruturas de resposta
+      const responseData = response?.data
+      let interests: IInterest[] = []
+
+      if (responseData?.data?.interests) {
+        // Estrutura: { data: { interests: [...] } }
+        interests = responseData.data.interests
+      } else if (responseData?.interests) {
+        // Estrutura: { interests: [...] }
+        interests = responseData.interests
+      } else if (Array.isArray(responseData?.data)) {
+        // Estrutura: { data: [...] }
+        interests = responseData.data
+      } else if (Array.isArray(responseData)) {
+        // Estrutura: [...]
+        interests = responseData
+      }
+
+      console.log('Interesses carregados:', interests)
+      allChips.value = interests
+
+      // Inicializa o Set de selecionados com base nos dados vindos da API
+      for (const chip of allChips.value) {
+        if (chip.hasInterest) {
+          selected.value.add(chip.name.toUpperCase())
+        }
+      }
     } catch (error) {
       console.error('Erro ao buscar interesses:', error)
       hasError.value = true
@@ -76,8 +104,28 @@
 
     try {
       isSearching.value = true
+      console.log('Buscando interesses com query:', searchQuery)
       const response = await searchInterestsByName(searchQuery.trim())
-      searchResults.value = response?.data?.data?.interests || []
+
+      console.log('Resposta da busca:', response?.data)
+
+      // Tenta extrair os interesses de diferentes estruturas de resposta
+      const responseData = response?.data
+      let interests: IInterest[] = []
+
+      if (responseData?.data?.interests) {
+        interests = responseData.data.interests
+      } else if (responseData?.interests) {
+        interests = responseData.interests
+      } else if (Array.isArray(responseData?.data)) {
+        interests = responseData.data
+      } else if (Array.isArray(responseData)) {
+        interests = responseData
+      }
+
+      console.log('Interesses encontrados na busca:', interests)
+      // Limita a 9 resultados para não quebrar o layout
+      searchResults.value = interests.slice(0, MAX_DISPLAYED_INTERESTS)
     } catch (error) {
       console.error('Erro ao buscar interesses:', error)
       searchResults.value = []
@@ -108,12 +156,30 @@
   }
 
   async function addFromSuggestion (selectedInterest: IInterest) {
-    if (selectedInterest.hasInterest) {
-      removeUserInterest(selectedInterest.id)
-    } else {
-      addUserInterest(selectedInterest.id)
+    // Atualização otimista na UI
+    const previousState = selectedInterest.hasInterest
+    selectedInterest.hasInterest = !previousState
+
+    try {
+      if (previousState) {
+        // Estava selecionado, então remove
+        selected.value.delete(selectedInterest.name.toUpperCase())
+        await removeUserInterest(selectedInterest.id)
+      } else {
+        // Não estava selecionado, então adiciona
+        selected.value.add(selectedInterest.name.toUpperCase())
+        await addUserInterest(selectedInterest.id)
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar interesse:', error)
+      // Reverte estado em caso de erro
+      selectedInterest.hasInterest = previousState
+      if (previousState) {
+        selected.value.add(selectedInterest.name.toUpperCase())
+      } else {
+        selected.value.delete(selectedInterest.name.toUpperCase())
+      }
     }
-    selectedInterest.hasInterest = !selectedInterest.hasInterest
   }
 
   onMounted(() => {

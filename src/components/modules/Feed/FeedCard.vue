@@ -1,7 +1,8 @@
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import { computed, ref } from 'vue'
   import { useShareStore } from '@/stores/share'
   import { svgIcons } from '@/utils/svgSet'
+  import CommentsDrawer from './CommentsDrawer.vue'
 
   const props = defineProps<{
     id: string | number
@@ -19,6 +20,7 @@
     liked?: boolean
     highlight?: boolean
     rank?: number
+    interests?: string[]
   }>()
 
   const emit = defineEmits<{
@@ -75,6 +77,8 @@
   })
 
   const shareStore = useShareStore()
+
+  const showComments = ref(false)
 
   function handleShare () {
     shareStore.open({
@@ -140,6 +144,12 @@
         </div>
         <p class="description">{{ description }}</p>
 
+        <div v-if="interests && interests.length > 0" class="interests-row">
+          <span v-for="tag in interests" :key="tag" class="interest-chip">
+            {{ tag }}
+          </span>
+        </div>
+
         <footer class="footer">
           <div aria-label="Indicadores do evento" class="stats">
             <button
@@ -170,6 +180,23 @@
           </div>
 
           <div class="actions">
+            <button aria-label="Comentários" class="icon-button" type="button" @click.stop="showComments = true">
+              <svg
+                fill="none"
+                height="18"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="18"
+              >
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <v-tooltip activator="parent" content-class="feed-card-tooltip" location="top" offset="10">
+                Comentários
+              </v-tooltip>
+            </button>
             <router-link aria-label="Ver detalhes" class="icon-button" :to="`/private/event/${id}`">
               <svg
                 v-if="svgIcons.infoIcon"
@@ -218,6 +245,8 @@
         </footer>
       </figcaption>
     </figure>
+
+    <CommentsDrawer v-model="showComments" :event-id="id" />
   </article>
 </template>
 
@@ -317,7 +346,6 @@
   height: 100%;
   border-radius: 24px;
   overflow: hidden;
-  /* Ensure mask for Safari/Webkit if needed */
   transform: translateZ(0);
 }
 
@@ -326,7 +354,6 @@
   width: 100%;
   height: clamp(320px, 35vw, 420px);
   object-fit: cover;
-  /* border-radius removed here as it is handled by parent .media */
   padding: 0rem;
 }
 
@@ -460,6 +487,27 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
+.interests-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.interest-chip {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 186, 75, 0.15);
+  border: 1px solid rgba(255, 186, 75, 0.35);
+  color: #ffba4b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .footer {
   display: flex;
   justify-content: space-between;
@@ -538,28 +586,54 @@
 
 @media (max-width: 920px) {
   .feed-card {
-    padding: clamp(1.25rem, 3vw, 1.85rem);
+    padding: 0.35rem;
     border-radius: 28px;
   }
 
   .banner {
     height: clamp(260px, 40vw, 320px);
-    border-radius: 22px;
   }
 
   .overlay {
-    padding: clamp(1.4rem, 4vw, 2rem);
+    padding: clamp(1.2rem, 3.5vw, 1.8rem);
   }
 }
 
 @media (max-width: 640px) {
   .feed-card {
-    border-radius: 24px;
+    padding: 0.25rem;
+    border-radius: 20px;
+  }
+
+  .media {
+    border-radius: 18px;
   }
 
   .banner {
-    height: clamp(300px, 90vw, 380px);
-    border-radius: 20px;
+    height: clamp(280px, 75vw, 360px);
+  }
+
+  .host-tag {
+    top: 12px;
+    left: 12px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.75rem;
+    gap: 0.4rem;
+  }
+
+  .host-avatar {
+    width: 24px;
+    height: 24px;
+  }
+
+  .bookmark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .bookmark svg {
+    width: 18px;
+    height: 18px;
   }
 
   .footer {
@@ -572,12 +646,89 @@
   }
 
   .title {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
   }
 
   .description {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .location {
+    max-width: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .feed-card {
+    padding: 0.2rem;
+    border-radius: 16px;
+  }
+
+  .media {
+    border-radius: 14px;
+  }
+
+  .banner {
+    height: clamp(240px, 65vw, 300px);
+  }
+
+  .overlay {
+    padding: 1rem;
+    gap: 0.25rem;
+  }
+
+  .title {
+    font-size: 1.15rem;
+  }
+
+  .description {
+    font-size: 0.8rem;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .stats {
+    font-size: 0.8rem;
+  }
+
+  .icon-button {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .rank-badge {
+    width: 44px;
+    height: 44px;
+    font-size: 1.4rem;
+    border-radius: 14px;
+    top: -8px;
+    left: -8px;
+  }
+
+  .rank-badge span {
+    font-size: 0.8rem;
+  }
+
+  .meta-wrapper {
+    padding: 0.25rem 0.6rem;
+    border-radius: 8px;
+    gap: 0.3rem;
+  }
+
+  .schedule {
+    font-size: 0.7rem;
+  }
+
+  .location {
+    font-size: 0.7rem;
+    max-width: 120px;
   }
 }
 </style>

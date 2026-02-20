@@ -1,7 +1,3 @@
-<template>
-  <Congratulations continue-to="/private/feed" />
-</template>
-
 <script setup>
   import Congratulations from '@/components/modules/Congratulations/Congratulations.vue'
 
@@ -11,3 +7,7 @@
     },
   })
 </script>
+
+<template>
+  <Congratulations continue-to="/private/feed" />
+</template>

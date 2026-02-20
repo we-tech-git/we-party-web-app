@@ -1,9 +1,12 @@
 {
   "extends": "@vue/tsconfig/tsconfig.dom.json",
   "include": ["env.d.ts", "src/**/*.vue", "src/**/*.ts"],
-  "exclude": ["src/**/__tests__/*", "src/pages/private/feed.vue", "src/pages/private/event/[id].vue", "src/pages/private/event/[id].vue"],
+  "exclude": ["src/**/__tests__/*"],
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["vite/client"],
     "composite": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 

@@ -8,7 +8,6 @@
   interface UserSummary {
     name: string
     avatar: string
-    points: number
   }
 
   defineProps<{
@@ -19,8 +18,22 @@
   const router = useRouter()
   const { logout: authLogout } = useAuth()
 
-  function changePicture () {
-  // TODO: Implement picture change logic
+  const avatarColors = [
+    '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
+    '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
+  ]
+
+  function getAvatarColor (name: string): string {
+    let hash = 0
+    for (let i = 0; i < name.length; i++) {
+      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
+    }
+    const index = Math.abs(hash % avatarColors.length)
+    return avatarColors[index] ?? '#F44336'
+  }
+
+  function getInitial (name: string): string {
+    return (name || 'U').charAt(0).toUpperCase()
   }
 
   function logout () {
@@ -60,44 +73,28 @@
         <div class="lang-switch-wrapper">
           <LanguageSwitcher />
         </div>
-        <span class="points">
-          <svg fill="none" height="18" viewBox="0 0 24 24" width="18">
-            <path
-              d="m12 3 2.09 4.74 5.16.45-3.9 3.37 1.16 5.02L12 14.92l-4.51 3.66 1.16-5.02-3.9-3.37 5.16-.45z"
-              fill="url(#starGradient)"
-            />
-            <defs>
-              <linearGradient
-                id="starGradient"
-                gradientUnits="userSpaceOnUse"
-                x1="12"
-                x2="12"
-                y1="3"
-                y2="21"
-              >
-                <stop stop-color="#ffba4b" />
-                <stop offset="1" stop-color="#ff5fa6" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <span>{{ user.points }} pts.</span>
-        </span>
 
         <v-menu location="bottom" transition="slide-y-transition">
-          <template #activator="{ props }">
+          <template #activator="{ props: menuProps }">
             <img
-              v-bind="props"
+              v-if="user.avatar"
+              v-bind="menuProps"
               :alt="user.name"
               class="avatar"
               loading="lazy"
               :src="user.avatar"
             >
+            <div
+              v-else
+              v-bind="menuProps"
+              class="avatar avatar-placeholder"
+              :style="{ backgroundColor: getAvatarColor(user.name) }"
+            >
+              {{ getInitial(user.name) }}
+            </div>
           </template>
 
           <v-list density="compact" :lines="false">
-            <v-list-item @click="changePicture">
-              <v-list-item-title>{{ t('feed.profileActions.changePicture') }}</v-list-item-title>
-            </v-list-item>
             <v-list-item @click="logout">
               <v-list-item-title>{{ t('feed.profileActions.logout') }}</v-list-item-title>
             </v-list-item>
@@ -206,16 +203,6 @@
   /* Similar shadow to generic cards */
 }
 
-.points {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-weight: 700;
-  color: #2d2f55;
-  font-size: 0.95rem;
-  white-space: nowrap;
-}
-
 .avatar {
   width: 40px;
   height: 40px;
@@ -231,45 +218,72 @@
   transform: scale(1.05);
 }
 
+.avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: uppercase;
+  user-select: none;
+}
+
 @media (max-width: 1240px) {
-   /* .user-summary {
-    justify-self: end;
-  } */
+  .header-inner {
+    padding: 0 0.75rem;
+  }
 }
 
 @media (max-width: 960px) {
   .header-inner {
     flex-direction: column;
     align-items: center;
+    gap: 0.75rem;
   }
 
   .brand {
     display: none;
-    /* Hide brand on mobile to save space */
   }
 
   .lang-switch-wrapper {
     display: none;
-    /* Hide language switcher on mobile if needed */
-  }
-
-  .points {
-    display: none;
-    /* Hide points on very small screens if needed, or keep it */
   }
 
   .user-summary {
     justify-self: center;
+    position: absolute;
+    top: 0.5rem;
+    right: 1rem;
+    padding: 0.35rem 0.5rem 0.35rem 0.75rem;
   }
 
   .feed-top-header {
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1rem 0.75rem;
+    position: relative;
+  }
+
+  .center-container {
+    width: 100%;
+    padding-top: 0.25rem;
   }
 }
 
-@media (max-width: 600px) {
-  .points {
-    display: none;
+@media (max-width: 480px) {
+  .feed-top-header {
+    padding: 0.4rem 0.5rem 0.6rem;
+  }
+
+  .user-summary {
+    gap: 0.5rem;
+    padding: 0.3rem 0.4rem 0.3rem 0.6rem;
+    top: 0.4rem;
+    right: 0.5rem;
+  }
+
+  .avatar {
+    width: 34px;
+    height: 34px;
   }
 }
 </style>

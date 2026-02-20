@@ -83,6 +83,11 @@ export function useAuth () {
     return AuthService.hasAnyRole(roles)
   }
 
+  const updateUser = (userData: Partial<typeof loggedUser.value>) => {
+    AuthService.updateUser(userData as any)
+    refreshAuthState()
+  }
+
   // Inicia o monitoramento quando o composable é usado
   if (typeof window !== 'undefined') {
     startAuthWatcher()
@@ -103,6 +108,7 @@ export function useAuth () {
     hasRole,
     hasAnyRole,
     refreshAuthState,
+    updateUser,
 
     // Utilitários
     debugAuth: AuthService.debugAuth,

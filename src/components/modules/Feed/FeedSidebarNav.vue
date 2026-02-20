@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  export interface NavItem {
+  interface NavItem {
     id: string
     label: string
     icon: 'home' | 'top' | 'bookmark' | 'bell' | 'profile'

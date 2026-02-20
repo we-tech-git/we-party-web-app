@@ -1,9 +1,10 @@
 <script setup lang="ts">
-  import type { NavItem } from './FeedSidebarNav.vue'
+  import type { NavItem } from '@/types/navigation'
   import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import { getEventById, getTrendingEvents } from '@/api/event'
+  import { useAuth } from '@/composables/useAuth'
   import { useEventsStore } from '@/stores/events'
   import EventDetails from './EventDetails.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
@@ -17,6 +18,7 @@
   const { t } = useI18n()
   const router = useRouter()
   const eventsStore = useEventsStore()
+  const { loggedUser, userDisplayName } = useAuth()
 
   // Background image from event
   const eventBannerUrl = ref('')
@@ -98,11 +100,10 @@
     router.back()
   }
 
-  const user = {
-    name: 'Amanda Costa',
-    avatar: 'https://i.pravatar.cc/80?img=32',
-    points: 356,
-  }
+  const user = computed(() => ({
+    name: userDisplayName.value,
+    avatar: loggedUser.value?.profileImage || '',
+  }))
 
   const navItems = computed<NavItem[]>(() => [
     { id: 'home', label: t('feed.nav.home'), icon: 'home' },

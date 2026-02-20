@@ -9,6 +9,15 @@ export function getInterests () {
 }
 
 /**
+ * Busca interesses recomendados/aleatórios para seleção inicial.
+ * Retorna até 10 interesses para o usuário escolher ao criar perfil.
+ * Rota autenticada.
+ */
+export function getRecommendedInterests (limit = 10) {
+  return callApi('GET', `/interest?limit=${limit}`, undefined, true)
+}
+
+/**
  * Busca interesses por nome.
  * Rota autenticada.
  * @param query - O termo de busca para filtrar interesses por nome.

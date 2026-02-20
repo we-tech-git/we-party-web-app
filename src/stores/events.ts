@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { toggleLikeEvent } from '@/api/event'
+import { getFavoriteEvents, toggleFavoriteEvent, toggleLikeEvent } from '@/api/event'
+import { AuthService } from '@/services/auth'
 
 export type EventId = string | number
 
@@ -18,6 +19,28 @@ export interface FeedItem {
   confirmed: number
   interested: number
   likes?: number
+  interests?: string[]
+}
+
+const SAVED_EVENTS_KEY = 'SAVED_EVENTS'
+const LIKED_EVENTS_KEY = 'LIKED_EVENTS'
+
+function getScopedKey (baseKey: string) {
+  const user = AuthService.getUser()
+  return user?.id ? `${baseKey}_${user.id}` : baseKey
+}
+
+function sanitizeSavedEvents (items: FeedItem[]) {
+  const filtered = items.filter(item => item && item.id !== undefined && item.id !== null)
+  const seen = new Set<string>()
+  return filtered.filter(item => {
+    const key = String(item.id)
+    if (seen.has(key)) {
+      return false
+    }
+    seen.add(key)
+    return true
+  })
 }
 
 export const useEventsStore = defineStore('events', () => {
@@ -25,16 +48,16 @@ export const useEventsStore = defineStore('events', () => {
   const likedEvents = ref<EventId[]>([])
 
   // Load from local storage on init
-  const stored = localStorage.getItem('SAVED_EVENTS')
+  const stored = localStorage.getItem(getScopedKey(SAVED_EVENTS_KEY))
   if (stored) {
     try {
-      savedEvents.value = JSON.parse(stored)
+      savedEvents.value = sanitizeSavedEvents(JSON.parse(stored))
     } catch (error) {
       console.error('Failed to parse saved events', error)
     }
   }
 
-  const likedStored = localStorage.getItem('LIKED_EVENTS')
+  const likedStored = localStorage.getItem(getScopedKey(LIKED_EVENTS_KEY))
   if (likedStored) {
     try {
       likedEvents.value = JSON.parse(likedStored)
@@ -43,14 +66,34 @@ export const useEventsStore = defineStore('events', () => {
     }
   }
 
-  function toggleSave (event: FeedItem) {
+  async function toggleSave (event: FeedItem) {
     const index = savedEvents.value.findIndex(e => e.id === event.id)
-    if (index === -1) {
+    const isAdding = index === -1
+
+    // Atualização otimista na UI
+    if (isAdding) {
       savedEvents.value.push(event)
     } else {
       savedEvents.value.splice(index, 1)
     }
-    localStorage.setItem('SAVED_EVENTS', JSON.stringify(savedEvents.value))
+    localStorage.setItem(getScopedKey(SAVED_EVENTS_KEY), JSON.stringify(savedEvents.value))
+
+    try {
+      // Chama a API para favoritar/desfavoritar
+      await toggleFavoriteEvent(event.id)
+    } catch (error) {
+      console.error('Erro ao favoritar evento no servidor:', error)
+      // Reverte a alteração em caso de erro
+      if (isAdding) {
+        const revertIndex = savedEvents.value.findIndex(e => e.id === event.id)
+        if (revertIndex !== -1) {
+          savedEvents.value.splice(revertIndex, 1)
+        }
+      } else {
+        savedEvents.value.push(event)
+      }
+      localStorage.setItem(getScopedKey(SAVED_EVENTS_KEY), JSON.stringify(savedEvents.value))
+    }
   }
 
   function isSaved (id: EventId) {
@@ -69,7 +112,7 @@ export const useEventsStore = defineStore('events', () => {
     } else {
       likedEvents.value.splice(index, 1)
     }
-    localStorage.setItem('LIKED_EVENTS', JSON.stringify(likedEvents.value))
+    localStorage.setItem(getScopedKey(LIKED_EVENTS_KEY), JSON.stringify(likedEvents.value))
 
     try {
       await toggleLikeEvent(id)
@@ -82,13 +125,44 @@ export const useEventsStore = defineStore('events', () => {
       } else if (!isAdding && revertIndex === -1) {
         likedEvents.value.push(normalizedId)
       }
-      localStorage.setItem('LIKED_EVENTS', JSON.stringify(likedEvents.value))
+      localStorage.setItem(getScopedKey(LIKED_EVENTS_KEY), JSON.stringify(likedEvents.value))
     }
   }
 
   function isLiked (id: EventId) {
     const normalizedId = String(id)
     return likedEvents.value.some(likedId => String(likedId) === normalizedId)
+  }
+
+  /**
+   * Sincroniza os favoritos do localStorage com o servidor
+   * Útil para garantir que o cliente tenha os dados mais atualizados
+   */
+  async function syncFavoritesWithServer () {
+    try {
+      const response = await getFavoriteEvents(1, 100) // Busca até 100 favoritos
+      const data = response.data
+
+      // Tenta extrair eventos de diferentes estruturas de resposta
+      let events: any[] = []
+      if (data?.data?.events) {
+        events = data.data.events
+      } else if (data?.events) {
+        events = data.events
+      } else if (Array.isArray(data?.data)) {
+        events = data.data
+      } else if (Array.isArray(data)) {
+        events = data
+      }
+
+      // Atualiza o localStorage com os favoritos do servidor
+      savedEvents.value = events as FeedItem[]
+      localStorage.setItem(getScopedKey(SAVED_EVENTS_KEY), JSON.stringify(savedEvents.value))
+
+      console.log('✅ Favoritos sincronizados com servidor:', savedEvents.value.length, 'eventos')
+    } catch (error) {
+      console.error('❌ Erro ao sincronizar favoritos com servidor:', error)
+    }
   }
 
   return {
@@ -98,5 +172,6 @@ export const useEventsStore = defineStore('events', () => {
     likedEvents,
     toggleLike,
     isLiked,
+    syncFavoritesWithServer,
   }
 })

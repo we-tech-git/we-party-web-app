@@ -27,14 +27,14 @@ const passwordRecoveryRoutes = autoRoutes.map(route => {
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    // Redirect da rota raiz para a landing page
+    // Redirect da rota raiz para o login
     {
       path: '',
-      redirect: '/public/Landing',
+      redirect: '/public/Login',
     },
     {
       path: '/',
-      redirect: '/public/Landing',
+      redirect: '/public/Login',
     },
     ...setupLayouts(passwordRecoveryRoutes),
   ],
@@ -58,9 +58,8 @@ router.beforeEach((to, from, next) => {
   }
 
   // Verifica se é uma rota pública de autenticação e usuário já está logado
-  // Landing page não deve redirecionar - é página de apresentação
   const path = to.path.toLowerCase()
-  if (path.startsWith('/public') && !path.includes('landing') && (path.includes('login') || path.includes('signup'))) {
+  if (path.startsWith('/public') && (path.includes('login') || path.includes('signup'))) {
     const shouldRedirect = publicRouteGuard()
     if (typeof shouldRedirect === 'string') {
       console.log('✅ Usuário já logado, redirecionando para área privada:', shouldRedirect)
