@@ -158,7 +158,6 @@ export const useEventsStore = defineStore('events', () => {
       // Atualiza o localStorage com os favoritos do servidor
       savedEvents.value = events as FeedItem[]
       localStorage.setItem(getScopedKey(SAVED_EVENTS_KEY), JSON.stringify(savedEvents.value))
-
       console.log('✅ Favoritos sincronizados com servidor:', savedEvents.value.length, 'eventos')
     } catch (error) {
       console.error('❌ Erro ao sincronizar favoritos com servidor:', error)
