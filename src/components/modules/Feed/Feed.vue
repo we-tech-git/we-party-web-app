@@ -156,6 +156,7 @@
       interested: event.interestedCount || 0,
       likes: likesCount,
       interests: (event.eventInterests || event.interests || event.categories || event.tags || []).map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name).filter(Boolean),
+      commentsCount: event.commentsCount ?? event._count?.comments ?? 0,
     }
   }
 
@@ -191,13 +192,16 @@
 
       const events = response.data.events || response.data.content || response.data || []
 
-      if (events.length < limit) {
-        hasMore.value = false
-      }
-
       const mappedEvents = events.map((event: any) => mapEventToFeedItem(event))
 
+      hasMore.value = mappedEvents.length >= limit
+
       items.value = isLoadMore ? [...items.value, ...mappedEvents] : mappedEvents
+
+      if (isLoadMore && mappedEvents.length === 0) {
+        // Reverte o incremento de página se não trouxe resultados
+        page.value = page.value - 1
+      }
 
       filteredItems.value = items.value
     } catch (error) {
@@ -317,9 +321,8 @@
   })
 
   watch(activeTab, () => {
-    if (activeNav.value === 'home') {
-      fetchEvents()
-    }
+    if (activeNav.value === 'favorites') return
+    fetchEvents()
   })
 
   watch(activeNav, val => {
@@ -373,8 +376,6 @@
       } else if (Array.isArray(data)) {
         events = data
       }
-
-      console.log('Eventos favoritos carregados:', events)
 
       hasMore.value = events.length >= limit
 
@@ -452,17 +453,15 @@
           </label>
 
           <nav aria-label="Seções do feed" class="tabs">
-            <template v-if="activeNav !== 'top-events'">
-              <button
-                v-for="tab in tabs"
-                :key="tab.id"
-                :class="{ active: activeTab === tab.id }"
-                type="button"
-                @click="selectTab(tab.id)"
-              >
-                {{ tab.label }}
-              </button>
-            </template>
+            <button
+              v-for="tab in tabs"
+              :key="tab.id"
+              :class="{ active: activeTab === tab.id }"
+              type="button"
+              @click="selectTab(tab.id)"
+            >
+              {{ tab.label }}
+            </button>
           </nav>
         </section>
       </template>
@@ -517,6 +516,7 @@
             :id="item.id"
             :key="item.id"
             :banner="item.banner"
+            :comments-count="item.commentsCount"
             :confirmed="item.confirmed"
             :description="item.description"
             :highlight="activeNav === 'top-events'"

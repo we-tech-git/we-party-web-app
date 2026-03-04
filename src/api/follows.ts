@@ -10,13 +10,10 @@ export async function requestFollowUser (user: User) {
         followingId: user.id,
       },
       true,
-      {
-        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      },
     )
     return response
   } catch (error) {
-    console.error('Erro ao fazer login:', error)
+    console.error('Erro ao seguir usuário:', error)
     throw error
   }
 }
@@ -30,13 +27,10 @@ export async function requestUnFollowUser (user: User) {
         followingId: user.id,
       },
       true,
-      {
-        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      },
     )
     return response
   } catch (error) {
-    console.error('Erro ao fazer login:', error)
+    console.error('Erro ao deixar de seguir usuário:', error)
     throw error
   }
 }

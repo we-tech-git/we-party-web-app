@@ -82,6 +82,7 @@
     "empty": "No events found right now.",
     "profileActions": {
       "changePicture": "Change profile picture",
+      "profile": "My Profile",
       "logout": "Logout"
     }
   },

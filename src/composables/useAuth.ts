@@ -11,9 +11,17 @@ const isAuthenticated = ref(AuthService.isAuthenticated())
 const accessToken = ref(AuthService.getToken())
 const loggedUser = ref(AuthService.getUser())
 
+// Guard para evitar múltiplos setInterval (memory leak)
+let watcherStarted = false
+
 // Watcher para monitorar mudanças no localStorage
 function startAuthWatcher () {
-  // Monitora mudanças no localStorage
+  if (watcherStarted) {
+    return
+  }
+  watcherStarted = true
+
+  // Monitora mudanças no localStorage (outras abas)
   window.addEventListener('storage', e => {
     if (e.key === 'ACCESS_TOKEN' || e.key === 'LOGGED_USER') {
       refreshAuthState()
@@ -21,7 +29,7 @@ function startAuthWatcher () {
   })
 
   // Monitora mudanças no próprio tab
-  const checkInterval = setInterval(() => {
+  setInterval(() => {
     const currentToken = AuthService.getToken()
     const currentUser = AuthService.getUser()
 
@@ -29,12 +37,7 @@ function startAuthWatcher () {
       || JSON.stringify(currentUser) !== JSON.stringify(loggedUser.value)) {
       refreshAuthState()
     }
-  }, 1000) // Verifica a cada segundo
-
-  // Retorna função para limpar o intervalo
-  return () => {
-    clearInterval(checkInterval)
-  }
+  }, 2000) // Verifica a cada 2 segundos
 }
 
 // Atualiza o estado reativo com dados atuais do localStorage
@@ -72,7 +75,6 @@ export function useAuth () {
   const logout = () => {
     AuthService.logout()
     refreshAuthState()
-    console.log('🚪 Logout realizado')
   }
 
   const hasRole = (role: string) => {
@@ -123,29 +125,24 @@ export function privateRouteGuard () {
   const user = AuthService.getUser()
 
   if (!authenticated) {
-    console.log('🔒 Acesso negado - usuário não autenticado')
-    return '/public/Login' // Redireciona para login
+    return '/public/Login'
   }
 
-  // Adicionado: Verifica se o email do usuário foi verificado
   if (user && user.isEmailVerified === false) {
-    console.log('🔒 Acesso negado - e-mail não verificado')
-    return '/public/ConfirmEmail' // Redireciona para a página de confirmação
+    return '/public/ConfirmEmail'
   }
 
-  console.log('✅ Acesso permitido - usuário autenticado e verificado')
-  return true // Permite acesso
+  return true
 }
 
 export function publicRouteGuard () {
   const authenticated = AuthService.isAuthenticated()
 
   if (authenticated) {
-    console.log('✅ Usuário já autenticado, redirecionando para área privada')
-    return '/private/feed' // Redireciona para área privada
+    return '/private/feed'
   }
 
-  return true // Permite acesso às rotas públicas
+  return true
 }
 
 /**
@@ -153,15 +150,12 @@ export function publicRouteGuard () {
  */
 export function roleGuard (requiredRoles: string[]) {
   if (!AuthService.isAuthenticated()) {
-    console.log('🔒 Acesso negado - usuário não autenticado')
     return '/public/Login'
   }
 
   if (!AuthService.hasAnyRole(requiredRoles)) {
-    console.log('🔒 Acesso negado - role insuficiente')
     return '/private/unauthorized'
   }
 
-  console.log('✅ Acesso permitido - role válida')
   return true
 }

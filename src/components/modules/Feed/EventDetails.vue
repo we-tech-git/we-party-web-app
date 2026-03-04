@@ -55,11 +55,11 @@
   const loading = ref(false)
   const errorMessage = ref('')
   const showConfirmModal = ref(false)
-  const isConfirmed = ref(false)
   const activeTab = ref<'info' | 'location' | 'lineup'>('info')
 
   // FAQs state
   const openFaqIndex = ref<number | null>(null)
+  const showFaqs = ref(false)
 
   const faqs = ref([
     {
@@ -195,6 +195,7 @@
 
   const isLiked = computed(() => eventsStore.isLiked(event.value.id))
   const isSaved = computed(() => eventsStore.isSaved(event.value.id))
+  const isConfirmed = computed(() => eventsStore.isConfirmed(event.value.id))
   const displayLikes = computed(() => {
     return (event.value.likes || 0) + (isLiked.value ? 1 : 0)
   })
@@ -258,11 +259,16 @@
   }
 
   function handleConfirmAttendance () {
-    showConfirmModal.value = true
+    if (isConfirmed.value) {
+      // Se já confirmou, desconfirma direto
+      eventsStore.toggleConfirm(event.value.id)
+    } else {
+      showConfirmModal.value = true
+    }
   }
 
   function confirmAttendance () {
-    isConfirmed.value = true
+    eventsStore.toggleConfirm(event.value.id)
     showConfirmModal.value = false
   }
 
@@ -463,9 +469,6 @@
           <span class="organizer-label">Organizado por</span>
           <span class="organizer-name">{{ event.organizer?.name }}</span>
         </div>
-        <button class="follow-btn">
-          <i class="mdi mdi-plus" /> Seguir
-        </button>
       </div>
 
       <!-- Content Tabs -->
@@ -516,6 +519,66 @@
             </div>
             <p class="info-value">{{ event.contactInfo }}</p>
           </div>
+
+          <!-- FAQs Section (collapsible inside info tab) -->
+          <div class="faqs-section-inline">
+            <button class="faqs-toggle-btn" :class="{ open: showFaqs }" @click="showFaqs = !showFaqs">
+              <div class="faqs-toggle-left">
+                <div class="faqs-icon-wrapper-sm">
+                  <i class="mdi mdi-help-circle" />
+                </div>
+                <div class="faqs-toggle-text">
+                  <span class="faqs-toggle-title">Perguntas Frequentes</span>
+                  <span class="faqs-toggle-sub">Tire suas dúvidas sobre o evento</span>
+                </div>
+              </div>
+              <div class="faqs-chevron" :class="{ rotated: showFaqs }">
+                <i class="mdi mdi-chevron-down" />
+              </div>
+            </button>
+
+            <Transition name="faq-expand">
+              <div v-if="showFaqs" class="faqs-content">
+                <div class="faqs-list">
+                  <div
+                    v-for="(faq, index) in faqs"
+                    :key="index"
+                    class="faq-item"
+                    :class="{ open: openFaqIndex === index }"
+                    :style="{ animationDelay: `${index * 0.05}s` }"
+                  >
+                    <button class="faq-question" :style="{ background: faq.gradient }" @click="toggleFaq(index)">
+                      <div class="faq-q-content">
+                        <div class="faq-icon">
+                          <i :class="faq.icon" />
+                        </div>
+                        <span class="faq-q-text">{{ faq.question }}</span>
+                      </div>
+                      <div class="faq-toggle-icon" :class="{ rotated: openFaqIndex === index }">
+                        <i class="mdi mdi-chevron-down" />
+                      </div>
+                    </button>
+                    <Transition name="faq-expand">
+                      <div v-if="openFaqIndex === index" class="faq-answer">
+                        <div class="faq-answer-content">
+                          <i class="mdi mdi-chat-question-outline faq-answer-icon" />
+                          <p>{{ faq.answer }}</p>
+                        </div>
+                      </div>
+                    </Transition>
+                  </div>
+                </div>
+
+                <div class="faqs-footer">
+                  <div class="faqs-footer-content">
+                    <i class="mdi mdi-message-text-outline" />
+                    <p>Não encontrou sua resposta? <a class="faqs-contact-link" href="#">Entre em contato conosco</a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+          </div>
         </div>
 
         <!-- Location Tab -->
@@ -552,56 +615,6 @@
             <div class="lineup-icon">
               <i class="mdi mdi-microphone-variant" />
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- FAQs Section -->
-      <div class="faqs-section">
-        <div class="faqs-header">
-          <div class="faqs-icon-wrapper">
-            <i class="mdi mdi-help-circle" />
-          </div>
-          <div class="faqs-title-block">
-            <h2 class="faqs-title">Perguntas Frequentes</h2>
-            <p class="faqs-subtitle">Tire suas dúvidas sobre o evento</p>
-          </div>
-        </div>
-
-        <div class="faqs-list">
-          <div
-            v-for="(faq, index) in faqs"
-            :key="index"
-            class="faq-item"
-            :class="{ open: openFaqIndex === index }"
-            :style="{ animationDelay: `${index * 0.05}s` }"
-          >
-            <button class="faq-question" :style="{ background: faq.gradient }" @click="toggleFaq(index)">
-              <div class="faq-q-content">
-                <div class="faq-icon">
-                  <i :class="faq.icon" />
-                </div>
-                <span class="faq-q-text">{{ faq.question }}</span>
-              </div>
-              <div class="faq-toggle-icon" :class="{ rotated: openFaqIndex === index }">
-                <i class="mdi mdi-chevron-down" />
-              </div>
-            </button>
-            <Transition name="faq-expand">
-              <div v-if="openFaqIndex === index" class="faq-answer">
-                <div class="faq-answer-content">
-                  <i class="mdi mdi-chat-question-outline faq-answer-icon" />
-                  <p>{{ faq.answer }}</p>
-                </div>
-              </div>
-            </Transition>
-          </div>
-        </div>
-
-        <div class="faqs-footer">
-          <div class="faqs-footer-content">
-            <i class="mdi mdi-message-text-outline" />
-            <p>Não encontrou sua resposta? <a class="faqs-contact-link" href="#">Entre em contato conosco</a></p>
           </div>
         </div>
       </div>
@@ -1576,6 +1589,101 @@
   color: #ccc;
 }
 
+/* FAQs Section - Inline in info tab */
+.faqs-section-inline {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+  background: #fafafa;
+  transition: all 0.3s ease;
+}
+
+.faqs-section-inline:hover {
+  border-color: rgba(255, 95, 166, 0.2);
+}
+
+.faqs-toggle-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.faqs-toggle-btn:hover {
+  background: rgba(255, 95, 166, 0.04);
+}
+
+.faqs-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.faqs-icon-wrapper-sm {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.25);
+}
+
+.faqs-toggle-text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.faqs-toggle-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #333;
+  background: linear-gradient(135deg, #ff5fa6, #ffba4b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.faqs-toggle-sub {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 0.1rem;
+}
+
+.faqs-chevron {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 95, 166, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: #ff5fa6;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.faqs-chevron.rotated {
+  transform: rotate(180deg);
+  background: rgba(255, 95, 166, 0.2);
+}
+
+.faqs-content {
+  border-top: 1px solid rgba(255, 95, 166, 0.1);
+  padding: 1.25rem;
+}
+
 /* FAQs Section */
 .faqs-section {
   padding: 3rem 1.5rem;
@@ -2129,6 +2237,34 @@
     width: 32px;
     height: 32px;
     font-size: 1.3rem;
+  }
+
+  .faqs-toggle-btn {
+    padding: 1rem;
+  }
+
+  .faqs-icon-wrapper-sm {
+    width: 38px;
+    height: 38px;
+    font-size: 1.2rem;
+  }
+
+  .faqs-toggle-title {
+    font-size: 0.9rem;
+  }
+
+  .faqs-toggle-sub {
+    font-size: 0.72rem;
+  }
+
+  .faqs-chevron {
+    width: 32px;
+    height: 32px;
+    font-size: 1.2rem;
+  }
+
+  .faqs-content {
+    padding: 0.85rem;
   }
 }
 </style>

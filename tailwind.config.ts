@@ -2,6 +2,8 @@ import defaultTheme from 'tailwindcss/defaultTheme'
 
 // tailwind.config.ts (Tailwind v4)
 export default {
+  // Ativa dark mode por classe CSS: html.dark { ... }
+  darkMode: 'class',
   // prefixa todas as utilities pra evitar colisão: tw-mx-4, tw-text-lg, etc.
   prefix: '',
   theme: {

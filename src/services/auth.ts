@@ -29,12 +29,10 @@ export const AuthService = {
   saveAuthData (response: LoginResponse): void {
     if (response.token) {
       localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.token)
-      console.log('✅ Token salvo:', STORAGE_KEYS.ACCESS_TOKEN)
     }
 
     if (response.user) {
       localStorage.setItem(STORAGE_KEYS.LOGGED_USER, JSON.stringify(response.user))
-      console.log('✅ Usuário salvo:', STORAGE_KEYS.LOGGED_USER)
     }
   },
 
@@ -95,7 +93,6 @@ export const AuthService = {
     if (currentUser) {
       const updatedUser = { ...currentUser, ...userData }
       localStorage.setItem(STORAGE_KEYS.LOGGED_USER, JSON.stringify(updatedUser))
-      console.log('✅ Dados do usuário atualizados:', updatedUser)
     }
   },
 
@@ -107,7 +104,6 @@ export const AuthService = {
     localStorage.removeItem(STORAGE_KEYS.LOGGED_USER)
     localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
     localStorage.removeItem(STORAGE_KEYS.SESSION_ID)
-    console.log('✅ Logout realizado - dados removidos do localStorage')
   },
 
   /**
@@ -115,7 +111,6 @@ export const AuthService = {
    */
   clearToken (): void {
     localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN)
-    console.log('✅ Token removido do localStorage')
   },
 
   /**

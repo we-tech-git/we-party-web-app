@@ -10,20 +10,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { routes as autoRoutes } from 'vue-router/auto-routes'
 import { privateRouteGuard, publicRouteGuard } from '@/composables/useAuth'
 
-// Adiciona nomes às rotas de recuperação de senha
-const passwordRecoveryRoutes = autoRoutes.map(route => {
-  if (route.path === '/public/RequestPassword') {
-    route.name = 'RequestPassword'
-  }
-  if (route.path === '/public/VerifyPin') {
-    route.name = 'VerifyPin'
-  }
-  if (route.path === '/public/ResetPassword') {
-    route.name = 'ResetPassword'
-  }
-  return route
-})
-
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -36,7 +22,7 @@ const router = createRouter({
       path: '/',
       redirect: '/public/Login',
     },
-    ...setupLayouts(passwordRecoveryRoutes),
+    ...setupLayouts(autoRoutes),
   ],
 })
 
@@ -45,13 +31,10 @@ const router = createRouter({
 // ===============================
 
 router.beforeEach((to, from, next) => {
-  console.log('🚦 Navegando para:', to.path)
-
   // Verifica se é uma rota privada
   if (to.path.startsWith('/private')) {
     const canAccess = privateRouteGuard()
     if (typeof canAccess === 'string') {
-      console.log('🔒 Redirecionando para login:', canAccess)
       next(canAccess)
       return
     }
@@ -62,7 +45,6 @@ router.beforeEach((to, from, next) => {
   if (path.startsWith('/public') && (path.includes('login') || path.includes('signup'))) {
     const shouldRedirect = publicRouteGuard()
     if (typeof shouldRedirect === 'string') {
-      console.log('✅ Usuário já logado, redirecionando para área privada:', shouldRedirect)
       next(shouldRedirect)
       return
     }

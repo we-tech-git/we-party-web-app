@@ -60,11 +60,11 @@ export async function reqeustSendPin ({
       'POST',
       '/users/verify-email',
       { email, code },
-      false, // sem autenticação, pois o usuario ainda não está logado
+      false,
     )
     return response
   } catch (error) {
-    console.error('Erro ao fazer login:', error)
+    console.error('Erro ao verificar e-mail:', error)
     throw error
   }
 }
@@ -75,11 +75,11 @@ export async function reqeustResendPin (email: string) {
       'POST',
       '/users/send-email-verification',
       { email },
-      false, // sem autenticação, pois o usuario ainda não está logado
+      false,
     )
     return response
   } catch (error) {
-    console.error('Erro ao fazer login:', error)
+    console.error('Erro ao reenviar PIN:', error)
     throw error
   }
 }
@@ -90,11 +90,11 @@ export async function requestConfirmEmail (email: string) {
       'POST',
       '/users/send-email-verification',
       { email },
-      false, // sem autenticação, pois o usuario ainda não está logado
+      false,
     )
     return response
   } catch (error) {
-    console.error('Erro ao fazer login:', error)
+    console.error('Erro ao confirmar e-mail:', error)
     throw error
   }
 }
@@ -106,13 +106,10 @@ export async function deleteUser () {
       '/users',
       {},
       true,
-      {
-        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      },
     )
     return response
   } catch (error) {
-    console.error('Erro ao fazer login:', error)
+    console.error('Erro ao excluir usuário:', error)
     throw error
   }
 }
@@ -124,13 +121,10 @@ export async function getUserRecomendations () {
       '/social/recommendations',
       {},
       true,
-      {
-        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      },
     )
     return response
   } catch (error) {
-    console.error('Erro ao fazer login:', error)
+    console.error('Erro ao buscar recomendações de usuários:', error)
     throw error
   }
 }
@@ -173,7 +167,7 @@ export async function getUserInterests () {
 }
 
 /** Atualiza os dados do perfil do usuário */
-export async function updateUserProfile (data: {
+export async function updateUserProfile (userId: string, data: {
   name?: string
   username?: string
   bio?: string
@@ -182,7 +176,7 @@ export async function updateUserProfile (data: {
   try {
     const response = await callApi(
       'PUT',
-      '/users',
+      `/users/${userId}`,
       data,
       true,
     )
@@ -199,21 +193,30 @@ export async function uploadProfileImage (file: File) {
   formData.append('file', file)
 
   const token = localStorage.getItem('ACCESS_TOKEN')
+  const baseUrl = import.meta.env.VITE__BASE_URL
+
+  if (!token) {
+    throw new Error('Token de autenticação não encontrado')
+  }
 
   try {
-    const response = await fetch(`${import.meta.env.VITE__BASE_URL}/users/profile-image`, {
-      method: 'POST',
+    const response = await fetch(`${baseUrl}/users/profile-image`, {
+      method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,
       },
       body: formData,
     })
 
+    console.log('Resposta do servidor (status):', response.status)
+
     if (!response.ok) {
-      throw new Error('Erro ao fazer upload da imagem')
+      const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }))
+      throw new Error(errorData.message || `Erro ao fazer upload da imagem (${response.status})`)
     }
 
-    return await response.json()
+    const data = await response.json()
+    return data
   } catch (error) {
     console.error('Erro ao fazer upload da foto de perfil:', error)
     throw error
@@ -226,21 +229,30 @@ export async function uploadBannerImage (file: File) {
   formData.append('file', file)
 
   const token = localStorage.getItem('ACCESS_TOKEN')
+  const baseUrl = import.meta.env.VITE__BASE_URL
+
+  if (!token) {
+    throw new Error('Token de autenticação não encontrado')
+  }
 
   try {
-    const response = await fetch(`${import.meta.env.VITE__BASE_URL}/users/banner-image`, {
-      method: 'POST',
+    const response = await fetch(`${baseUrl}/users/banner-image`, {
+      method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,
       },
       body: formData,
     })
 
+    console.log('Resposta do servidor (status):', response.status)
+
     if (!response.ok) {
-      throw new Error('Erro ao fazer upload da capa')
+      const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }))
+      throw new Error(errorData.message || `Erro ao fazer upload da capa (${response.status})`)
     }
 
-    return await response.json()
+    const data = await response.json()
+    return data
   } catch (error) {
     console.error('Erro ao fazer upload da capa:', error)
     throw error

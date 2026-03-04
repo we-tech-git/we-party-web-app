@@ -16,7 +16,7 @@
   }>()
   const { t } = useI18n()
   const router = useRouter()
-  const { logout: authLogout } = useAuth()
+  const { logout: authLogout, loggedUser } = useAuth()
 
   const avatarColors = [
     '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
@@ -94,8 +94,59 @@
             </div>
           </template>
 
-          <v-list density="compact" :lines="false">
-            <v-list-item @click="logout">
+          <v-list class="user-dropdown-list" density="compact" :lines="false">
+            <!-- Cabeçalho com info do usuário -->
+            <div class="user-dropdown-header">
+              <div
+                class="dropdown-avatar"
+                :style="{ backgroundColor: getAvatarColor(user.name) }"
+              >
+                <img
+                  v-if="user.avatar"
+                  :alt="user.name"
+                  :src="user.avatar"
+                  style="width:100%;height:100%;border-radius:50%;object-fit:cover;"
+                >
+                <span v-else>{{ getInitial(user.name) }}</span>
+              </div>
+              <div class="dropdown-user-info">
+                <p class="dropdown-user-name">{{ user.name }}</p>
+                <p v-if="loggedUser?.email" class="dropdown-user-email">{{ loggedUser.email }}</p>
+              </div>
+            </div>
+
+            <v-divider class="my-1" />
+
+            <!-- Navegar para perfil -->
+            <v-list-item
+              class="dropdown-action-item"
+              rounded="lg"
+              @click="router.push('/private/profile')"
+            >
+              <template #prepend>
+                <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                </svg>
+              </template>
+              <v-list-item-title>{{ t('feed.profileActions.profile') }}</v-list-item-title>
+            </v-list-item>
+
+            <v-divider class="my-1" />
+
+            <!-- Sair -->
+            <v-list-item
+              class="dropdown-action-item dropdown-logout"
+              rounded="lg"
+              @click="logout"
+            >
+              <template #prepend>
+                <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" x2="9" y1="12" y2="12" />
+                </svg>
+              </template>
               <v-list-item-title>{{ t('feed.profileActions.logout') }}</v-list-item-title>
             </v-list-item>
           </v-list>
@@ -227,6 +278,86 @@
   font-size: 1rem;
   text-transform: uppercase;
   user-select: none;
+}
+
+/* Dropdown do usuário */
+:deep(.user-dropdown-list) {
+  min-width: 230px;
+  padding: 8px !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 32px rgba(14, 23, 58, 0.12) !important;
+}
+
+.user-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 10px;
+}
+
+.dropdown-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(14, 23, 58, 0.12);
+}
+
+.dropdown-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dropdown-user-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #1a1a2e;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-user-email {
+  font-size: 0.75rem;
+  color: #888;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:deep(.dropdown-action-item) {
+  border-radius: 10px !important;
+  gap: 10px;
+  font-size: 0.875rem;
+  color: #333;
+  transition: background 0.15s ease;
+}
+
+:deep(.dropdown-action-item .v-list-item__prepend) {
+  width: 28px;
+  min-width: 28px;
+}
+
+:deep(.dropdown-action-item:hover) {
+  background: rgba(255, 95, 166, 0.07) !important;
+}
+
+:deep(.dropdown-logout) {
+  color: #ff4757 !important;
+}
+
+:deep(.dropdown-logout:hover) {
+  background: rgba(255, 71, 87, 0.07) !important;
 }
 
 @media (max-width: 1240px) {

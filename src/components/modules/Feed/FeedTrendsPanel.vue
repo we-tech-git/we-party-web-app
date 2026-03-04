@@ -1,4 +1,5 @@
 <script setup lang="ts">
+  import { computed, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import router from '@/router'
 
@@ -9,11 +10,20 @@
     engagement: string
   }
 
-  defineProps<{
+  const props = defineProps<{
     items: TrendItem[]
   }>()
 
   const { t } = useI18n()
+
+  const visibleCount = ref(5)
+
+  const visibleItems = computed(() => props.items.slice(0, visibleCount.value))
+  const hasMore = computed(() => props.items.length > visibleCount.value)
+
+  function showMore () {
+    visibleCount.value += 5
+  }
 
   function goToMainEvent (eventItem: TrendItem) {
     router.push(`/private/event/${eventItem.id}`)
@@ -29,14 +39,14 @@
     </header>
 
     <ul>
-      <li v-for="item in items" :key="item.id">
+      <li v-for="item in visibleItems" :key="item.id">
         <span class="label">{{ item.highlight }}</span>
         <button class="main-trending-button" @click="goToMainEvent(item)">{{ item.title }}</button>
         <span class="meta">{{ item.engagement }}</span>
       </li>
     </ul>
 
-    <button class="more" type="button">{{ t('feed.trending.more') }}</button>
+    <button v-if="hasMore" class="more" type="button" @click="showMore">Mostrar mais</button>
   </aside>
 </template>
 

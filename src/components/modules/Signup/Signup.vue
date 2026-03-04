@@ -226,8 +226,6 @@
 
       const response = await createUser(userData)
 
-      console.log('Resposta da API:', response.data)
-
       if (response.status !== 201) {
         throw new Error(`Erro inesperado ao registrar usuário. Status: ${response.status}`)
       }
@@ -278,7 +276,6 @@
     password.value = testData.password
     confirmPassword.value = testData.password
 
-    // Atualiza as regras de senha
     updatePasswordRules(testData.password)
 
     console.log('🚀 Página carregada com dados de teste:', {

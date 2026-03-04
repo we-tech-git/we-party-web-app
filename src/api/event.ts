@@ -7,13 +7,10 @@ export async function getEventRecomendations (page = 1, limit = 10) {
       `/events/recommendations?page=${page}&limit=${limit}`,
       {},
       true,
-      {
-        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      },
     )
     return response
   } catch (error) {
-    console.error('Erro ao fazer login:', error)
+    console.error('Erro ao buscar recomendações:', error)
     throw error
   }
 }
@@ -25,13 +22,10 @@ export async function searchByEvents (search: string, page = 1, limit = 10) {
       `/events/search/name?query=${search}&page=${page}&limit=${limit}`,
       {},
       true,
-      {
-        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      },
     )
     return response
   } catch (error) {
-    console.error('Erro ao fazer login:', error)
+    console.error('Erro ao buscar eventos:', error)
     throw error
   }
 }
@@ -43,13 +37,10 @@ export async function getTrendingEvents (page = 1, limit = 10) {
       `/events/top?page=${page}&limit=${limit}`,
       {},
       true,
-      {
-        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      },
     )
     return response
   } catch (error) {
-    console.error('Erro ao fazer login:', error)
+    console.error('Erro ao buscar eventos em alta:', error)
     throw error
   }
 }
@@ -68,9 +59,6 @@ export async function getEventsToday (page = 1, limit = 10) {
       `/events/by-date-range?startDate=${startDate}&endDate=${endDate}&page=${page}&limit=${limit}`,
       {},
       true,
-      {
-        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      },
     )
     return response
   } catch (error) {
@@ -86,9 +74,6 @@ export async function getEventById (id: string | number) {
       `/events/${id}`,
       {},
       true,
-      {
-        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      },
     )
     return response
   } catch (error) {
@@ -104,9 +89,6 @@ export async function toggleLikeEvent (id: string | number) {
       `/events/${id}/likes`,
       {},
       true,
-      {
-        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      },
     )
     return response
   } catch (error) {
@@ -126,9 +108,6 @@ export async function toggleFavoriteEvent (eventId: string | number) {
       `/events/${eventId}/favorite`,
       {},
       true,
-      {
-        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      },
     )
     return response
   } catch (error) {
@@ -148,9 +127,6 @@ export async function getFavoriteStatus (eventId: string | number) {
       `/events/${eventId}/favorite/status`,
       {},
       true,
-      {
-        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      },
     )
     return response
   } catch (error) {
@@ -171,13 +147,68 @@ export async function getFavoriteEvents (page = 1, limit = 10) {
       `/events/favorites?page=${page}&limit=${limit}`,
       {},
       true,
-      {
-        Authorization: `Bearer ${localStorage.getItem('ACCESS_TOKEN') || ''}`,
-      },
     )
     return response
   } catch (error) {
     console.error('Erro ao buscar eventos favoritos:', error)
+    throw error
+  }
+}
+
+/**
+ * Confirma ou cancela presença em um evento.
+ * @param eventId - ID do evento.
+ */
+export async function toggleAttendance (eventId: string | number) {
+  try {
+    const response = await callApi(
+      'PUT',
+      `/events/${eventId}/attendance`,
+      {},
+      true,
+    )
+    return response
+  } catch (error) {
+    console.error('Erro ao confirmar presença:', error)
+    throw error
+  }
+}
+
+/**
+ * Verifica status de presença em um evento.
+ * @param eventId - ID do evento.
+ */
+export async function getAttendanceStatus (eventId: string | number) {
+  try {
+    const response = await callApi(
+      'GET',
+      `/events/${eventId}/attendance/status`,
+      {},
+      true,
+    )
+    return response
+  } catch (error) {
+    console.error('Erro ao verificar presença:', error)
+    throw error
+  }
+}
+
+/**
+ * Busca eventos curtidos pelo usuário.
+ * @param page - Página de resultados.
+ * @param limit - Quantidade de eventos por página.
+ */
+export async function getLikedEvents (page = 1, limit = 10) {
+  try {
+    const response = await callApi(
+      'GET',
+      `/users/liked-events?page=${page}&limit=${limit}`,
+      {},
+      true,
+    )
+    return response
+  } catch (error) {
+    console.error('Erro ao buscar eventos curtidos:', error)
     throw error
   }
 }

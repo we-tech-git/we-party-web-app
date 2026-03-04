@@ -23,6 +23,7 @@ declare module 'vue' {
     FeedSidebarNav: typeof import('./components/modules/Feed/FeedSidebarNav.vue')['default']
     FeedTopHeader: typeof import('./components/modules/Feed/FeedTopHeader.vue')['default']
     FeedTrendsPanel: typeof import('./components/modules/Feed/FeedTrendsPanel.vue')['default']
+    InlineComments: typeof import('./components/modules/Feed/InlineComments.vue')['default']
     InputLabel: typeof import('./components/UI/inputLabel/InputLabel.vue')['default']
     Interest: typeof import('./components/modules/interest/Interest.vue')['default']
     LanguageSwitcher: typeof import('./components/LanguageSwitcher.vue')['default']

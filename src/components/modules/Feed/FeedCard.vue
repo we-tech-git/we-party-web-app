@@ -1,8 +1,8 @@
 <script setup lang="ts">
-  import { computed, ref } from 'vue'
+  import { computed, ref, watch } from 'vue'
   import { useShareStore } from '@/stores/share'
   import { svgIcons } from '@/utils/svgSet'
-  import CommentsDrawer from './CommentsDrawer.vue'
+  import InlineComments from './InlineComments.vue'
 
   const props = defineProps<{
     id: string | number
@@ -21,6 +21,7 @@
     highlight?: boolean
     rank?: number
     interests?: string[]
+    commentsCount?: number
   }>()
 
   const emit = defineEmits<{
@@ -30,17 +31,15 @@
   function formatCount (value: number | undefined | null): string {
     const num = Number(value) || 0
     if (num < 1000) return num.toString()
-
     const rounded = num / 1000
     const formatted = rounded % 1 === 0 ? Math.trunc(rounded).toString() : rounded.toFixed(1)
-
     return `${formatted}k`
   }
 
   const fallbackBanner = 'https://via.placeholder.com/1200x600?text=Evento'
 
   function resolveAsset (val?: string) {
-    if (!val) return '' // Mudança aqui: não retorna fallback padrão se for vazio
+    if (!val) return ''
     if (/^https?:\/\//i.test(val)) return val
     const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
     const path = val.startsWith('/') ? val : `/${val}`
@@ -54,12 +53,8 @@
 
   const hostAvatarSrc = computed(() => resolveAsset(props.hostAvatar))
 
-  // Lógica para avatar gerado (iniciais + cor)
-  const hostInitial = computed(() => {
-    return (props.hostName || 'U').charAt(0).toUpperCase()
-  })
+  const hostInitial = computed(() => (props.hostName || 'U').charAt(0).toUpperCase())
 
-  // Lista de cores pastel / material design
   const avatarColors = [
     '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
     '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
@@ -72,13 +67,21 @@
     for (let i = 0; i < props.hostName.length; i++) {
       hash = (props.hostName.codePointAt(i) || 0) + ((hash << 5) - hash)
     }
-    const index = Math.abs(hash % avatarColors.length)
-    return avatarColors[index]
+    return avatarColors[Math.abs(hash % avatarColors.length)]
   })
 
   const shareStore = useShareStore()
 
   const showComments = ref(false)
+  const localCommentsCount = ref(props.commentsCount ?? 0)
+
+  watch(() => props.commentsCount, val => {
+    if (val !== undefined) localCommentsCount.value = val
+  })
+
+  function handleUpdateCommentsCount (count: number) {
+    localCommentsCount.value = count
+  }
 
   function handleShare () {
     shareStore.open({
@@ -94,9 +97,16 @@
     <div v-if="highlight && rank" class="rank-badge">
       <span>#</span>{{ rank }}
     </div>
+
     <figure class="media">
+      <!-- Banner Image -->
       <img :alt="title" class="banner" loading="lazy" :src="bannerSrc">
 
+      <!-- Gradient layers -->
+      <div class="gradient-vignette" />
+      <div class="gradient-bottom" />
+
+      <!-- Host tag -->
       <div class="host-tag">
         <template v-if="hostAvatarSrc">
           <img :alt="hostName" class="host-avatar" loading="lazy" :src="hostAvatarSrc">
@@ -109,6 +119,7 @@
         <span>{{ hostName }}</span>
       </div>
 
+      <!-- Bookmark -->
       <button
         aria-label="Salvar evento"
         class="bookmark"
@@ -119,14 +130,14 @@
         <svg
           aria-hidden="true"
           :fill="isSaved ? 'currentColor' : 'none'"
-          height="22"
+          height="20"
           role="presentation"
           stroke="currentColor"
           stroke-linecap="round"
           stroke-linejoin="round"
           stroke-width="2"
           viewBox="0 0 24 24"
-          width="22"
+          width="20"
         >
           <path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z" />
         </svg>
@@ -135,41 +146,80 @@
         </v-tooltip>
       </button>
 
+      <!-- Main overlay content -->
       <figcaption class="overlay">
 
-        <h3 class="title">{{ title }}</h3>
-        <div class="meta-wrapper">
-          <span class="schedule">{{ schedule }}</span>
-          <span v-if="location" class="location"> • {{ location }}</span>
-        </div>
-        <p class="description">{{ description }}</p>
-
+        <!-- Interests chips — topo do overlay -->
         <div v-if="interests && interests.length > 0" class="interests-row">
           <span v-for="tag in interests" :key="tag" class="interest-chip">
             {{ tag }}
           </span>
         </div>
 
+        <!-- Title -->
+        <h3 class="title">{{ title }}</h3>
+
+        <!-- Date + Location pill -->
+        <div class="meta-wrapper">
+          <!-- Calendar icon -->
+          <svg
+            fill="none"
+            height="13"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="13"
+          >
+            <rect
+              height="18"
+              rx="2"
+              ry="2"
+              width="18"
+              x="3"
+              y="4"
+            />
+            <line x1="16" x2="16" y1="2" y2="6" />
+            <line x1="8" x2="8" y1="2" y2="6" />
+            <line x1="3" x2="21" y1="10" y2="10" />
+          </svg>
+          <span class="schedule">{{ schedule }}</span>
+          <template v-if="location">
+            <span class="meta-sep">·</span>
+            <!-- Location pin icon -->
+            <svg
+              fill="none"
+              height="12"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="12"
+            >
+              <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            <span class="location">{{ location }}</span>
+          </template>
+        </div>
+
+        <!-- Footer: stats + actions -->
         <footer class="footer">
           <div aria-label="Indicadores do evento" class="stats">
-            <button
-              class="stat stat-action"
-              :class="{ liked }
-              "
-              type="button"
-              @click.stop="emit('toggle-like')"
-            >
+            <button class="stat stat-action" :class="{ liked }" type="button" @click.stop="emit('toggle-like')">
               <svg
                 aria-hidden="true"
-                fill="none"
-                height="18"
+                :fill="liked ? 'currentColor' : 'none'"
+                height="17"
                 role="presentation"
                 stroke="currentColor"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                stroke-width="1.8"
+                stroke-width="2"
                 viewBox="0 0 24 24"
-                width="18"
+                width="17"
               >
                 <path
                   d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
@@ -177,26 +227,30 @@
               </svg>
               {{ formatCount(likes) }}
             </button>
-          </div>
-
-          <div class="actions">
-            <button aria-label="Comentários" class="icon-button" type="button" @click.stop="showComments = true">
+            <button
+              aria-label="Comentários"
+              class="stat stat-action comments-action"
+              :class="{ active: showComments }"
+              type="button"
+              @click.stop="showComments = !showComments"
+            >
               <svg
                 fill="none"
-                height="18"
+                height="17"
                 stroke="currentColor"
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
                 viewBox="0 0 24 24"
-                width="18"
+                width="17"
               >
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-              <v-tooltip activator="parent" content-class="feed-card-tooltip" location="top" offset="10">
-                Comentários
-              </v-tooltip>
+              {{ formatCount(localCommentsCount) }}
             </button>
+          </div>
+
+          <div class="actions">
             <router-link aria-label="Ver detalhes" class="icon-button" :to="`/private/event/${id}`">
               <svg
                 v-if="svgIcons.infoIcon"
@@ -215,9 +269,12 @@
                   stroke-width="16"
                 />
               </svg>
-              <v-tooltip activator="parent" content-class="feed-card-tooltip" location="top" offset="10">
-                Detalhes
-              </v-tooltip>
+              <v-tooltip
+                activator="parent"
+                content-class="feed-card-tooltip"
+                location="top"
+                offset="10"
+              >Detalhes</v-tooltip>
             </router-link>
             <button aria-label="Compartilhar" class="icon-button" type="button" @click.prevent="handleShare">
               <svg
@@ -237,114 +294,130 @@
                   stroke-width="16"
                 />
               </svg>
-              <v-tooltip activator="parent" content-class="feed-card-tooltip" location="top" offset="10">
-                Compartilhar
-              </v-tooltip>
+              <v-tooltip
+                activator="parent"
+                content-class="feed-card-tooltip"
+                location="top"
+                offset="10"
+              >Compartilhar</v-tooltip>
             </button>
           </div>
         </footer>
       </figcaption>
     </figure>
 
-    <CommentsDrawer v-model="showComments" :event-id="id" />
+    <InlineComments :event-id="id" :visible="showComments" @update:count="handleUpdateCommentsCount" />
   </article>
 </template>
 
 <style>
-/* Global style strictly scoped to this component's tooltip usage via content-class */
+/* Global — strict to feed-card tooltips via content-class */
 .v-overlay__content.feed-card-tooltip {
-  background: rgba(14, 20, 38, 0.85) !important;
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  background: rgba(14, 20, 38, 0.88) !important;
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
   border-radius: 12px !important;
   padding: 6px 12px !important;
-  font-size: 0.75rem !important;
+  font-size: 0.72rem !important;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #ffba4b !important;
 }
 </style>
 
 <style scoped>
+/* ─── CSS variable defaults (overridden per-card by JS) ─────────────────── */
+.feed-card {
+  --accent: #ff5fa6;
+  --accent-light: #ffba4b;
+  --accent-rgb: 255, 95, 166;
+  --accent-light-rgb: 255, 186, 75;
+}
+
+/* ─── Card shell ─────────────────────────────────────────────────────────── */
 .feed-card {
   position: relative;
-  border-radius: 32px;
+  border-radius: 28px;
   overflow: visible;
-  background: #0a0f1f;
-  box-shadow: 0 28px 58px rgba(12, 16, 37, 0.356);
+  background: #07091a;
+  box-shadow: 0 24px 52px rgba(0, 0, 0, 0.4);
   isolation: isolate;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  padding: 0.45rem;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s ease;
+  padding: 0.35rem;
   width: 100%;
 }
 
-.feed-card.highlight-card {
-  box-shadow: 0 30px 60px rgba(255, 95, 166, 0.15), 0 0 0 1px rgba(255, 186, 75, 0.3);
+.feed-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 36px 70px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(var(--accent-rgb), 0.18);
 }
 
-/* Gradient border effect via pseudo-element to respect border-radius */
+/* Highlight card */
+.feed-card.highlight-card {
+  box-shadow: 0 28px 56px rgba(var(--accent-rgb), 0.2),
+    0 0 0 1px rgba(var(--accent-light-rgb), 0.25);
+}
+
 .feed-card.highlight-card::before {
   content: "";
   position: absolute;
   inset: -2px;
   z-index: -1;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6, #9C27B0);
-  border-radius: 34px;
-  /* feed-card radius (32px) + 2px offset */
-  opacity: 0.6;
+  background: linear-gradient(135deg, var(--accent-light), var(--accent), #9C27B0);
+  border-radius: 30px;
+  opacity: 0.55;
   transition: opacity 0.3s ease;
 }
 
 .feed-card.highlight-card:hover::before {
-  opacity: 1;
+  opacity: 0.9;
 }
 
+/* Rank badge */
 .rank-badge {
   position: absolute;
   top: -12px;
   left: -12px;
   z-index: 50;
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 100%);
+  color: #fff;
   font-weight: 800;
-  font-size: 1.8rem;
-  border-radius: 20px;
-  box-shadow: 0 4px 15px rgba(255, 95, 166, 0.5);
-  transform: rotate(-10deg) scale(1);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  font-size: 1.65rem;
+  border-radius: 18px;
+  box-shadow: 0 6px 18px rgba(var(--accent-rgb), 0.55);
+  transform: rotate(-10deg);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .rank-badge span {
-  font-size: 1rem;
-  margin-right: 2px;
-  opacity: 0.8;
+  font-size: 0.9rem;
+  opacity: 0.75;
   vertical-align: top;
-  margin-top: -8px;
+  margin-top: -7px;
+  margin-right: 1px;
 }
 
 .feed-card.highlight-card:hover .rank-badge {
   transform: rotate(0deg) scale(1.1);
 }
 
-.feed-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 36px 68px rgba(12, 16, 37, 0.45);
-}
-
+/* ─── Media ──────────────────────────────────────────────────────────────── */
 .media {
   position: relative;
   margin: 0;
   height: 100%;
-  border-radius: 24px;
+  border-radius: 22px;
   overflow: hidden;
   transform: translateZ(0);
 }
@@ -352,349 +425,372 @@
 .banner {
   display: block;
   width: 100%;
-  height: clamp(320px, 35vw, 420px);
+  height: clamp(330px, 36vw, 440px);
   object-fit: cover;
-  padding: 0rem;
 }
 
+/* ─── Gradient layers ────────────────────────────────────────────────────── */
+/* Subtle dark vignette top-right (keeps host tag readable) */
+.gradient-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 85% 0%, rgba(0, 0, 0, 0.45) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Bottom gradient — dynamic color bleeds into the dark base */
+.gradient-bottom {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to top,
+      rgba(var(--accent-rgb), 0.38) 0%,
+      rgba(7, 9, 26, 0.96) 28%,
+      rgba(7, 9, 26, 0.55) 55%,
+      transparent 100%);
+  pointer-events: none;
+  z-index: 2;
+  transition: background 0.6s ease;
+}
+
+/* ─── Host tag ───────────────────────────────────────────────────────────── */
 .host-tag {
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: 18px;
+  left: 18px;
+  z-index: 10;
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.45rem 0.85rem;
+  gap: 0.55rem;
+  padding: 0.4rem 0.8rem 0.4rem 0.45rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-  color: #23253f;
-  font-size: 0.82rem;
+  background: rgba(255, 255, 255, 0.93);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  color: #1a1d35;
+  font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  transition: transform 0.2s ease;
+}
+
+.host-tag:hover {
+  transform: scale(1.03);
+}
+
+.host-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .host-avatar.placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-weight: bold;
-  font-size: 0.85rem;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.78rem;
   text-transform: uppercase;
 }
 
-.host-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  object-fit: cover;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
+/* ─── Bookmark ───────────────────────────────────────────────────────────── */
 .bookmark {
   position: absolute;
-  top: clamp(18px, 2.2vw, 30px);
-  right: clamp(18px, 2.2vw, 30px);
-  z-index: 20;
+  top: 18px;
+  right: 18px;
+  z-index: 10;
   display: grid;
   place-items: center;
-  width: clamp(46px, 3.8vw, 56px);
-  height: clamp(46px, 3.8vw, 56px);
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(7, 10, 22, 0.6);
-  backdrop-filter: blur(8px);
-  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(7, 10, 22, 0.55);
+  backdrop-filter: blur(10px);
+  color: #fff;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .bookmark:hover {
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
-  transform: translateY(-3px) scale(1.05);
-  box-shadow: 0 8px 20px rgba(255, 95, 166, 0.4);
+  background: linear-gradient(135deg, var(--accent-light), var(--accent));
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.45);
   border-color: transparent;
 }
 
 .bookmark.saved {
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
-  color: #fff;
-  box-shadow: 0 8px 16px rgba(255, 95, 166, 0.3);
+  background: linear-gradient(135deg, var(--accent-light), var(--accent));
+  box-shadow: 0 6px 16px rgba(var(--accent-rgb), 0.4);
+  border-color: transparent;
 }
 
+/* ─── Overlay (figcaption) ───────────────────────────────────────────────── */
 .overlay {
   position: absolute;
   inset: 0;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  gap: 0.5rem;
+  padding: clamp(1.2rem, 3.5vw, 1.8rem);
+  padding-top: 4.5rem;
+  color: #fff;
+}
+
+/* ─── Interests chips ────────────────────────────────────────────────────── */
+.interests-row {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.35rem;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 20%, rgba(13, 16, 43, 0.85) 60%, rgba(8, 13, 30, 0.98) 100%);
-  color: #ffffff;
-  padding: clamp(1.4rem, 4vw, 2rem);
-  padding-top: 5rem;
+  margin-bottom: 0.15rem;
+}
+
+.interest-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.22rem 0.7rem;
+  border-radius: 999px;
+  /* Dynamic: glass chip tinted with extracted accent */
+  background: rgba(var(--accent-rgb), 0.18);
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  color: var(--accent-light);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* ─── Title ──────────────────────────────────────────────────────────────── */
+.title {
+  margin: 0;
+  font-size: clamp(1.4rem, 1.1vw + 1.35rem, 2.4rem);
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Meta pill ──────────────────────────────────────────────────────────── */
+.meta-wrapper {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  padding: 0.32rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.meta-wrapper svg {
+  flex-shrink: 0;
+  opacity: 0.8;
 }
 
 .schedule {
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 0.76rem;
   font-weight: 700;
-  font-size: 0.8rem;
-  color: #ffba4b;
+  letter-spacing: 0.04em;
+  color: var(--accent-light);
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color 0.4s ease;
+}
+
+.meta-sep {
+  opacity: 0.35;
+  font-size: 0.7rem;
 }
 
 .location {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.95);
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.88);
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px;
+  max-width: 180px;
 }
 
-.meta-wrapper {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.2rem;
-  margin-bottom: 0.4rem;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
-  padding: 0.35rem 0.8rem;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  align-self: flex-start;
-}
-
-.title {
-  margin: 0;
-  font-size: clamp(1.5rem, 1.2vw + 1.45rem, 2.55rem);
-  line-height: 1.15;
-  font-weight: 800;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.description {
-  margin: 0;
-  font-size: clamp(1rem, 0.4vw + 0.95rem, 1.18rem);
-  line-height: 1.65;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.interests-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.35rem;
-}
-
-.interest-chip {
-  display: inline-block;
-  padding: 0.2rem 0.65rem;
-  border-radius: 999px;
-  background: rgba(255, 186, 75, 0.15);
-  border: 1px solid rgba(255, 186, 75, 0.35);
-  color: #ffba4b;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
+/* ─── Footer ─────────────────────────────────────────────────────────────── */
 .footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  margin-top: clamp(0.75rem, 1vw, 1.5rem);
+  margin-top: 0.4rem;
 }
 
 .stats {
   display: flex;
   align-items: center;
-  gap: 1.2rem;
+  gap: 1.1rem;
   font-weight: 600;
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .stat {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .stat-action {
   border: none;
   background: transparent;
-  color: #ffffff;
+  color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
   transition: transform 0.15s ease, color 0.2s ease;
 }
 
 .stat-action:hover {
   transform: translateY(-1px);
-  color: #ff8dc5;
+  color: var(--accent-light);
 }
 
 .stat-action.liked {
-  color: #ff5fa6;
+  color: var(--accent);
 }
 
+.stat-action.comments-action:hover {
+  color: #fff;
+}
+
+.stat-action.comments-action.active {
+  color: var(--accent-light);
+}
+
+/* ─── Actions (icon buttons) ─────────────────────────────────────────────── */
 .actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.45rem;
   position: relative;
   z-index: 1;
-  justify-content: center;
 }
 
 .icon-button {
   display: grid;
   place-items: center;
-  width: clamp(38px, 3vw, 48px);
-  height: clamp(38px, 3vw, 48px);
-  border-radius: clamp(12px, 2vw, 16px);
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(4px);
-  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  color: #fff;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .icon-button:hover {
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 16px rgba(255, 95, 166, 0.3);
+  background: linear-gradient(135deg, var(--accent-light), var(--accent));
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 18px rgba(var(--accent-rgb), 0.4);
   border-color: transparent;
 }
 
-.bookmark svg,
-.stat svg,
-.icon-button svg {
-  width: clamp(20px, 2.3vw, 24px);
-  height: clamp(20px, 2.3vw, 24px);
-}
-
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 920px) {
   .feed-card {
-    padding: 0.35rem;
-    border-radius: 28px;
+    padding: 0.3rem;
+    border-radius: 24px;
+  }
+
+  .media {
+    border-radius: 20px;
   }
 
   .banner {
-    height: clamp(260px, 40vw, 320px);
+    height: clamp(260px, 40vw, 330px);
   }
 
   .overlay {
-    padding: clamp(1.2rem, 3.5vw, 1.8rem);
+    padding: clamp(1rem, 3vw, 1.5rem);
   }
 }
 
 @media (max-width: 640px) {
   .feed-card {
-    padding: 0.25rem;
+    padding: 0.22rem;
     border-radius: 20px;
   }
 
   .media {
-    border-radius: 18px;
+    border-radius: 17px;
   }
 
   .banner {
-    height: clamp(280px, 75vw, 360px);
+    height: clamp(270px, 72vw, 360px);
   }
 
   .host-tag {
     top: 12px;
     left: 12px;
-    padding: 0.35rem 0.7rem;
-    font-size: 0.75rem;
-    gap: 0.4rem;
+    font-size: 0.73rem;
+    padding: 0.32rem 0.65rem 0.32rem 0.38rem;
   }
 
   .host-avatar {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
   }
 
   .bookmark {
-    width: 40px;
-    height: 40px;
-  }
-
-  .bookmark svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .footer {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .actions {
-    margin-top: 0;
+    width: 38px;
+    height: 38px;
+    top: 12px;
+    right: 12px;
   }
 
   .title {
-    font-size: 1.3rem;
-  }
-
-  .description {
-    font-size: 0.85rem;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    font-size: 1.25rem;
   }
 
   .location {
-    max-width: 150px;
+    max-width: 130px;
   }
 }
 
 @media (max-width: 480px) {
   .feed-card {
-    padding: 0.2rem;
+    padding: 0.18rem;
     border-radius: 16px;
   }
 
   .media {
-    border-radius: 14px;
+    border-radius: 13px;
   }
 
   .banner {
-    height: clamp(240px, 65vw, 300px);
+    height: clamp(230px, 64vw, 295px);
   }
 
   .overlay {
-    padding: 1rem;
-    gap: 0.25rem;
+    padding: 0.9rem;
+    gap: 0.3rem;
   }
 
   .title {
-    font-size: 1.15rem;
-  }
-
-  .description {
-    font-size: 0.8rem;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    font-size: 1.1rem;
   }
 
   .stats {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
   }
 
   .icon-button {
@@ -704,31 +800,35 @@
   }
 
   .rank-badge {
-    width: 44px;
-    height: 44px;
-    font-size: 1.4rem;
-    border-radius: 14px;
+    width: 42px;
+    height: 42px;
+    font-size: 1.3rem;
+    border-radius: 13px;
     top: -8px;
     left: -8px;
   }
 
   .rank-badge span {
-    font-size: 0.8rem;
+    font-size: 0.76rem;
   }
 
   .meta-wrapper {
     padding: 0.25rem 0.6rem;
-    border-radius: 8px;
     gap: 0.3rem;
   }
 
-  .schedule {
-    font-size: 0.7rem;
+  .schedule,
+  .location {
+    font-size: 0.68rem;
   }
 
   .location {
-    font-size: 0.7rem;
-    max-width: 120px;
+    max-width: 110px;
+  }
+
+  .interest-chip {
+    font-size: 0.63rem;
+    padding: 0.18rem 0.55rem;
   }
 }
 </style>

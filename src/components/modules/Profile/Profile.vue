@@ -1,23 +1,47 @@
 <script setup lang="ts">
   import type { NavItem } from '@/types/navigation'
-  import { computed, onMounted, reactive, ref } from 'vue'
+  import { computed, onMounted, reactive, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
+  import { callApi } from '@/api'
   import { getUserInterests, getUserProfile, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
   import AppFooter from '@/components/AppFooter.vue'
   import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
   import FeedTopHeader from '@/components/modules/Feed/FeedTopHeader.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import { useAuth } from '@/composables/useAuth'
+  import { useThemeMode } from '@/composables/useThemeMode'
+  import { AuthService } from '@/services/auth'
+  import { useEventsStore } from '@/stores/events'
 
   const { t } = useI18n()
   const router = useRouter()
   const { loggedUser, updateUser } = useAuth()
+  const eventsStore = useEventsStore()
 
   // ── Loading state ──
   const loading = ref(true)
   const error = ref<string | null>(null)
   const uploadingAvatar = ref(false)
   const uploadingBanner = ref(false)
+
+  // ── Snackbar ──
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#22c55e')
+
+  function showSnackbar (message: string, color = '#22c55e') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+    if (snackbarVisible.value) {
+      snackbarVisible.value = false
+      requestAnimationFrame(() => {
+        snackbarVisible.value = true
+      })
+      return
+    }
+    snackbarVisible.value = true
+  }
 
   // ── Avatar colors para fallback ──
   const avatarColors = [
@@ -44,10 +68,11 @@
   }
 
   // ── User data (reactive for editing) ──
+  // Inicializa com os dados do loggedUser (dados salvos durante o login)
   const user = reactive({
-    name: '',
-    username: '',
-    avatar: '',
+    name: loggedUser.value?.name || '',
+    username: loggedUser.value?.username ? `@${loggedUser.value.username}` : '',
+    avatar: loggedUser.value?.profileImage || '',
     banner: '',
     bio: '',
     location: '',
@@ -56,6 +81,26 @@
       following: 0,
       followers: 0,
     },
+  })
+
+  // Watch loggedUser — só refaz o fetch se o ID do usuário mudou (evita loop infinito)
+  watch(() => loggedUser.value?.id, (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      user.name = loggedUser.value?.name || ''
+      user.username = loggedUser.value?.username ? `@${loggedUser.value.username}` : ''
+      user.avatar = loggedUser.value?.profileImage || ''
+      fetchUserProfile()
+    }
+  })
+
+  onMounted(async () => {
+    if (loggedUser.value?.id) {
+      await fetchUserProfile()
+      await fetchLikedEvents()
+    } else {
+      error.value = 'Usuário não autenticado'
+      loading.value = false
+    }
   })
 
   // ── User interests ──
@@ -92,12 +137,13 @@
       loading.value = true
       error.value = null
       const response = await getUserProfile(loggedUser.value.id)
-      const userData = response.data
+      // A API retorna { success, data: { ...camposDoUsuario } }
+      const userData = response.data?.data ?? response.data
 
-      // Popula os dados do usuário
-      user.name = userData.name || ''
-      user.username = userData.username ? `@${userData.username}` : ''
-      user.avatar = userData.profileImage || userData.avatar || ''
+      // Popula os dados do usuário, mantendo dados do loggedUser como fallback
+      user.name = userData.name || loggedUser.value?.name || ''
+      user.username = userData.username ? `@${userData.username}` : (loggedUser.value?.username ? `@${loggedUser.value.username}` : '')
+      user.avatar = userData.profileImage || userData.avatar || loggedUser.value?.profileImage || ''
       user.banner = userData.banner || userData.bannerImage || ''
       user.bio = userData.bio || ''
       user.location = userData.location || ''
@@ -114,8 +160,7 @@
 
       // Busca os interesses do usuário
       await fetchUserInterests()
-    } catch (error_) {
-      console.error('Erro ao carregar perfil:', error_)
+    } catch {
       error.value = 'Erro ao carregar dados do perfil'
     } finally {
       loading.value = false
@@ -140,10 +185,7 @@
       } else {
         userInterests.value = []
       }
-
-      console.log('Interesses do usuário:', userInterests.value)
-    } catch (error_) {
-      console.error('Erro ao buscar interesses:', error_)
+    } catch {
       userInterests.value = []
     }
   }
@@ -156,6 +198,20 @@
       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
     ]
     return `${months[date.getMonth()]} de ${date.getFullYear()}`
+  }
+
+  // ── Format short date for mini cards ──
+  function formatShortDate (dateString: string): string {
+    try {
+      const date = new Date(dateString)
+      if (Number.isNaN(date.getTime())) return 'Em breve'
+
+      const day = date.getDate().toString().padStart(2, '0')
+      const month = (date.getMonth() + 1).toString().padStart(2, '0')
+      return `${day}/${month}`
+    } catch {
+      return 'Em breve'
+    }
   }
 
   // ── Upload handlers ──
@@ -180,21 +236,44 @@
     const file = input.files?.[0]
     if (!file) return
 
+    // Validação do arquivo
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) {
+      showSnackbar('A imagem deve ter no máximo 5MB', '#ef4444')
+      input.value = ''
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showSnackbar('Por favor, selecione apenas arquivos de imagem', '#ef4444')
+      input.value = ''
+      return
+    }
+
     try {
       uploadingAvatar.value = true
+
       const result = await uploadProfileImage(file)
-      const newAvatarUrl = result.url || result.profileImage || result.data?.url || ''
+
+      // Tenta extrair a URL de diferentes estruturas de resposta
+      const newAvatarUrl = result.url || result.profileImage || result.data?.url || result.data?.profileImage || ''
+
+      if (!newAvatarUrl) {
+        throw new Error('URL da imagem não foi retornada pela API')
+      }
+
       user.avatar = newAvatarUrl
-      console.log('Avatar atualizado:', user.avatar)
 
       // Sincroniza com localStorage para manter consistência
       updateUser({ profileImage: newAvatarUrl })
-    } catch (error_) {
-      console.error('Erro ao fazer upload do avatar:', error_)
-      alert('Erro ao fazer upload da foto. Tente novamente.')
+
+      showSnackbar('Foto de perfil atualizada com sucesso! 🎉')
+    } catch (error_: any) {
+      const errorMessage = error_.message || 'Erro ao fazer upload da foto. Tente novamente.'
+      showSnackbar(errorMessage, '#ef4444')
     } finally {
       uploadingAvatar.value = false
-      input.value = '' // Reset input
+      input.value = ''
     }
   }
 
@@ -203,23 +282,43 @@
     const file = input.files?.[0]
     if (!file) return
 
+    // Validação do arquivo
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) {
+      showSnackbar('A imagem deve ter no máximo 5MB', '#ef4444')
+      input.value = ''
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showSnackbar('Por favor, selecione apenas arquivos de imagem', '#ef4444')
+      input.value = ''
+      return
+    }
+
     try {
       uploadingBanner.value = true
+
       const result = await uploadBannerImage(file)
-      user.banner = result.url || result.bannerImage || result.data?.url || ''
-      console.log('Banner atualizado:', user.banner)
-    } catch (error_) {
-      console.error('Erro ao fazer upload do banner:', error_)
-      alert('Erro ao fazer upload da capa. Tente novamente.')
+
+      // Tenta extrair a URL de diferentes estruturas de resposta
+      const newBannerUrl = result.url || result.bannerImage || result.data?.url || result.data?.bannerImage || ''
+
+      if (!newBannerUrl) {
+        throw new Error('URL do banner não foi retornada pela API')
+      }
+
+      user.banner = newBannerUrl
+
+      showSnackbar('Capa atualizada com sucesso! 🎉')
+    } catch (error_: any) {
+      const errorMessage = error_.message || 'Erro ao fazer upload da capa. Tente novamente.'
+      showSnackbar(errorMessage, '#ef4444')
     } finally {
       uploadingBanner.value = false
-      input.value = '' // Reset input
+      input.value = ''
     }
   }
-
-  onMounted(() => {
-    fetchUserProfile()
-  })
 
   // ── Navigation ──
   const activeNav = ref('profile')
@@ -238,20 +337,35 @@
   }
 
   // ── Tabs ──
-  const activeTab = ref('badges')
+  const activeTab = ref('liked')
   const tabs = [
-    { id: 'badges', label: 'Conquistas', icon: 'mdi-trophy-outline' },
+    // { id: 'badges', label: 'Conquistas', icon: 'mdi-trophy-outline' }, // Comentado - não será usado no primeiro momento
     { id: 'liked', label: 'Curtidos', icon: 'mdi-heart-outline' },
-    { id: 'favorites', label: 'Favoritos', icon: 'mdi-bookmark-outline' },
+    // Aba Favoritos removida do projeto
     { id: 'settings', label: 'Preferências', icon: 'mdi-cog-outline' },
   ]
 
-  const badges = [
-    { icon: 'mdi-party-popper', color: '#FF4081', name: 'Party Animal', desc: 'Foi em 10 festas este mês' },
-    { icon: 'mdi-map-marker-check', color: '#7C4DFF', name: 'Explorador', desc: 'Visitou 5 locais diferentes' },
-    { icon: 'mdi-fire', color: '#FF9800', name: 'Em Chamas', desc: 'Sequência de 3 finais de semana' },
-    { icon: 'mdi-crown', color: '#FFD700', name: 'VIP', desc: 'Membro premium da comunidade' },
-  ]
+  // Refetch liked events quando entra na aba
+  watch(activeTab, val => {
+    if (val === 'liked') {
+      fetchLikedEvents()
+    }
+  })
+
+  // Watch no store para atualizar quando curte/descurte no feed
+  watch(() => eventsStore.likedEvents.length, () => {
+    if (activeTab.value === 'liked') {
+      fetchLikedEvents()
+    }
+  })
+
+  // Comentado - não usado no primeiro momento
+  // const badges = [
+  //   { icon: 'mdi-party-popper', color: '#FF4081', name: 'Party Animal', desc: 'Foi em 10 festas este mês' },
+  //   { icon: 'mdi-map-marker-check', color: '#7C4DFF', name: 'Explorador', desc: 'Visitou 5 locais diferentes' },
+  //   { icon: 'mdi-fire', color: '#FF9800', name: 'Em Chamas', desc: 'Sequência de 3 finais de semana' },
+  //   { icon: 'mdi-crown', color: '#FFD700', name: 'VIP', desc: 'Membro premium da comunidade' },
+  // ]
 
   // ── Edit Profile Modal ──
   const showEditModal = ref(false)
@@ -278,7 +392,11 @@
   async function saveProfile () {
     saving.value = true
     try {
-      await updateUserProfile({
+      const userId = loggedUser.value?.id
+      if (!userId) {
+        throw new Error('ID do usuário não encontrado')
+      }
+      await updateUserProfile(userId, {
         name: editForm.name,
         username: editForm.username.replace('@', ''),
         bio: editForm.bio,
@@ -296,9 +414,10 @@
         name: editForm.name,
         username: editForm.username.replace('@', ''),
       })
-    } catch (error_) {
-      console.error('Erro ao salvar perfil:', error_)
-      alert('Erro ao salvar perfil. Tente novamente.')
+
+      showSnackbar('Perfil atualizado com sucesso! ✅')
+    } catch {
+      showSnackbar('Erro ao salvar perfil. Tente novamente.', '#ef4444')
     } finally {
       saving.value = false
     }
@@ -306,9 +425,153 @@
 
   // ── Settings toggles ──
   const settingsNotifications = ref(true)
-  const settingsDarkMode = ref(false)
+  const { isDark: settingsDarkMode, toggleDark } = useThemeMode()
+
+  // ── Liked events ──
+  interface LikedEventItem {
+    id: string | number
+    banner: string
+    creator: { name: string }
+    hostAvatar: string
+    schedule: string
+    location?: string
+    title: string
+    description: string
+    confirmed: number
+    interested: number
+    likes?: number
+    interests?: string[]
+    commentsCount?: number
+  }
+  const likedEventsItems = ref<LikedEventItem[]>([])
+  const loadingLiked = ref(false)
+  const displayLimit = ref(5)
+
+  const displayedLikedEvents = computed(() => {
+    return likedEventsItems.value.slice(0, displayLimit.value)
+  })
+
+  const hasMoreEvents = computed(() => {
+    return likedEventsItems.value.length > displayLimit.value
+  })
+
+  function showMoreEvents () {
+    displayLimit.value += 5
+  }
+
+  // ── Helpers para eventos curtidos ──
+  function extractEventsFromResponse (data: any): any[] {
+    if (data?.data?.events && Array.isArray(data.data.events)) return data.data.events
+    if (data?.data?.items && Array.isArray(data.data.items)) return data.data.items
+    if (data?.events && Array.isArray(data.events)) return data.events
+    if (data?.items && Array.isArray(data.items)) return data.items
+    if (Array.isArray(data?.data)) return data.data
+    if (Array.isArray(data)) return data
+    return []
+  }
+
+  function mapLikedEvent (evt: any): LikedEventItem {
+    const rawBanner = evt.bannerUrl || evt.banner || (Array.isArray(evt.photos) ? evt.photos[0] : '') || ''
+    const hostName = evt.organizer?.name || evt.hostName || evt.creator?.name || 'Organizador'
+    const resolveSchedule = (e: any): string => {
+      const candidates = [e.date, e.startDate, e.dateTime, e.startAt, e.eventDate, e.start_date, e.schedule]
+      for (const val of candidates) {
+        if (!val) continue
+        const parsed = new Date(val)
+        if (!Number.isNaN(parsed.getTime())) {
+          return parsed.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+        }
+      }
+      return 'Data a definir'
+    }
+    return {
+      id: evt.id,
+      banner: rawBanner,
+      creator: { name: hostName },
+      hostAvatar: evt.organizer?.avatar || evt.hostAvatar || evt.creator?.profileImage || '',
+      schedule: resolveSchedule(evt),
+      location: evt.location || evt.address || 'Local a definir',
+      title: evt.name || evt.title || 'Evento',
+      description: evt.description || '',
+      confirmed: evt.confirmedCount || evt._count?.attendances || 0,
+      interested: evt.interestedCount || 0,
+      likes: evt.likesCount || evt.likes || evt._count?.likes || 0,
+      interests: (evt.eventInterests || evt.interests || evt.categories || []).map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name).filter(Boolean),
+      commentsCount: evt.commentsCount ?? evt._count?.comments ?? 0,
+    }
+  }
+
+  async function fetchLikedEvents () {
+    loadingLiked.value = true
+    try {
+      // Tenta endpoints de listagem bulk primeiro
+      const endpoints = [
+        '/users/liked-events',
+        '/users/likes',
+        '/events/liked-by-me',
+        '/events/my-likes',
+      ]
+
+      let events: any[] = []
+      let bulkSuccess = false
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await callApi('GET', `${endpoint}?page=1&limit=50`, {}, true)
+          const extracted = extractEventsFromResponse(response.data)
+          if (extracted.length > 0 || response.status === 200) {
+            events = extracted
+            bulkSuccess = true
+            break
+          }
+        } catch {
+        // endpoint não disponível, tenta próximo
+        }
+      }
+
+      // Fallback: busca cada evento pelo ID salvo no localStorage
+      if (!bulkSuccess) {
+        const likedIds = eventsStore.likedEvents
+
+        const results = await Promise.allSettled(
+          likedIds.map(id => callApi('GET', `/events/${id}`, {}, true)),
+        )
+
+        events = results
+          .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+          .map(r => r.value?.data?.data ?? r.value?.data ?? r.value)
+          .filter(e => e && e.id)
+      }
+
+      likedEventsItems.value = events.map(evt => mapLikedEvent(evt))
+    } catch (error_) {
+      console.error('Erro ao buscar eventos curtidos:', error_)
+      likedEventsItems.value = []
+    } finally {
+      loadingLiked.value = false
+    }
+  }
+
+  // Removido - não é mais usado com mini cards
+  // async function handleToggleSaveLiked (item: LikedEventItem) {
+  //   await eventsStore.toggleSave({
+  //     id: item.id,
+  //     banner: item.banner,
+  //     creator: item.creator,
+  //     hostAvatar: item.hostAvatar,
+  //     schedule: item.schedule,
+  //     location: item.location,
+  //     title: item.title,
+  //     description: item.description,
+  //     confirmed: item.confirmed,
+  //     interested: item.interested,
+  //     likes: item.likes,
+  //     interests: item.interests,
+  //   })
+  // }
 
   function handleLogout () {
+    AuthService.logout()
     router.push('/public/Login')
   }
 
@@ -481,7 +744,8 @@
 
         <!-- Tab Content -->
         <div class="tab-panel">
-          <!-- Badges -->
+          <!-- Badges - Comentado para primeira versão -->
+          <!--
           <div v-if="activeTab === 'badges'" class="badges-grid">
             <div v-for="(badge, i) in badges" :key="i" class="badge-card">
               <div class="badge-icon" :style="{ background: `${badge.color}15`, color: badge.color }">
@@ -493,26 +757,78 @@
               </div>
             </div>
           </div>
+          -->
 
           <!-- Liked -->
-          <div v-if="activeTab === 'liked'" class="empty-state">
-            <div class="empty-icon">
-              <i class="mdi mdi-heart-outline" />
+          <div v-if="activeTab === 'liked'" class="liked-events-panel">
+            <div v-if="loadingLiked" class="loading-liked">
+              <div class="skeleton-grid-mini">
+                <div v-for="n in 5" :key="n" class="skeleton-mini-card">
+                  <div class="skeleton-mini-banner" />
+                  <div class="skeleton-mini-content">
+                    <div class="skeleton-line short" />
+                    <div class="skeleton-line medium" />
+                  </div>
+                </div>
+              </div>
             </div>
-            <h3>Nenhum evento curtido</h3>
-            <p>Eventos que você curtir aparecerão aqui</p>
-            <button class="empty-action" @click="router.push('/private/feed')">Explorar Eventos</button>
+            <div v-else-if="likedEventsItems.length > 0">
+              <TransitionGroup class="liked-mini-cards-grid" name="mini-card" tag="div">
+                <div
+                  v-for="item in displayedLikedEvents"
+                  :key="item.id"
+                  class="mini-event-card"
+                  @click="router.push(`/private/event/${item.id}`)"
+                >
+                  <div class="mini-card-banner">
+                    <img :alt="item.title" :src="item.banner">
+                    <div class="mini-card-date">
+                      <i class="mdi mdi-calendar" />
+                      {{ formatShortDate(item.schedule) }}
+                    </div>
+                  </div>
+                  <div class="mini-card-content">
+                    <h4 class="mini-card-title">{{ item.title }}</h4>
+                    <div class="mini-card-location">
+                      <i class="mdi mdi-map-marker" />
+                      {{ item.location || 'Local a definir' }}
+                    </div>
+                    <div class="mini-card-stats">
+                      <span class="mini-stat">
+                        <i class="mdi mdi-account-multiple" />
+                        {{ item.confirmed }}
+                      </span>
+                      <span class="mini-stat">
+                        <i class="mdi mdi-heart" :class="{ 'liked': eventsStore.isLiked(item.id) }" />
+                        {{ (item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </TransitionGroup>
+
+              <!-- Botão Mostrar Mais -->
+              <div v-if="hasMoreEvents" class="show-more-container">
+                <button class="show-more-btn" @click="showMoreEvents">
+                  <span>Mostrar mais eventos</span>
+                  <i class="mdi mdi-chevron-down" />
+                </button>
+              </div>
+            </div>
+            <div v-else class="empty-state">
+              <div class="empty-icon">
+                <i class="mdi mdi-heart-outline" />
+              </div>
+              <h3>Nenhum evento curtido</h3>
+              <p>Curta eventos para salvá-los aqui e acessá-los rapidamente depois</p>
+              <button class="empty-action" @click="router.push('/private/feed')">
+                <i class="mdi mdi-compass-outline" />
+                Explorar Eventos
+              </button>
+            </div>
           </div>
 
-          <!-- Favorites -->
-          <div v-if="activeTab === 'favorites'" class="empty-state">
-            <div class="empty-icon fav">
-              <i class="mdi mdi-bookmark-outline" />
-            </div>
-            <h3>Nenhum evento salvo</h3>
-            <p>Salve eventos para acessá-los rapidamente</p>
-            <button class="empty-action" @click="router.push('/private/feed')">Explorar Eventos</button>
-          </div>
+          <!-- Favorites - Removido do projeto - Removido do projeto -->
 
           <!-- Settings -->
           <div v-if="activeTab === 'settings'" class="settings-panel">
@@ -530,7 +846,7 @@
                 </div>
                 <div class="toggle-switch" :class="{ checked: settingsNotifications }" />
               </div>
-              <div class="setting-item" @click="settingsDarkMode = !settingsDarkMode">
+              <div class="setting-item" @click="toggleDark()">
                 <div class="setting-left">
                   <div class="setting-icon-wrap">
                     <i class="mdi mdi-theme-light-dark" />
@@ -579,13 +895,12 @@
       <aside class="layout-extras">
         <div class="sidebar-card interests-card">
           <h3>Interesses</h3>
-          <div class="interests-tags">
-            <span class="tag">🎵 Eletrônica</span>
-            <span class="tag">🎪 Festivais</span>
-            <span class="tag">🍸 Happy Hour</span>
-            <span class="tag">🌅 Ao ar livre</span>
-            <span class="tag">🎤 Shows</span>
+          <div v-if="userInterests.length > 0" class="interests-tags">
+            <span v-for="interest in userInterests" :key="interest.id" class="tag">
+              {{ interest.name }}
+            </span>
           </div>
+          <p v-else class="interests-empty">Nenhum interesse adicionado ainda.</p>
         </div>
       </aside>
     </section>
@@ -724,6 +1039,9 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Snackbar de notificações -->
+    <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" />
   </div>
 </template>
 
@@ -1034,6 +1352,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -1147,6 +1466,326 @@
   font-size: 1rem;
 }
 
+/* ── Liked Events Panel ── */
+.liked-events-panel {
+  min-height: 200px;
+}
+
+.loading-liked {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+.skeleton-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.skeleton-card {
+  background: #ffffff;
+  border-radius: 32px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.skeleton-banner {
+  width: 100%;
+  height: 320px;
+  background: linear-gradient(90deg,
+      rgba(240, 240, 240, 1) 0%,
+      rgba(250, 250, 250, 1) 50%,
+      rgba(240, 240, 240, 1) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.skeleton-line {
+  height: 16px;
+  border-radius: 8px;
+  background: linear-gradient(90deg,
+      rgba(240, 240, 240, 1) 0%,
+      rgba(250, 250, 250, 1) 50%,
+      rgba(240, 240, 240, 1) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-line.short {
+  width: 30%;
+}
+
+.skeleton-line.medium {
+  width: 60%;
+}
+
+.skeleton-line.long {
+  width: 85%;
+}
+
+@keyframes skeleton-pulse {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.liked-events-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Card transitions */
+.liked-card-enter-active {
+  transition: all 0.4s ease-out;
+}
+
+.liked-card-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.liked-card-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+.liked-card-leave-to {
+  opacity: 0;
+  transform: translateX(-30px) scale(0.9);
+}
+
+.liked-card-move {
+  transition: transform 0.5s ease;
+}
+
+/* ── Mini Cards para Eventos Curtidos ── */
+.liked-mini-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.mini-event-card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.mini-event-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(255, 95, 166, 0.15);
+}
+
+.mini-card-banner {
+  position: relative;
+  height: 140px;
+  overflow: hidden;
+}
+
+.mini-card-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.mini-event-card:hover .mini-card-banner img {
+  transform: scale(1.05);
+}
+
+.mini-card-date {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  color: white;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.mini-card-date i {
+  font-size: 0.9rem;
+}
+
+.mini-card-content {
+  padding: 1rem;
+}
+
+.mini-card-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a1c2e;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.mini-card-location {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #9aa0b8;
+  font-size: 0.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.mini-card-location i {
+  font-size: 1rem;
+}
+
+.mini-card-stats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.mini-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #555b77;
+  font-weight: 600;
+}
+
+.mini-stat i {
+  font-size: 1.1rem;
+  color: #9aa0b8;
+}
+
+.mini-stat i.liked {
+  color: #ff5fa6;
+}
+
+/* Transitions para mini cards */
+.mini-card-enter-active {
+  transition: all 0.4s ease-out;
+}
+
+.mini-card-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.mini-card-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+.mini-card-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.mini-card-move {
+  transition: transform 0.4s ease;
+}
+
+/* Skeleton para mini cards */
+.skeleton-grid-mini {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.skeleton-mini-card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.skeleton-mini-banner {
+  width: 100%;
+  height: 140px;
+  background: linear-gradient(90deg,
+      rgba(240, 240, 240, 1) 0%,
+      rgba(250, 250, 250, 1) 50%,
+      rgba(240, 240, 240, 1) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-mini-content {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Botão Mostrar Mais */
+.show-more-container {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+  margin-top: 0.5rem;
+}
+
+.show-more-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 2rem;
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  color: white;
+  border: none;
+  border-radius: 99px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(255, 95, 166, 0.25);
+  transition: all 0.3s ease;
+}
+
+.show-more-btn:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 8px 28px rgba(255, 95, 166, 0.4);
+}
+
+.show-more-btn:active {
+  transform: translateY(-1px) scale(1.01);
+}
+
+.show-more-btn i {
+  font-size: 1.3rem;
+  transition: transform 0.3s ease;
+}
+
+.show-more-btn:hover i {
+  transform: translateY(2px);
+}
+
 /* ── Badges ── */
 .badges-grid {
   display: grid;
@@ -1249,21 +1888,28 @@
 }
 
 .empty-action {
-  padding: 0.6rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.8rem;
   background: linear-gradient(135deg, #ffba4b, #ff5fa6);
   color: white;
   border: none;
   border-radius: 99px;
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(255, 95, 166, 0.2);
-  transition: all 0.2s;
+  transition: all 0.25s ease;
 }
 
 .empty-action:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 95, 166, 0.3);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(255, 95, 166, 0.35);
+}
+
+.empty-action:active {
+  transform: translateY(-1px);
 }
 
 /* ── Settings ── */
@@ -1469,6 +2115,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.interests-empty {
+  font-size: 0.85rem;
+  color: #9aa0b8;
+  margin: 0;
 }
 
 .tag {
@@ -1897,10 +2549,16 @@
     grid-template-areas: 'main';
     width: 100%;
     padding: 1rem;
+    padding-bottom: 5rem;
   }
 
   .layout-sidebar {
-    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    z-index: 1000;
   }
 }
 
@@ -1951,6 +2609,102 @@
   .modal-container {
     max-width: 100%;
     border-radius: 16px;
+  }
+
+  .liked-events-grid {
+    gap: 1rem;
+  }
+
+  .liked-mini-cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.85rem;
+  }
+
+  .skeleton-grid-mini {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.85rem;
+  }
+
+  .content-tabs {
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .content-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-info h1 {
+    font-size: 1.2rem;
+  }
+
+  .stats-row {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .layout-shell {
+    padding: 0.5rem;
+    padding-bottom: 5rem;
+  }
+
+  .profile-content {
+    padding: 0 1rem 1rem;
+  }
+
+  .avatar-img {
+    width: 72px;
+    height: 72px;
+  }
+
+  .cover-image {
+    height: 120px;
+  }
+
+  .profile-content {
+    margin-top: -32px;
+  }
+
+  .edit-btn {
+    padding: 0.45rem 0.9rem;
+    font-size: 0.78rem;
+  }
+
+  .tab-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.78rem;
+  }
+
+  .badge-card {
+    padding: 1rem;
+  }
+
+  .badge-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+  }
+
+  .liked-mini-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .skeleton-grid-mini {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .mini-card-banner {
+    height: 160px;
+  }
+
+  .show-more-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>
