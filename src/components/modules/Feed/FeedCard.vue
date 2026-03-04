@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
   import { computed, ref, watch } from 'vue'
   import { useShareStore } from '@/stores/share'
   import { svgIcons } from '@/utils/svgSet'
@@ -73,6 +73,7 @@
   const shareStore = useShareStore()
 
   const showComments = ref(false)
+  const showInterests = ref(false)
   const localCommentsCount = ref(props.commentsCount ?? 0)
 
   watch(() => props.commentsCount, val => {
@@ -89,6 +90,12 @@
       text: props.description,
       url: `${window.location.origin}/private/event/${props.id}`,
     })
+  }
+
+  function toggleInterests (e: Event) {
+    e.stopPropagation()
+    showInterests.value = !showInterests.value
+    if (showInterests.value) showComments.value = false
   }
 </script>
 
@@ -146,15 +153,37 @@
         </v-tooltip>
       </button>
 
+      <!-- Interests slide-up panel -->
+      <Transition name="interests-slide">
+        <div v-if="showInterests && interests && interests.length > 0" class="interests-panel" @click.stop>
+          <div class="interests-panel-header">
+            <span class="interests-panel-title">Interesses do evento</span>
+            <button class="interests-close" type="button" @click.stop="showInterests = false">
+              <svg
+                fill="none"
+                height="14"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+                width="14"
+              >
+                <line x1="18" x2="6" y1="6" y2="18" />
+                <line x1="6" x2="18" y1="6" y2="18" />
+              </svg>
+            </button>
+          </div>
+          <div class="interests-chips-grid">
+            <span v-for="tag in interests" :key="tag" class="interest-chip">
+              {{ tag }}
+            </span>
+          </div>
+        </div>
+      </Transition>
+
       <!-- Main overlay content -->
       <figcaption class="overlay">
-
-        <!-- Interests chips — topo do overlay -->
-        <div v-if="interests && interests.length > 0" class="interests-row">
-          <span v-for="tag in interests" :key="tag" class="interest-chip">
-            {{ tag }}
-          </span>
-        </div>
 
         <!-- Title -->
         <h3 class="title">{{ title }}</h3>
@@ -186,7 +215,7 @@
           </svg>
           <span class="schedule">{{ schedule }}</span>
           <template v-if="location">
-            <span class="meta-sep">·</span>
+            <span class="meta-sep">Â·</span>
             <!-- Location pin icon -->
             <svg
               fill="none"
@@ -228,11 +257,11 @@
               {{ formatCount(likes) }}
             </button>
             <button
-              aria-label="Comentários"
+              aria-label="ComentÃ¡rios"
               class="stat stat-action comments-action"
               :class="{ active: showComments }"
               type="button"
-              @click.stop="showComments = !showComments"
+              @click.stop="showComments = !showComments; showInterests = false"
             >
               <svg
                 fill="none"
@@ -247,6 +276,31 @@
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
               {{ formatCount(localCommentsCount) }}
+            </button>
+
+            <!-- Interests toggle button -->
+            <button
+              v-if="interests && interests.length > 0"
+              aria-label="Ver interesses"
+              class="stat stat-action interests-action"
+              :class="{ active: showInterests }"
+              type="button"
+              @click="toggleInterests"
+            >
+              <svg
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                <line x1="7" x2="7.01" y1="7" y2="7" />
+              </svg>
+              {{ interests.length }}
             </button>
           </div>
 
@@ -311,7 +365,7 @@
 </template>
 
 <style>
-/* Global — strict to feed-card tooltips via content-class */
+/* Global â€” strict to feed-card tooltips via content-class */
 .v-overlay__content.feed-card-tooltip {
   background: rgba(14, 20, 38, 0.88) !important;
   backdrop-filter: blur(14px);
@@ -328,7 +382,7 @@
 </style>
 
 <style scoped>
-/* ─── CSS variable defaults (overridden per-card by JS) ─────────────────── */
+/* ─── CSS variable defaults ─────────────────────────────────────────────── */
 .feed-card {
   --accent: #ff5fa6;
   --accent-light: #ffba4b;
@@ -425,30 +479,34 @@
 .banner {
   display: block;
   width: 100%;
-  height: clamp(330px, 36vw, 440px);
+  height: clamp(380px, 42vw, 520px);
   object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.feed-card:hover .banner {
+  transform: scale(1.03);
 }
 
 /* ─── Gradient layers ────────────────────────────────────────────────────── */
-/* Subtle dark vignette top-right (keeps host tag readable) */
 .gradient-vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 85% 0%, rgba(0, 0, 0, 0.45) 0%, transparent 60%);
+  background: radial-gradient(ellipse at 85% 0%, rgba(0, 0, 0, 0.35) 0%, transparent 55%);
   pointer-events: none;
   z-index: 1;
 }
 
-/* Bottom gradient — dynamic color bleeds into the dark base */
+/* Refined gradient — image breathes more at the top */
 .gradient-bottom {
   position: absolute;
   inset: 0;
   background:
     linear-gradient(to top,
-      rgba(var(--accent-rgb), 0.38) 0%,
-      rgba(7, 9, 26, 0.96) 28%,
-      rgba(7, 9, 26, 0.55) 55%,
-      transparent 100%);
+      rgba(0, 0, 0, 0.82) 0%,
+      rgba(7, 9, 26, 0.72) 22%,
+      rgba(7, 9, 26, 0.28) 48%,
+      transparent 70%);
   pointer-events: none;
   z-index: 2;
   transition: background 0.6s ease;
@@ -530,6 +588,93 @@
   border-color: transparent;
 }
 
+/* ─── Interests panel (slide-up) ─────────────────────────────────────────── */
+.interests-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  padding: 1rem 1.2rem 1.35rem;
+  background: rgba(6, 7, 20, 0.82);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.interests-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.7rem;
+}
+
+.interests-panel-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.interests-close {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.interests-close:hover {
+  background: rgba(var(--accent-rgb), 0.25);
+  color: var(--accent-light);
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+
+.interests-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* ─── Transition: interests slide up ─────────────────────────────────────── */
+.interests-slide-enter-active,
+.interests-slide-leave-active {
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease;
+}
+
+.interests-slide-enter-from,
+.interests-slide-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+/* ─── Interest chip ──────────────────────────────────────────────────────── */
+.interest-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.15);
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
+  color: var(--accent-light);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.interest-chip:hover {
+  background: rgba(var(--accent-rgb), 0.28);
+  transform: translateY(-1px);
+}
+
 /* ─── Overlay (figcaption) ───────────────────────────────────────────────── */
 .overlay {
   position: absolute;
@@ -538,46 +683,20 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 0.55rem;
   padding: clamp(1.2rem, 3.5vw, 1.8rem);
   padding-top: 4.5rem;
   color: #fff;
 }
 
-/* ─── Interests chips ────────────────────────────────────────────────────── */
-.interests-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-bottom: 0.15rem;
-}
-
-.interest-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.22rem 0.7rem;
-  border-radius: 999px;
-  /* Dynamic: glass chip tinted with extracted accent */
-  background: rgba(var(--accent-rgb), 0.18);
-  border: 1px solid rgba(var(--accent-rgb), 0.45);
-  color: var(--accent-light);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.055em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  backdrop-filter: blur(6px);
-  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-}
-
 /* ─── Title ──────────────────────────────────────────────────────────────── */
 .title {
   margin: 0;
-  font-size: clamp(1.4rem, 1.1vw + 1.35rem, 2.4rem);
-  line-height: 1.12;
+  font-size: clamp(1.45rem, 1.1vw + 1.4rem, 2.5rem);
+  line-height: 1.1;
   font-weight: 800;
-  letter-spacing: -0.01em;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.015em;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.65);
 }
 
 /* ─── Meta pill ──────────────────────────────────────────────────────────── */
@@ -632,13 +751,13 @@
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  margin-top: 0.4rem;
+  margin-top: 0.3rem;
 }
 
 .stats {
   display: flex;
   align-items: center;
-  gap: 1.1rem;
+  gap: 0.9rem;
   font-weight: 600;
   font-size: 0.88rem;
   color: rgba(255, 255, 255, 0.88);
@@ -673,6 +792,35 @@
 
 .stat-action.comments-action.active {
   color: var(--accent-light);
+}
+
+/* Interests action button */
+.interests-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--accent-rgb), 0.3) !important;
+  background: rgba(var(--accent-rgb), 0.1) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s !important;
+}
+
+.interests-action:hover {
+  background: rgba(var(--accent-rgb), 0.22) !important;
+  border-color: rgba(var(--accent-rgb), 0.55) !important;
+  color: var(--accent-light) !important;
+  transform: translateY(-1px) !important;
+}
+
+.interests-action.active {
+  background: rgba(var(--accent-rgb), 0.28) !important;
+  border-color: rgba(var(--accent-light-rgb), 0.55) !important;
+  color: var(--accent-light) !important;
 }
 
 /* ─── Actions (icon buttons) ─────────────────────────────────────────────── */
@@ -716,7 +864,7 @@
   }
 
   .banner {
-    height: clamp(260px, 40vw, 330px);
+    height: clamp(300px, 44vw, 400px);
   }
 
   .overlay {
@@ -735,7 +883,7 @@
   }
 
   .banner {
-    height: clamp(270px, 72vw, 360px);
+    height: clamp(300px, 76vw, 400px);
   }
 
   .host-tag {
@@ -758,7 +906,7 @@
   }
 
   .title {
-    font-size: 1.25rem;
+    font-size: 1.3rem;
   }
 
   .location {
@@ -777,7 +925,7 @@
   }
 
   .banner {
-    height: clamp(230px, 64vw, 295px);
+    height: clamp(260px, 70vw, 340px);
   }
 
   .overlay {
@@ -786,11 +934,12 @@
   }
 
   .title {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
   }
 
   .stats {
     font-size: 0.78rem;
+    gap: 0.65rem;
   }
 
   .icon-button {
@@ -824,6 +973,11 @@
 
   .location {
     max-width: 110px;
+  }
+
+  .interests-action {
+    font-size: 0.68rem;
+    padding: 0.22rem 0.5rem;
   }
 
   .interest-chip {

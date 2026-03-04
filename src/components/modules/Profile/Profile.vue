@@ -10,7 +10,6 @@
   import FeedTopHeader from '@/components/modules/Feed/FeedTopHeader.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import { useAuth } from '@/composables/useAuth'
-  import { useThemeMode } from '@/composables/useThemeMode'
   import { AuthService } from '@/services/auth'
   import { useEventsStore } from '@/stores/events'
 
@@ -425,7 +424,6 @@
 
   // ── Settings toggles ──
   const settingsNotifications = ref(true)
-  const { isDark: settingsDarkMode, toggleDark } = useThemeMode()
 
   // ── Liked events ──
   interface LikedEventItem {
@@ -846,18 +844,7 @@
                 </div>
                 <div class="toggle-switch" :class="{ checked: settingsNotifications }" />
               </div>
-              <div class="setting-item" @click="toggleDark()">
-                <div class="setting-left">
-                  <div class="setting-icon-wrap">
-                    <i class="mdi mdi-theme-light-dark" />
-                  </div>
-                  <div>
-                    <span class="setting-name">Modo Escuro</span>
-                    <span class="setting-desc">Alterne entre tema claro e escuro</span>
-                  </div>
-                </div>
-                <div class="toggle-switch" :class="{ checked: settingsDarkMode }" />
-              </div>
+
             </div>
 
             <div class="settings-group">

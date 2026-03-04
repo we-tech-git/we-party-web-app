@@ -15,23 +15,12 @@ export default createVuetify({
       light: {
         dark: false,
         colors: {
-          primary: '#FF5FA6',
-          secondary: '#FFBA4B',
-          surface: '#FFFFFF',
-          background: '#FFF5F7',
+          'primary': '#FF5FA6',
+          'secondary': '#FFBA4B',
+          'surface': '#FFFFFF',
+          'background': '#FFF5F7',
           'on-surface': '#1F2937',
           'on-background': '#1F2937',
-        },
-      },
-      dark: {
-        dark: true,
-        colors: {
-          primary: '#FF5FA6',
-          secondary: '#FFBA4B',
-          surface: '#1E1E2E',
-          background: '#13131F',
-          'on-surface': '#E8E8F0',
-          'on-background': '#E8E8F0',
         },
       },
     },
