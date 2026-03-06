@@ -97,10 +97,7 @@
           <v-list class="user-dropdown-list" density="compact" :lines="false">
             <!-- Cabeçalho com info do usuário -->
             <div class="user-dropdown-header">
-              <div
-                class="dropdown-avatar"
-                :style="{ backgroundColor: getAvatarColor(user.name) }"
-              >
+              <div class="dropdown-avatar" :style="{ backgroundColor: getAvatarColor(user.name) }">
                 <img
                   v-if="user.avatar"
                   :alt="user.name"
@@ -118,13 +115,18 @@
             <v-divider class="my-1" />
 
             <!-- Navegar para perfil -->
-            <v-list-item
-              class="dropdown-action-item"
-              rounded="lg"
-              @click="router.push('/private/profile')"
-            >
+            <v-list-item class="dropdown-action-item" rounded="lg" @click="router.push('/private/profile')">
               <template #prepend>
-                <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18">
+                <svg
+                  fill="none"
+                  height="18"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="18"
+                >
                   <circle cx="12" cy="8" r="4" />
                   <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                 </svg>
@@ -135,13 +137,18 @@
             <v-divider class="my-1" />
 
             <!-- Sair -->
-            <v-list-item
-              class="dropdown-action-item dropdown-logout"
-              rounded="lg"
-              @click="logout"
-            >
+            <v-list-item class="dropdown-action-item dropdown-logout" rounded="lg" @click="logout">
               <template #prepend>
-                <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18">
+                <svg
+                  fill="none"
+                  height="18"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="18"
+                >
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                   <polyline points="16 17 21 12 16 7" />
                   <line x1="21" x2="9" y1="12" y2="12" />
@@ -160,18 +167,13 @@
 .feed-top-header {
   box-sizing: border-box;
   width: 100%;
-  padding: .7rem 0 1.6rem;
-  /* Added horizontal padding */
+  padding: calc(.7rem + env(safe-area-inset-top, 0px)) 0 1.6rem;
   position: sticky;
   top: 0;
-  z-index: 50;
-  /* Increased z-index to ensure it stays on top */
+  z-index: 200;
   background: rgba(255, 245, 247, 0.85);
-  /* Semi-transparent background matching the theme */
   backdrop-filter: blur(12px);
-  /* Blur effect for better readability */
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  /* Subtle separator */
 }
 
 .header-inner {
@@ -384,13 +386,13 @@
   .user-summary {
     justify-self: center;
     position: absolute;
-    top: 0.5rem;
-    right: 1rem;
+    top: calc(0.5rem + env(safe-area-inset-top, 0px));
+    right: max(1rem, env(safe-area-inset-right, 0px));
     padding: 0.35rem 0.5rem 0.35rem 0.75rem;
   }
 
   .feed-top-header {
-    padding: 0.5rem 1rem 0.75rem;
+    padding: calc(0.5rem + env(safe-area-inset-top, 0px)) 1rem 0.75rem;
     position: relative;
   }
 
@@ -402,14 +404,14 @@
 
 @media (max-width: 480px) {
   .feed-top-header {
-    padding: 0.4rem 0.5rem 0.6rem;
+    padding: calc(0.4rem + env(safe-area-inset-top, 0px)) 0.5rem 0.6rem;
   }
 
   .user-summary {
     gap: 0.5rem;
     padding: 0.3rem 0.4rem 0.3rem 0.6rem;
-    top: 0.4rem;
-    right: 0.5rem;
+    top: calc(0.4rem + env(safe-area-inset-top, 0px));
+    right: max(0.5rem, env(safe-area-inset-right, 0px));
   }
 
   .avatar {

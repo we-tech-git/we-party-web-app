@@ -124,6 +124,219 @@
   const modalAvatarInputRef = ref<HTMLInputElement | null>(null)
   const modalBannerInputRef = ref<HTMLInputElement | null>(null)
 
+  // ── Avatar Cropper ──
+  const showCropModal = ref(false)
+  const cropImageSrc = ref('')
+  const cropZoom = ref(1)
+  const cropOffset = reactive({ x: 0, y: 0 })
+  const cropDragging = ref(false)
+  const cropDragStart = reactive({ x: 0, y: 0 })
+  const cropOffsetStart = reactive({ x: 0, y: 0 })
+  const cropImageNatural = reactive({ width: 0, height: 0 })
+  let pendingAvatarInput: HTMLInputElement | null = null
+
+  // Container = 300px, circle area inside
+  const CROP_CONTAINER = 300
+
+  // Base display size: image fits entirely inside the container (contain)
+  function getBaseSize () {
+    const { width: nw, height: nh } = cropImageNatural
+    if (!nw || !nh) return { w: CROP_CONTAINER, h: CROP_CONTAINER }
+    const aspect = nw / nh
+    if (aspect >= 1) {
+      return { w: CROP_CONTAINER, h: CROP_CONTAINER / aspect }
+    }
+    return { w: CROP_CONTAINER * aspect, h: CROP_CONTAINER }
+  }
+
+  function clampOffset (ox: number, oy: number, zoom: number) {
+    const base = getBaseSize()
+    const scaledW = base.w * zoom
+    const scaledH = base.h * zoom
+    // Garantir que o círculo (CROP_CONTAINER) nunca veja fora da imagem
+    const maxX = Math.max(0, (scaledW - CROP_CONTAINER) / 2)
+    const maxY = Math.max(0, (scaledH - CROP_CONTAINER) / 2)
+    return {
+      x: Math.min(maxX, Math.max(-maxX, ox)),
+      y: Math.min(maxY, Math.max(-maxY, oy)),
+    }
+  }
+
+  // Zoom mínimo para que a imagem cubra o círculo inteiro
+  const cropMinZoom = computed(() => {
+    const base = getBaseSize()
+    const minDim = Math.min(base.w, base.h)
+    return minDim > 0 ? CROP_CONTAINER / minDim : 1
+  })
+
+  function openCropModal (imageSrc: string, input: HTMLInputElement) {
+    cropImageSrc.value = imageSrc
+    pendingAvatarInput = input
+    cropOffset.x = 0
+    cropOffset.y = 0
+
+    const img = new Image()
+    img.addEventListener('load', () => {
+      cropImageNatural.width = img.naturalWidth
+      cropImageNatural.height = img.naturalHeight
+      // Inicia com zoom mínimo (imagem cobrindo o círculo)
+      cropZoom.value = cropMinZoom.value
+      showCropModal.value = true
+    })
+    img.src = imageSrc
+  }
+
+  function closeCropModal () {
+    showCropModal.value = false
+    cropImageSrc.value = ''
+    if (pendingAvatarInput) {
+      pendingAvatarInput.value = ''
+      pendingAvatarInput = null
+    }
+  }
+
+  // Watch zoom para clampar offset e respeitar mínimo
+  watch(cropZoom, newZoom => {
+    if (newZoom < cropMinZoom.value) {
+      cropZoom.value = cropMinZoom.value
+    }
+    const clamped = clampOffset(cropOffset.x, cropOffset.y, cropZoom.value)
+    cropOffset.x = clamped.x
+    cropOffset.y = clamped.y
+  })
+
+  function onCropMouseDown (e: MouseEvent) {
+    cropDragging.value = true
+    cropDragStart.x = e.clientX
+    cropDragStart.y = e.clientY
+    cropOffsetStart.x = cropOffset.x
+    cropOffsetStart.y = cropOffset.y
+  }
+
+  function onCropMouseMove (e: MouseEvent) {
+    if (!cropDragging.value) return
+    const raw = {
+      x: cropOffsetStart.x + (e.clientX - cropDragStart.x),
+      y: cropOffsetStart.y + (e.clientY - cropDragStart.y),
+    }
+    const clamped = clampOffset(raw.x, raw.y, cropZoom.value)
+    cropOffset.x = clamped.x
+    cropOffset.y = clamped.y
+  }
+
+  function onCropMouseUp () {
+    cropDragging.value = false
+  }
+
+  function onCropTouchStart (e: TouchEvent) {
+    const touch = e.touches[0]
+    if (!touch || e.touches.length !== 1) return
+    cropDragging.value = true
+    cropDragStart.x = touch.clientX
+    cropDragStart.y = touch.clientY
+    cropOffsetStart.x = cropOffset.x
+    cropOffsetStart.y = cropOffset.y
+  }
+
+  function onCropTouchMove (e: TouchEvent) {
+    const touch = e.touches[0]
+    if (!cropDragging.value || !touch || e.touches.length !== 1) return
+    e.preventDefault()
+    const raw = {
+      x: cropOffsetStart.x + (touch.clientX - cropDragStart.x),
+      y: cropOffsetStart.y + (touch.clientY - cropDragStart.y),
+    }
+    const clamped = clampOffset(raw.x, raw.y, cropZoom.value)
+    cropOffset.x = clamped.x
+    cropOffset.y = clamped.y
+  }
+
+  function onCropTouchEnd () {
+    cropDragging.value = false
+  }
+
+  // Estilo computado da imagem no crop
+  const cropImageStyle = computed(() => {
+    const base = getBaseSize()
+    const z = cropZoom.value
+    const w = base.w * z
+    const h = base.h * z
+    return {
+      width: `${w}px`,
+      height: `${h}px`,
+      left: `${(CROP_CONTAINER - w) / 2 + cropOffset.x}px`,
+      top: `${(CROP_CONTAINER - h) / 2 + cropOffset.y}px`,
+    }
+  })
+
+  async function confirmCrop () {
+    const canvas = document.createElement('canvas')
+    const outputSize = 512
+    canvas.width = outputSize
+    canvas.height = outputSize
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.src = cropImageSrc.value
+
+    await new Promise<void>(resolve => {
+      img.addEventListener('load', () => resolve())
+      if (img.complete) resolve()
+    })
+
+    const base = getBaseSize()
+    const z = cropZoom.value
+    const scaledW = base.w * z
+    const scaledH = base.h * z
+
+    // Posição da imagem no container
+    const imgLeft = (CROP_CONTAINER - scaledW) / 2 + cropOffset.x
+    const imgTop = (CROP_CONTAINER - scaledH) / 2 + cropOffset.y
+
+    // Mapear o quadrado do container (0,0 → CROP_CONTAINER,CROP_CONTAINER) para coordenadas da imagem original
+    const scaleToNatX = img.naturalWidth / scaledW
+    const scaleToNatY = img.naturalHeight / scaledH
+
+    const srcX = -imgLeft * scaleToNatX
+    const srcY = -imgTop * scaleToNatY
+    const srcW = CROP_CONTAINER * scaleToNatX
+    const srcH = CROP_CONTAINER * scaleToNatY
+
+    // Clip circular
+    ctx.beginPath()
+    ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2)
+    ctx.closePath()
+    ctx.clip()
+
+    ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, outputSize, outputSize)
+
+    canvas.toBlob(async blob => {
+      if (!blob) return
+      const croppedFile = new File([blob], 'profile.jpg', { type: 'image/jpeg' })
+
+      try {
+        uploadingAvatar.value = true
+        showCropModal.value = false
+
+        await uploadProfileImage(croppedFile)
+        await fetchUserProfile()
+
+        showSnackbar('Foto de perfil atualizada com sucesso! 🎉')
+      } catch (error_: any) {
+        const errorMessage = error_.message || 'Erro ao fazer upload da foto. Tente novamente.'
+        showSnackbar(errorMessage, '#ef4444')
+      } finally {
+        uploadingAvatar.value = false
+        if (pendingAvatarInput) {
+          pendingAvatarInput.value = ''
+          pendingAvatarInput = null
+        }
+      }
+    }, 'image/jpeg', 0.9)
+  }
+
   // ── Fetch user profile data ──
   async function fetchUserProfile () {
     if (!loggedUser.value?.id) {
@@ -142,8 +355,8 @@
       // Popula os dados do usuário, mantendo dados do loggedUser como fallback
       user.name = userData.name || loggedUser.value?.name || ''
       user.username = userData.username ? `@${userData.username}` : (loggedUser.value?.username ? `@${loggedUser.value.username}` : '')
-      user.avatar = userData.profileImage || userData.avatar || loggedUser.value?.profileImage || ''
-      user.banner = userData.banner || userData.bannerImage || ''
+      user.avatar = userData.profilePhoto || userData.profileImage || userData.avatar || loggedUser.value?.profileImage || ''
+      user.banner = userData.profileCoverImage || userData.coverPhoto || userData.banner || userData.bannerImage || ''
       user.bio = userData.bio || ''
       user.location = userData.location || ''
       user.joined = userData.createdAt ? formatJoinDate(userData.createdAt) : ''
@@ -154,7 +367,7 @@
       updateUser({
         name: userData.name || '',
         username: userData.username || '',
-        profileImage: userData.profileImage || userData.avatar || '',
+        profileImage: userData.profilePhoto || userData.profileImage || userData.avatar || '',
       })
 
       // Busca os interesses do usuário
@@ -249,31 +462,15 @@
       return
     }
 
-    try {
-      uploadingAvatar.value = true
-
-      const result = await uploadProfileImage(file)
-
-      // Tenta extrair a URL de diferentes estruturas de resposta
-      const newAvatarUrl = result.url || result.profileImage || result.data?.url || result.data?.profileImage || ''
-
-      if (!newAvatarUrl) {
-        throw new Error('URL da imagem não foi retornada pela API')
+    // Abre o modal de crop em vez de fazer upload direto
+    const reader = new FileReader()
+    reader.addEventListener('load', e => {
+      const result = (e.target as FileReader)?.result as string
+      if (result) {
+        openCropModal(result, input)
       }
-
-      user.avatar = newAvatarUrl
-
-      // Sincroniza com localStorage para manter consistência
-      updateUser({ profileImage: newAvatarUrl })
-
-      showSnackbar('Foto de perfil atualizada com sucesso! 🎉')
-    } catch (error_: any) {
-      const errorMessage = error_.message || 'Erro ao fazer upload da foto. Tente novamente.'
-      showSnackbar(errorMessage, '#ef4444')
-    } finally {
-      uploadingAvatar.value = false
-      input.value = ''
-    }
+    })
+    reader.readAsDataURL(file)
   }
 
   async function handleBannerChange (event: Event) {
@@ -298,16 +495,10 @@
     try {
       uploadingBanner.value = true
 
-      const result = await uploadBannerImage(file)
+      await uploadBannerImage(file)
 
-      // Tenta extrair a URL de diferentes estruturas de resposta
-      const newBannerUrl = result.url || result.bannerImage || result.data?.url || result.data?.bannerImage || ''
-
-      if (!newBannerUrl) {
-        throw new Error('URL do banner não foi retornada pela API')
-      }
-
-      user.banner = newBannerUrl
+      // Recarrega o perfil para pegar as URLs atualizadas do servidor
+      await fetchUserProfile()
 
       showSnackbar('Capa atualizada com sucesso! 🎉')
     } catch (error_: any) {
@@ -1020,6 +1211,59 @@
               <button class="btn-save" :disabled="saving" @click="saveProfile">
                 <i v-if="saving" class="mdi mdi-loading mdi-spin" />
                 {{ saving ? 'Salvando...' : 'Salvar' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Crop Avatar Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showCropModal" class="modal-overlay crop-modal-overlay" @click.self="closeCropModal">
+          <div class="crop-modal-container">
+            <div class="crop-modal-header">
+              <h2>Enquadrar foto</h2>
+              <button class="modal-close" @click="closeCropModal">
+                <i class="mdi mdi-close" />
+              </button>
+            </div>
+
+            <div class="crop-modal-body">
+              <div
+                class="crop-area"
+                @mousedown.prevent="onCropMouseDown"
+                @mouseleave="onCropMouseUp"
+                @mousemove.prevent="onCropMouseMove"
+                @mouseup="onCropMouseUp"
+                @touchend="onCropTouchEnd"
+                @touchmove="onCropTouchMove"
+                @touchstart.prevent="onCropTouchStart"
+              >
+                <img class="crop-image" draggable="false" :src="cropImageSrc" :style="cropImageStyle">
+                <div class="crop-circle-mask" />
+              </div>
+
+              <div class="crop-zoom-control">
+                <i class="mdi mdi-image-size-select-small" />
+                <input
+                  v-model.number="cropZoom"
+                  class="crop-zoom-slider"
+                  max="3"
+                  :min="cropMinZoom"
+                  step="0.01"
+                  type="range"
+                >
+                <i class="mdi mdi-magnify-plus-outline" />
+              </div>
+            </div>
+
+            <div class="crop-modal-footer">
+              <button class="btn-cancel" @click="closeCropModal">Cancelar</button>
+              <button class="btn-save" :disabled="uploadingAvatar" @click="confirmCrop">
+                <i v-if="uploadingAvatar" class="mdi mdi-loading mdi-spin" />
+                {{ uploadingAvatar ? 'Enviando...' : 'Aplicar' }}
               </button>
             </div>
           </div>
@@ -2536,7 +2780,7 @@
     grid-template-areas: 'main';
     width: 100%;
     padding: 1rem;
-    padding-bottom: 5rem;
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 
   .layout-sidebar {
@@ -2693,5 +2937,181 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+@media (max-width: 360px) {
+  .avatar-img {
+    width: 64px;
+    height: 64px;
+  }
+
+  .cover-image {
+    height: 100px;
+  }
+
+  .header-info h1 {
+    font-size: 1.05rem;
+  }
+
+  .tab-btn {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.72rem;
+  }
+
+  .profile-content {
+    padding: 0 0.75rem 0.75rem;
+  }
+
+  .modal-container {
+    padding: 1rem;
+  }
+}
+
+/* ── Crop Modal ── */
+.crop-modal-overlay {
+  z-index: 10001;
+}
+
+.crop-modal-container {
+  background: #1a1c2e;
+  border-radius: 20px;
+  width: min(420px, 92vw);
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+  animation: modal-pop 0.3s ease;
+}
+
+.crop-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.crop-modal-header h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.crop-modal-header .modal-close {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.crop-modal-header .modal-close:hover {
+  color: #fff;
+}
+
+.crop-modal-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.crop-area {
+  width: 300px;
+  height: 300px;
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+  background: #000;
+  touch-action: none;
+  border-radius: 4px;
+}
+
+.crop-area:active {
+  cursor: grabbing;
+}
+
+.crop-image {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+.crop-circle-mask {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+}
+
+.crop-circle-mask::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.crop-zoom-control {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 300px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1.3rem;
+}
+
+.crop-zoom-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  outline: none;
+}
+
+.crop-zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(255, 95, 166, 0.3);
+  transition: transform 0.15s;
+}
+
+.crop-zoom-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.crop-zoom-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 8px rgba(255, 95, 166, 0.3);
+}
+
+.crop-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.crop-modal-footer .btn-cancel {
+  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.crop-modal-footer .btn-cancel:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
 }
 </style>

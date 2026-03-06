@@ -1,0 +1,191 @@
+{
+  "global": {
+    "skipStepByNow": "Skip this step for now"
+  },
+  "login": {
+    "title": "Sign in",
+    "subtitle": "The perfect {0} recommendation for your {1}",
+    "emailPlaceholder": "Email",
+    "passwordPlaceholder": "Password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot my password",
+    "button": "Sign in",
+    "noAccount": "Don't have an account?",
+    "signupLink": "Sign up"
+  },
+  "signup": {
+    "title": "Sign Up",
+    "subtitle": "Fill in the data below to get started.",
+    "brandSubtitle": "The perfect social network {0} for your {1}",
+    "fullName": "Full name",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "button": "Complete registration",
+    "hasAccount": "Already have an account?",
+    "loginLink": "Click to sign in",
+    "rules": {
+      "lowercase": "At least one lowercase letter",
+      "uppercase": "At least one uppercase letter",
+      "minChars": "At least 10 characters",
+      "specialChar": "At least one special character"
+    },
+    "errors": {
+      "required": {
+        "name": "Full name is required",
+        "email": "Email is required",
+        "password": "Password is required",
+        "confirmPassword": "Password confirmation is required"
+      },
+      "passwordMismatch": "Passwords must match",
+      "passwordRules": "Password must meet all the requirements"
+    },
+    "snackbar": {
+      "missingFields": {
+        "single": "Please fill in the field: {fields}",
+        "multiple": "Please fill in the fields: {fields}"
+      },
+      "invalidForm": "Review the required fields before continuing",
+      "success": "Registration complete! Redirecting to login...",
+      "failure": "We couldn't finish the registration. Try again."
+    }
+  },
+  "feed": {
+    "searchPlaceholder": "Search events, artists or venues",
+    "searchAria": "Search events in the feed",
+    "actions": {
+      "clearSearch": "Clear search"
+    },
+    "nav": {
+      "tagline": "Plan your experiences",
+      "home": "Home",
+      "topEvents": "Top events",
+      "favorites": "Saved events",
+      "notifications": "Notifications",
+      "profile": "Profile",
+      "helper": "Discover what is trending and enjoy the week.",
+      "newEvent": "Create event"
+    },
+    "tabs": {
+      "forYou": "For you",
+      "today": "Happening today",
+      "friends": "With friends",
+      "trends": "Trends",
+      "news": "News"
+    },
+    "trending": {
+      "title": "What's happening?",
+      "subtitle": "Trending in your city",
+      "cityHighlight": "Trending in your city",
+      "more": "Show more"
+    },
+    "empty": "No events found right now.",
+    "profileActions": {
+      "changePicture": "Change profile picture",
+      "profile": "My Profile",
+      "logout": "Logout"
+    }
+  },
+  "addFriends": {
+    "title": "Friends",
+    "subtitle": "Add friends to invite to your event",
+    "searchPlaceholder": "Search...",
+    "send": "send",
+    "sent": "sent",
+    "finishButton": "FINISH",
+    "infoTitle": "Why add friends?",
+    "infoPoint1": "Connections for every moment",
+    "infoPoint2": "Events just for friends",
+    "infoPoint3": "Share stories and moments"
+  }
+  ,
+  "interest": {
+    "title": "Interests",
+    "subtitle": "Add interests to your profile so we can show events that fit you best.",
+    "searchPlaceholder": "Search...",
+    "finishButton": "FINISH",
+    "brandTitle": { "part1": "Why add", "part2": "interests" },
+    "benefit1": "Events that match you better",
+    "benefit2": "Personalized events will appear",
+    "modal": {
+      "title": "New Request",
+      "line1": "Thanks for adding a new interest. We'll review this event type and add it to the public list within 24h.",
+      "line2": "We'll also add it to your personal interests for personalization."
+    },
+    "searching": "Searching...",
+    "noResults": "No results found",
+    "loading": "Loading interests...",
+    "noResultsTitle": "No interests found",
+    "noResultsDescription": "We couldn't find any interests with that name. How about requesting WE Party to add it?",
+    "requestNewInterest": "Request new interest",
+    "requestModal": {
+      "title": "Request New Interest",
+      "description": "Enter the name of the interest you'd like us to add:",
+      "label": "Interest name",
+      "placeholder": "E.g: Electronic Party, Rock Concert...",
+      "cancel": "Cancel",
+      "submit": "Request",
+      "submitting": "Submitting..."
+    }
+  },
+  "congratulations": {
+    "title": "Congratulations, check your email",
+    "description": "Make the most of our app to find the best events and parties",
+    "button": "CONTINUE"
+  },
+  "confirmEmail": {
+    "title": "Confirm your email",
+    "subtitle": "Enter the 6-digit code we sent to:",
+    "pinHint": "Enter the 6-digit verification code",
+    "didntReceive": "Didn't receive the code?",
+    "resend": "Resend code",
+    "resendIn": "Resend in {seconds}s",
+    "verify": "Verify code",
+    "verifying": "Verifying...",
+    "success": "Email confirmed successfully!",
+    "invalidPin": "Invalid code. Please try again.",
+    "verifyError": "Error verifying code. Please try again.",
+    "pinResent": "Code resent successfully!",
+    "resendError": "Error resending code. Please try again."
+  },
+  "form": {
+    "loading": "Loading...",
+    "email": "Email",
+    "pin": "PIN Code",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm New Password"
+  },
+  "forgotPassword": {
+    "title": "Recover Password",
+    "subtitle": "Enter your email and we'll send you a code to reset your password.",
+    "button": "Send Code",
+    "successMessage": "Code sent! Check your inbox.",
+    "errors": {
+      "emailRequired": "The email field is required.",
+      "generic": "Could not send code. Please try again."
+    }
+  },
+  "verifyPin": {
+    "title": "Verify Code",
+    "subtitle": "We sent a 6-digit code to {email}. Please enter it below.",
+    "button": "Verify",
+    "errors": {
+      "invalidPin": "The code must be 6 digits long.",
+      "generic": "Invalid or expired code. Please try again."
+    }
+  },
+  "resetPassword": {
+    "title": "Create New Password",
+    "subtitle": "Create a strong and secure password.",
+    "button": "Save New Password",
+    "tokenVerified": "Token verified successfully!",
+    "successMessage": "Password changed successfully! Redirecting to login...",
+    "errors": {
+      "passwordMismatch": "The passwords do not match.",
+      "passwordTooShort": "Password must be at least 6 characters long.",
+      "passwordRules": "Password must meet all the requirements.",
+      "invalidToken": "Invalid or expired token. Please request a new email.",
+      "generic": "Could not change password. Please try again."
+    }
+  }
+}

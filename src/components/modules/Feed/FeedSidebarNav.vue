@@ -187,17 +187,14 @@ button.active .icon {
     width: 100%;
     height: auto;
     min-height: auto;
-    padding: 0.75rem 1rem 1.5rem;
-    /* Extra padding bottom for safe area */
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
     border-radius: 24px 24px 0 0;
-    z-index: 1000;
-    /* Increased z-index */
+    z-index: 200;
     flex-direction: row;
     justify-content: center;
     box-shadow: 0 -10px 40px rgba(20, 27, 68, 0.15);
     gap: 0;
     background: #ffffff;
-    /* Ensure solid background */
   }
 
   nav {
@@ -224,9 +221,9 @@ button.active .icon {
     gap: 0.25rem;
     padding: 0.5rem;
     background: transparent;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     width: auto;
-    min-width: 60px;
+    min-width: 56px;
   }
 
   button:hover {

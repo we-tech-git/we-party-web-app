@@ -1,0 +1,194 @@
+{
+  "global": {
+    "skipStepByNow": "Pular esta etapa por enquanto"
+  },
+  "login": {
+    "title": "Fazer login",
+    "subtitle": "Recomendação {0} perfeita para sua {1}",
+    "emailPlaceholder": "E-mail",
+    "passwordPlaceholder": "Senha",
+    "rememberMe": "Lembrar-me",
+    "forgotPassword": "Esqueci minha senha",
+    "button": "Entrar",
+    "noAccount": "Não tem conta?",
+    "signupLink": "Cadastre-se"
+  },
+  "signup": {
+    "title": "Cadastro",
+    "subtitle": "Preencha os dados abaixo para começar.",
+    "brandSubtitle": "Rede social perfeita {0} para sua {1}",
+    "fullName": "Nome completo",
+    "email": "E-mail",
+    "password": "Senha",
+    "confirmPassword": "Confirmar Senha",
+    "button": "Concluir cadastro",
+    "hasAccount": "Já tem uma conta?",
+    "loginLink": "Clique para entrar",
+    "rules": {
+      "lowercase": "Pelo menos uma letra minúscula",
+      "uppercase": "Pelo menos uma letra maiúscula",
+      "minChars": "Pelo menos 10 caracteres",
+      "specialChar": "Pelo menos um caractere especial"
+    },
+    "errors": {
+      "required": {
+        "name": "Nome é obrigatório",
+        "email": "E-mail é obrigatório",
+        "password": "Senha é obrigatória",
+        "confirmPassword": "Confirmação de senha é obrigatória"
+      },
+      "passwordMismatch": "As senhas precisam ser iguais",
+      "passwordRules": "A senha precisa atender a todos os requisitos"
+    },
+    "snackbar": {
+      "missingFields": {
+        "single": "Preencha o campo: {fields}",
+        "multiple": "Preencha os campos: {fields}"
+      },
+      "invalidForm": "Revise os campos obrigatórios antes de continuar",
+      "success": "Cadastro realizado! Redirecionando para o login...",
+      "failure": "Não foi possível concluir o cadastro. Tente novamente."
+    }
+  },
+  "feed": {
+    "searchPlaceholder": "Buscar eventos, artistas ou locais",
+    "searchAria": "Buscar eventos no feed",
+    "actions": {
+      "clearSearch": "Limpar busca"
+    },
+    "nav": {
+      "tagline": "Planeje suas experiências",
+      "home": "Home",
+      "topEvents": "Top eventos",
+      "favorites": "Eventos favoritos",
+      "notifications": "Notificações",
+      "profile": "Perfil",
+      "helper": "Descubra novidades e aproveite as experiências da semana.",
+      "newEvent": "Criar evento"
+    },
+    "tabs": {
+      "forYou": "Para você",
+      "today": "Acontecendo hoje",
+      "friends": "Com amigos",
+      "trends": "Tendências",
+      "news": "Novidades"
+    },
+    "trending": {
+      "title": "O que tá rolando?",
+      "subtitle": "Tendência na sua cidade",
+      "cityHighlight": "Tendência na sua cidade",
+      "more": "Mostrar mais"
+    },
+    "empty": "Nenhum evento encontrado para o momento.",
+    "profileActions": {
+      "changePicture": "Trocar foto de perfil",
+      "profile": "Meu Perfil",
+      "logout": "Sair"
+    }
+  },
+  "addFriends": {
+    "title": "Amigos",
+    "subtitle": "Adicione amigos para convidar ao seu evento",
+    "searchPlaceholder": "Search...",
+    "send": "enviar",
+    "sent": "enviado",
+    "finishButton": "CONCLUIR",
+    "infoTitle": "Por que adicionar amigos?",
+    "infoPoint1": "Conexões para todo momento",
+    "infoPoint2": "Eventos só para amigos",
+    "infoPoint3": "Compartilhe histórias e momentos"
+  }
+  ,
+  "interest": {
+    "title": "Interesses",
+    "subtitle": "Adicione interesses ao seu perfil para te apresentar os eventos que você se identifica mais.",
+    "searchPlaceholder": "Search...",
+    "finishButton": "CONCLUIR",
+    "brandTitle": { "part1": "Por que adicionar", "part2": "interesses" },
+    "benefit1": "Eventos que tem mais a sua cara",
+    "benefit2": "Eventos personalizados irão aparecer",
+    "modal": {
+      "title": "Nova Solicitação",
+      "line1": "Obrigado por adicionar um novo interesse, iremos analisar este novo tipo de evento e em até 24h iremos adicionar a lista de interesses para todos.",
+      "line2": "Também vamos adicionar aos seus interesses pessoais para eventos personalizados"
+    },
+    "searching": "Buscando...",
+    "noResults": "Nenhum resultado encontrado",
+    "loading": "Carregando interesses...",
+    "noResultsTitle": "Nenhum interesse encontrado",
+    "noResultsDescription": "Não encontramos nenhum interesse com esse nome. Que tal solicitar ao WE Party para adicionar?",
+    "requestNewInterest": "Solicitar novo interesse",
+    "requestModal": {
+      "title": "Solicitar Novo Interesse",
+      "description": "Digite o nome do interesse que você gostaria que adicionássemos:",
+      "label": "Nome do interesse",
+      "placeholder": "Ex: Festa Eletrônica, Show de Rock...",
+      "cancel": "Cancelar",
+      "submit": "Solicitar",
+      "submitting": "Enviando..."
+    }
+  },
+  "congratulations": {
+    "title": "Parabéns, Agora você pode aproveitar!",
+    "description": "Aproveite da melhor forma nosso app para encontrar os melhores eventos e festas",
+    "button": "CONTINUAR"
+  },
+  "confirmEmail": {
+    "title": "Confirme seu e-mail",
+    "subtitle": "Digite o código de 6 dígitos que enviamos para:",
+    "pinHint": "Digite o código de verificação de 6 dígitos",
+    "didntReceive": "Não recebeu o código?",
+    "resend": "Reenviar código",
+    "resendIn": "Reenviar em {seconds}s",
+    "verify": "Verificar código",
+    "verifying": "Verificando...",
+    "success": "Email confirmado com sucesso!",
+    "invalidPin": "Código inválido. Tente novamente.",
+    "verifyError": "Erro ao verificar código. Tente novamente.",
+    "pinSent": "Código enviado com sucesso!",
+    "resendError": "Erro ao reenviar código. Tente novamente."
+  },
+  "form": {
+    "loading": "Carregando...",
+    "email": "E-mail",
+    "pin": "Código PIN",
+    "newPassword": "Nova Senha",
+    "confirmPassword": "Confirmar Nova Senha"
+  },
+  "forgotPassword": {
+    "title": "Recuperar Senha",
+    "subtitle": "Digite seu e-mail e enviaremos um código para você redefinir sua senha.",
+    "button": "Enviar Código",
+    "successMessage": "Código enviado! Verifique sua caixa de entrada.",
+    "errors": {
+      "emailRequired": "O campo de e-mail é obrigatório.",
+      "generic": "Não foi possível enviar o código. Tente novamente."
+    }
+  },
+  "verifyPin": {
+    "title": "Verificar Código",
+    "subtitle": "Enviamos o link de redefinição para o email <b>{email}</b>. <br/><br/> Basta clicar no link do email para criar uma nova senha.",
+    "button": "Verificar",
+    "btn_back_to_login": "Voltar ao login",
+    "errors": {
+      "invalidPin": "O código deve ter 6 dígitos.",
+      "generic": "Código inválido ou expirado. Tente novamente."
+    }
+  },
+  "resetPassword": {
+    "title": "Criar Nova Senha",
+    "subtitle": "Crie uma senha forte e segura.",
+    "button": "Salvar Nova Senha",
+    "tokenVerified": "Token verificado com sucesso!",
+    "successMessage": "Senha alterada com sucesso! Redirecionando para o login...",
+    "errors": {
+      "passwordMismatch": "As senhas não são iguais.",
+      "passwordTooShort": "A senha deve ter pelo menos 6 caracteres.",
+      "passwordRules": "A senha precisa atender a todos os requisitos.",
+      "invalidToken": "Token inválido ou expirado. Solicite um novo email.",
+      "generic": "Não foi possível alterar a senha. Tente novamente."
+    }
+  }
+}
+
+

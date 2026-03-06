@@ -25,8 +25,12 @@ export function getEventComments (eventId: string | number) {
 /**
  * Adiciona um comentário a um evento.
  */
-export function addEventComment (eventId: string | number, content: string) {
-  return callApi('POST', `/events/${eventId}/comments`, { content }, true)
+export function addEventComment (eventId: string | number, content: string, parentCommentId?: string) {
+  const body: Record<string, any> = { content }
+  if (parentCommentId) {
+    body.parentCommentId = parentCommentId
+  }
+  return callApi('POST', `/events/${eventId}/comments`, body, true)
 }
 
 /**

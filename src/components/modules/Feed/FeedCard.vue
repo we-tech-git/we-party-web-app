@@ -750,14 +750,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   margin-top: 0.3rem;
+  flex-wrap: wrap;
 }
 
 .stats {
   display: flex;
   align-items: center;
   gap: 0.9rem;
+  flex-wrap: wrap;
   font-weight: 600;
   font-size: 0.88rem;
   color: rgba(255, 255, 255, 0.88);
@@ -939,7 +941,11 @@
 
   .stats {
     font-size: 0.78rem;
-    gap: 0.65rem;
+    gap: 0.5rem;
+  }
+
+  .footer {
+    gap: 0.5rem;
   }
 
   .icon-button {

@@ -633,9 +633,9 @@
 
       <!-- Legal Links -->
       <div class="legal-section">
-        <a href="#">Termos de uso</a>
+        <a href="/termos-de-uso.pdf" rel="noopener noreferrer" target="_blank">Termos de uso</a>
         <span class="legal-dot">•</span>
-        <a href="#">Política de privacidade</a>
+        <a href="/politica-de-privacidade.pdf" rel="noopener noreferrer" target="_blank">Política de privacidade</a>
       </div>
     </template>
 
@@ -668,6 +668,7 @@
   border-radius: 28px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  overflow-x: hidden;
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
@@ -1096,6 +1097,8 @@
   padding: 1.25rem;
   background: white;
   border-bottom: 1px solid #f0f0f0;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .stat-item {
@@ -1348,6 +1351,7 @@
   font-size: 0.95rem;
   line-height: 1.8;
   margin: 0;
+  white-space: pre-wrap;
 }
 
 /* Location Panel */
@@ -2265,6 +2269,118 @@
 
   .faqs-content {
     padding: 0.85rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .hero-section {
+    height: 240px;
+  }
+
+  .hero-title {
+    font-size: 1.2rem;
+  }
+
+  .hero-content {
+    bottom: 14px;
+    left: 12px;
+    right: 12px;
+  }
+
+  .countdown-grid {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .countdown-item {
+    min-width: 40px;
+    padding: 0.35rem 0.4rem;
+  }
+
+  .countdown-value {
+    font-size: 1rem;
+  }
+
+  .countdown-separator {
+    font-size: 1rem;
+  }
+
+  .stat-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 0.85rem;
+  }
+
+  .stat-value {
+    font-size: 0.95rem;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+  }
+
+  .stat-divider {
+    height: 28px;
+  }
+
+  .organizer-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .follow-btn {
+    padding: 0.45rem 0.9rem;
+    font-size: 0.78rem;
+  }
+
+  .tab-btn {
+    padding: 0.6rem 0.9rem;
+    font-size: 0.8rem;
+  }
+
+  .cta-button {
+    padding: 0.85rem 1.25rem;
+    font-size: 0.95rem;
+  }
+
+  .location-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    font-size: 1.2rem;
+  }
+
+  .location-address {
+    font-size: 0.9rem;
+  }
+
+  .faq-question {
+    padding: 0.85rem;
+    font-size: 0.82rem;
+  }
+
+  .faq-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+
+  .modal-content {
+    padding: 1.5rem;
+    border-radius: 20px;
+  }
+
+  .modal-icon {
+    width: 64px;
+    height: 64px;
+    font-size: 2rem;
+  }
+
+  .modal-title {
+    font-size: 1.25rem;
+  }
+
+  .modal-actions {
+    flex-direction: column;
   }
 }
 </style>

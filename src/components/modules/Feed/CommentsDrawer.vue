@@ -23,10 +23,13 @@
     createdAt: string
     likesCount: number
     isLikedByMe: boolean
+    parentCommentId?: string | null
+    replies?: Comment[]
     user: {
       id: string
       name: string
       profileImage?: string
+      role?: string
     }
   }
 
@@ -39,9 +42,21 @@
   const likingId = ref<string | null>(null)
   const commentsContainer = ref<HTMLElement | null>(null)
 
+  // Reply state
+  const replyingTo = ref<Comment | null>(null)
+  const replyText = ref('')
+  const sendingReply = ref(false)
+
   // Local liked state (optimistic)
   const localLiked = ref<Record<string, boolean>>({})
   const localLikeDelta = ref<Record<string, number>>({})
+
+  // Replies expandidas por comentário
+  const expandedReplies = ref<Record<string, boolean>>({})
+
+  function toggleReplies (commentId: string) {
+    expandedReplies.value[commentId] = !expandedReplies.value[commentId]
+  }
 
   function formatDate (dateStr: string): string {
     const d = new Date(dateStr)
@@ -103,16 +118,52 @@
     loading.value = true
     try {
       const res = await getEventComments(props.eventId)
-      const data = res?.data?.comments || res?.data?.content || res?.data || []
-      comments.value = (Array.isArray(data) ? data : []).map((c: any) => ({
-        id: c.id,
-        content: c.content,
-        createdAt: c.createdAt,
-        likesCount: c.likesCount ?? c._count?.likes ?? c.likes ?? 0,
-        isLikedByMe: c.isLikedByMe ?? c.likedByMe ?? false,
-        user: c.user ?? { id: '', name: 'Usuário' },
-      }))
-      // Reset local state
+      const raw = res?.data?.data || res?.data?.comments || res?.data?.content || res?.data || []
+      const dataArr: any[] = Array.isArray(raw) ? raw : []
+
+      function mapComment (c: any): Comment {
+        return {
+          id: c.id,
+          content: c.content,
+          createdAt: c.createdAt,
+          likesCount: c.likesCount ?? c._count?.likes ?? c.likes ?? 0,
+          isLikedByMe: c.isLikedByMe ?? c.likedByMe ?? false,
+          parentCommentId: c.parentCommentId ?? c.parentId ?? null,
+          replies: [],
+          user: {
+            ...(c.user ?? { id: '', name: 'Usuário' }),
+            role: c.user?.role ?? c.user?.userType ?? null,
+          },
+        }
+      }
+
+      // Flatten: coleta todos os comentários incluindo replies aninhadas do backend
+      const allComments: Comment[] = []
+      for (const c of dataArr) {
+        allComments.push(mapComment(c))
+        const nestedReplies = c.replies || c.children || []
+        if (Array.isArray(nestedReplies)) {
+          for (const r of nestedReplies) {
+            const mapped = mapComment(r)
+            if (!mapped.parentCommentId) mapped.parentCommentId = c.id
+            allComments.push(mapped)
+          }
+        }
+      }
+
+      // Group replies under parent comments
+      const topLevel: Comment[] = []
+      const byId: Record<string, Comment> = {}
+      for (const cm of allComments) byId[cm.id] = cm
+      for (const cm of allComments) {
+        if (cm.parentCommentId && byId[cm.parentCommentId]) {
+          byId[cm.parentCommentId]!.replies!.push(cm)
+        } else {
+          topLevel.push(cm)
+        }
+      }
+      comments.value = topLevel
+      // Reset local state (mantém replies expandidas)
       localLiked.value = {}
       localLikeDelta.value = {}
     } catch (error) {
@@ -140,6 +191,59 @@
       console.error('Erro ao enviar comentário:', error)
     } finally {
       sending.value = false
+    }
+  }
+
+  function startReply (comment: Comment) {
+    replyingTo.value = comment
+    replyText.value = ''
+  }
+
+  function cancelReply () {
+    replyingTo.value = null
+    replyText.value = ''
+  }
+
+  async function handleSendReply () {
+    const text = replyText.value.trim()
+    if (!text || sendingReply.value || !replyingTo.value) return
+    const parentId = replyingTo.value.id
+    sendingReply.value = true
+    try {
+      const res = await addEventComment(props.eventId, text, parentId)
+
+      // Insere a reply otimisticamente sob o comentário pai
+      const replyData = res?.data?.data || res?.data
+      const newReply: Comment = {
+        id: replyData?.id || `temp-${Date.now()}`,
+        content: text,
+        createdAt: new Date().toISOString(),
+        likesCount: 0,
+        isLikedByMe: false,
+        parentCommentId: parentId,
+        replies: [],
+        user: {
+          id: loggedUser.value?.id || '',
+          name: loggedUser.value?.name || 'Você',
+          profileImage: loggedUser.value?.profileImage,
+          role: undefined,
+        },
+      }
+
+      const parent = comments.value.find(c => c.id === parentId)
+      if (parent) {
+        if (!parent.replies) parent.replies = []
+        parent.replies.push(newReply)
+        // Expande automaticamente as respostas do pai
+        expandedReplies.value[parentId] = true
+      }
+
+      cancelReply()
+      fetchComments()
+    } catch (error) {
+      console.error('Erro ao enviar resposta:', error)
+    } finally {
+      sendingReply.value = false
     }
   }
 
@@ -275,6 +379,7 @@
                   <div class="comment-bubble">
                     <div class="comment-header">
                       <span class="comment-author">{{ comment.user?.name || 'Usuário' }}</span>
+                      <span v-if="comment.user?.role === 'ADMIN'" class="comment-admin-badge">Admin</span>
                       <span class="comment-time">{{ formatDate(comment.createdAt) }}</span>
                     </div>
                     <p class="comment-text">{{ comment.content }}</p>
@@ -306,6 +411,23 @@
                       <span v-if="commentLikesCount(comment) > 0" class="like-count">
                         {{ commentLikesCount(comment) }}
                       </span>
+                    </button>
+
+                    <!-- Botão Responder -->
+                    <button class="action-btn reply-action-btn" type="button" @click.stop="startReply(comment)">
+                      <svg
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                      >
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
+                      <span>Responder</span>
                     </button>
 
                     <button
@@ -340,6 +462,170 @@
                         :width="2"
                       />
                     </button>
+                  </div>
+
+                  <!-- Botão Ver/Ocultar respostas -->
+                  <button
+                    v-if="comment.replies && comment.replies.length > 0"
+                    class="toggle-replies-btn"
+                    type="button"
+                    @click.stop="toggleReplies(comment.id)"
+                  >
+                    <svg
+                      :class="{ rotated: expandedReplies[comment.id] }"
+                      fill="none"
+                      height="12"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.5"
+                      viewBox="0 0 24 24"
+                      width="12"
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                    <span v-if="!expandedReplies[comment.id]">
+                      Ver {{ comment.replies.length }} resposta{{ comment.replies.length > 1 ? 's' : '' }}
+                    </span>
+                    <span v-else>Ocultar respostas</span>
+                  </button>
+
+                  <!-- Reply input inline -->
+                  <div v-if="replyingTo?.id === comment.id" class="reply-input-area">
+                    <div class="reply-input-wrapper">
+                      <input
+                        v-model="replyText"
+                        :disabled="sendingReply"
+                        maxlength="500"
+                        :placeholder="`Respondendo a ${comment.user?.name || 'Usuário'}...`"
+                        type="text"
+                        @keyup.enter="handleSendReply"
+                        @keyup.esc="cancelReply"
+                      >
+                      <button class="reply-cancel-btn" type="button" @click="cancelReply">✕</button>
+                      <button
+                        aria-label="Enviar resposta"
+                        class="send-btn send-btn-sm"
+                        :disabled="!replyText.trim() || sendingReply"
+                        type="button"
+                        @click="handleSendReply"
+                      >
+                        <svg
+                          v-if="!sendingReply"
+                          fill="none"
+                          height="14"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          viewBox="0 0 24 24"
+                          width="14"
+                        >
+                          <path d="m22 2-7 20-4-9-9-4z" />
+                          <path d="m22 2-11 11" />
+                        </svg>
+                        <v-progress-circular
+                          v-else
+                          color="#fff"
+                          indeterminate
+                          size="12"
+                          :width="2"
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Replies aninhadas -->
+                  <div
+                    v-if="comment.replies && comment.replies.length > 0"
+                    class="replies-list"
+                    :class="{ 'replies-list--open': expandedReplies[comment.id] }"
+                  >
+                    <div v-for="reply in comment.replies" :key="reply.id" class="reply-row">
+                      <div class="comment-avatar-wrapper">
+                        <img
+                          v-if="resolveAsset(reply.user?.profileImage)"
+                          :alt="reply.user?.name"
+                          class="comment-avatar comment-avatar--sm"
+                          :src="resolveAsset(reply.user?.profileImage)"
+                        >
+                        <div
+                          v-else
+                          class="comment-avatar comment-avatar--sm placeholder"
+                          :style="{ backgroundColor: getAvatarColor(reply.user?.name || '') }"
+                        >
+                          {{ getInitial(reply.user?.name || '') }}
+                        </div>
+                      </div>
+                      <div class="comment-content">
+                        <div class="comment-bubble comment-bubble--reply">
+                          <div class="comment-header">
+                            <span class="comment-author">{{ reply.user?.name || 'Usuário' }}</span>
+                            <span v-if="reply.user?.role === 'ADMIN'" class="comment-admin-badge">Admin</span>
+                            <span class="comment-time">{{ formatDate(reply.createdAt) }}</span>
+                          </div>
+                          <p class="comment-text">{{ reply.content }}</p>
+                        </div>
+                        <div class="comment-actions">
+                          <button
+                            class="action-btn like-btn"
+                            :class="{ active: isCommentLiked(reply) }"
+                            type="button"
+                            @click.stop="handleToggleLike(reply)"
+                          >
+                            <svg
+                              aria-hidden="true"
+                              :fill="isCommentLiked(reply) ? 'currentColor' : 'none'"
+                              height="12"
+                              stroke="currentColor"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              viewBox="0 0 24 24"
+                              width="12"
+                            >
+                              <path
+                                d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
+                              />
+                            </svg>
+                            <span v-if="commentLikesCount(reply) > 0" class="like-count">{{ commentLikesCount(reply)
+                            }}</span>
+                          </button>
+                          <button
+                            v-if="isMyComment(reply)"
+                            class="action-btn delete-action-btn"
+                            :disabled="deletingId === reply.id"
+                            type="button"
+                            @click.stop="handleDelete(reply.id)"
+                          >
+                            <template v-if="deletingId !== reply.id">
+                              <svg
+                                fill="none"
+                                height="12"
+                                stroke="currentColor"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                viewBox="0 0 24 24"
+                                width="12"
+                              >
+                                <path
+                                  d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z"
+                                />
+                              </svg>
+                              <span>Excluir</span>
+                            </template>
+                            <v-progress-circular
+                              v-else
+                              color="#ff5fa6"
+                              indeterminate
+                              size="10"
+                              :width="2"
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -680,6 +966,159 @@
   cursor: not-allowed;
 }
 
+.reply-action-btn:hover {
+  color: #7dd3fc;
+}
+
+/* Admin badge */
+.comment-admin-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* Reply input inline */
+.reply-input-area {
+  margin-top: 0.45rem;
+}
+
+.reply-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 95, 166, 0.3);
+  border-radius: 999px;
+  padding: 0.2rem 0.3rem 0.2rem 0.85rem;
+}
+
+.reply-input-wrapper input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 0.82rem;
+  outline: none;
+  min-width: 0;
+  padding: 0.35rem 0;
+}
+
+.reply-input-wrapper input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.reply-cancel-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0.2rem 0.3rem;
+  transition: color 0.2s;
+}
+
+.reply-cancel-btn:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.send-btn-sm {
+  width: 28px;
+  height: 28px;
+}
+
+/* Toggle replies button */
+.toggle-replies-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: none;
+  background: transparent;
+  color: #7dd3fc;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  margin-top: 0.2rem;
+  border-radius: 999px;
+  transition: all 0.2s ease;
+}
+
+.toggle-replies-btn:hover {
+  background: rgba(125, 211, 252, 0.1);
+  color: #bae6fd;
+}
+
+.toggle-replies-btn svg {
+  transition: transform 0.25s ease;
+}
+
+.toggle-replies-btn svg.rotated {
+  transform: rotate(180deg);
+}
+
+/* Replies expand transition */
+.replies-expand-enter-active,
+.replies-expand-leave-active {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.replies-expand-enter-from,
+.replies-expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+
+.replies-expand-enter-to,
+.replies-expand-leave-from {
+  opacity: 1;
+  max-height: 600px;
+}
+
+/* Nested replies */
+.replies-list {
+  margin-top: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid rgba(255, 95, 166, 0.25);
+  display: none;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: hidden;
+  transition: opacity 0.3s ease, max-height 0.3s ease;
+  max-height: 0;
+  opacity: 0;
+}
+
+.replies-list--open {
+  display: flex;
+  max-height: 1000px;
+  opacity: 1;
+}
+
+.reply-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.comment-avatar--sm {
+  width: 26px !important;
+  height: 26px !important;
+  font-size: 0.65rem !important;
+}
+
+.comment-bubble--reply {
+  background: rgba(255, 95, 166, 0.06);
+  border-color: rgba(255, 95, 166, 0.12);
+}
+
 /* Input area */
 .input-area {
   flex-shrink: 0;
@@ -825,6 +1264,53 @@
 
   .drawer-header {
     padding: 0.5rem 1rem 0.75rem;
+  }
+
+  .comment-avatar,
+  .comment-avatar.placeholder {
+    width: 28px;
+    height: 28px;
+    font-size: 0.7rem;
+  }
+
+  .comment-text {
+    font-size: 0.78rem;
+  }
+
+  .replies-list {
+    padding-left: 0.5rem;
+  }
+
+  .comment-avatar--sm {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .reply-input-wrapper input {
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .comments-drawer {
+    border-radius: 18px 18px 0 0;
+  }
+
+  .comments-list {
+    padding: 0.4rem 0.75rem;
+  }
+
+  .input-area {
+    padding: 0.6rem 0.75rem;
+    padding-bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .comment-author {
+    font-size: 0.72rem;
+  }
+
+  .comment-actions {
+    gap: 0.5rem;
   }
 }
 </style>

@@ -86,16 +86,6 @@
   const password = ref('')
   const confirmPassword = ref('')
   const isSubmitting = ref(false)
-
-  // Aceite de termos
-  const acceptedTerms = ref(false)
-  const showTermsModal = ref(false)
-  const termsModalPdf = ref<'terms' | 'privacy'>('terms')
-
-  function openTermsModal (type: 'terms' | 'privacy') {
-    termsModalPdf.value = type
-    showTermsModal.value = true
-  }
   const snackbarVisible = ref(false)
   const snackbarMessage = ref('')
   const snackbarColor = ref('#ff9800')
@@ -123,7 +113,6 @@
       && password.value
       && password.value === confirmPassword.value
       && allPasswordRulesMet
-      && acceptedTerms.value
   })
 
   function showSnackbar (message: string, color = '#ff9800') {
@@ -199,11 +188,6 @@
     if (!Object.values(passwordRules.value).every(rule => rule === true)) {
       formErrors.value.password = t('signup.errors.passwordRules')
       showSnackbar(t('signup.errors.passwordRules'))
-      return
-    }
-
-    if (!acceptedTerms.value) {
-      showSnackbar('Você precisa aceitar os Termos de Uso para continuar.', '#ef4444')
       return
     }
 
@@ -441,29 +425,6 @@
           />
           <span v-if="formErrors.confirmPassword" class="error-message">{{ formErrors.confirmPassword }}</span>
         </div>
-
-        <!-- Aceite de Termos -->
-        <div class="terms-acceptance">
-          <label class="terms-checkbox-label">
-            <input
-              v-model="acceptedTerms"
-              class="terms-checkbox"
-              type="checkbox"
-            >
-            <span class="terms-checkbox-custom" :class="{ checked: acceptedTerms }">
-              <svg v-if="acceptedTerms" fill="none" height="10" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24" width="10">
-                <path d="M20 6 9 17l-5-5" />
-              </svg>
-            </span>
-            <span class="terms-text">
-              Li e aceito os
-              <button class="terms-link" type="button" @click.prevent="openTermsModal('terms')">Termos de Uso</button>
-              e a
-              <button class="terms-link" type="button" @click.prevent="openTermsModal('privacy')">Política de Privacidade</button>
-            </span>
-          </label>
-        </div>
-
         <p class="login-link-text">
           {{ $t('signup.hasAccount') }}
           <a href="/public/login">{{ $t('signup.loginLink') }}</a>
@@ -474,45 +435,6 @@
         </button>
         <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />
       </form>
-
-      <!-- Modal de Termos / Política -->
-      <Teleport to="body">
-        <Transition name="modal-fade">
-          <div v-if="showTermsModal" class="terms-modal-overlay" @click.self="showTermsModal = false">
-            <div class="terms-modal">
-              <div class="terms-modal-header">
-                <h3 class="terms-modal-title">
-                  {{ termsModalPdf === 'terms' ? 'Termos de Uso' : 'Política de Privacidade' }}
-                </h3>
-                <button class="terms-modal-close" type="button" @click="showTermsModal = false">
-                  <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18">
-                    <path d="M18 6 6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div class="terms-modal-body">
-                <iframe
-                  class="terms-pdf-viewer"
-                  :src="termsModalPdf === 'terms' ? '/termos-de-uso.pdf' : '/politica-de-privacidade.pdf'"
-                  title="Documento legal"
-                />
-              </div>
-              <div class="terms-modal-footer">
-                <button
-                  class="terms-accept-btn"
-                  type="button"
-                  @click="() => { acceptedTerms = true; showTermsModal = false }"
-                >
-                  ✓ Aceitar e continuar
-                </button>
-                <button class="terms-close-btn" type="button" @click="showTermsModal = false">
-                  Fechar
-                </button>
-              </div>
-            </div>
-          </div>
-        </Transition>
-      </Teleport>
     </template>
 
     <template #brand-content>
@@ -692,190 +614,6 @@ h1 {
 .eye-icon {
   width: 24px;
   height: 24px;
-}
-
-/* ---- Aceite de Termos ---- */
-.terms-acceptance {
-  margin-top: 16px;
-}
-
-.terms-checkbox-label {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.terms-checkbox {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.terms-checkbox-custom {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  border: 2px solid #d1d5db;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 2px;
-  transition: all 0.2s ease;
-}
-
-.terms-checkbox-custom.checked {
-  background: linear-gradient(135deg, #F978A3 0%, #f97316 100%);
-  border-color: transparent;
-  color: #fff;
-}
-
-.terms-text {
-  font-size: 0.82rem;
-  color: #6b7280;
-  line-height: 1.5;
-}
-
-.terms-link {
-  background: none;
-  border: none;
-  padding: 0;
-  color: #f97316;
-  font-weight: 600;
-  font-size: 0.82rem;
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: transparent;
-  transition: text-decoration-color 0.2s;
-}
-
-.terms-link:hover {
-  text-decoration-color: #f97316;
-}
-
-/* ---- Modal de Termos ---- */
-.terms-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-
-.terms-modal {
-  background: #fff;
-  border-radius: 20px;
-  width: 100%;
-  max-width: 640px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
-}
-
-.terms-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.2rem 1.5rem;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.terms-modal-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0;
-}
-
-.terms-modal-close {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: #f3f4f6;
-  color: #6b7280;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.terms-modal-close:hover {
-  background: #fee2e2;
-  color: #ef4444;
-}
-
-.terms-modal-body {
-  flex: 1;
-  overflow: hidden;
-}
-
-.terms-pdf-viewer {
-  width: 100%;
-  height: 100%;
-  min-height: 420px;
-  border: none;
-}
-
-.terms-modal-footer {
-  display: flex;
-  gap: 10px;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #f3f4f6;
-  justify-content: flex-end;
-}
-
-.terms-accept-btn {
-  padding: 0.55rem 1.4rem;
-  border-radius: 999px;
-  border: none;
-  background: linear-gradient(135deg, #F978A3 0%, #f97316 100%);
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.88rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.terms-accept-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(249, 120, 163, 0.4);
-}
-
-.terms-close-btn {
-  padding: 0.55rem 1.2rem;
-  border-radius: 999px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #6b7280;
-  font-weight: 600;
-  font-size: 0.88rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.terms-close-btn:hover {
-  background: #f9fafb;
-}
-
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.25s ease;
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
 }
 
 .login-link-text {

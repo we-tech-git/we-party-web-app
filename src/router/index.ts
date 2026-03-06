@@ -13,14 +13,14 @@ import { privateRouteGuard, publicRouteGuard } from '@/composables/useAuth'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    // Redirect da rota raiz para o login
+    // Redirect da rota raiz para a landing page
     {
       path: '',
-      redirect: '/public/Login',
+      redirect: '/public/Landingpage',
     },
     {
       path: '/',
-      redirect: '/public/Login',
+      redirect: '/public/Landingpage',
     },
     ...setupLayouts(autoRoutes),
   ],

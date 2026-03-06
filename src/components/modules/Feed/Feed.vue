@@ -42,6 +42,32 @@
   const activeTab = ref('for-you')
   const searchQuery = ref('')
 
+  // ── Filter state ──────────────────────────────────────────────────────────
+  const filterOpen = ref(false)
+  const activeCategories = ref<string[]>([])
+  const activeDateFilter = ref<string | null>(null)
+
+  const CATEGORY_CHIPS = [
+    { id: 'musica', label: '🎵 Música' },
+    { id: 'festas', label: '🎉 Festas' },
+    { id: 'gastronomia', label: '🍔 Gastronomia' },
+    { id: 'arte', label: '🎨 Arte & Cultura' },
+    { id: 'esportes', label: '⚽ Esportes' },
+    { id: 'cinema', label: '🎬 Cinema' },
+    { id: 'teatro', label: '🎭 Teatro' },
+    { id: 'tecnologia', label: '💻 Tecnologia' },
+  ]
+
+  const DATE_CHIPS = [
+    { id: 'today', label: 'Hoje' },
+    { id: 'tomorrow', label: 'Amanhã' },
+    { id: 'weekend', label: 'Fim de semana' },
+    { id: 'week', label: 'Esta semana' },
+    { id: 'month', label: 'Este mês' },
+  ]
+
+  const rawEventDates = ref<Record<string, Date>>({})
+
   const navItems = computed<NavItem[]>(() => [
     { id: 'home', label: t('feed.nav.home'), icon: 'home' },
     { id: 'top-events', label: t('feed.nav.topEvents'), icon: 'top' },
@@ -129,6 +155,15 @@
   }
 
   function mapEventToFeedItem (event: any): FeedItem {
+    // Capture raw date for client-side date filtering
+    const rawDateVal = event.date || event.startDate || event.dateTime || event.startAt || event.eventDate || event.start_date
+    if (rawDateVal) {
+      const parsedRaw = new Date(rawDateVal)
+      if (!Number.isNaN(parsedRaw.getTime())) {
+        rawEventDates.value[String(event.id)] = parsedRaw
+      }
+    }
+
     const rawBanner = getFirstValidString(
       event.bannerUrl,
       event.banner,
@@ -395,6 +430,92 @@
     }
   }
 
+  // ── Filter helpers ───────────────────────────────────────────────────────
+  function toggleCategory (id: string) {
+    const idx = activeCategories.value.indexOf(id)
+    if (idx === -1) {
+      activeCategories.value.push(id)
+    } else {
+      activeCategories.value.splice(idx, 1)
+    }
+  }
+
+  function toggleDateFilter (id: string) {
+    activeDateFilter.value = activeDateFilter.value === id ? null : id
+  }
+
+  function clearFilters () {
+    activeCategories.value = []
+    activeDateFilter.value = null
+  }
+
+  const activeFiltersCount = computed(() =>
+    activeCategories.value.length + (activeDateFilter.value ? 1 : 0),
+  )
+
+  const hasActiveFilters = computed(() => activeFiltersCount.value > 0)
+
+  function isDateInFilter (eventId: string): boolean {
+    const date = rawEventDates.value[eventId]
+    if (!date) return true
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    switch (activeDateFilter.value) {
+      case 'today': {
+        return date >= today && date < tomorrow
+      }
+      case 'tomorrow': {
+        const dayAfter = new Date(tomorrow)
+        dayAfter.setDate(dayAfter.getDate() + 1)
+        return date >= tomorrow && date < dayAfter
+      }
+      case 'weekend': {
+        const day = today.getDay()
+        const daysToSat = day === 6 ? 0 : 6 - day
+        const sat = new Date(today)
+        sat.setDate(today.getDate() + daysToSat)
+        const mon = new Date(sat)
+        mon.setDate(sat.getDate() + 2)
+        return date >= sat && date < mon
+      }
+      case 'week': {
+        const nextWeek = new Date(today)
+        nextWeek.setDate(today.getDate() + 7)
+        return date >= today && date < nextWeek
+      }
+      case 'month': {
+        const nextMonth = new Date(today)
+        nextMonth.setMonth(today.getMonth() + 1)
+        return date >= today && date < nextMonth
+      }
+      default: {
+        return true
+      }
+    }
+  }
+
+  const displayedItems = computed(() => {
+    let result = filteredItems.value
+    if (activeCategories.value.length > 0) {
+      result = result.filter(item =>
+        item.interests?.some((interest: string) =>
+          activeCategories.value.some(catId => {
+            const chip = CATEGORY_CHIPS.find(c => c.id === catId)
+            const catLabel = chip ? chip.label.replace(/^\S+\s/, '').toLowerCase() : catId
+            return interest.toLowerCase().includes(catLabel)
+              || catLabel.includes(interest.toLowerCase())
+          }),
+        ),
+      )
+    }
+    if (activeDateFilter.value) {
+      result = result.filter(item => isDateInFilter(String(item.id)))
+    }
+    return result
+  })
+
   /**
    * Gerencia o toggle de favorito com atualização da lista quando necessário
    */
@@ -452,17 +573,114 @@
             </button>
           </label>
 
-          <nav aria-label="Seções do feed" class="tabs">
+          <div class="tabs-row">
+            <nav aria-label="Seções do feed" class="tabs">
+              <button
+                v-for="tab in tabs"
+                :key="tab.id"
+                :class="{ active: activeTab === tab.id }"
+                type="button"
+                @click="selectTab(tab.id)"
+              >
+                {{ tab.label }}
+              </button>
+            </nav>
+
             <button
-              v-for="tab in tabs"
-              :key="tab.id"
-              :class="{ active: activeTab === tab.id }"
+              class="filter-toggle-btn"
+              :class="{ 'filter-active': hasActiveFilters, 'filter-open': filterOpen }"
               type="button"
-              @click="selectTab(tab.id)"
+              @click="filterOpen = !filterOpen"
             >
-              {{ tab.label }}
+              <svg
+                fill="none"
+                height="15"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="15"
+              >
+                <path d="M22 3H2l8 9.46V19l4 2v-8.54z" />
+              </svg>
+              <span class="filter-btn-label">Filtros</span>
+              <span v-if="activeFiltersCount > 0" class="filter-count-badge">{{ activeFiltersCount }}</span>
+              <svg
+                class="filter-chevron"
+                :class="{ rotated: filterOpen }"
+                fill="none"
+                height="13"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+                width="13"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
             </button>
-          </nav>
+          </div>
+
+          <Transition name="filter-expand">
+            <div v-if="filterOpen" class="filter-panel">
+              <div class="filter-section">
+                <span class="filter-section-label">Categoria</span>
+                <div class="filter-chips">
+                  <button
+                    v-for="cat in CATEGORY_CHIPS"
+                    :key="cat.id"
+                    class="filter-chip"
+                    :class="{ active: activeCategories.includes(cat.id) }"
+                    type="button"
+                    @click="toggleCategory(cat.id)"
+                  >
+                    {{ cat.label }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="filter-section">
+                <span class="filter-section-label">Quando</span>
+                <div class="filter-chips">
+                  <button
+                    v-for="d in DATE_CHIPS"
+                    :key="d.id"
+                    class="filter-chip filter-chip--date"
+                    :class="{ active: activeDateFilter === d.id }"
+                    type="button"
+                    @click="toggleDateFilter(d.id)"
+                  >
+                    {{ d.label }}
+                  </button>
+                </div>
+              </div>
+
+              <Transition name="fade">
+                <div v-if="hasActiveFilters" class="filter-clear-row">
+                  <span class="filter-results-hint">
+                    {{ displayedItems.length }} evento{{ displayedItems.length !== 1 ? 's' : '' }} encontrado{{ displayedItems.length !== 1 ? 's' : '' }}
+                  </span>
+                  <button class="filter-clear-btn" type="button" @click="clearFilters">
+                    <svg
+                      fill="none"
+                      height="12"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.5"
+                      viewBox="0 0 24 24"
+                      width="12"
+                    >
+                      <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
+                    Limpar filtros
+                  </button>
+                </div>
+              </Transition>
+            </div>
+          </Transition>
         </section>
       </template>
     </FeedTopHeader>
@@ -510,9 +728,9 @@
         <div v-if="loading" class="loading-state">
           <v-progress-circular color="#ff5fa6" indeterminate size="64" />
         </div>
-        <section v-else-if="filteredItems.length > 0" class="cards-stack">
+        <section v-else-if="displayedItems.length > 0" class="cards-stack">
           <FeedCard
-            v-for="(item, index) in filteredItems"
+            v-for="(item, index) in displayedItems"
             :id="item.id"
             :key="item.id"
             :banner="item.banner"
@@ -536,7 +754,7 @@
           />
         </section>
 
-        <div v-if="!loading && hasMore && filteredItems.length > 0 && !isSearching" class="load-more-container">
+        <div v-if="!loading && hasMore && displayedItems.length > 0 && !isSearching" class="load-more-container">
           <button
             class="load-more-btn"
             :disabled="loadingMore"
@@ -548,7 +766,7 @@
           </button>
         </div>
 
-        <p v-else-if="!loading && filteredItems.length === 0" class="empty">{{ t('feed.empty') }}</p>
+        <p v-else-if="!loading && displayedItems.length === 0" class="empty">{{ hasActiveFilters ? 'Nenhum evento encontrado com esses filtros.' : t('feed.empty') }}</p>
       </main>
 
       <FeedTrendsPanel class="feed-trends" :items="displayedTrends" />
@@ -577,12 +795,13 @@
   border-radius: 0;
   box-shadow: none;
   align-items: start;
+  padding: 0 1rem;
   --feed-sticky-offset: clamp(96px, 12vw, 140px);
 }
 
 .feed-sidebar {
   grid-area: sidebar;
-  z-index: 99;
+  z-index: 10;
 }
 
 .feed-main {
@@ -896,8 +1115,7 @@
     grid-template-columns: 1fr;
     grid-template-areas: 'main';
     width: 100%;
-    padding: 1rem 1.25rem 6rem;
-    /* Added bottom padding for bottom nav */
+    padding: 1rem 1.25rem calc(5rem + env(safe-area-inset-bottom, 0px));
     margin: 0;
     border-radius: 0;
     box-shadow: none;
@@ -939,7 +1157,7 @@
 
 @media (max-width: 640px) {
   .feed-shell {
-    padding: 0.5rem 1rem 6rem;
+    padding: 0.5rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 
   .feed-controls {
@@ -1040,6 +1258,234 @@
     font-size: 0.8rem;
     padding: 0.25rem 0.6rem;
     border-radius: 8px;
+  }
+}
+
+/* ─── Filter ─── */
+.tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.tabs-row .tabs {
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.filter-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+  color: #5a6080;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.filter-toggle-btn:hover {
+  border-color: rgba(255, 95, 166, 0.4);
+  color: #ff5fa6;
+  box-shadow: 0 2px 12px rgba(255, 95, 166, 0.12);
+}
+
+.filter-toggle-btn.filter-active {
+  border-color: #ff5fa6;
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.08) 0%, rgba(255, 95, 166, 0.08) 100%);
+  color: #ff5fa6;
+}
+
+.filter-toggle-btn.filter-open {
+  border-color: #ff5fa6;
+  color: #ff5fa6;
+}
+
+.filter-btn-label {
+  letter-spacing: 0.01em;
+}
+
+.filter-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.filter-chevron {
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
+}
+
+.filter-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+/* Filter panel */
+.filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1.15rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 248, 252, 0.98) 100%);
+  border: 1px solid rgba(255, 95, 166, 0.14);
+  border-radius: 18px;
+  box-shadow: 0 4px 24px rgba(255, 95, 166, 0.09), 0 1px 4px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.filter-section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.38);
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.32rem 0.85rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+  color: #4a5070;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
+}
+
+.filter-chip:hover {
+  border-color: rgba(255, 95, 166, 0.45);
+  color: #ff5fa6;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(255, 95, 166, 0.15);
+}
+
+.filter-chip.active {
+  border-color: transparent;
+  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(255, 95, 166, 0.3);
+  transform: translateY(-1px);
+}
+
+.filter-chip--date {
+  padding: 0.32rem 0.95rem;
+}
+
+.filter-clear-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.filter-results-hint {
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.4);
+  font-weight: 500;
+}
+
+.filter-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255, 95, 166, 0.3);
+  background: rgba(255, 95, 166, 0.06);
+  color: #ff5fa6;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-clear-btn:hover {
+  background: rgba(255, 95, 166, 0.12);
+  border-color: #ff5fa6;
+}
+
+/* Filter transitions */
+.filter-expand-enter-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.filter-expand-leave-active {
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.filter-expand-enter-from,
+.filter-expand-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scaleY(0.95);
+  max-height: 0;
+}
+
+.filter-expand-enter-to,
+.filter-expand-leave-from {
+  opacity: 1;
+  transform: translateY(0) scaleY(1);
+  max-height: 400px;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+@media (max-width: 640px) {
+  .filter-btn-label {
+    display: none;
+  }
+
+  .filter-toggle-btn {
+    padding: 0.45rem 0.65rem;
+    gap: 0.3rem;
+  }
+
+  .filter-chip {
+    font-size: 0.75rem;
+    padding: 0.28rem 0.7rem;
   }
 }
 </style>

@@ -26,6 +26,7 @@ declare module 'vue' {
     InlineComments: typeof import('./components/modules/Feed/InlineComments.vue')['default']
     InputLabel: typeof import('./components/UI/inputLabel/InputLabel.vue')['default']
     Interest: typeof import('./components/modules/interest/Interest.vue')['default']
+    LandingPage: typeof import('./components/modules/Feed/Landing/LandingPage.vue')['default']
     LanguageSwitcher: typeof import('./components/LanguageSwitcher.vue')['default']
     Login: typeof import('./components/modules/Login/Login.vue')['default']
     Profile: typeof import('./components/modules/Profile/Profile.vue')['default']

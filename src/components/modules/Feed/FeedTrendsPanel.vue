@@ -62,7 +62,7 @@
   background: transparent;
   box-shadow: none;
   min-width: 280px;
-  margin-left: 6rem;
+  margin-left: clamp(1rem, 4vw, 6rem);
 
 }
 
@@ -145,6 +145,7 @@ strong {
   .feed-trends {
     position: static;
     min-width: auto;
+    margin-left: 0;
     order: 3;
   }
 }
