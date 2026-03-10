@@ -9,58 +9,17 @@
         <div class="footer-column">
           <h4>Encontre Eventos</h4>
           <ul>
-            <li><a href="#">Hoje</a></li>
-            <li><a href="#">Amanhã</a></li>
-            <li><a href="#">Esta semana</a></li>
-            <li><a href="#">Este fim de semana</a></li>
-            <li><a href="#">Próxima semana</a></li>
-            <li><a href="#">Este mês</a></li>
+            <li><router-link to="/private/feed?dateFilter=today">Hoje</router-link></li>
+            <li><router-link to="/private/feed?dateFilter=tomorrow">Amanhã</router-link></li>
+            <li><router-link to="/private/feed?dateFilter=week">Esta semana</router-link></li>
+            <li><router-link to="/private/feed?dateFilter=month">Este mês</router-link></li>
           </ul>
         </div>
 
         <div class="footer-column">
-          <h4>Cidades</h4>
+          <h4>Sobre a Empresa</h4>
           <ul>
-            <li><a href="#">São Paulo</a></li>
-            <li><a href="#">Belo Horizonte</a></li>
-            <li><a href="#">Rio de Janeiro</a></li>
-          </ul>
-        </div>
-
-        <div class="footer-column">
-          <h4>Categorias</h4>
-          <ul>
-            <li><a class="notranslate" href="#" translate="no">We Party Play</a></li>
-            <li><a href="#">Festas e shows</a></li>
-            <li><a href="#">Teatros e espetáculos</a></li>
-            <li><a href="#">Cursos e workshops</a></li>
-            <li><a href="#">Congressos e palestras</a></li>
-            <li><a href="#">Esporte</a></li>
-            <li><a href="#">Passeios e tours</a></li>
-            <li><a href="#">Gastronomia</a></li>
-          </ul>
-        </div>
-
-        <div class="footer-column">
-          <h4>Para Produtores</h4>
-          <ul>
-            <li><a href="#">Soluções</a></li>
-            <li><a href="#">Transmissão online</a></li>
-            <li><a href="#">Cursos online</a></li>
-            <li><a href="#">Preço</a></li>
-            <li><a href="#">Integrações</a></li>
-            <li><a href="#">Cases de sucesso</a></li>
-            <li><a href="#">Consultor de vendas</a></li>
-            <li><a href="#">Homologados</a></li>
-            <li><a href="#">API</a></li>
-          </ul>
-        </div>
-
-        <div class="footer-column">
-          <h4>Ajuda</h4>
-          <ul>
-            <li><a href="#">Entre em contato</a></li>
-            <li><a href="#">Tickets</a></li>
+            <li><a href="https://www.wetechhub.com.br" target="_blank" rel="noopener noreferrer" class="notranslate" translate="no">We TechHub</a></li>
           </ul>
         </div>
       </div>

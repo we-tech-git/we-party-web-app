@@ -202,7 +202,6 @@
     const text = replyText.value.trim()
     if (!text || sendingReply.value || !replyingTo.value) return
     const parentId = replyingTo.value.id
-    const parentName = replyingTo.value.user?.name || 'Usuário'
     sendingReply.value = true
     try {
       const res = await addEventComment(props.eventId, text, parentId)

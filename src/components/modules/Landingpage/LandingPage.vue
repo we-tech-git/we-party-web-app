@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { computed, onMounted, onUnmounted, ref } from 'vue'
   import { useRouter } from 'vue-router'
+  import { getAllEvents } from '@/api/event'
 
   const router = useRouter()
 
@@ -13,161 +14,124 @@
   const mouseX = ref(0)
   const mouseY = ref(0)
   const isHoveringCard = ref<number | null>(null)
+  const isLoadingEvents = ref(true)
+
+  // Função para formatar data
+  function formatEventDate (dateString: string) {
+    const date = new Date(dateString)
+    const months = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
+    const weekdays = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
+    
+    return {
+      day: String(date.getDate()).padStart(2, '0'),
+      month: months[date.getMonth()],
+      weekday: weekdays[date.getDay()],
+    }
+  }
+
+  // Função para formatar hora
+  function formatEventTime (dateString: string) {
+    const date = new Date(dateString)
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  }
+
+  // Função para carregar eventos da API
+  async function loadEvents () {
+    try {
+      isLoadingEvents.value = true
+      const response = await getAllEvents(1, 50)
+      
+      console.log('Response completa:', response)
+      console.log('Response data:', response?.data)
+      
+      // Tentar diferentes estruturas de resposta
+      let eventsData = null
+      
+      if (response?.data?.content) {
+        eventsData = response.data.content
+      } else if (Array.isArray(response?.data?.data)) {
+        eventsData = response.data.data
+      } else if (Array.isArray(response?.data)) {
+        eventsData = response.data
+      }
+      
+      console.log('Events data:', eventsData)
+      
+      if (eventsData && Array.isArray(eventsData)) {
+        const formattedEvents = eventsData.map((event: any) => ({
+          id: event.id,
+          banner: event.banner || event.bannerUrl || event.image || 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600&h=400&fit=crop',
+          title: event.name || event.title,
+          date: formatEventDate(event.date || event.eventDate),
+          time: formatEventTime(event.date || event.eventDate),
+          location: `${event.location?.city || event.city || 'N/A'} / ${event.location?.state || event.state || 'N/A'}`,
+          venue: event.location?.venue || event.venue || event.location?.city || event.city || 'Local não informado',
+          category: event.category?.toLowerCase() || 'shows',
+        }))
+        
+        console.log('Formatted events:', formattedEvents)
+        
+        // Atualizar eventos principais
+        allEvents.value = formattedEvents
+        
+        // Atualizar eventos em destaque (primeiros 3)
+        heroEvents.value = formattedEvents.slice(0, 3).map((event: any) => ({
+          ...event,
+          location: event.venue + ', ' + event.location,
+        }))
+        
+        console.log('All events updated:', allEvents.value.length)
+        console.log('Hero events updated:', heroEvents.value.length)
+      } else {
+        console.warn('Nenhum evento encontrado ou formato inválido')
+        
+        // Eventos de fallback para teste (remover depois)
+        const fallbackEvents = [
+          {
+            id: 999,
+            banner: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600&h=400&fit=crop',
+            title: 'Evento de Teste',
+            date: { day: '10', month: 'MAR', weekday: 'SEG' },
+            time: '20:00',
+            location: 'São Paulo / SP',
+            venue: 'Local de Teste',
+            category: 'shows',
+          },
+        ]
+        
+        allEvents.value = fallbackEvents
+        heroEvents.value = fallbackEvents
+        console.log('Usando eventos de fallback')
+      }
+    } catch (error) {
+      console.error('Erro ao carregar eventos:', error)
+      
+      // Manter arrays vazios em caso de erro
+      allEvents.value = []
+      heroEvents.value = []
+      
+      // Para debug: adicionar um evento de teste
+      console.log('Adicionando evento de teste para verificar renderização...')
+      allEvents.value = [{
+        id: 888,
+        banner: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600&h=400&fit=crop',
+        title: 'Erro ao Carregar - Evento de Teste',
+        date: { day: '09', month: 'MAR', weekday: 'SAB' },
+        time: '19:00',
+        location: 'Teste / TS',
+        venue: 'Venue de Teste',
+        category: 'shows',
+      }]
+    } finally {
+      isLoadingEvents.value = false
+    }
+  }
 
   // Eventos em destaque (Hero Carousel)
-  const heroEvents = ref([
-    {
-      id: 1,
-      banner: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1600&h=900&fit=crop',
-      title: 'Festival de Música Eletrônica 2026',
-      date: { day: '15', month: 'FEV', weekday: 'SÁB' },
-      time: '22:00',
-      location: 'Arena Parque, São Paulo / SP',
-      venue: 'Arena Parque',
-    },
-    {
-      id: 2,
-      banner: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1600&h=900&fit=crop',
-      title: 'Carnaval 2026 - Bloco das Marchinhas',
-      date: { day: '28', month: 'FEV', weekday: 'SAB' },
-      time: '16:00',
-      location: 'Av. Paulista, São Paulo / SP',
-      venue: 'Av. Paulista',
-    },
-    {
-      id: 3,
-      banner: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1600&h=900&fit=crop',
-      title: 'Rock in Rio - Dia do Rock',
-      date: { day: '05', month: 'MAR', weekday: 'QUI' },
-      time: '18:00',
-      location: 'Cidade do Rock, Rio de Janeiro / RJ',
-      venue: 'Cidade do Rock',
-    },
-  ])
+  const heroEvents = ref<any[]>([])
 
   // Eventos principais (Grid estilo Ticket360/Sympla)
-  const allEvents = ref([
-    {
-      id: 1,
-      banner: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=400&fit=crop',
-      title: 'Show Salgadinho e Encontro de Batuqueiros',
-      date: { day: '30', month: 'JAN', weekday: 'SEX' },
-      time: '21:00',
-      location: 'São Paulo / SP',
-      venue: 'Espaço Usine',
-      category: 'shows',
-    },
-    {
-      id: 2,
-      banner: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&h=400&fit=crop',
-      title: 'SANA 2026 Parte 1 - Anime Festival',
-      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-      time: '10:00',
-      location: 'Fortaleza / CE',
-      venue: 'Centro de Eventos do Ceará',
-      category: 'festivais',
-    },
-    {
-      id: 3,
-      banner: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=600&h=400&fit=crop',
-      title: 'Bloco Dos Rosa - Carnaval 2026',
-      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-      time: '16:00',
-      location: 'Rio de Janeiro / RJ',
-      venue: 'Farmasi Arena',
-      category: 'festas',
-    },
-    {
-      id: 4,
-      banner: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=600&h=400&fit=crop',
-      title: 'Gregorio Duvivier - O Céu da Língua',
-      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-      time: '18:00',
-      location: 'São Paulo / SP',
-      venue: 'Espaço Unimed',
-      category: 'shows',
-    },
-    {
-      id: 5,
-      banner: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&h=400&fit=crop',
-      title: 'Turnê Gregorio Duvivier',
-      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-      time: '20:00',
-      location: 'São Paulo / SP',
-      venue: 'Espaço Unimed',
-      category: 'shows',
-    },
-    {
-      id: 6,
-      banner: 'https://images.unsplash.com/photo-1504680177321-2e6a879aac86?w=600&h=400&fit=crop',
-      title: 'Fábio Jr. - Turnê 2026',
-      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-      time: '19:00',
-      location: 'Rio de Janeiro / RJ',
-      venue: 'Vivo Rio',
-      category: 'shows',
-    },
-    {
-      id: 7,
-      banner: 'https://images.unsplash.com/photo-1598387993281-cecf8b71a8f8?w=600&h=400&fit=crop',
-      title: 'STONE BEATS com Illusionize',
-      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-      time: '20:00',
-      location: 'Leopoldina / MG',
-      venue: 'Stone House',
-      category: 'festas',
-    },
-    {
-      id: 8,
-      banner: 'https://images.unsplash.com/photo-1571266028243-d220c6fe2d28?w=600&h=400&fit=crop',
-      title: 'Ensaios Monobloco',
-      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-      time: '21:00',
-      location: 'São Paulo / SP',
-      venue: 'Audio',
-      category: 'festas',
-    },
-    {
-      id: 9,
-      banner: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=600&h=400&fit=crop',
-      title: 'Festival De Rap GEEK IN SANA',
-      date: { day: '01', month: 'FEV', weekday: 'DOM' },
-      time: '18:00',
-      location: 'Fortaleza / CE',
-      venue: 'Centro de Eventos do Ceará',
-      category: 'festivais',
-    },
-    {
-      id: 10,
-      banner: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&h=400&fit=crop',
-      title: 'Ney Matogrosso - 20+ Anos de Carreira',
-      date: { day: '04', month: 'FEV', weekday: 'QUA' },
-      time: '19:00',
-      location: 'Rio de Janeiro / RJ',
-      venue: 'Vivo Rio',
-      category: 'shows',
-    },
-    {
-      id: 11,
-      banner: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=400&fit=crop',
-      title: 'João Gomes e Vanessa da Mata',
-      date: { day: '30', month: 'JAN', weekday: 'SEX' },
-      time: '20:00',
-      location: 'Recife / PE',
-      venue: 'Classic Hall',
-      category: 'shows',
-    },
-    {
-      id: 12,
-      banner: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=400&fit=crop',
-      title: 'Villa Gávea Samba Clube',
-      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-      time: '22:00',
-      location: 'Rio de Janeiro / RJ',
-      venue: 'Villa',
-      category: 'festas',
-    },
-  ])
+  const allEvents = ref<any[]>([])
 
   // Eventos de Carnaval
   const carnivalEvents = ref([
@@ -328,6 +292,9 @@
 
   // Lifecycle
   onMounted(() => {
+    // Carregar eventos da API
+    loadEvents()
+    
     window.addEventListener('scroll', handleScroll)
     window.addEventListener('mousemove', handleMouseMove)
     startHeroAutoplay()
@@ -640,7 +607,20 @@
           <a class="see-all" href="#">Ver todos →</a>
         </div>
 
-        <div class="events-grid">
+        <!-- Loading State -->
+        <div v-if="isLoadingEvents" class="events-loading">
+          <div class="loading-spinner"></div>
+          <p>Carregando eventos...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else-if="filteredEvents.length === 0" class="events-empty">
+          <p>Nenhum evento encontrado.</p>
+          <p style="font-size: 14px; opacity: 0.7;">Total de eventos: {{ allEvents.length }}</p>
+        </div>
+
+        <!-- Events Grid -->
+        <div v-else class="events-grid">
           <article
             v-for="(event, index) in filteredEvents"
             :key="event.id"
@@ -2874,5 +2854,33 @@
   .badge-day {
     font-size: 20px;
   }
+}
+
+/* ====== LOADING & EMPTY STATES ====== */
+.events-loading,
+.events-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  margin: 0 auto 20px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #ff6b6b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.events-empty p {
+  font-size: 18px;
+  margin-bottom: 10px;
 }
 </style>

@@ -22,6 +22,7 @@
     rank?: number
     interests?: string[]
     commentsCount?: number
+    matchedInterests?: string[]
   }>()
 
   const emit = defineEmits<{
@@ -96,6 +97,31 @@
     e.stopPropagation()
     showInterests.value = !showInterests.value
     if (showInterests.value) showComments.value = false
+  }
+
+  // Tags de interesses visíveis no card (max 3 + overflow)
+  const visibleInterestTags = computed(() => {
+    if (!props.interests || props.interests.length === 0) return []
+    const matched = props.matchedInterests || []
+    // Prioriza os matched no topo
+    const sorted = [...props.interests].sort((a, b) => {
+      const aMatch = matched.some(m => m.toLowerCase() === a.toLowerCase())
+      const bMatch = matched.some(m => m.toLowerCase() === b.toLowerCase())
+      if (aMatch && !bMatch) return -1
+      if (!aMatch && bMatch) return 1
+      return 0
+    })
+    return sorted.slice(0, 3)
+  })
+
+  const overflowCount = computed(() => {
+    if (!props.interests) return 0
+    return Math.max(0, props.interests.length - 3)
+  })
+
+  function isMatchedInterest(tag: string): boolean {
+    if (!props.matchedInterests || props.matchedInterests.length === 0) return false
+    return props.matchedInterests.some(m => m.toLowerCase() === tag.toLowerCase())
   }
 </script>
 
@@ -187,6 +213,17 @@
 
         <!-- Title -->
         <h3 class="title">{{ title }}</h3>
+
+        <!-- Interest tags -->
+        <div v-if="visibleInterestTags.length > 0" class="interest-tags">
+          <span
+            v-for="tag in visibleInterestTags"
+            :key="tag"
+            class="interest-tag"
+            :class="{ matched: isMatchedInterest(tag) }"
+          >{{ tag }}</span>
+          <span v-if="overflowCount > 0" class="interest-tag more">+{{ overflowCount }}</span>
+        </div>
 
         <!-- Date + Location pill -->
         <div class="meta-wrapper">
@@ -699,6 +736,45 @@
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.65);
 }
 
+/* ─── Interest Tags ──────────────────────────────────────────────────────── */
+.interest-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.interest-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.interest-tag.matched {
+  background: linear-gradient(135deg, rgba(233, 30, 99, 0.85), rgba(255, 95, 166, 0.85));
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(233, 30, 99, 0.35);
+}
+
+.interest-tag.more {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.6rem;
+}
+
 /* ─── Meta pill ──────────────────────────────────────────────────────────── */
 .meta-wrapper {
   display: inline-flex;
@@ -911,6 +987,16 @@
     font-size: 1.3rem;
   }
 
+  .interest-tags {
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+  }
+
+  .interest-tag {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.45rem;
+  }
+
   .location {
     max-width: 130px;
   }
@@ -937,6 +1023,16 @@
 
   .title {
     font-size: 1.15rem;
+  }
+
+  .interest-tags {
+    gap: 0.2rem;
+    margin-top: 0.2rem;
+  }
+
+  .interest-tag {
+    font-size: 0.55rem;
+    padding: 0.12rem 0.4rem;
   }
 
   .stats {

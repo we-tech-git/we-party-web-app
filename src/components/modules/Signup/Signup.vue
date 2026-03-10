@@ -445,13 +445,19 @@
         <!-- Aceite de Termos -->
         <div class="terms-acceptance">
           <label class="terms-checkbox-label">
-            <input
-              v-model="acceptedTerms"
-              class="terms-checkbox"
-              type="checkbox"
-            >
+            <input v-model="acceptedTerms" class="terms-checkbox" type="checkbox">
             <span class="terms-checkbox-custom" :class="{ checked: acceptedTerms }">
-              <svg v-if="acceptedTerms" fill="none" height="10" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24" width="10">
+              <svg
+                v-if="acceptedTerms"
+                fill="none"
+                height="10"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+                width="10"
+              >
                 <path d="M20 6 9 17l-5-5" />
               </svg>
             </span>
@@ -459,7 +465,8 @@
               Li e aceito os
               <button class="terms-link" type="button" @click.prevent="openTermsModal('terms')">Termos de Uso</button>
               e a
-              <button class="terms-link" type="button" @click.prevent="openTermsModal('privacy')">Política de Privacidade</button>
+              <button class="terms-link" type="button" @click.prevent="openTermsModal('privacy')">Política de
+                Privacidade</button>
             </span>
           </label>
         </div>
@@ -485,7 +492,16 @@
                   {{ termsModalPdf === 'terms' ? 'Termos de Uso' : 'Política de Privacidade' }}
                 </h3>
                 <button class="terms-modal-close" type="button" @click="showTermsModal = false">
-                  <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18">
+                  <svg
+                    fill="none"
+                    height="18"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="18"
+                  >
                     <path d="M18 6 6 18M6 6l12 12" />
                   </svg>
                 </button>

@@ -1,11 +1,13 @@
 <script setup lang="ts">
   import type { FeedItem } from '@/stores/events'
-  import { computed, onMounted, ref, watch } from 'vue'
+  import { computed, nextTick, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
 
   import { useRoute, useRouter } from 'vue-router'
 
   import { getEventRecomendations, getEventsToday, getFavoriteEvents, getTrendingEvents, searchByEvents } from '@/api/event'
+  import { getInterests } from '@/api/interest'
+  import { getUserInterests } from '@/api/users'
 
   import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
   import { useAuth } from '@/composables/useAuth'
@@ -46,22 +48,219 @@
   const filterOpen = ref(false)
   const activeCategories = ref<string[]>([])
   const activeDateFilter = ref<string | null>(null)
+  const showCategorySearch = ref(false)
+  const categorySearchQuery = ref('')
+  const searchedCategories = ref<Array<{ id: string; label: string }>>([])
+  const searchingCategories = ref(false)
+  let searchTimeout: ReturnType<typeof setTimeout> | null = null
+  const categorySearchInput = ref<HTMLInputElement | null>(null)
 
-  const CATEGORY_CHIPS = [
-    { id: 'musica', label: '🎵 Música' },
-    { id: 'festas', label: '🎉 Festas' },
-    { id: 'gastronomia', label: '🍔 Gastronomia' },
-    { id: 'arte', label: '🎨 Arte & Cultura' },
-    { id: 'esportes', label: '⚽ Esportes' },
-    { id: 'cinema', label: '🎬 Cinema' },
-    { id: 'teatro', label: '🎭 Teatro' },
-    { id: 'tecnologia', label: '💻 Tecnologia' },
-  ]
+  // Função auxiliar para mapear ícones aos interesses
+  const getInterestIcon = (name: string): string => {
+    const lowerName = name.toLowerCase()
+    const iconMap: Record<string, string> = {
+      'rock': '🎸',
+      'vinhos': '🍷',
+      'cerveja artesanal': '🍺',
+      'cerveja': '🍺',
+      'teatro': '🎭',
+      'stand-up': '🎤',
+      'stand-up comedy': '🎤',
+      'podcast': '🎙️',
+      'marketing': '📢',
+      'marketing digital': '📢',
+      'empreendedorismo': '💼',
+      'startups': '🚀',
+      'arte urbana': '🎨',
+      'moda': '👗',
+      'filosofia': '💭',
+      'psicologia': '🧠',
+      'história': '📜',
+      'ciência': '🔬',
+      'gaming': '🎮',
+      'artes marciais': '🥋',
+      'dança': '💃',
+      'fitness': '💪',
+      'meditação': '🧘',
+      'yoga': '🧘‍♀️',
+      'fotografia': '📸',
+      'design gráfico': '🎨',
+      'programação': '💻',
+      'web': '🌐',
+      'tecnologia': '💻',
+      'ia': '🤖',
+      'viagens': '✈️',
+      'ásia': '🌏',
+      'europa': '🌍',
+      'culinária': '🍽️',
+      'mexicana': '🌮',
+      'japonesa': '🍱',
+      'italiana': '🍝',
+      'poesia': '📝',
+      'leitura': '📚',
+      'filmes': '🎬',
+      'sci-fi': '🚀',
+      'horror': '👻',
+      'drama': '🎭',
+      'comédia': '😂',
+      'ação': '💥',
+      'ciclismo': '🚴',
+      'corrida': '🏃',
+      'skate': '🛹',
+      'surf': '🏄',
+      'natação': '🏊',
+      'tênis': '🎾',
+      'vôlei': '🏐',
+      'basquete': '🏀',
+      'basketball': '🏀',
+      'futebol': '⚽',
+      'música': '🎵',
+      'musica': '🎵',
+      'eletrônica': '🎧',
+      'jazz': '🎷',
+      'clássica': '🎻',
+      'pop': '🎤',
+    }
+    
+    return iconMap[lowerName] || '🎯'
+  }
+
+  // Carregar categorias da API
+  const userInterestChips = ref<Array<{ id: string; label: string }>>([])
+  const allInterestsCache = ref<Array<{ id: string; label: string; name: string }>>([])
+  const loadingCategories = ref(false)
+
+  // Categorias exibidas (usuário ou pesquisadas)
+  const displayedCategories = computed(() => {
+    // Modo explorar com busca ativa
+    if (showCategorySearch.value && searchedCategories.value.length > 0) {
+      return searchedCategories.value
+    }
+    
+    if (showCategorySearch.value && categorySearchQuery.value.trim()) {
+      return []
+    }
+    
+    // Modo explorar sem busca: mostra populares (10 primeiras do cache)
+    if (showCategorySearch.value && !categorySearchQuery.value.trim()) {
+      return allInterestsCache.value.slice(0, 10).map(i => ({ id: i.id, label: i.label }))
+    }
+    
+    return userInterestChips.value
+  })
+
+  // Categorias ativas resolvías (label de qualquer fonte)
+  const activeCategoryLabels = computed(() => {
+    return activeCategories.value.map(catId => {
+      const fromUser = userInterestChips.value.find(c => c.id === catId)
+      if (fromUser) return fromUser
+      const fromAll = allInterestsCache.value.find(c => c.id === catId)
+      if (fromAll) return { id: fromAll.id, label: fromAll.label }
+      return { id: catId, label: catId }
+    })
+  })
+
+  // Contador de resultados da busca
+  const searchResultsCount = computed(() => {
+    if (!showCategorySearch.value || !categorySearchQuery.value.trim()) return 0
+    return searchedCategories.value.length
+  })
+
+  async function loadCategories() {
+    try {
+      loadingCategories.value = true
+      
+      // Buscar interesses do usuário e todos os interesses em paralelo
+      const [userResponse, allResponse] = await Promise.all([
+        getUserInterests(),
+        getInterests()
+      ])
+      
+      // Processar interesses do usuário
+      let userInterests: any[] = []
+      if (Array.isArray(userResponse?.data)) {
+        userInterests = userResponse.data
+      } else if (Array.isArray(userResponse?.data?.data)) {
+        userInterests = userResponse.data.data
+      } else if (Array.isArray(userResponse?.data?.interests)) {
+        userInterests = userResponse.data.interests
+      }
+      
+      if (userInterests.length > 0) {
+        userInterestChips.value = userInterests
+          .slice(0, 10)
+          .map((interest: any) => {
+            const interestData = interest.interest || interest
+            return {
+              id: interestData.id || interestData._id,
+              label: `${getInterestIcon(interestData.name)} ${interestData.name}`
+            }
+          })
+      }
+      
+      // Cachear todos os interesses para busca local
+      let allInterests: any[] = []
+      if (Array.isArray(allResponse?.data)) {
+        allInterests = allResponse.data
+      } else if (Array.isArray(allResponse?.data?.data)) {
+        allInterests = allResponse.data.data
+      } else if (Array.isArray(allResponse?.data?.interests)) {
+        allInterests = allResponse.data.interests
+      }
+      
+      allInterestsCache.value = allInterests.map((interest: any) => ({
+        id: interest.id || interest._id,
+        label: `${getInterestIcon(interest.name)} ${interest.name}`,
+        name: interest.name
+      }))
+      
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error)
+    } finally {
+      loadingCategories.value = false
+    }
+  }
+
+  // Filtrar categorias localmente a partir do cache
+  function filterCategories() {
+    const query = categorySearchQuery.value.trim().toLowerCase()
+    
+    if (!query) {
+      searchedCategories.value = []
+      searchingCategories.value = false
+      return
+    }
+
+    searchedCategories.value = allInterestsCache.value
+      .filter(interest => interest.name.toLowerCase().includes(query))
+      .map(interest => ({
+        id: interest.id,
+        label: interest.label
+      }))
+    
+    searchingCategories.value = false
+  }
+
+  // Filtrar categorias localmente com debounce leve
+  watch(categorySearchQuery, (newValue) => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout)
+    }
+    
+    if (newValue.trim()) {
+      searchingCategories.value = true
+      searchTimeout = setTimeout(() => {
+        filterCategories()
+      }, 150)
+    } else {
+      searchedCategories.value = []
+      searchingCategories.value = false
+    }
+  })
 
   const DATE_CHIPS = [
     { id: 'today', label: 'Hoje' },
     { id: 'tomorrow', label: 'Amanhã' },
-    { id: 'weekend', label: 'Fim de semana' },
     { id: 'week', label: 'Esta semana' },
     { id: 'month', label: 'Este mês' },
   ]
@@ -252,6 +451,16 @@
   }
 
   onMounted(() => {
+    // Aplicar filtro de data vindo da query string (ex: footer)
+    const dateFilterParam = route.query.dateFilter as string | undefined
+    if (dateFilterParam && ['today', 'tomorrow', 'week', 'month'].includes(dateFilterParam)) {
+      activeDateFilter.value = dateFilterParam
+      filterOpen.value = true
+    }
+
+    // Carregar categorias da API
+    loadCategories()
+    
     if (activeNav.value === 'favorites') {
       fetchFavoriteEvents()
       // Sincroniza favoritos com o servidor ao montar a página
@@ -326,8 +535,6 @@
     const resp = await searchByEvents(normalizedSearch, 1, 20)
     return resp.data.events || resp.data || []
   }
-
-  let searchTimeout: ReturnType<typeof setTimeout>
 
   watch(searchQuery, (newQuerySearch: string) => {
     clearTimeout(searchTimeout)
@@ -447,6 +654,20 @@
   function clearFilters () {
     activeCategories.value = []
     activeDateFilter.value = null
+    categorySearchQuery.value = ''
+    searchedCategories.value = []
+  }
+  
+  function toggleExploreMode() {
+    showCategorySearch.value = !showCategorySearch.value
+    categorySearchQuery.value = ''
+    searchedCategories.value = []
+    // Melhoria 5: Auto-focus no input ao abrir explorar
+    if (showCategorySearch.value) {
+      nextTick(() => {
+        categorySearchInput.value?.focus()
+      })
+    }
   }
 
   const activeFiltersCount = computed(() =>
@@ -458,42 +679,56 @@
   function isDateInFilter (eventId: string): boolean {
     const date = rawEventDates.value[eventId]
     if (!date) return true
+    
     const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+    const eventDateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0)
+    
     switch (activeDateFilter.value) {
       case 'today': {
-        return date >= today && date < tomorrow
+        return eventDateOnly.getTime() === today.getTime()
       }
       case 'tomorrow': {
-        const dayAfter = new Date(tomorrow)
-        dayAfter.setDate(dayAfter.getDate() + 1)
-        return date >= tomorrow && date < dayAfter
-      }
-      case 'weekend': {
-        const day = today.getDay()
-        const daysToSat = day === 6 ? 0 : 6 - day
-        const sat = new Date(today)
-        sat.setDate(today.getDate() + daysToSat)
-        const mon = new Date(sat)
-        mon.setDate(sat.getDate() + 2)
-        return date >= sat && date < mon
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        return eventDateOnly.getTime() === tomorrow.getTime()
       }
       case 'week': {
-        const nextWeek = new Date(today)
-        nextWeek.setDate(today.getDate() + 7)
-        return date >= today && date < nextWeek
+        const currentDay = today.getDay()
+        const daysUntilSunday = currentDay === 0 ? 0 : 7 - currentDay
+        const endOfWeek = new Date(today)
+        endOfWeek.setDate(today.getDate() + daysUntilSunday)
+        return eventDateOnly.getTime() >= today.getTime() && eventDateOnly.getTime() <= endOfWeek.getTime()
       }
       case 'month': {
-        const nextMonth = new Date(today)
-        nextMonth.setMonth(today.getMonth() + 1)
-        return date >= today && date < nextMonth
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 0, 0, 0, 0)
+        return eventDateOnly.getTime() >= today.getTime() && eventDateOnly.getTime() <= endOfMonth.getTime()
       }
       default: {
         return true
       }
     }
+  }
+
+  // Resolve o nome (sem emoji) de uma categoria pelo ID
+  function resolveCategoryName(catId: string): string {
+    const fromUser = userInterestChips.value.find(c => c.id === catId)
+    if (fromUser) return fromUser.label.replace(/^\S+\s/, '').toLowerCase()
+    const fromAll = allInterestsCache.value.find(c => c.id === catId)
+    if (fromAll) return fromAll.name.toLowerCase()
+    return catId.toLowerCase()
+  }
+
+  // Retorna os interesses de um evento que fazem match com as categorias ativas
+  function getMatchedInterests(item: FeedItem): string[] {
+    if (!item.interests || activeCategories.value.length === 0) return []
+    return item.interests.filter((interest: string) =>
+      activeCategories.value.some(catId => {
+        const catName = resolveCategoryName(catId)
+        return interest.toLowerCase().includes(catName)
+          || catName.includes(interest.toLowerCase())
+      }),
+    )
   }
 
   const displayedItems = computed(() => {
@@ -502,10 +737,9 @@
       result = result.filter(item =>
         item.interests?.some((interest: string) =>
           activeCategories.value.some(catId => {
-            const chip = CATEGORY_CHIPS.find(c => c.id === catId)
-            const catLabel = chip ? chip.label.replace(/^\S+\s/, '').toLowerCase() : catId
-            return interest.toLowerCase().includes(catLabel)
-              || catLabel.includes(interest.toLowerCase())
+            const catName = resolveCategoryName(catId)
+            return interest.toLowerCase().includes(catName)
+              || catName.includes(interest.toLowerCase())
           }),
         ),
       )
@@ -626,10 +860,71 @@
           <Transition name="filter-expand">
             <div v-if="filterOpen" class="filter-panel">
               <div class="filter-section">
-                <span class="filter-section-label">Categoria</span>
-                <div class="filter-chips">
+                <div class="filter-section-header">
+                  <span class="filter-section-label">Categoria</span>
+                  <button 
+                    v-if="userInterestChips.length > 0"
+                    class="explore-categories-btn" 
+                    type="button"
+                    @click="toggleExploreMode"
+                  >
+                    {{ showCategorySearch ? '✨ Meus interesses' : '🔍 Explorar categorias' }}
+                  </button>
+                </div>
+
+                <!-- Tags removíveis das categorias selecionadas -->
+                <div v-if="activeCategoryLabels.length > 0" class="active-tags">
                   <button
-                    v-for="cat in CATEGORY_CHIPS"
+                    v-for="cat in activeCategoryLabels"
+                    :key="'tag-' + cat.id"
+                    class="active-tag"
+                    type="button"
+                    @click="toggleCategory(cat.id)"
+                  >
+                    {{ cat.label }}
+                    <span class="active-tag-x">×</span>
+                  </button>
+                </div>
+                
+                <div v-if="showCategorySearch" class="category-search-box">
+                  <span class="search-box-icon">
+                    <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="14"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  </span>
+                  <input
+                    ref="categorySearchInput"
+                    v-model="categorySearchQuery"
+                    type="text"
+                    placeholder="Ex: Rock, Yoga, Cinema..."
+                    class="category-search-input"
+                    autocomplete="off"
+                  />
+                  <button
+                    v-if="categorySearchQuery"
+                    class="search-clear-btn"
+                    type="button"
+                    @click="categorySearchQuery = ''"
+                  >
+                    <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24" width="14"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  </button>
+                </div>
+
+                <!-- Contador de resultados -->
+                <div v-if="showCategorySearch && categorySearchQuery.trim() && !searchingCategories" class="search-results-count">
+                  <span v-if="searchResultsCount > 0">{{ searchResultsCount }} categoria{{ searchResultsCount !== 1 ? 's' : '' }} encontrada{{ searchResultsCount !== 1 ? 's' : '' }}</span>
+                  <span v-else class="no-results">Nenhum resultado</span>
+                </div>
+
+                <!-- Label "Populares" quando no modo explorar sem busca -->
+                <span v-if="showCategorySearch && !categorySearchQuery.trim() && allInterestsCache.length > 0" class="filter-subsection-label">
+                  Populares
+                </span>
+                
+                <div v-if="searchingCategories && categorySearchQuery.trim()" class="empty-categories">
+                  <p>🔍 Buscando categorias...</p>
+                </div>
+                <div v-else-if="displayedCategories.length > 0" class="filter-chips">
+                  <button
+                    v-for="cat in displayedCategories"
                     :key="cat.id"
                     class="filter-chip"
                     :class="{ active: activeCategories.includes(cat.id) }"
@@ -638,6 +933,14 @@
                   >
                     {{ cat.label }}
                   </button>
+                </div>
+                <div v-else-if="showCategorySearch && categorySearchQuery.trim() && !searchingCategories" class="empty-categories">
+                  <p>Nenhuma categoria encontrada para "{{ categorySearchQuery }}"</p>
+                  <p class="hint">Tente outros termos de busca</p>
+                </div>
+                <div v-else-if="!loadingCategories && userInterestChips.length === 0 && !showCategorySearch" class="empty-categories">
+                  <p>Você ainda não escolheu seus interesses.</p>
+                  <p class="hint">Complete seu perfil para ver categorias personalizadas!</p>
                 </div>
               </div>
 
@@ -746,6 +1049,7 @@
             :liked="eventsStore.isLiked(item.id)"
             :likes="(item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0)"
             :location="item.location"
+            :matched-interests="getMatchedInterests(item)"
             :rank="activeNav === 'top-events' ? index + 1 : undefined"
             :schedule="item.schedule"
             :title="item.title"
@@ -764,6 +1068,14 @@
             <span v-if="loadingMore" class="spinner" />
             {{ loadingMore ? 'Carregando' : 'Carregar mais eventos' }}
           </button>
+        </div>
+
+        <div v-else-if="!loading && !hasMore && displayedItems.length > 0 && !isSearching" class="end-of-results">
+          <div class="end-icon">✓</div>
+          <p class="end-message">
+            {{ hasActiveFilters ? 'Você visualizou todos os eventos com esses filtros.' : 'Você visualizou todos os eventos disponíveis.' }}
+          </p>
+          <p class="end-hint">{{ hasActiveFilters ? 'Tente ajustar os filtros para descobrir mais eventos.' : 'Novos eventos são adicionados diariamente.' }}</p>
         </div>
 
         <p v-else-if="!loading && displayedItems.length === 0" class="empty">{{ hasActiveFilters ? 'Nenhum evento encontrado com esses filtros.' : t('feed.empty') }}</p>
@@ -1081,6 +1393,44 @@
   }
 }
 
+.end-of-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.5rem 1.5rem;
+  margin: 1rem 0;
+  text-align: center;
+  width: 100%;
+}
+
+.end-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.15), rgba(255, 95, 166, 0.15));
+  color: #ff5fa6;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  border: 2px solid rgba(255, 95, 166, 0.2);
+}
+
+.end-message {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.75);
+  margin: 0 0 0.5rem 0;
+}
+
+.end-hint {
+  font-size: 0.88rem;
+  color: rgba(0, 0, 0, 0.45);
+  margin: 0;
+}
+
 @media (max-width: 1240px) {
   .feed-shell {
     grid-template-columns: 220px 1fr;
@@ -1356,6 +1706,13 @@
   gap: 0.55rem;
 }
 
+.filter-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .filter-section-label {
   font-size: 0.7rem;
   font-weight: 700;
@@ -1364,10 +1721,201 @@
   color: rgba(0, 0, 0, 0.38);
 }
 
+.explore-categories-btn {
+  background: transparent;
+  border: none;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #e91e63;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.explore-categories-btn:hover {
+  background: rgba(233, 30, 99, 0.08);
+  transform: translateY(-1px);
+}
+
+.explore-categories-btn:active {
+  transform: translateY(0);
+}
+
+.active-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.active-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border: none;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-family: inherit;
+  font-weight: 600;
+  background: #e91e63;
+  color: white;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.active-tag:hover {
+  background: #c2185b;
+}
+
+.active-tag-x {
+  font-size: 0.85rem;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.category-search-box {
+  position: relative;
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.search-box-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.category-search-input {
+  width: 100%;
+  padding: 0.6rem 2.2rem 0.6rem 2.2rem;
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.category-search-input:focus {
+  outline: none;
+  border-color: #e91e63;
+  box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.1);
+}
+
+.category-search-input::placeholder {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.08);
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.5);
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.search-clear-btn:hover {
+  background: rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.search-results-count {
+  font-size: 0.72rem;
+  color: rgba(0, 0, 0, 0.45);
+  margin-top: 0.25rem;
+  padding-left: 0.1rem;
+}
+
+.search-results-count .no-results {
+  color: #e91e63;
+}
+
+.filter-subsection-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.5rem;
+  margin-bottom: 0.1rem;
+}
+
+.search-loading {
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.9rem;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.empty-categories {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+  border: 1.5px dashed rgba(0, 0, 0, 0.1);
+}
+
+.empty-categories p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.empty-categories .hint {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.4);
+}
+
 .filter-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .filter-chip {

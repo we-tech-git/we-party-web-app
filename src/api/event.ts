@@ -1,5 +1,23 @@
 import { callApi } from '.'
 
+export async function getAllEvents (page = 1, limit = 50) {
+  try {
+    console.log('Chamando API getAllEvents...')
+    const response = await callApi(
+      'GET',
+      `/events?page=${page}&limit=${limit}`,
+      {},
+      false, // Sem autenticação para landing page
+    )
+    console.log('Response getAllEvents:', response)
+    return response
+  } catch (error) {
+    console.error('Erro ao buscar eventos:', error)
+    console.error('Error details:', JSON.stringify(error, null, 2))
+    throw error
+  }
+}
+
 export async function getEventRecomendations (page = 1, limit = 10) {
   try {
     const response = await callApi(
