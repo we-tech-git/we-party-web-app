@@ -1,359 +1,359 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+  import { computed, onMounted, onUnmounted, ref } from 'vue'
+  import { useRouter } from 'vue-router'
 
-const router = useRouter()
+  const router = useRouter()
 
-// Estado
-const isScrolled = ref(false)
-const activeCategory = ref('todos')
-const searchQuery = ref('')
-const currentHeroSlide = ref(0)
-const currentCarouselIndex = ref(0)
-const mouseX = ref(0)
-const mouseY = ref(0)
-const isHoveringCard = ref<number | null>(null)
+  // Estado
+  const isScrolled = ref(false)
+  const activeCategory = ref('todos')
+  const searchQuery = ref('')
+  const currentHeroSlide = ref(0)
+  const currentCarouselIndex = ref(0)
+  const mouseX = ref(0)
+  const mouseY = ref(0)
+  const isHoveringCard = ref<number | null>(null)
 
-// Eventos em destaque (Hero Carousel)
-const heroEvents = ref([
-  {
-    id: 1,
-    banner: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1600&h=900&fit=crop',
-    title: 'Festival de Música Eletrônica 2026',
-    date: { day: '15', month: 'FEV', weekday: 'SÁB' },
-    time: '22:00',
-    location: 'Arena Parque, São Paulo / SP',
-    venue: 'Arena Parque',
-  },
-  {
-    id: 2,
-    banner: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1600&h=900&fit=crop',
-    title: 'Carnaval 2026 - Bloco das Marchinhas',
-    date: { day: '28', month: 'FEV', weekday: 'SAB' },
-    time: '16:00',
-    location: 'Av. Paulista, São Paulo / SP',
-    venue: 'Av. Paulista',
-  },
-  {
-    id: 3,
-    banner: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1600&h=900&fit=crop',
-    title: 'Rock in Rio - Dia do Rock',
-    date: { day: '05', month: 'MAR', weekday: 'QUI' },
-    time: '18:00',
-    location: 'Cidade do Rock, Rio de Janeiro / RJ',
-    venue: 'Cidade do Rock',
-  },
-])
-
-// Eventos principais (Grid estilo Ticket360/Sympla)
-const allEvents = ref([
-  {
-    id: 1,
-    banner: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=400&fit=crop',
-    title: 'Show Salgadinho e Encontro de Batuqueiros',
-    date: { day: '30', month: 'JAN', weekday: 'SEX' },
-    time: '21:00',
-    location: 'São Paulo / SP',
-    venue: 'Espaço Usine',
-    category: 'shows',
-  },
-  {
-    id: 2,
-    banner: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&h=400&fit=crop',
-    title: 'SANA 2026 Parte 1 - Anime Festival',
-    date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-    time: '10:00',
-    location: 'Fortaleza / CE',
-    venue: 'Centro de Eventos do Ceará',
-    category: 'festivais',
-  },
-  {
-    id: 3,
-    banner: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=600&h=400&fit=crop',
-    title: 'Bloco Dos Rosa - Carnaval 2026',
-    date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-    time: '16:00',
-    location: 'Rio de Janeiro / RJ',
-    venue: 'Farmasi Arena',
-    category: 'festas',
-  },
-  {
-    id: 4,
-    banner: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=600&h=400&fit=crop',
-    title: 'Gregorio Duvivier - O Céu da Língua',
-    date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-    time: '18:00',
-    location: 'São Paulo / SP',
-    venue: 'Espaço Unimed',
-    category: 'shows',
-  },
-  {
-    id: 5,
-    banner: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&h=400&fit=crop',
-    title: 'Turnê Gregorio Duvivier',
-    date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-    time: '20:00',
-    location: 'São Paulo / SP',
-    venue: 'Espaço Unimed',
-    category: 'shows',
-  },
-  {
-    id: 6,
-    banner: 'https://images.unsplash.com/photo-1504680177321-2e6a879aac86?w=600&h=400&fit=crop',
-    title: 'Fábio Jr. - Turnê 2026',
-    date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-    time: '19:00',
-    location: 'Rio de Janeiro / RJ',
-    venue: 'Vivo Rio',
-    category: 'shows',
-  },
-  {
-    id: 7,
-    banner: 'https://images.unsplash.com/photo-1598387993281-cecf8b71a8f8?w=600&h=400&fit=crop',
-    title: 'STONE BEATS com Illusionize',
-    date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-    time: '20:00',
-    location: 'Leopoldina / MG',
-    venue: 'Stone House',
-    category: 'festas',
-  },
-  {
-    id: 8,
-    banner: 'https://images.unsplash.com/photo-1571266028243-d220c6fe2d28?w=600&h=400&fit=crop',
-    title: 'Ensaios Monobloco',
-    date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-    time: '21:00',
-    location: 'São Paulo / SP',
-    venue: 'Audio',
-    category: 'festas',
-  },
-  {
-    id: 9,
-    banner: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=600&h=400&fit=crop',
-    title: 'Festival De Rap GEEK IN SANA',
-    date: { day: '01', month: 'FEV', weekday: 'DOM' },
-    time: '18:00',
-    location: 'Fortaleza / CE',
-    venue: 'Centro de Eventos do Ceará',
-    category: 'festivais',
-  },
-  {
-    id: 10,
-    banner: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&h=400&fit=crop',
-    title: 'Ney Matogrosso - 20+ Anos de Carreira',
-    date: { day: '04', month: 'FEV', weekday: 'QUA' },
-    time: '19:00',
-    location: 'Rio de Janeiro / RJ',
-    venue: 'Vivo Rio',
-    category: 'shows',
-  },
-  {
-    id: 11,
-    banner: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=400&fit=crop',
-    title: 'João Gomes e Vanessa da Mata',
-    date: { day: '30', month: 'JAN', weekday: 'SEX' },
-    time: '20:00',
-    location: 'Recife / PE',
-    venue: 'Classic Hall',
-    category: 'shows',
-  },
-  {
-    id: 12,
-    banner: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=400&fit=crop',
-    title: 'Villa Gávea Samba Clube',
-    date: { day: '31', month: 'JAN', weekday: 'SÁB' },
-    time: '22:00',
-    location: 'Rio de Janeiro / RJ',
-    venue: 'Villa',
-    category: 'festas',
-  },
-])
-
-// Eventos de Carnaval
-const carnivalEvents = ref([
-  {
-    id: 101,
-    banner: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&h=750&fit=crop',
-    title: 'Ensaios da Anitta - Curitiba',
-    date: { day: '31', month: 'JAN' },
-    location: 'Curitiba / PR',
-  },
-  {
-    id: 102,
-    banner: 'https://images.unsplash.com/photo-1504680177321-2e6a879aac86?w=600&h=750&fit=crop',
-    title: 'Ensaios da Anitta - Ribeirão Preto',
-    date: { day: '01', month: 'FEV' },
-    location: 'Ribeirão Preto / SP',
-  },
-  {
-    id: 103,
-    banner: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&h=750&fit=crop',
-    title: 'Bloco do Serro - Rio de Janeiro',
-    date: { day: '31', month: 'JAN' },
-    location: 'Rio de Janeiro / RJ',
-  },
-  {
-    id: 104,
-    banner: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=750&fit=crop',
-    title: 'Vou Pro Sereno',
-    date: { day: '08', month: 'FEV' },
-    location: 'Mirante do Arvrão',
-  },
-  {
-    id: 105,
-    banner: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600&h=750&fit=crop',
-    title: 'Pagode da Vitória',
-    date: { day: '14', month: 'FEV' },
-    location: 'Exc Rio',
-  },
-])
-
-// Cursos e Workshops
-const workshopEvents = ref([
-  {
-    id: 201,
-    banner: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=600&h=400&fit=crop',
-    title: 'AULÃO FITDANCE COLORS 2026',
-    date: { day: '29', month: 'MAR', weekday: 'DOM' },
-    time: '10:00',
-    location: 'Belo Horizonte / MG',
-  },
-  {
-    id: 202,
-    banner: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=600&h=400&fit=crop',
-    title: 'SUPERTRAMP EXPERIENCE',
-    date: { day: '24', month: 'ABR', weekday: 'SEX' },
-    time: '21:30',
-    location: 'Belo Horizonte / MG',
-  },
-  {
-    id: 203,
-    banner: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=600&h=400&fit=crop',
-    title: 'O PODER É VOCÊ! - Carol Pinelli',
-    date: { day: '07', month: 'FEV', weekday: 'SÁB' },
-    time: '08:30',
-    location: 'Belo Horizonte / MG',
-  },
-  {
-    id: 204,
-    banner: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop',
-    title: 'WORKSHOP DE POWER TRAINING',
-    date: { day: '07', month: 'FEV', weekday: 'SÁB' },
-    time: '08:00',
-    location: 'Belo Horizonte / MG',
-  },
-])
-
-// Categorias
-const categories = [
-  { id: 'todos', name: 'Todos', icon: '🎯' },
-  { id: 'shows', name: 'Shows', icon: '🎤' },
-  { id: 'festas', name: 'Festas', icon: '🎉' },
-  { id: 'festivais', name: 'Festivais', icon: '🎪' },
-  { id: 'teatro', name: 'Teatro', icon: '🎭' },
-  { id: 'esportes', name: 'Esportes', icon: '⚽' },
-  { id: 'cursos', name: 'Cursos', icon: '📚' },
-]
-
-// Filtrar eventos
-const filteredEvents = computed(() => {
-  let events = allEvents.value
-
-  if (activeCategory.value !== 'todos') {
-    events = events.filter(e => e.category === activeCategory.value)
-  }
-
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    events = events.filter(e =>
-      e.title.toLowerCase().includes(query)
-      || e.location.toLowerCase().includes(query)
-      || e.venue.toLowerCase().includes(query),
-    )
-  }
-
-  return events
-})
-
-// Hero Carousel Autoplay
-let heroInterval: number | null = null
-
-function startHeroAutoplay() {
-  heroInterval = window.setInterval(() => {
-    currentHeroSlide.value = (currentHeroSlide.value + 1) % heroEvents.value.length
-  }, 6000)
-}
-
-function stopHeroAutoplay() {
-  if (heroInterval) {
-    clearInterval(heroInterval)
-    heroInterval = null
-  }
-}
-
-function goToHeroSlide(index: number) {
-  currentHeroSlide.value = index
-  stopHeroAutoplay()
-  startHeroAutoplay()
-}
-
-// Scroll handler
-function handleScroll() {
-  isScrolled.value = window.scrollY > 20
-}
-
-// Mouse tracking para efeito parallax
-function handleMouseMove(e: MouseEvent) {
-  mouseX.value = (e.clientX / window.innerWidth - 0.5) * 20
-  mouseY.value = (e.clientY / window.innerHeight - 0.5) * 20
-}
-
-// Carrossel de eventos em destaque
-const carouselEvents = computed(() => {
-  return allEvents.value.slice(0, 8)
-})
-
-function nextCarouselSlide() {
-  const maxIndex = Math.max(0, carouselEvents.value.length - 4)
-  currentCarouselIndex.value = Math.min(currentCarouselIndex.value + 1, maxIndex)
-}
-
-function prevCarouselSlide() {
-  currentCarouselIndex.value = Math.max(currentCarouselIndex.value - 1, 0)
-}
-
-// Navigation
-const goToSignup = () => router.push('/public/signup')
-const goToLogin = () => router.push('/public/login')
-
-// Lifecycle
-onMounted(() => {
-  window.addEventListener('scroll', handleScroll)
-  window.addEventListener('mousemove', handleMouseMove)
-  startHeroAutoplay()
-
-  // Intersection Observer para animações
-  const observer = new IntersectionObserver(
-    entries => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible')
-        }
-      }
+  // Eventos em destaque (Hero Carousel)
+  const heroEvents = ref([
+    {
+      id: 1,
+      banner: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1600&h=900&fit=crop',
+      title: 'Festival de Música Eletrônica 2026',
+      date: { day: '15', month: 'FEV', weekday: 'SÁB' },
+      time: '22:00',
+      location: 'Arena Parque, São Paulo / SP',
+      venue: 'Arena Parque',
     },
-    { threshold: 0.1, rootMargin: '50px' },
-  )
+    {
+      id: 2,
+      banner: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1600&h=900&fit=crop',
+      title: 'Carnaval 2026 - Bloco das Marchinhas',
+      date: { day: '28', month: 'FEV', weekday: 'SAB' },
+      time: '16:00',
+      location: 'Av. Paulista, São Paulo / SP',
+      venue: 'Av. Paulista',
+    },
+    {
+      id: 3,
+      banner: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1600&h=900&fit=crop',
+      title: 'Rock in Rio - Dia do Rock',
+      date: { day: '05', month: 'MAR', weekday: 'QUI' },
+      time: '18:00',
+      location: 'Cidade do Rock, Rio de Janeiro / RJ',
+      venue: 'Cidade do Rock',
+    },
+  ])
 
-  for (const el of Array.from(document.querySelectorAll('.fade-in-section'))) {
-    observer.observe(el)
+  // Eventos principais (Grid estilo Ticket360/Sympla)
+  const allEvents = ref([
+    {
+      id: 1,
+      banner: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=400&fit=crop',
+      title: 'Show Salgadinho e Encontro de Batuqueiros',
+      date: { day: '30', month: 'JAN', weekday: 'SEX' },
+      time: '21:00',
+      location: 'São Paulo / SP',
+      venue: 'Espaço Usine',
+      category: 'shows',
+    },
+    {
+      id: 2,
+      banner: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&h=400&fit=crop',
+      title: 'SANA 2026 Parte 1 - Anime Festival',
+      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
+      time: '10:00',
+      location: 'Fortaleza / CE',
+      venue: 'Centro de Eventos do Ceará',
+      category: 'festivais',
+    },
+    {
+      id: 3,
+      banner: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=600&h=400&fit=crop',
+      title: 'Bloco Dos Rosa - Carnaval 2026',
+      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
+      time: '16:00',
+      location: 'Rio de Janeiro / RJ',
+      venue: 'Farmasi Arena',
+      category: 'festas',
+    },
+    {
+      id: 4,
+      banner: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=600&h=400&fit=crop',
+      title: 'Gregorio Duvivier - O Céu da Língua',
+      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
+      time: '18:00',
+      location: 'São Paulo / SP',
+      venue: 'Espaço Unimed',
+      category: 'shows',
+    },
+    {
+      id: 5,
+      banner: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&h=400&fit=crop',
+      title: 'Turnê Gregorio Duvivier',
+      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
+      time: '20:00',
+      location: 'São Paulo / SP',
+      venue: 'Espaço Unimed',
+      category: 'shows',
+    },
+    {
+      id: 6,
+      banner: 'https://images.unsplash.com/photo-1504680177321-2e6a879aac86?w=600&h=400&fit=crop',
+      title: 'Fábio Jr. - Turnê 2026',
+      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
+      time: '19:00',
+      location: 'Rio de Janeiro / RJ',
+      venue: 'Vivo Rio',
+      category: 'shows',
+    },
+    {
+      id: 7,
+      banner: 'https://images.unsplash.com/photo-1598387993281-cecf8b71a8f8?w=600&h=400&fit=crop',
+      title: 'STONE BEATS com Illusionize',
+      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
+      time: '20:00',
+      location: 'Leopoldina / MG',
+      venue: 'Stone House',
+      category: 'festas',
+    },
+    {
+      id: 8,
+      banner: 'https://images.unsplash.com/photo-1571266028243-d220c6fe2d28?w=600&h=400&fit=crop',
+      title: 'Ensaios Monobloco',
+      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
+      time: '21:00',
+      location: 'São Paulo / SP',
+      venue: 'Audio',
+      category: 'festas',
+    },
+    {
+      id: 9,
+      banner: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=600&h=400&fit=crop',
+      title: 'Festival De Rap GEEK IN SANA',
+      date: { day: '01', month: 'FEV', weekday: 'DOM' },
+      time: '18:00',
+      location: 'Fortaleza / CE',
+      venue: 'Centro de Eventos do Ceará',
+      category: 'festivais',
+    },
+    {
+      id: 10,
+      banner: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&h=400&fit=crop',
+      title: 'Ney Matogrosso - 20+ Anos de Carreira',
+      date: { day: '04', month: 'FEV', weekday: 'QUA' },
+      time: '19:00',
+      location: 'Rio de Janeiro / RJ',
+      venue: 'Vivo Rio',
+      category: 'shows',
+    },
+    {
+      id: 11,
+      banner: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=400&fit=crop',
+      title: 'João Gomes e Vanessa da Mata',
+      date: { day: '30', month: 'JAN', weekday: 'SEX' },
+      time: '20:00',
+      location: 'Recife / PE',
+      venue: 'Classic Hall',
+      category: 'shows',
+    },
+    {
+      id: 12,
+      banner: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=400&fit=crop',
+      title: 'Villa Gávea Samba Clube',
+      date: { day: '31', month: 'JAN', weekday: 'SÁB' },
+      time: '22:00',
+      location: 'Rio de Janeiro / RJ',
+      venue: 'Villa',
+      category: 'festas',
+    },
+  ])
+
+  // Eventos de Carnaval
+  const carnivalEvents = ref([
+    {
+      id: 101,
+      banner: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&h=750&fit=crop',
+      title: 'Ensaios da Anitta - Curitiba',
+      date: { day: '31', month: 'JAN' },
+      location: 'Curitiba / PR',
+    },
+    {
+      id: 102,
+      banner: 'https://images.unsplash.com/photo-1504680177321-2e6a879aac86?w=600&h=750&fit=crop',
+      title: 'Ensaios da Anitta - Ribeirão Preto',
+      date: { day: '01', month: 'FEV' },
+      location: 'Ribeirão Preto / SP',
+    },
+    {
+      id: 103,
+      banner: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&h=750&fit=crop',
+      title: 'Bloco do Serro - Rio de Janeiro',
+      date: { day: '31', month: 'JAN' },
+      location: 'Rio de Janeiro / RJ',
+    },
+    {
+      id: 104,
+      banner: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=750&fit=crop',
+      title: 'Vou Pro Sereno',
+      date: { day: '08', month: 'FEV' },
+      location: 'Mirante do Arvrão',
+    },
+    {
+      id: 105,
+      banner: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600&h=750&fit=crop',
+      title: 'Pagode da Vitória',
+      date: { day: '14', month: 'FEV' },
+      location: 'Exc Rio',
+    },
+  ])
+
+  // Cursos e Workshops
+  const workshopEvents = ref([
+    {
+      id: 201,
+      banner: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=600&h=400&fit=crop',
+      title: 'AULÃO FITDANCE COLORS 2026',
+      date: { day: '29', month: 'MAR', weekday: 'DOM' },
+      time: '10:00',
+      location: 'Belo Horizonte / MG',
+    },
+    {
+      id: 202,
+      banner: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=600&h=400&fit=crop',
+      title: 'SUPERTRAMP EXPERIENCE',
+      date: { day: '24', month: 'ABR', weekday: 'SEX' },
+      time: '21:30',
+      location: 'Belo Horizonte / MG',
+    },
+    {
+      id: 203,
+      banner: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=600&h=400&fit=crop',
+      title: 'O PODER É VOCÊ! - Carol Pinelli',
+      date: { day: '07', month: 'FEV', weekday: 'SÁB' },
+      time: '08:30',
+      location: 'Belo Horizonte / MG',
+    },
+    {
+      id: 204,
+      banner: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop',
+      title: 'WORKSHOP DE POWER TRAINING',
+      date: { day: '07', month: 'FEV', weekday: 'SÁB' },
+      time: '08:00',
+      location: 'Belo Horizonte / MG',
+    },
+  ])
+
+  // Categorias
+  const categories = [
+    { id: 'todos', name: 'Todos', icon: '🎯' },
+    { id: 'shows', name: 'Shows', icon: '🎤' },
+    { id: 'festas', name: 'Festas', icon: '🎉' },
+    { id: 'festivais', name: 'Festivais', icon: '🎪' },
+    { id: 'teatro', name: 'Teatro', icon: '🎭' },
+    { id: 'esportes', name: 'Esportes', icon: '⚽' },
+    { id: 'cursos', name: 'Cursos', icon: '📚' },
+  ]
+
+  // Filtrar eventos
+  const filteredEvents = computed(() => {
+    let events = allEvents.value
+
+    if (activeCategory.value !== 'todos') {
+      events = events.filter(e => e.category === activeCategory.value)
+    }
+
+    if (searchQuery.value) {
+      const query = searchQuery.value.toLowerCase()
+      events = events.filter(e =>
+        e.title.toLowerCase().includes(query)
+        || e.location.toLowerCase().includes(query)
+        || e.venue.toLowerCase().includes(query),
+      )
+    }
+
+    return events
+  })
+
+  // Hero Carousel Autoplay
+  let heroInterval: number | null = null
+
+  function startHeroAutoplay () {
+    heroInterval = window.setInterval(() => {
+      currentHeroSlide.value = (currentHeroSlide.value + 1) % heroEvents.value.length
+    }, 6000)
   }
-})
 
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-  window.removeEventListener('mousemove', handleMouseMove)
-  stopHeroAutoplay()
-})
+  function stopHeroAutoplay () {
+    if (heroInterval) {
+      clearInterval(heroInterval)
+      heroInterval = null
+    }
+  }
+
+  function goToHeroSlide (index: number) {
+    currentHeroSlide.value = index
+    stopHeroAutoplay()
+    startHeroAutoplay()
+  }
+
+  // Scroll handler
+  function handleScroll () {
+    isScrolled.value = window.scrollY > 20
+  }
+
+  // Mouse tracking para efeito parallax
+  function handleMouseMove (e: MouseEvent) {
+    mouseX.value = (e.clientX / window.innerWidth - 0.5) * 20
+    mouseY.value = (e.clientY / window.innerHeight - 0.5) * 20
+  }
+
+  // Carrossel de eventos em destaque
+  const carouselEvents = computed(() => {
+    return allEvents.value.slice(0, 8)
+  })
+
+  function nextCarouselSlide () {
+    const maxIndex = Math.max(0, carouselEvents.value.length - 4)
+    currentCarouselIndex.value = Math.min(currentCarouselIndex.value + 1, maxIndex)
+  }
+
+  function prevCarouselSlide () {
+    currentCarouselIndex.value = Math.max(currentCarouselIndex.value - 1, 0)
+  }
+
+  // Navigation
+  const goToSignup = () => router.push('/public/signup')
+  const goToLogin = () => router.push('/public/login')
+
+  // Lifecycle
+  onMounted(() => {
+    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('mousemove', handleMouseMove)
+    startHeroAutoplay()
+
+    // Intersection Observer para animações
+    const observer = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible')
+          }
+        }
+      },
+      { threshold: 0.1, rootMargin: '50px' },
+    )
+
+    for (const el of Array.from(document.querySelectorAll('.fade-in-section'))) {
+      observer.observe(el)
+    }
+  })
+
+  onUnmounted(() => {
+    window.removeEventListener('scroll', handleScroll)
+    window.removeEventListener('mousemove', handleMouseMove)
+    stopHeroAutoplay()
+  })
 </script>
 
 <template>
@@ -401,12 +401,22 @@ onUnmounted(() => {
 
         <!-- Search Bar -->
         <div class="search-bar">
-          <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <svg
+            class="search-icon"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.35-4.35" />
           </svg>
-          <input v-model="searchQuery" class="search-input" placeholder="Pesquise por artista, evento ou local..."
-            type="text">
+          <input
+            v-model="searchQuery"
+            class="search-input"
+            placeholder="Pesquise por artista, evento ou local..."
+            type="text"
+          >
         </div>
 
         <nav class="nav">
@@ -421,8 +431,12 @@ onUnmounted(() => {
     <!-- Hero Carousel -->
     <section class="hero" @mouseenter="stopHeroAutoplay" @mouseleave="startHeroAutoplay">
       <div class="hero-carousel">
-        <div v-for="(event, index) in heroEvents" :key="event.id" class="hero-slide"
-          :class="{ active: currentHeroSlide === index }">
+        <div
+          v-for="(event, index) in heroEvents"
+          :key="event.id"
+          class="hero-slide"
+          :class="{ active: currentHeroSlide === index }"
+        >
           <img :alt="event.title" class="hero-image" :src="event.banner">
           <div class="hero-overlay" />
           <div class="hero-content">
@@ -432,7 +446,13 @@ onUnmounted(() => {
             </div>
             <h1 class="hero-title">{{ event.title }}</h1>
             <p class="hero-location">
-              <svg class="location-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <svg
+                class="location-icon"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                 <circle cx="12" cy="10" r="3" />
               </svg>
@@ -440,7 +460,13 @@ onUnmounted(() => {
             </p>
             <button class="hero-cta" @click="goToSignup">
               Ver Detalhes
-              <svg class="arrow-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <svg
+                class="arrow-icon"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+              >
                 <path d="M5 12h14m-7-7l7 7-7 7" />
               </svg>
             </button>
@@ -450,8 +476,13 @@ onUnmounted(() => {
 
       <!-- Hero Dots -->
       <div class="hero-dots">
-        <button v-for="(event, index) in heroEvents" :key="event.id" class="hero-dot"
-          :class="{ active: currentHeroSlide === index }" @click="goToHeroSlide(index)" />
+        <button
+          v-for="(event, index) in heroEvents"
+          :key="event.id"
+          class="hero-dot"
+          :class="{ active: currentHeroSlide === index }"
+          @click="goToHeroSlide(index)"
+        />
       </div>
     </section>
 
@@ -464,9 +495,14 @@ onUnmounted(() => {
         </div>
         <div class="categories-wrapper">
           <div class="categories-scroll">
-            <button v-for="(cat, index) in categories" :key="cat.id" class="category-chip"
-              :class="{ active: activeCategory === cat.id }" :style="{ '--index': index }"
-              @click="activeCategory = cat.id">
+            <button
+              v-for="(cat, index) in categories"
+              :key="cat.id"
+              class="category-chip"
+              :class="{ active: activeCategory === cat.id }"
+              :style="{ '--index': index }"
+              @click="activeCategory = cat.id"
+            >
               <span class="chip-bg" />
               <span class="chip-glow" />
               <span class="category-icon">{{ cat.icon }}</span>
@@ -499,8 +535,11 @@ onUnmounted(() => {
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
-            <button class="carousel-btn next" :disabled="currentCarouselIndex >= carouselEvents.length - 4"
-              @click="nextCarouselSlide">
+            <button
+              class="carousel-btn next"
+              :disabled="currentCarouselIndex >= carouselEvents.length - 4"
+              @click="nextCarouselSlide"
+            >
               <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path d="M9 18l6-6-6-6" />
               </svg>
@@ -510,11 +549,19 @@ onUnmounted(() => {
 
         <div ref="carouselRef" class="carousel-wrapper">
           <div class="carousel-track" :style="{ transform: `translateX(-${currentCarouselIndex * 340}px)` }">
-            <article v-for="(event, index) in carouselEvents" :key="event.id" class="carousel-card"
-              :class="{ hovering: isHoveringCard === index, active: index === currentCarouselIndex }" :style="{
+            <article
+              v-for="(event, index) in carouselEvents"
+              :key="event.id"
+              class="carousel-card"
+              :class="{ hovering: isHoveringCard === index, active: index === currentCarouselIndex }"
+              :style="{
                 '--delay': `${index * 0.1}s`,
                 '--card-index': index,
-              }" @click="goToSignup" @mouseenter="isHoveringCard = index" @mouseleave="isHoveringCard = null">
+              }"
+              @click="goToSignup"
+              @mouseenter="isHoveringCard = index"
+              @mouseleave="isHoveringCard = null"
+            >
               <div class="carousel-card-shine" />
               <div class="carousel-card-glow" />
               <div class="carousel-card-border" />
@@ -574,8 +621,13 @@ onUnmounted(() => {
         </div>
 
         <div class="carousel-dots">
-          <button v-for="(_, index) in Math.max(1, carouselEvents.length - 3)" :key="index" class="carousel-dot"
-            :class="{ active: currentCarouselIndex === index }" @click="currentCarouselIndex = index" />
+          <button
+            v-for="(_, index) in Math.max(1, carouselEvents.length - 3)"
+            :key="index"
+            class="carousel-dot"
+            :class="{ active: currentCarouselIndex === index }"
+            @click="currentCarouselIndex = index"
+          />
         </div>
       </div>
     </section>
@@ -589,8 +641,13 @@ onUnmounted(() => {
         </div>
 
         <div class="events-grid">
-          <article v-for="(event, index) in filteredEvents" :key="event.id" class="event-card"
-            :style="{ animationDelay: `${index * 0.05}s` }" @click="goToSignup">
+          <article
+            v-for="(event, index) in filteredEvents"
+            :key="event.id"
+            class="event-card"
+            :style="{ animationDelay: `${index * 0.05}s` }"
+            @click="goToSignup"
+          >
             <div class="event-image-wrapper">
               <img :alt="event.title" class="event-image" :src="event.banner">
               <div class="event-date-tag">
@@ -678,7 +735,13 @@ onUnmounted(() => {
           <div class="cta-buttons">
             <button class="btn-cta-primary" @click="goToSignup">
               Criar Conta Grátis
-              <svg class="btn-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <svg
+                class="btn-icon"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+              >
                 <path d="M5 12h14m-7-7l7 7-7 7" />
               </svg>
             </button>

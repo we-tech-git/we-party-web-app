@@ -27,6 +27,7 @@ declare module 'vue' {
     InputLabel: typeof import('./components/UI/inputLabel/InputLabel.vue')['default']
     Interest: typeof import('./components/modules/interest/Interest.vue')['default']
     LandingPage: typeof import('./components/modules/Feed/Landing/LandingPage.vue')['default']
+    LandingPageV2: typeof import('./components/modules/Landingpage/LandingPageV2.vue')['default']
     LanguageSwitcher: typeof import('./components/LanguageSwitcher.vue')['default']
     Login: typeof import('./components/modules/Login/Login.vue')['default']
     Profile: typeof import('./components/modules/Profile/Profile.vue')['default']
