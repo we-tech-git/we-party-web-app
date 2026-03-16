@@ -50,13 +50,13 @@
   const activeDateFilter = ref<string | null>(null)
   const showCategorySearch = ref(false)
   const categorySearchQuery = ref('')
-  const searchedCategories = ref<Array<{ id: string; label: string }>>([])
+  const searchedCategories = ref<Array<{ id: string, label: string }>>([])
   const searchingCategories = ref(false)
   let searchTimeout: ReturnType<typeof setTimeout> | null = null
   const categorySearchInput = ref<HTMLInputElement | null>(null)
 
   // Função auxiliar para mapear ícones aos interesses
-  const getInterestIcon = (name: string): string => {
+  function getInterestIcon (name: string): string {
     const lowerName = name.toLowerCase()
     const iconMap: Record<string, string> = {
       'rock': '🎸',
@@ -121,13 +121,13 @@
       'clássica': '🎻',
       'pop': '🎤',
     }
-    
+
     return iconMap[lowerName] || '🎯'
   }
 
   // Carregar categorias da API
-  const userInterestChips = ref<Array<{ id: string; label: string }>>([])
-  const allInterestsCache = ref<Array<{ id: string; label: string; name: string }>>([])
+  const userInterestChips = ref<Array<{ id: string, label: string }>>([])
+  const allInterestsCache = ref<Array<{ id: string, label: string, name: string }>>([])
   const loadingCategories = ref(false)
 
   // Categorias exibidas (usuário ou pesquisadas)
@@ -136,16 +136,16 @@
     if (showCategorySearch.value && searchedCategories.value.length > 0) {
       return searchedCategories.value
     }
-    
+
     if (showCategorySearch.value && categorySearchQuery.value.trim()) {
       return []
     }
-    
+
     // Modo explorar sem busca: mostra populares (10 primeiras do cache)
     if (showCategorySearch.value && !categorySearchQuery.value.trim()) {
       return allInterestsCache.value.slice(0, 10).map(i => ({ id: i.id, label: i.label }))
     }
-    
+
     return userInterestChips.value
   })
 
@@ -166,16 +166,16 @@
     return searchedCategories.value.length
   })
 
-  async function loadCategories() {
+  async function loadCategories () {
     try {
       loadingCategories.value = true
-      
+
       // Buscar interesses do usuário e todos os interesses em paralelo
       const [userResponse, allResponse] = await Promise.all([
         getUserInterests(),
-        getInterests()
+        getInterests(),
       ])
-      
+
       // Processar interesses do usuário
       let userInterests: any[] = []
       if (Array.isArray(userResponse?.data)) {
@@ -185,7 +185,7 @@
       } else if (Array.isArray(userResponse?.data?.interests)) {
         userInterests = userResponse.data.interests
       }
-      
+
       if (userInterests.length > 0) {
         userInterestChips.value = userInterests
           .slice(0, 10)
@@ -193,11 +193,11 @@
             const interestData = interest.interest || interest
             return {
               id: interestData.id || interestData._id,
-              label: `${getInterestIcon(interestData.name)} ${interestData.name}`
+              label: `${getInterestIcon(interestData.name)} ${interestData.name}`,
             }
           })
       }
-      
+
       // Cachear todos os interesses para busca local
       let allInterests: any[] = []
       if (Array.isArray(allResponse?.data)) {
@@ -207,13 +207,12 @@
       } else if (Array.isArray(allResponse?.data?.interests)) {
         allInterests = allResponse.data.interests
       }
-      
+
       allInterestsCache.value = allInterests.map((interest: any) => ({
         id: interest.id || interest._id,
         label: `${getInterestIcon(interest.name)} ${interest.name}`,
-        name: interest.name
+        name: interest.name,
       }))
-      
     } catch (error) {
       console.error('Erro ao carregar categorias:', error)
     } finally {
@@ -222,9 +221,9 @@
   }
 
   // Filtrar categorias localmente a partir do cache
-  function filterCategories() {
+  function filterCategories () {
     const query = categorySearchQuery.value.trim().toLowerCase()
-    
+
     if (!query) {
       searchedCategories.value = []
       searchingCategories.value = false
@@ -235,18 +234,18 @@
       .filter(interest => interest.name.toLowerCase().includes(query))
       .map(interest => ({
         id: interest.id,
-        label: interest.label
+        label: interest.label,
       }))
-    
+
     searchingCategories.value = false
   }
 
   // Filtrar categorias localmente com debounce leve
-  watch(categorySearchQuery, (newValue) => {
+  watch(categorySearchQuery, newValue => {
     if (searchTimeout) {
       clearTimeout(searchTimeout)
     }
-    
+
     if (newValue.trim()) {
       searchingCategories.value = true
       searchTimeout = setTimeout(() => {
@@ -460,7 +459,7 @@
 
     // Carregar categorias da API
     loadCategories()
-    
+
     if (activeNav.value === 'favorites') {
       fetchFavoriteEvents()
       // Sincroniza favoritos com o servidor ao montar a página
@@ -537,7 +536,9 @@
   }
 
   watch(searchQuery, (newQuerySearch: string) => {
-    clearTimeout(searchTimeout)
+    if (searchTimeout !== null) {
+      clearTimeout(searchTimeout)
+    }
 
     const normalized = newQuerySearch.trim()
 
@@ -657,8 +658,8 @@
     categorySearchQuery.value = ''
     searchedCategories.value = []
   }
-  
-  function toggleExploreMode() {
+
+  function toggleExploreMode () {
     showCategorySearch.value = !showCategorySearch.value
     categorySearchQuery.value = ''
     searchedCategories.value = []
@@ -679,11 +680,11 @@
   function isDateInFilter (eventId: string): boolean {
     const date = rawEventDates.value[eventId]
     if (!date) return true
-    
+
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
     const eventDateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0)
-    
+
     switch (activeDateFilter.value) {
       case 'today': {
         return eventDateOnly.getTime() === today.getTime()
@@ -711,7 +712,7 @@
   }
 
   // Resolve o nome (sem emoji) de uma categoria pelo ID
-  function resolveCategoryName(catId: string): string {
+  function resolveCategoryName (catId: string): string {
     const fromUser = userInterestChips.value.find(c => c.id === catId)
     if (fromUser) return fromUser.label.replace(/^\S+\s/, '').toLowerCase()
     const fromAll = allInterestsCache.value.find(c => c.id === catId)
@@ -720,7 +721,7 @@
   }
 
   // Retorna os interesses de um evento que fazem match com as categorias ativas
-  function getMatchedInterests(item: FeedItem): string[] {
+  function getMatchedInterests (item: FeedItem): string[] {
     if (!item.interests || activeCategories.value.length === 0) return []
     return item.interests.filter((interest: string) =>
       activeCategories.value.some(catId => {
@@ -862,9 +863,9 @@
               <div class="filter-section">
                 <div class="filter-section-header">
                   <span class="filter-section-label">Categoria</span>
-                  <button 
+                  <button
                     v-if="userInterestChips.length > 0"
-                    class="explore-categories-btn" 
+                    class="explore-categories-btn"
                     type="button"
                     @click="toggleExploreMode"
                   >
@@ -885,26 +886,44 @@
                     <span class="active-tag-x">×</span>
                   </button>
                 </div>
-                
+
                 <div v-if="showCategorySearch" class="category-search-box">
                   <span class="search-box-icon">
-                    <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="14"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <svg
+                      fill="none"
+                      height="14"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="14"
+                    ><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
                   </span>
                   <input
                     ref="categorySearchInput"
                     v-model="categorySearchQuery"
-                    type="text"
-                    placeholder="Ex: Rock, Yoga, Cinema..."
-                    class="category-search-input"
                     autocomplete="off"
-                  />
+                    class="category-search-input"
+                    placeholder="Ex: Rock, Yoga, Cinema..."
+                    type="text"
+                  >
                   <button
                     v-if="categorySearchQuery"
                     class="search-clear-btn"
                     type="button"
                     @click="categorySearchQuery = ''"
                   >
-                    <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24" width="14"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                    <svg
+                      fill="none"
+                      height="14"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.5"
+                      viewBox="0 0 24 24"
+                      width="14"
+                    ><path d="M18 6 6 18M6 6l12 12" /></svg>
                   </button>
                 </div>
 
@@ -918,7 +937,7 @@
                 <span v-if="showCategorySearch && !categorySearchQuery.trim() && allInterestsCache.length > 0" class="filter-subsection-label">
                   Populares
                 </span>
-                
+
                 <div v-if="searchingCategories && categorySearchQuery.trim()" class="empty-categories">
                   <p>🔍 Buscando categorias...</p>
                 </div>
