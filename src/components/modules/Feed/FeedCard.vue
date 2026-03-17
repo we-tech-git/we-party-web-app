@@ -104,7 +104,7 @@
     if (!props.interests || props.interests.length === 0) return []
     const matched = props.matchedInterests || []
     // Prioriza os matched no topo
-    const sorted = [...props.interests].sort((a, b) => {
+    const sorted = [...props.interests].toSorted((a, b) => {
       const aMatch = matched.some(m => m.toLowerCase() === a.toLowerCase())
       const bMatch = matched.some(m => m.toLowerCase() === b.toLowerCase())
       if (aMatch && !bMatch) return -1
@@ -119,7 +119,7 @@
     return Math.max(0, props.interests.length - 3)
   })
 
-  function isMatchedInterest(tag: string): boolean {
+  function isMatchedInterest (tag: string): boolean {
     if (!props.matchedInterests || props.matchedInterests.length === 0) return false
     return props.matchedInterests.some(m => m.toLowerCase() === tag.toLowerCase())
   }

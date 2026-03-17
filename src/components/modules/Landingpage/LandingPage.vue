@@ -21,7 +21,7 @@
     const date = new Date(dateString)
     const months = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
     const weekdays = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
-    
+
     return {
       day: String(date.getDate()).padStart(2, '0'),
       month: months[date.getMonth()],
@@ -40,13 +40,13 @@
     try {
       isLoadingEvents.value = true
       const response = await getAllEvents(1, 50)
-      
+
       console.log('Response completa:', response)
       console.log('Response data:', response?.data)
-      
+
       // Tentar diferentes estruturas de resposta
       let eventsData = null
-      
+
       if (response?.data?.content) {
         eventsData = response.data.content
       } else if (Array.isArray(response?.data?.data)) {
@@ -54,9 +54,9 @@
       } else if (Array.isArray(response?.data)) {
         eventsData = response.data
       }
-      
+
       console.log('Events data:', eventsData)
-      
+
       if (eventsData && Array.isArray(eventsData)) {
         const formattedEvents = eventsData.map((event: any) => ({
           id: event.id,
@@ -68,23 +68,23 @@
           venue: event.location?.venue || event.venue || event.location?.city || event.city || 'Local não informado',
           category: event.category?.toLowerCase() || 'shows',
         }))
-        
+
         console.log('Formatted events:', formattedEvents)
-        
+
         // Atualizar eventos principais
         allEvents.value = formattedEvents
-        
+
         // Atualizar eventos em destaque (primeiros 3)
         heroEvents.value = formattedEvents.slice(0, 3).map((event: any) => ({
           ...event,
           location: event.venue + ', ' + event.location,
         }))
-        
+
         console.log('All events updated:', allEvents.value.length)
         console.log('Hero events updated:', heroEvents.value.length)
       } else {
         console.warn('Nenhum evento encontrado ou formato inválido')
-        
+
         // Eventos de fallback para teste (remover depois)
         const fallbackEvents = [
           {
@@ -98,18 +98,18 @@
             category: 'shows',
           },
         ]
-        
+
         allEvents.value = fallbackEvents
         heroEvents.value = fallbackEvents
         console.log('Usando eventos de fallback')
       }
     } catch (error) {
       console.error('Erro ao carregar eventos:', error)
-      
+
       // Manter arrays vazios em caso de erro
       allEvents.value = []
       heroEvents.value = []
-      
+
       // Para debug: adicionar um evento de teste
       console.log('Adicionando evento de teste para verificar renderização...')
       allEvents.value = [{
@@ -294,7 +294,7 @@
   onMounted(() => {
     // Carregar eventos da API
     loadEvents()
-    
+
     window.addEventListener('scroll', handleScroll)
     window.addEventListener('mousemove', handleMouseMove)
     startHeroAutoplay()
@@ -609,7 +609,7 @@
 
         <!-- Loading State -->
         <div v-if="isLoadingEvents" class="events-loading">
-          <div class="loading-spinner"></div>
+          <div class="loading-spinner" />
           <p>Carregando eventos...</p>
         </div>
 
@@ -2875,8 +2875,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .events-empty p {

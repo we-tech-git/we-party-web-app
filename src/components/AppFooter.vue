@@ -19,7 +19,13 @@
         <div class="footer-column">
           <h4>Sobre a Empresa</h4>
           <ul>
-            <li><a href="https://www.wetechhub.com.br" target="_blank" rel="noopener noreferrer" class="notranslate" translate="no">We TechHub</a></li>
+            <li><a
+              class="notranslate"
+              href="https://www.wetechhub.com.br"
+              rel="noopener noreferrer"
+              target="_blank"
+              translate="no"
+            >We TechHub</a></li>
           </ul>
         </div>
       </div>
@@ -27,7 +33,8 @@
       <hr class="footer-divider">
 
       <div class="footer-bottom">
-        <span class="copyright"><span class="notranslate" translate="no">we party</span> © Copyright {{ currentYear }}</span>
+        <span class="copyright"><span class="notranslate" translate="no">we party</span> © Copyright {{ currentYear
+        }}</span>
         <div class="social-icons">
           <a aria-label="Facebook" href="#">
             <svg fill="currentColor" height="24" viewBox="0 0 24 24" width="24">
