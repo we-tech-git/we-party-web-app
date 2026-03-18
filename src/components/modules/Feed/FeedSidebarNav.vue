@@ -173,7 +173,8 @@ button.active .icon {
 
 @media (max-width: 1240px) {
   .feed-sidebar {
-    position: static;
+    position: sticky;
+    top: var(--feed-sticky-offset, 80px);
     min-height: auto;
   }
 }

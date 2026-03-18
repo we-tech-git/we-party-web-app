@@ -1,44 +1,44 @@
-import { dirname, resolve } from "node:path";
-import { fileURLToPath, URL } from "node:url";
-import tailwindcss from "@tailwindcss/vite";
-import VueI18nPlugin from "@intlify/unplugin-vue-i18n/vite";
-import Vue from "@vitejs/plugin-vue";
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath, URL } from 'node:url'
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
+import tailwindcss from '@tailwindcss/vite'
+import Vue from '@vitejs/plugin-vue'
 // Plugins
-import AutoImport from "unplugin-auto-import/vite";
-import Fonts from "unplugin-fonts/vite";
-import Components from "unplugin-vue-components/vite";
+import AutoImport from 'unplugin-auto-import/vite'
+import Fonts from 'unplugin-fonts/vite'
+import Components from 'unplugin-vue-components/vite'
 
-import { VueRouterAutoImports } from "unplugin-vue-router";
-import VueRouter from "unplugin-vue-router/vite";
+import { VueRouterAutoImports } from 'unplugin-vue-router'
+import VueRouter from 'unplugin-vue-router/vite'
 // Utilities
-import { defineConfig } from "vite";
-import Layouts from "vite-plugin-vue-layouts-next";
-import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
+import { defineConfig } from 'vite'
+import Layouts from 'vite-plugin-vue-layouts-next'
+import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     tailwindcss(),
     VueRouter({
-      dts: "src/typed-router.d.ts",
+      dts: 'src/typed-router.d.ts',
     }),
     Layouts(),
     AutoImport({
       imports: [
-        "vue",
+        'vue',
         VueRouterAutoImports,
         {
-          pinia: ["defineStore", "storeToRefs"],
+          pinia: ['defineStore', 'storeToRefs'],
         },
       ],
-      dts: "src/auto-imports.d.ts",
+      dts: 'src/auto-imports.d.ts',
       eslintrc: {
         enabled: true,
       },
       vueTemplate: true,
     }),
     Components({
-      dts: "src/components.d.ts",
+      dts: 'src/components.d.ts',
     }),
     Vue({
       template: { transformAssetUrls },
@@ -47,12 +47,12 @@ export default defineConfig({
     Vuetify({
       autoImport: true,
       styles: {
-        configFile: "src/styles/settings.scss",
+        configFile: 'src/styles/settings.scss',
       },
     }),
     VueI18nPlugin({
       include: [
-        resolve(dirname(fileURLToPath(import.meta.url)), "./src/locales/**"),
+        resolve(dirname(fileURLToPath(import.meta.url)), './src/locales/**'),
       ],
       strictMessage: false,
     }),
@@ -60,51 +60,51 @@ export default defineConfig({
       fontsource: {
         families: [
           {
-            name: "Roboto",
+            name: 'Roboto',
             weights: [100, 300, 400, 500, 700, 900],
-            styles: ["normal", "italic"],
+            styles: ['normal', 'italic'],
           },
         ],
       },
       google: {
         families: [
           {
-            name: "Baloo Thambi 2",
-            styles: "wght@400;500;600;700;800",
+            name: 'Baloo Thambi 2',
+            styles: 'wght@400;500;600;700;800',
           },
           {
-            name: "Poppins",
-            styles: "wght@400;500;600;700",
+            name: 'Poppins',
+            styles: 'wght@400;500;600;700',
           },
         ],
       },
     }),
   ],
   optimizeDeps: {
-    include: ["vuetify"],
+    include: ['vuetify'],
     exclude: [
-      "unplugin-vue-router/runtime",
-      "unplugin-vue-router/data-loaders",
-      "unplugin-vue-router/data-loaders/basic",
+      'unplugin-vue-router/runtime',
+      'unplugin-vue-router/data-loaders',
+      'unplugin-vue-router/data-loaders/basic',
     ],
   },
-  define: { "process.env": "{}" },
+  define: { 'process.env': '{}' },
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("src", import.meta.url)),
+      '@': fileURLToPath(new URL('src', import.meta.url)),
     },
 
-    extensions: [".js", ".json", ".jsx", ".mjs", ".ts", ".tsx", ".vue"],
+    extensions: ['.js', '.json', '.jsx', '.mjs', '.ts', '.tsx', '.vue'],
   },
   server: {
     port: 3000,
     proxy: {
-      "/api": {
-        target: "https://api.dev.wepartyapp.com",
+      '/api': {
+        target: 'https://api.dev.wepartyapp.com',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ""),
+        rewrite: path => path.replace(/^\/api/, ''),
       },
     },
   },
-});
+})
