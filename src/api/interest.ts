@@ -1,11 +1,27 @@
+import { logger } from '@/utils/logger'
 import { callApi } from './index'
 
 /**
  * Busca a lista de todos os interesses disponíveis.
  * Rota autenticada.
  */
-export function getInterests () {
-  return callApi('GET', '/interest', undefined, true)
+export async function getInterests () {
+  try {
+    const response = await callApi('GET', '/interest', undefined, true)
+
+    logger.log('📋 [Interest API] getInterests response:', {
+      status: response?.status,
+      dataType: typeof response?.data,
+      isArray: Array.isArray(response?.data),
+      dataKeys: response?.data ? Object.keys(response.data) : 'null',
+      sampleData: response?.data ? (Array.isArray(response.data) ? response.data[0] : response.data) : null,
+    })
+
+    return response
+  } catch (error: any) {
+    logger.error('❌ [Interest API] Erro ao buscar interesses:', error?.message)
+    throw error
+  }
 }
 
 /**

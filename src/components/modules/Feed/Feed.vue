@@ -12,6 +12,7 @@
   import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useEventsStore } from '@/stores/events'
+  import { logger } from '@/utils/logger'
   import FeedCard from './FeedCard.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
   import FeedTopHeader from './FeedTopHeader.vue'
@@ -176,6 +177,15 @@
         getInterests(),
       ])
 
+      logger.log('📊 [Feed] Resposta da API de interesses:', {
+        userResponseStatus: userResponse?.status,
+        allResponseStatus: allResponse?.status,
+        userDataStructure: userResponse?.data ? Object.keys(userResponse.data) : 'null',
+        allDataStructure: allResponse?.data ? Object.keys(allResponse.data) : 'null',
+        userDataType: Array.isArray(userResponse?.data) ? 'array' : typeof userResponse?.data,
+        allDataType: Array.isArray(allResponse?.data) ? 'array' : typeof allResponse?.data,
+      })
+
       // Processar interesses do usuário
       let userInterests: any[] = []
       if (Array.isArray(userResponse?.data)) {
@@ -184,18 +194,35 @@
         userInterests = userResponse.data.data
       } else if (Array.isArray(userResponse?.data?.interests)) {
         userInterests = userResponse.data.interests
+      } else if (Array.isArray(userResponse?.data?.content)) {
+        userInterests = userResponse.data.content
+      } else if (Array.isArray(userResponse?.data?.items)) {
+        userInterests = userResponse.data.items
+      } else if (Array.isArray(userResponse?.data?.results)) {
+        userInterests = userResponse.data.results
       }
+
+      logger.log('✅ [Feed] Interesses do usuário processados:', userInterests.length)
 
       if (userInterests.length > 0) {
         userInterestChips.value = userInterests
           .slice(0, 10)
           .map((interest: any) => {
             const interestData = interest.interest || interest
+            const id = interestData.id || interestData._id
+            const name = interestData.name
+
+            if (!id || !name) {
+              logger.warn('⚠️ [Feed] Interesse com dados incompletos:', interestData)
+              return null
+            }
+
             return {
-              id: interestData.id || interestData._id,
-              label: `${getInterestIcon(interestData.name)} ${interestData.name}`,
+              id: String(id),
+              label: `${getInterestIcon(name)} ${name}`,
             }
           })
+          .filter(Boolean) as Array<{ id: string, label: string }>
       }
 
       // Cachear todos os interesses para busca local
@@ -206,15 +233,50 @@
         allInterests = allResponse.data.data
       } else if (Array.isArray(allResponse?.data?.interests)) {
         allInterests = allResponse.data.interests
+      } else if (Array.isArray(allResponse?.data?.content)) {
+        allInterests = allResponse.data.content
+      } else if (Array.isArray(allResponse?.data?.items)) {
+        allInterests = allResponse.data.items
+      } else if (Array.isArray(allResponse?.data?.results)) {
+        allInterests = allResponse.data.results
       }
 
-      allInterestsCache.value = allInterests.map((interest: any) => ({
-        id: interest.id || interest._id,
-        label: `${getInterestIcon(interest.name)} ${interest.name}`,
-        name: interest.name,
-      }))
-    } catch (error) {
-      console.error('Erro ao carregar categorias:', error)
+      logger.log('✅ [Feed] Todos os interesses processados:', allInterests.length)
+      if (allInterests.length > 0) {
+        logger.log('📝 [Feed] Exemplo de interesse:', allInterests[0])
+      }
+
+      if (allInterests.length > 0) {
+        allInterestsCache.value = allInterests
+          .map((interest: any) => {
+            const id = interest.id || interest._id
+            const name = interest.name
+
+            if (!id || !name) {
+              logger.warn('⚠️ [Feed] Interesse com dados incompletos:', interest)
+              return null
+            }
+
+            return {
+              id: String(id),
+              label: `${getInterestIcon(name)} ${name}`,
+              name: name,
+            }
+          })
+          .filter(Boolean) as Array<{ id: string, label: string, name: string }>
+
+        logger.log('✅ [Feed] Cache de interesses preenchido:', allInterestsCache.value.length)
+      } else {
+        logger.warn('⚠️ [Feed] Nenhum interesse retornado pela API /interest')
+        logger.warn('⚠️ [Feed] Resposta completa:', allResponse)
+      }
+    } catch (error: any) {
+      logger.error('❌ [Feed] Erro ao carregar categorias:', error)
+      logger.error('❌ [Feed] Detalhes:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+      })
     } finally {
       loadingCategories.value = false
     }
@@ -438,7 +500,7 @@
 
       filteredItems.value = items.value
     } catch (error) {
-      console.error('Failed to fetch events', error)
+      logger.error('Failed to fetch events', error)
       if (!isLoadMore) {
         items.value = []
         filteredItems.value = []
@@ -484,7 +546,7 @@
         baseCount: evt.likesCount || evt.likes || evt._count?.likes || evt.confirmedCount || 0,
       }))
     } catch (error) {
-      console.error('Error fetching trends', error)
+      logger.error('Error fetching trends', error)
     }
   }
 
@@ -555,7 +617,7 @@
         const events = await requestSearchEvents(normalized)
         filteredItems.value = (events || []).map((event: any) => mapEventToFeedItem(event))
       } catch (error) {
-        console.error(error)
+        logger.error(error)
         filteredItems.value = []
       } finally {
         loading.value = false
@@ -627,7 +689,7 @@
       items.value = isLoadMore ? [...items.value, ...mappedEvents] : mappedEvents
       filteredItems.value = items.value
     } catch (error) {
-      console.error('Erro ao buscar eventos favoritos:', error)
+      logger.error('Erro ao buscar eventos favoritos:', error)
       if (!isLoadMore) {
         items.value = []
         filteredItems.value = []
@@ -1113,10 +1175,14 @@
           <p class="end-message">
             {{ hasActiveFilters ? 'Você visualizou todos os eventos com esses filtros.' : 'Você visualizou todos os eventos disponíveis.' }}
           </p>
-          <p class="end-hint">{{ hasActiveFilters ? 'Tente ajustar os filtros para descobrir mais eventos.' : 'Novos eventos são adicionados diariamente.' }}</p>
+          <p class="end-hint">
+            {{ hasActiveFilters ? 'Tente ajustar os filtros para descobrir mais eventos.' : 'Novos eventos são adicionados diariamente.' }}
+          </p>
         </div>
 
-        <p v-else-if="!loading && displayedItems.length === 0" class="empty">{{ hasActiveFilters ? 'Nenhum evento encontrado com esses filtros.' : t('feed.empty') }}</p>
+        <p v-else-if="!loading && displayedItems.length === 0" class="empty">
+          {{ hasActiveFilters ? 'Nenhum evento encontrado com esses filtros.' : t('feed.empty') }}
+        </p>
       </main>
 
       <FeedTrendsPanel class="feed-trends" :items="displayedTrends" />

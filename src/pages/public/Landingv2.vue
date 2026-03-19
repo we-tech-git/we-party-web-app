@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import LandingPageV2 from '@/components/modules/Landingpage/LandingPageV2.vue'
+  import LandingPage from '@/components/modules/Landingpage/LandingPage.vue'
 
   definePage({
     meta: { layout: 'blank' },
@@ -7,5 +7,5 @@
 </script>
 
 <template>
-  <LandingPageV2 />
+  <LandingPage />
 </template>

@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger'
 import { callApi } from './index'
 
 interface NewUser {
@@ -159,9 +160,18 @@ export async function getUserInterests () {
       {},
       true,
     )
+
+    logger.log('📋 [Users API] getUserInterests response:', {
+      status: response?.status,
+      dataType: typeof response?.data,
+      isArray: Array.isArray(response?.data),
+      dataKeys: response?.data ? Object.keys(response.data) : 'null',
+      sampleData: response?.data ? (Array.isArray(response.data) ? response.data[0] : response.data) : null,
+    })
+
     return response
-  } catch (error) {
-    console.error('Erro ao buscar interesses do usuário:', error)
+  } catch (error: any) {
+    console.error('Erro ao buscar interesses do usuário:', error?.message)
     throw error
   }
 }

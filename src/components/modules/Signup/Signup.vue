@@ -10,6 +10,7 @@
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import router from '@/router'
+  import { logger } from '@/utils/logger'
   import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
   const { t } = useI18n()
@@ -68,7 +69,7 @@
     // Atualiza as regras de senha
     updatePasswordRules(testData.password)
 
-    console.log('📝 Dados de teste gerados:', {
+    logger.log('📝 Dados de teste gerados:', {
       nome: testData.fullName,
       email: testData.email,
       senha: testData.password,
@@ -238,7 +239,7 @@
         acceptedTerms: true,
         notificationActive: true,
       }
-      console.log('Envio de dados do usuário:', userData)
+      logger.log('Envio de dados do usuário:', userData)
 
       const response = await createUser(userData)
 
@@ -255,7 +256,7 @@
         router.push('/public/ConfirmEmail')
       }, 1500)
     } catch (error: any) {
-      console.error('Erro ao registrar usuário:', error)
+      logger.error('Erro ao registrar usuário:', error)
 
       const errorMessage = error?.response?.data?.message || t('signup.snackbar.failure')
       showSnackbar(errorMessage, '#ef4444')
@@ -294,7 +295,7 @@
 
     updatePasswordRules(testData.password)
 
-    console.log('🚀 Página carregada com dados de teste:', {
+    logger.log('🚀 Página carregada com dados de teste:', {
       nome: testData.fullName,
       email: testData.email,
       senha: testData.password,
@@ -305,7 +306,7 @@
 <template>
   <AuthLayout>
     <template #form-content>
-      <a class="back-link" href="#">
+      <a class="back-link" href="#" @click.prevent="router.push('/public/login')">
         <svg
           class="back-arrow"
           fill="none"
@@ -871,17 +872,19 @@ h1 {
 .terms-close-btn {
   padding: 0.55rem 1.2rem;
   border-radius: 999px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #6b7280;
+  border: none;
+  background: linear-gradient(135deg, #F978A3 0%, #f97316 100%);
+  color: #fff;
   font-weight: 600;
   font-size: 0.88rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(249, 120, 163, 0.3);
 }
 
 .terms-close-btn:hover {
-  background: #f9fafb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(249, 120, 163, 0.4);
 }
 
 .modal-fade-enter-active,

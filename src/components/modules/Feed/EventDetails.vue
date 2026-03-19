@@ -1,324 +1,337 @@
 <script setup lang="ts">
-  import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-  import { getEventById } from '@/api/event'
-  import { useEventsStore } from '@/stores/events'
-  import { useShareStore } from '@/stores/share'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { getEventById } from '@/api/event'
+import { useEventsStore } from '@/stores/events'
+import { useShareStore } from '@/stores/share'
 
-  const props = defineProps<{
-    eventId: string | string[]
-  }>()
+const props = defineProps<{
+  eventId: string | string[]
+}>()
 
-  const eventsStore = useEventsStore()
+const eventsStore = useEventsStore()
 
-  type EventDetail = {
-    id: string | number
-    title: string
-    date: string
-    rawDate: Date | null
-    location: string
-    image: string
-    description: string
-    attractions: string[]
-    contactInfo: string
-    categories: string[]
-    confirmedCount: number
-    likes?: number
-    organizer?: { name: string, avatar: string }
+type EventDetail = {
+  id: string | number
+  title: string
+  date: string
+  rawDate: Date | null
+  location: string
+  image: string
+  description: string
+  attractions: string[]
+  contactInfo: string
+  categories: string[]
+  confirmedCount: number
+  likes?: number
+  organizer?: { name: string, avatar: string }
+}
+
+const fallbackImage = 'https://via.placeholder.com/1200x600?text=Evento'
+
+function resolveAsset(val?: string) {
+  if (!val) return fallbackImage
+  if (/^https?:\/\//i.test(val)) return val
+  const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
+  const path = val.startsWith('/') ? val : `/${val}`
+  return `${base}${path}`
+}
+
+const event = ref<EventDetail>({
+  id: '',
+  title: 'Carregando evento...',
+  date: '',
+  rawDate: null,
+  location: '',
+  image: fallbackImage,
+  description: '',
+  attractions: [],
+  contactInfo: '',
+  categories: [],
+  confirmedCount: 0,
+  likes: 0,
+  organizer: { name: '', avatar: '' },
+})
+
+const loading = ref(false)
+const errorMessage = ref('')
+const showConfirmModal = ref(false)
+const activeTab = ref<'info' | 'location' | 'lineup'>('info')
+
+// FAQs state
+const openFaqIndex = ref<number | null>(null)
+const showFaqs = ref(false)
+
+// Terms and Privacy Modal
+const showTermsModal = ref(false)
+const termsModalPdf = ref<'terms' | 'privacy'>('terms')
+
+function openTermsModal(type: 'terms' | 'privacy') {
+  termsModalPdf.value = type
+  showTermsModal.value = true
+}
+
+const faqs = ref([
+  {
+    icon: 'mdi-ticket-confirmation-outline',
+    question: 'Como faço para adquirir meu ingresso?',
+    answer: 'Os ingressos podem ser adquiridos diretamente nesta página. Após a confirmação, você receberá um e-mail com o QR Code para entrada no evento. Você também pode salvar o ingresso na sua carteira digital.',
+    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  },
+  {
+    icon: 'mdi-calendar-clock',
+    question: 'Qual o horário de abertura dos portões?',
+    answer: 'Os portões abrem 2 horas antes do horário oficial do evento. Recomendamos chegar com antecedência para evitar filas e aproveitar ao máximo a experiência.',
+    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+  },
+  {
+    icon: 'mdi-food-fork-drink',
+    question: 'Posso levar comida e bebida?',
+    answer: 'Por questões de segurança, não é permitida a entrada com alimentos e bebidas. O evento contará com diversos food trucks e barracas com opções variadas de gastronomia. Garrafas de água lacradas são permitidas.',
+    gradient: 'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)',
+  },
+  {
+    icon: 'mdi-car-multiple',
+    question: 'O local oferece estacionamento?',
+    answer: 'Sim! Temos estacionamento próprio com mais de 500 vagas. O valor é de R$ 30,00 e pode ser pago no local (dinheiro ou cartão). Também recomendamos o uso de aplicativos de transporte para sua comodidade.',
+    gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+  },
+  {
+    icon: 'mdi-account-multiple-check',
+    question: 'Menores de idade podem participar?',
+    answer: 'Este evento é classificado para maiores de 18 anos. Menores entre 16-17 anos podem entrar acompanhados dos pais ou responsáveis legais com autorização autenticada. Crianças até 12 anos não pagam ingresso quando acompanhadas.',
+    gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+  },
+  {
+    icon: 'mdi-weather-partly-cloudy',
+    question: 'E se chover? O evento será cancelado?',
+    answer: 'O evento acontece com chuva ou sol! Possuímos áreas cobertas e toda estrutura preparada para qualquer condição climática. Em caso de condições extremas, informaremos através dos nossos canais oficiais e redes sociais.',
+    gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+  },
+])
+
+function toggleFaq(index: number) {
+  openFaqIndex.value = openFaqIndex.value === index ? null : index
+}
+
+// Countdown timer
+const countdown = ref({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+let countdownInterval: ReturnType<typeof setInterval> | null = null
+
+function updateCountdown() {
+  if (!event.value.rawDate) {
+    countdown.value = { days: 0, hours: 0, minutes: 0, seconds: 0 }
+    return
   }
 
-  const fallbackImage = 'https://via.placeholder.com/1200x600?text=Evento'
+  const now = Date.now()
+  const eventTime = event.value.rawDate.getTime()
+  const distance = eventTime - now
 
-  function resolveAsset (val?: string) {
-    if (!val) return fallbackImage
-    if (/^https?:\/\//i.test(val)) return val
-    const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
-    const path = val.startsWith('/') ? val : `/${val}`
-    return `${base}${path}`
+  if (distance < 0) {
+    countdown.value = { days: 0, hours: 0, minutes: 0, seconds: 0 }
+    return
   }
 
-  const event = ref<EventDetail>({
-    id: '',
-    title: 'Carregando evento...',
-    date: '',
-    rawDate: null,
-    location: '',
-    image: fallbackImage,
-    description: '',
-    attractions: [],
-    contactInfo: '',
-    categories: [],
-    confirmedCount: 0,
-    likes: 0,
-    organizer: { name: '', avatar: '' },
-  })
-
-  const loading = ref(false)
-  const errorMessage = ref('')
-  const showConfirmModal = ref(false)
-  const activeTab = ref<'info' | 'location' | 'lineup'>('info')
-
-  // FAQs state
-  const openFaqIndex = ref<number | null>(null)
-  const showFaqs = ref(false)
-
-  const faqs = ref([
-    {
-      icon: 'mdi-ticket-confirmation-outline',
-      question: 'Como faço para adquirir meu ingresso?',
-      answer: 'Os ingressos podem ser adquiridos diretamente nesta página. Após a confirmação, você receberá um e-mail com o QR Code para entrada no evento. Você também pode salvar o ingresso na sua carteira digital.',
-      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    },
-    {
-      icon: 'mdi-calendar-clock',
-      question: 'Qual o horário de abertura dos portões?',
-      answer: 'Os portões abrem 2 horas antes do horário oficial do evento. Recomendamos chegar com antecedência para evitar filas e aproveitar ao máximo a experiência.',
-      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    },
-    {
-      icon: 'mdi-food-fork-drink',
-      question: 'Posso levar comida e bebida?',
-      answer: 'Por questões de segurança, não é permitida a entrada com alimentos e bebidas. O evento contará com diversos food trucks e barracas com opções variadas de gastronomia. Garrafas de água lacradas são permitidas.',
-      gradient: 'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)',
-    },
-    {
-      icon: 'mdi-car-multiple',
-      question: 'O local oferece estacionamento?',
-      answer: 'Sim! Temos estacionamento próprio com mais de 500 vagas. O valor é de R$ 30,00 e pode ser pago no local (dinheiro ou cartão). Também recomendamos o uso de aplicativos de transporte para sua comodidade.',
-      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    },
-    {
-      icon: 'mdi-account-multiple-check',
-      question: 'Menores de idade podem participar?',
-      answer: 'Este evento é classificado para maiores de 18 anos. Menores entre 16-17 anos podem entrar acompanhados dos pais ou responsáveis legais com autorização autenticada. Crianças até 12 anos não pagam ingresso quando acompanhadas.',
-      gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-    },
-    {
-      icon: 'mdi-weather-partly-cloudy',
-      question: 'E se chover? O evento será cancelado?',
-      answer: 'O evento acontece com chuva ou sol! Possuímos áreas cobertas e toda estrutura preparada para qualquer condição climática. Em caso de condições extremas, informaremos através dos nossos canais oficiais e redes sociais.',
-      gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-    },
-  ])
-
-  function toggleFaq (index: number) {
-    openFaqIndex.value = openFaqIndex.value === index ? null : index
+  countdown.value = {
+    days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+    minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+    seconds: Math.floor((distance % (1000 * 60)) / 1000),
   }
+}
 
-  // Countdown timer
-  const countdown = ref({ days: 0, hours: 0, minutes: 0, seconds: 0 })
-  let countdownInterval: ReturnType<typeof setInterval> | null = null
+function startCountdown() {
+  if (countdownInterval) clearInterval(countdownInterval)
+  updateCountdown()
+  countdownInterval = setInterval(updateCountdown, 1000)
+}
 
-  function updateCountdown () {
-    if (!event.value.rawDate) {
-      countdown.value = { days: 0, hours: 0, minutes: 0, seconds: 0 }
-      return
-    }
+onUnmounted(() => {
+  if (countdownInterval) clearInterval(countdownInterval)
+})
 
-    const now = Date.now()
-    const eventTime = event.value.rawDate.getTime()
-    const distance = eventTime - now
-
-    if (distance < 0) {
-      countdown.value = { days: 0, hours: 0, minutes: 0, seconds: 0 }
-      return
-    }
-
-    countdown.value = {
-      days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-      hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-      minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-      seconds: Math.floor((distance % (1000 * 60)) / 1000),
-    }
-  }
-
-  function startCountdown () {
-    if (countdownInterval) clearInterval(countdownInterval)
-    updateCountdown()
-    countdownInterval = setInterval(updateCountdown, 1000)
-  }
-
-  onUnmounted(() => {
-    if (countdownInterval) clearInterval(countdownInterval)
-  })
-
-  function resolveEventDate (data: any): Date | null {
-    const candidates = [
-      data?.date,
-      data?.startDate,
-      data?.dateTime,
-      data?.startAt,
-      data?.eventDate,
-      data?.start_date,
-      data?.schedule,
-    ]
-    for (const val of candidates) {
-      if (!val) continue
-      const parsed = new Date(val)
-      if (!Number.isNaN(parsed.getTime())) return parsed
-    }
-    return null
-  }
-
-  function formatEventDate (d: Date | null): string {
-    if (!d) return 'Data não informada'
-    return d.toLocaleString('pt-BR', {
-      weekday: 'long',
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-
-  function mapEventPayload (data: any): EventDetail {
-    const rawDate = resolveEventDate(data)
-    return {
-      id: data?.id,
-      title: data?.name || data?.title || 'Evento sem título',
-      date: formatEventDate(rawDate),
-      rawDate,
-      location: data?.location || data?.address || data?.place || 'Local não informado',
-      image: resolveAsset(data?.bannerUrl || data?.banner || data?.photos?.[0]),
-      description: data?.description || 'Sem descrição disponível.',
-      attractions: data?.attractions || data?.lineup || [],
-      contactInfo: data?.contactInfo || 'Informações de contato não disponíveis.',
-      categories: data?.categories || data?.tags || (data?.eventInterests || []).map((i: any) => i.interest?.name).filter(Boolean) || [],
-      confirmedCount: data?.confirmedCount || data?.confirmed || 0,
-      likes: data?.likes || data?._count?.likes || 0,
-      organizer: {
-        name: data?.organizer?.name || data?.hostName || data?.creator?.name || 'Organizador',
-        avatar: data?.organizer?.avatar || data?.hostAvatar || data?.creator?.profileImage || '',
-      },
-    }
-  }
-
-  const isLiked = computed(() => eventsStore.isLiked(event.value.id))
-  const isSaved = computed(() => eventsStore.isSaved(event.value.id))
-  const isConfirmed = computed(() => eventsStore.isConfirmed(event.value.id))
-  const displayLikes = computed(() => {
-    return (event.value.likes || 0) + (isLiked.value ? 1 : 0)
-  })
-
-  const displayConfirmed = computed(() => {
-    return event.value.confirmedCount + (isConfirmed.value ? 1 : 0)
-  })
-
-  const eventStatus = computed(() => {
-    if (!event.value.rawDate) return 'upcoming'
-    const now = new Date()
-    const eventDate = event.value.rawDate
-    if (eventDate < now) return 'past'
-    const diffDays = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    if (diffDays <= 3) return 'soon'
-    return 'upcoming'
-  })
-
-  // Avatar color logic
-  const avatarColors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+function resolveEventDate(data: any): Date | null {
+  const candidates = [
+    data?.date,
+    data?.startDate,
+    data?.dateTime,
+    data?.startAt,
+    data?.eventDate,
+    data?.start_date,
+    data?.schedule,
   ]
+  for (const val of candidates) {
+    if (!val) continue
+    const parsed = new Date(val)
+    if (!Number.isNaN(parsed.getTime())) return parsed
+  }
+  return null
+}
 
-  const organizerAvatarColor = computed(() => {
-    const name = event.value.organizer?.name || ''
-    let hash = 0
-    for (let i = 0; i < name.length; i++) {
-      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
-    }
-    return avatarColors[Math.abs(hash) % avatarColors.length]
+function formatEventDate(d: Date | null): string {
+  if (!d) return 'Data não informada'
+  return d.toLocaleString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   })
+}
 
-  const organizerInitial = computed(() => {
-    return (event.value.organizer?.name || 'O').charAt(0).toUpperCase()
-  })
-
-  function toggleLike () {
-    if (event.value.id) {
-      eventsStore.toggleLike(event.value.id)
-    }
-  }
-
-  function toggleSave () {
-    if (!event.value.id) return
-
-    const feedItem = {
-      id: event.value.id,
-      banner: event.value.image,
-      creator: event.value.organizer ? { name: event.value.organizer.name } : { name: 'Unknown' },
-      hostAvatar: event.value.organizer ? event.value.organizer.avatar : '',
-      schedule: event.value.date,
-      location: event.value.location,
-      title: event.value.title,
-      description: event.value.description,
-      confirmed: event.value.confirmedCount,
-      interested: 0,
-      likes: event.value.likes,
-    }
-    eventsStore.toggleSave(feedItem)
-  }
-
-  function handleConfirmAttendance () {
-    if (isConfirmed.value) {
-      // Se já confirmou, desconfirma direto
-      eventsStore.toggleConfirm(event.value.id)
-    } else {
-      showConfirmModal.value = true
-    }
-  }
-
-  function confirmAttendance () {
-    eventsStore.toggleConfirm(event.value.id)
-    showConfirmModal.value = false
-  }
-
-  async function fetchEventDetails (id: string | number) {
-    loading.value = true
-    errorMessage.value = ''
-    try {
-      const response = await getEventById(id)
-      const payload = response?.data?.event || response?.data || response
-      event.value = mapEventPayload(payload)
-      startCountdown()
-    } catch (error) {
-      console.error(error)
-      errorMessage.value = 'Não foi possível carregar os detalhes do evento.'
-    } finally {
-      loading.value = false
-    }
-  }
-
-  onMounted(() => {
-    const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
-    if (id) fetchEventDetails(id)
-  })
-
-  watch(
-    () => props.eventId,
-    newId => {
-      const id = Array.isArray(newId) ? newId[0] : newId
-      if (id) fetchEventDetails(id)
+function mapEventPayload(data: any): EventDetail {
+  const rawDate = resolveEventDate(data)
+  return {
+    id: data?.id,
+    title: data?.name || data?.title || 'Evento sem título',
+    date: formatEventDate(rawDate),
+    rawDate,
+    location: data?.location || data?.address || data?.place || 'Local não informado',
+    image: resolveAsset(data?.bannerUrl || data?.banner || data?.photos?.[0]),
+    description: data?.description || 'Sem descrição disponível.',
+    attractions: data?.attractions || data?.lineup || [],
+    contactInfo: data?.contactInfo || 'Informações de contato não disponíveis.',
+    categories: data?.categories || data?.tags || (data?.eventInterests || []).map((i: any) => i.interest?.name).filter(Boolean) || [],
+    confirmedCount: data?.confirmedCount || data?.confirmed || 0,
+    likes: data?.likes || data?._count?.likes || 0,
+    organizer: {
+      name: data?.organizer?.name || data?.hostName || data?.creator?.name || 'Organizador',
+      avatar: data?.organizer?.avatar || data?.hostAvatar || data?.creator?.profileImage || '',
     },
-  )
-
-  function openMap () {
-    const loc = event.value?.location
-    if (!loc) return
-    const query = encodeURIComponent(loc)
-    const url = `https://www.google.com/maps/search/?api=1&query=${query}`
-    window.open(url, '_blank', 'noopener')
   }
+}
 
-  const shareStore = useShareStore()
+const isLiked = computed(() => eventsStore.isLiked(event.value.id))
+const isSaved = computed(() => eventsStore.isSaved(event.value.id))
+const isConfirmed = computed(() => eventsStore.isConfirmed(event.value.id))
+const displayLikes = computed(() => {
+  return (event.value.likes || 0) + (isLiked.value ? 1 : 0)
+})
 
-  function handleShare () {
-    const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
-    shareStore.open({
-      title: event.value.title,
-      text: event.value.description,
-      url: `${window.location.origin}/private/event/${id}`,
-    })
+const displayConfirmed = computed(() => {
+  return event.value.confirmedCount + (isConfirmed.value ? 1 : 0)
+})
+
+const eventStatus = computed(() => {
+  if (!event.value.rawDate) return 'upcoming'
+  const now = new Date()
+  const eventDate = event.value.rawDate
+  if (eventDate < now) return 'past'
+  const diffDays = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  if (diffDays <= 3) return 'soon'
+  return 'upcoming'
+})
+
+// Avatar color logic
+const avatarColors = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+  '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+]
+
+const organizerAvatarColor = computed(() => {
+  const name = event.value.organizer?.name || ''
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
   }
+  return avatarColors[Math.abs(hash) % avatarColors.length]
+})
+
+const organizerInitial = computed(() => {
+  return (event.value.organizer?.name || 'O').charAt(0).toUpperCase()
+})
+
+const isEventPast = computed(() => eventStatus.value === 'past')
+
+function toggleLike() {
+  if (event.value.id && !isEventPast.value) {
+    eventsStore.toggleLike(event.value.id)
+  }
+}
+
+function toggleSave() {
+  if (!event.value.id || isEventPast.value) return
+
+  const feedItem = {
+    id: event.value.id,
+    banner: event.value.image,
+    creator: event.value.organizer ? { name: event.value.organizer.name } : { name: 'Unknown' },
+    hostAvatar: event.value.organizer ? event.value.organizer.avatar : '',
+    schedule: event.value.date,
+    location: event.value.location,
+    title: event.value.title,
+    description: event.value.description,
+    confirmed: event.value.confirmedCount,
+    interested: 0,
+    likes: event.value.likes,
+  }
+  eventsStore.toggleSave(feedItem)
+}
+
+function handleConfirmAttendance() {
+  if (isEventPast.value) return
+
+  if (isConfirmed.value) {
+    // Se já confirmou, desconfirma direto
+    eventsStore.toggleConfirm(event.value.id)
+  } else {
+    showConfirmModal.value = true
+  }
+}
+
+function confirmAttendance() {
+  eventsStore.toggleConfirm(event.value.id)
+  showConfirmModal.value = false
+}
+
+async function fetchEventDetails(id: string | number) {
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const response = await getEventById(id)
+    const payload = response?.data?.event || response?.data || response
+    event.value = mapEventPayload(payload)
+    startCountdown()
+  } catch (error) {
+    console.error(error)
+    errorMessage.value = 'Não foi possível carregar os detalhes do evento.'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
+  if (id) fetchEventDetails(id)
+})
+
+watch(
+  () => props.eventId,
+  newId => {
+    const id = Array.isArray(newId) ? newId[0] : newId
+    if (id) fetchEventDetails(id)
+  },
+)
+
+function openMap() {
+  const loc = event.value?.location
+  if (!loc) return
+  const query = encodeURIComponent(loc)
+  const url = `https://www.google.com/maps/search/?api=1&query=${query}`
+  window.open(url, '_blank', 'noopener')
+}
+
+const shareStore = useShareStore()
+
+function handleShare() {
+  const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
+  shareStore.open({
+    title: event.value.title,
+    text: event.value.description,
+    url: `${window.location.origin}/private/event/${id}`,
+  })
+}
 </script>
 
 <template>
@@ -355,26 +368,25 @@
 
         <!-- Status Badge -->
         <div class="status-badge" :class="eventStatus">
-          <i
-            class="mdi"
-            :class="{
-              'mdi-clock-fast': eventStatus === 'soon',
-              'mdi-calendar-check': eventStatus === 'upcoming',
-              'mdi-check-circle': eventStatus === 'past'
-            }"
-          />
+          <i class="mdi" :class="{
+            'mdi-clock-fast': eventStatus === 'soon',
+            'mdi-calendar-check': eventStatus === 'upcoming',
+            'mdi-check-circle': eventStatus === 'past'
+          }" />
           <span>{{ eventStatus === 'soon' ? 'Em breve!' : eventStatus === 'past' ? 'Evento encerrado' : 'Confirmado'
           }}</span>
         </div>
 
         <!-- Floating Action Buttons -->
         <div class="floating-actions">
-          <button class="fab-btn like-btn" :class="{ active: isLiked }" @click="toggleLike">
-            <i class="mdi" :class="isLiked ? 'mdi-heart' : 'mdi-heart-outline'" />
+          <button class="fab-btn like-btn" :class="{ active: isLiked, disabled: isEventPast }" :disabled="isEventPast"
+            @click="toggleLike">
+            <img src="/confetti.svg" alt="Confetti" class="fab-icon" />
             <span class="fab-count">{{ displayLikes }}</span>
           </button>
 
-          <button class="fab-btn save-btn" :class="{ active: isSaved }" @click="toggleSave">
+          <button class="fab-btn save-btn" :class="{ active: isSaved, disabled: isEventPast }" :disabled="isEventPast"
+            @click="toggleSave">
             <i class="mdi" :class="isSaved ? 'mdi-bookmark' : 'mdi-bookmark-outline'" />
           </button>
 
@@ -427,7 +439,7 @@
       <div class="stats-bar">
         <div class="stat-item">
           <div class="stat-icon likes">
-            <i class="mdi mdi-heart" />
+            <img src="/confetti.svg" alt="Confetti" class="stat-icon-img" />
           </div>
           <div class="stat-info">
             <span class="stat-value">{{ displayLikes }}</span>
@@ -481,12 +493,8 @@
           <i class="mdi mdi-map-marker-outline" />
           <span>Local</span>
         </button>
-        <button
-          v-if="event.attractions.length > 0"
-          class="tab-btn"
-          :class="{ active: activeTab === 'lineup' }"
-          @click="activeTab = 'lineup'"
-        >
+        <button v-if="event.attractions.length > 0" class="tab-btn" :class="{ active: activeTab === 'lineup' }"
+          @click="activeTab = 'lineup'">
           <i class="mdi mdi-star-outline" />
           <span>Atrações</span>
         </button>
@@ -540,13 +548,8 @@
             <Transition name="faq-expand">
               <div v-if="showFaqs" class="faqs-content">
                 <div class="faqs-list">
-                  <div
-                    v-for="(faq, index) in faqs"
-                    :key="index"
-                    class="faq-item"
-                    :class="{ open: openFaqIndex === index }"
-                    :style="{ animationDelay: `${index * 0.05}s` }"
-                  >
+                  <div v-for="(faq, index) in faqs" :key="index" class="faq-item"
+                    :class="{ open: openFaqIndex === index }" :style="{ animationDelay: `${index * 0.05}s` }">
                     <button class="faq-question" :style="{ background: faq.gradient }" @click="toggleFaq(index)">
                       <div class="faq-q-content">
                         <div class="faq-icon">
@@ -602,12 +605,8 @@
 
         <!-- Lineup Tab -->
         <div v-show="activeTab === 'lineup'" class="tab-panel lineup-panel">
-          <div
-            v-for="(attraction, index) in event.attractions"
-            :key="index"
-            class="lineup-card"
-            :style="{ animationDelay: `${index * 0.1}s` }"
-          >
+          <div v-for="(attraction, index) in event.attractions" :key="index" class="lineup-card"
+            :style="{ animationDelay: `${index * 0.1}s` }">
             <div class="lineup-number">{{ String(index + 1).padStart(2, '0') }}</div>
             <div class="lineup-info">
               <span class="lineup-name">{{ attraction }}</span>
@@ -625,17 +624,18 @@
           <span class="cta-label">{{ isConfirmed ? 'Você confirmou presença!' : 'Garanta sua vaga!' }}</span>
           <span class="cta-sub">{{ displayConfirmed }} pessoas confirmadas</span>
         </div>
-        <button class="cta-button" :class="{ confirmed: isConfirmed }" @click="handleConfirmAttendance">
+        <button class="cta-button" :class="{ confirmed: isConfirmed, disabled: isEventPast }" :disabled="isEventPast"
+          @click="handleConfirmAttendance">
           <i class="mdi" :class="isConfirmed ? 'mdi-check-circle' : 'mdi-party-popper'" />
-          <span>{{ isConfirmed ? 'CONFIRMADO!' : 'EU VOU!' }}</span>
+          <span>{{ isEventPast ? 'EVENTO ENCERRADO' : (isConfirmed ? 'CONFIRMADO!' : 'EU VOU!') }}</span>
         </button>
       </div>
 
       <!-- Legal Links -->
       <div class="legal-section">
-        <a href="/termos-de-uso.pdf" rel="noopener noreferrer" target="_blank">Termos de uso</a>
+        <button class="legal-link" type="button" @click="openTermsModal('terms')">Termos de uso</button>
         <span class="legal-dot">•</span>
-        <a href="/politica-de-privacidade.pdf" rel="noopener noreferrer" target="_blank">Política de privacidade</a>
+        <button class="legal-link" type="button" @click="openTermsModal('privacy')">Política de privacidade</button>
       </div>
     </template>
 
@@ -653,6 +653,37 @@
               <button class="modal-btn cancel" @click="showConfirmModal = false">Cancelar</button>
               <button class="modal-btn confirm" @click="confirmAttendance">
                 <i class="mdi mdi-check" /> Confirmar!
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Modal de Termos / Política -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showTermsModal" class="terms-modal-overlay" @click.self="showTermsModal = false">
+          <div class="terms-modal">
+            <div class="terms-modal-header">
+              <h3 class="terms-modal-title">
+                {{ termsModalPdf === 'terms' ? 'Termos de Uso' : 'Política de Privacidade' }}
+              </h3>
+              <button class="terms-modal-close" type="button" @click="showTermsModal = false">
+                <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                  stroke-width="2" viewBox="0 0 24 24" width="18">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div class="terms-modal-body">
+              <iframe class="terms-pdf-viewer"
+                :src="termsModalPdf === 'terms' ? '/termos-de-uso.pdf' : '/politica-de-privacidade.pdf'"
+                title="Documento legal" />
+            </div>
+            <div class="terms-modal-footer">
+              <button class="terms-close-btn" type="button" @click="showTermsModal = false">
+                Fechar
               </button>
             </div>
           </div>
@@ -930,12 +961,47 @@
 }
 
 .fab-btn.like-btn.active i {
-  animation: heartBeat 0.6s ease;
+  animation: confettiBurst 0.6s ease;
+}
+
+.fab-btn img {
+    width: 20px;
+    height: 20px;
+    filter: brightness(0) saturate(100%) invert(20%) sepia(0%) saturate(0%) hue-rotate(180deg) brightness(95%) contrast(95%);
+  }
+
+  .fab-btn.like-btn.active img {
+    filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(100%) contrast(100%);
+  animation: confettiBurst 0.6s ease;
+}
+
+.fab-icon {
+  width: 20px;
+  height: 20px;
+  filter: brightness(0) saturate(100%);
+}
+
+.fab-btn.like-btn.active .fab-icon {
+  filter: brightness(0) saturate(100%) invert(100%);
+  animation: confettiBurst 0.6s ease;
 }
 
 .fab-btn.save-btn.active {
   background: linear-gradient(135deg, #ffba4b 0%, #ffa502 100%);
   color: white;
+}
+
+.fab-btn.disabled,
+.fab-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.fab-btn.disabled:hover,
+.fab-btn:disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
 }
 
 .fab-count {
@@ -956,25 +1022,25 @@
   box-shadow: 0 2px 8px rgba(255, 95, 166, 0.4);
 }
 
-@keyframes heartBeat {
+@keyframes confettiBurst {
   0% {
-    transform: scale(1);
+    transform: scale(1) rotate(0deg);
   }
 
   25% {
-    transform: scale(1.3);
+    transform: scale(1.3) rotate(-10deg);
   }
 
   50% {
-    transform: scale(1);
+    transform: scale(1.4) rotate(10deg);
   }
 
   75% {
-    transform: scale(1.2);
+    transform: scale(1.2) rotate(-5deg);
   }
 
   100% {
-    transform: scale(1);
+    transform: scale(1) rotate(0deg);
   }
 }
 
@@ -1133,6 +1199,10 @@
   color: #ff5fa6;
 }
 
+.stat-icon svg {
+  color: inherit;
+}
+
 .stat-icon.confirmed {
   background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(129, 199, 132, 0.15) 100%);
   color: #4CAF50;
@@ -1141,6 +1211,11 @@
 .stat-icon.share {
   background: linear-gradient(135deg, rgba(33, 150, 243, 0.15) 0%, rgba(100, 181, 246, 0.15) 100%);
   color: #2196F3;
+}
+
+.stat-icon-img {
+  width: 24px;
+  height: 24px;
 }
 
 .stat-info {
@@ -1568,6 +1643,21 @@
   box-shadow: 0 12px 35px rgba(76, 175, 80, 0.45);
 }
 
+.cta-button.disabled,
+.cta-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: linear-gradient(135deg, #999 0%, #777 100%);
+  box-shadow: none;
+}
+
+.cta-button.disabled:hover,
+.cta-button:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 /* Legal Section */
 .legal-section {
   display: flex;
@@ -1578,14 +1668,19 @@
   background: #fafafa;
 }
 
-.legal-section a {
+.legal-link {
+  background: none;
+  border: none;
   color: #888;
   font-size: 0.8rem;
   text-decoration: none;
   transition: color 0.2s;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
 }
 
-.legal-section a:hover {
+.legal-link:hover {
   color: #ff5fa6;
 }
 
@@ -2382,5 +2477,111 @@
   .modal-actions {
     flex-direction: column;
   }
+}
+
+/* ---- Modal de Termos ---- */
+.terms-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.terms-modal {
+  background: #fff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.terms-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.terms-modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.terms-modal-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.terms-modal-close:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.terms-modal-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+.terms-pdf-viewer {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: none;
+}
+
+.terms-modal-footer {
+  display: flex;
+  gap: 10px;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f3f4f6;
+  justify-content: flex-end;
+}
+
+.terms-close-btn {
+  padding: 0.55rem 1.2rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #F978A3 0%, #f97316 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(249, 120, 163, 0.3);
+}
+
+.terms-close-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(249, 120, 163, 0.4);
+}
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
 }
 </style>

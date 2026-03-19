@@ -530,7 +530,7 @@
   const activeTab = ref('liked')
   const tabs = [
     // { id: 'badges', label: 'Conquistas', icon: 'mdi-trophy-outline' }, // Comentado - não será usado no primeiro momento
-    { id: 'liked', label: 'Curtidos', icon: 'mdi-heart-outline' },
+    { id: 'liked', label: 'Curtidos', icon: '/confetti.svg' },
     // Aba Favoritos removida do projeto
     { id: 'settings', label: 'Preferências', icon: 'mdi-cog-outline' },
   ]
@@ -926,7 +926,8 @@
             :class="{ active: activeTab === tab.id }"
             @click="activeTab = tab.id"
           >
-            <i class="mdi tab-icon" :class="tab.icon" />
+            <img v-if="tab.icon.startsWith('/')" :src="tab.icon" alt="Icon" class="tab-icon-img" />
+            <i v-else class="mdi tab-icon" :class="tab.icon" />
             {{ tab.label }}
           </button>
         </div>
@@ -988,7 +989,7 @@
                         {{ item.confirmed }}
                       </span>
                       <span class="mini-stat">
-                        <i class="mdi mdi-heart" :class="{ 'liked': eventsStore.isLiked(item.id) }" />
+                        <img src="/confetti.svg" alt="Confetti" class="mini-stat-icon" :class="{ 'liked': eventsStore.isLiked(item.id) }" />
                         {{ (item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0) }}
                       </span>
                     </div>
@@ -1006,7 +1007,7 @@
             </div>
             <div v-else class="empty-state">
               <div class="empty-icon">
-                <i class="mdi mdi-heart-outline" />
+                <img src="/confetti.svg" alt="Confetti" class="empty-icon-img" />
               </div>
               <h3>Nenhum evento curtido</h3>
               <p>Curta eventos para salvá-los aqui e acessá-los rapidamente depois</p>
@@ -1697,13 +1698,25 @@
   font-size: 1rem;
 }
 
-/* ── Liked Events Panel ── */
-.liked-events-panel {
-  min-height: 200px;
+.tab-btn svg {
+  margin-right: 0.5rem;
+  color: #888;
 }
 
-.loading-liked {
-  display: flex;
+.tab-btn.active svg {
+  color: var(--accent);
+}
+
+  .tab-icon-img {
+    width: 20px;
+    height: 20px;
+    margin-right: 0.5rem;
+    filter: brightness(0) saturate(100%) invert(53%) sepia(0%) saturate(0%) hue-rotate(180deg) brightness(95%) contrast(85%);
+  }
+
+  .tab-btn.active .tab-icon-img {
+    filter: brightness(0) saturate(100%) invert(45%) sepia(91%) saturate(1945%) hue-rotate(318deg) brightness(101%) contrast(101%);
+  }
   justify-content: center;
   align-items: center;
   padding: 2rem;
@@ -1916,12 +1929,23 @@
   color: #9aa0b8;
 }
 
-.mini-stat i.liked {
-  color: #ff5fa6;
+.mini-stat svg {
+  color: #9aa0b8;
 }
 
-/* Transitions para mini cards */
-.mini-card-enter-active {
+.mini-stat svg.liked {
+  color: var(--accent);
+}
+
+  .mini-stat-icon {
+    width: 14px;
+    height: 14px;
+    filter: brightness(0) saturate(100%) invert(65%) sepia(10%) saturate(500%) hue-rotate(180deg) brightness(95%) contrast(85%);
+  }
+
+  .mini-stat-icon.liked {
+    filter: brightness(0) saturate(100%) invert(45%) sepia(91%) saturate(1945%) hue-rotate(318deg) brightness(101%) contrast(101%);
+  }
   transition: all 0.4s ease-out;
 }
 
@@ -2090,8 +2114,15 @@
   color: #ff5fa6;
 }
 
-.empty-icon.fav {
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.1), rgba(255, 152, 0, 0.15));
+.empty-icon svg {
+  color: #ff5fa6;
+}
+
+  .empty-icon-img {
+    width: 60px;
+    height: 60px;
+    filter: brightness(0) saturate(100%) invert(45%) sepia(91%) saturate(1945%) hue-rotate(318deg) brightness(101%) contrast(101%);
+  }
 }
 
 .empty-icon.fav i {
