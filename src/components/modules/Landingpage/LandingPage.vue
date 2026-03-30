@@ -201,61 +201,70 @@
 
   // Three.js setup
   function initThreeJS () {
-    if (!canvasContainer.value) return
+    try {
+      if (!canvasContainer.value) {
+        logger.warn('Canvas container não encontrado')
+        return
+      }
 
-    const container = canvasContainer.value
-    const width = container.clientWidth
-    const height = container.clientHeight
+      const container = canvasContainer.value
+      const width = container.clientWidth || window.innerWidth
+      const height = container.clientHeight || window.innerHeight
 
-    scene = new THREE.Scene()
-    camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000)
-    camera.position.z = 50
+      if (width === 0 || height === 0) {
+        logger.warn('Canvas com dimensões inválidas')
+        return
+      }
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    renderer.setSize(width, height)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    renderer.setClearColor(0x00_00_00, 0)
-    container.append(renderer.domElement)
+      scene = new THREE.Scene()
+      camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000)
+      camera.position.z = 50
 
-    // Particles
-    const particleCount = windowWidth.value < 768 ? 250 : 500
-    const geometry = new THREE.BufferGeometry()
-    const positions = new Float32Array(particleCount * 3)
-    const colors = new Float32Array(particleCount * 3)
-    const sizes = new Float32Array(particleCount)
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+      renderer.setSize(width, height)
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer.setClearColor(0x00_00_00, 0)
+      container.append(renderer.domElement)
 
-    const colorPalette = [
-      new THREE.Color('#FFB74D'),
-      new THREE.Color('#FF9AB5'),
-      new THREE.Color('#ffd93d'),
-      new THREE.Color('#8b5cf6'),
-      new THREE.Color('#ec4899'),
-      new THREE.Color('#3b82f6'),
-    ]
+      // Particles
+      const particleCount = windowWidth.value < 768 ? 250 : 500
+      const geometry = new THREE.BufferGeometry()
+      const positions = new Float32Array(particleCount * 3)
+      const colors = new Float32Array(particleCount * 3)
+      const sizes = new Float32Array(particleCount)
 
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3
-      positions[i3] = (Math.random() - 0.5) * 100
-      positions[i3 + 1] = (Math.random() - 0.5) * 100
-      positions[i3 + 2] = (Math.random() - 0.5) * 50
+      const colorPalette = [
+        new THREE.Color('#FFB74D'),
+        new THREE.Color('#FF9AB5'),
+        new THREE.Color('#ffd93d'),
+        new THREE.Color('#8b5cf6'),
+        new THREE.Color('#ec4899'),
+        new THREE.Color('#3b82f6'),
+      ]
 
-      const color = colorPalette[Math.floor(Math.random() * colorPalette.length)]!
-      colors[i3] = color.r
-      colors[i3 + 1] = color.g
-      colors[i3 + 2] = color.b
-      sizes[i] = Math.random() * 2 + 0.5
-    }
+      for (let i = 0; i < particleCount; i++) {
+        const i3 = i * 3
+        positions[i3] = (Math.random() - 0.5) * 100
+        positions[i3 + 1] = (Math.random() - 0.5) * 100
+        positions[i3 + 2] = (Math.random() - 0.5) * 50
 
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
+        const color = colorPalette[Math.floor(Math.random() * colorPalette.length)]!
+        colors[i3] = color.r
+        colors[i3 + 1] = color.g
+        colors[i3 + 2] = color.b
+        sizes[i] = Math.random() * 2 + 0.5
+      }
 
-    const material = new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0 },
-        pixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
-      },
-      vertexShader: `
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+      geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
+
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          time: { value: 0 },
+          pixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+        },
+        vertexShader: `
         attribute float size;
         attribute vec3 color;
         varying vec3 vColor;
@@ -314,6 +323,10 @@
       renderer.setSize(w, h)
     }
     window.addEventListener('resize', handleResize)
+    } catch (error) {
+      logger.error('Erro ao inicializar Three.js:', error)
+      // Continúa funcionando sem o canvas 3D
+    }
   }
 
   function destroyThreeJS () {
@@ -379,12 +392,15 @@
   }
 
   onMounted(async () => {
-    await nextTick()
-    initThreeJS()
-    initAnimations()
-    setTimeout(() => {
-      isLoaded.value = true
-    }, 100)
+    try {
+      await nextTick()
+      isLoaded.value = true // Mostra o conteúdo imediatamente
+      initThreeJS()
+      initAnimations()
+    } catch (error) {
+      logger.error('Erro ao inicializar landing page:', error)
+      isLoaded.value = true // Garante que o conteúdo seja visível mesmo com erro
+    }
   })
 
   onUnmounted(() => {
@@ -940,6 +956,8 @@
   position: relative;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   width: 100%;
+  opacity: 1;
+  visibility: visible;
 }
 
 * {
