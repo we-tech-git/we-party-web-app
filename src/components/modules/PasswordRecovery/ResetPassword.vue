@@ -65,7 +65,6 @@
 
     try {
       const response = await requestSetNewPassord(token.value, password.value)
-      console.log('Resposta da redefinição de senha:', response)
       if (response.data.success) {
         showSnackbar(t('resetPassword.successMessage'), '#4caf50')
         // Redireciona para a página de login após um breve atraso

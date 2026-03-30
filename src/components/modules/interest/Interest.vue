@@ -8,9 +8,10 @@
   import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
-  import { addUserInterest, getRecommendedInterests, removeUserInterest, searchInterestsByName } from '@/api/interest'
+  import { addUserInterest, getRecommendedInterests, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-  import { svgIcons } from '@/utils/svgSet'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
   const { t } = useI18n()
   const router = useRouter()
@@ -78,7 +79,6 @@
         interests = responseData
       }
 
-      console.log('Interesses carregados:', interests)
       allChips.value = interests
 
       // Inicializa o Set de selecionados com base nos dados vindos da API
@@ -104,10 +104,7 @@
 
     try {
       isSearching.value = true
-      console.log('Buscando interesses com query:', searchQuery)
       const response = await searchInterestsByName(searchQuery.trim())
-
-      console.log('Resposta da busca:', response?.data)
 
       // Tenta extrair os interesses de diferentes estruturas de resposta
       const responseData = response?.data
@@ -123,7 +120,6 @@
         interests = responseData
       }
 
-      console.log('Interesses encontrados na busca:', interests)
       // Limita a 9 resultados para não quebrar o layout
       searchResults.value = interests.slice(0, MAX_DISPLAYED_INTERESTS)
     } catch (error) {
@@ -201,6 +197,17 @@
   const pendingInterests = ref<string[]>([])
   const isSubmittingRequest = ref(false)
 
+  // Snackbar para feedback de sucesso/erro
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
+
+  function showSnackbar (message: string, color = '#ff9800') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+    snackbarVisible.value = true
+  }
+
   // Persiste automaticamente pendingInterests no localStorage
   watch(pendingInterests, val => {
     try {
@@ -230,6 +237,7 @@
   function skipStep () {
     router.push('/public/AddFriends')
   }
+
   function closeModal () {
     showModal.value = false
   }
@@ -271,12 +279,21 @@
     // Adiciona o que estiver no input se o usuário esqueceu de clicar no +
     addToPending()
 
-    if (pendingInterests.value.length === 0) return
+    if (pendingInterests.value.length === 0) {
+      showSnackbar(t('interest.requestModal.noInterests') || 'Adicione pelo menos um interesse', '#ef4444')
+      return
+    }
 
     try {
       isSubmittingRequest.value = true
 
-      // limpa pendentes salvos após envio bem sucedido
+      // Cria uma cópia dos interesses antes de limpar
+      const interestsToSubmit = [...pendingInterests.value]
+
+      // Envia a solicitação para o backend via POST /interest/request
+      await requestNewInterests(interestsToSubmit)
+
+      // Limpa pendentes salvos após envio bem-sucedido
       try {
         localStorage.removeItem(PENDING_STORAGE_KEY)
         pendingInterests.value = [] // Limpa a lista da memória também
@@ -284,22 +301,24 @@
         console.error('Erro ao limpar pendingInterests do localStorage:', error)
       }
 
-      // Aqui você pode fazer a chamada para a API para solicitar o novo interesse
-      // Por exemplo: await requestNewInterest(pendingInterests.value)
-
-      console.log('Solicitando novos interesses:', pendingInterests.value)
-
-      // Simula delay da API
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
       // Fecha o modal e mostra mensagem de sucesso
       closeRequestModal()
-      showModal.value = true
+      showSnackbar(
+        t('interest.requestModal.successMessage') || 'Solicitação enviada com sucesso! Aguarde aprovação.',
+        '#22c55e',
+      )
 
       // Limpa a busca
       query.value = ''
-    } catch (error) {
-      console.error('Erro ao solicitar novo interesse:', error)
+    } catch (error: any) {
+      console.error('❌ Erro ao solicitar novo interesse:', error)
+
+      // Mostra mensagem de erro apropriada
+      const errorMessage = error?.response?.data?.message
+        || t('interest.requestModal.errorMessage')
+        || 'Erro ao enviar solicitação. Tente novamente.'
+
+      showSnackbar(errorMessage, '#ef4444')
     } finally {
       isSubmittingRequest.value = false
     }
@@ -310,6 +329,24 @@
 <template>
   <AuthLayout>
     <template #form-content>
+      <!-- Botão de Voltar -->
+      <a class="back-link" href="#" @click="router.back()">
+        <svg
+          class="back-arrow"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          :viewBox="svgIcons.backArrow ? svgIcons.backArrow.viewBox : '0 0 24 24'"
+        >
+          <path
+            v-for="(path, index) in (svgIcons.backArrow ? svgIcons.backArrow.paths : [{ d: 'M10 19l-7-7m0 0l7-7m-7 7h18', strokeLinecap: 'round', strokeLinejoin: 'round' }])"
+            :key="index"
+            :d="path.d"
+            :stroke-linecap="path.strokeLinecap as StrokeLinecap"
+            :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin"
+          />
+        </svg>
+      </a>
       <h2 class="mobile-brand-title notranslate" translate="no">WE PARTY</h2>
       <h1 class="title">{{ t('interest.title') }}</h1>
       <p class="subtitle">{{ t('interest.subtitle') }}</p>
@@ -473,6 +510,9 @@
       </div>
     </template>
   </AuthLayout>
+
+  <!-- Snackbar para feedback -->
+  <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />
 </template>
 
 <style scoped>
@@ -756,6 +796,20 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* ===============================
+   BOTÃO VOLTAR
+================================ */
+.back-link {
+  display: inline-flex;
+  color: #FFB37B;
+  margin-bottom: 48px;
+}
+
+.back-arrow {
+  width: 32px;
+  height: 32px;
 }
 
 /* ===============================

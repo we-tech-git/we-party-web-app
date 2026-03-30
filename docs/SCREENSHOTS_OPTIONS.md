@@ -5,6 +5,7 @@ Enquanto você não tiver os screenshots reais, existem algumas opções para te
 ## Opção 1: Usar Placeholders Visuais (Recomendado) ✅
 
 **Status Atual:** A landing page já está configurada com placeholders visuais atraentes que mostram:
+
 - Ícone representativo de cada funcionalidade
 - Nome da seção
 - Texto "Adicione seu screenshot aqui"
@@ -19,6 +20,7 @@ Enquanto você não tiver os screenshots reais, existem algumas opções para te
 Use serviços de placeholder para gerar imagens temporárias:
 
 ### Via Placeholder.com
+
 Crie arquivos em `public/screenshots/` com URLs de placeholder:
 
 ```bash
@@ -45,12 +47,14 @@ foreach ($file in $urls.Keys) {
 Use ferramentas de design para criar mockups:
 
 ### Figma (Gratuito)
+
 1. Acesse [Figma](https://figma.com)
 2. Crie frames com dimensões 1400x900
 3. Use componentes do We Party
 4. Exporte como PNG
 
 ### Canva (Gratuito)
+
 1. Acesse [Canva](https://canva.com)
 2. Crie design customizado 1400x900px
 3. Use templates de interface mobile/web
@@ -61,6 +65,7 @@ Use ferramentas de design para criar mockups:
 ## Opção 4: Screenshotar Outras Páginas Similares
 
 **⚠️ CUIDADO:** Use apenas para testes internos, NUNCA publique:
+
 1. Encontre sites similares (redes sociais de eventos)
 2. Capture screenshots das funcionalidades similares
 3. Use apenas para desenvolvimento/testes
@@ -71,9 +76,10 @@ Use ferramentas de design para criar mockups:
 ## Opção 5: Gerar com IA (Midjourney, DALL-E)
 
 Prompt exemplo:
+
 ```
-"Modern mobile app interface for event discovery, clean UI design, 
-iOS style, showing a feed of parties and events, vibrant colors, 
+"Modern mobile app interface for event discovery, clean UI design,
+iOS style, showing a feed of parties and events, vibrant colors,
 high quality screenshot, user interface, UX design"
 ```
 
@@ -82,6 +88,7 @@ high quality screenshot, user interface, UX design"
 ## Como Implementar as Imagens
 
 ### 1. Salvar as Imagens
+
 Coloque os arquivos em: `public/screenshots/`
 
 ### 2. Ativar no Código
@@ -89,12 +96,14 @@ Coloque os arquivos em: `public/screenshots/`
 Abra: `src/components/modules/Landingpage/LandingPageV2.vue`
 
 Encontre (linha ~354):
+
 ```vue
 <!-- Quando você tiver as imagens, descomente e substitua o placeholder -->
 <!-- <img :src="screenshot.image" :alt="screenshot.title" class="screenshot-image" /> -->
 ```
 
 Descomente para:
+
 ```vue
 <!-- Quando você tiver as imagens, descomente e substitua o placeholder -->
 <img :src="screenshot.image" :alt="screenshot.title" class="screenshot-image" />
@@ -103,6 +112,7 @@ Descomente para:
 ### 3. (Opcional) Ocultar o Placeholder
 
 Se quiser remover o placeholder e mostrar APENAS as imagens, comente o bloco do placeholder (linha ~350-356):
+
 ```vue
 <!--
 <div class="screenshot-placeholder" :style="{ borderColor: screenshot.color }">
@@ -120,20 +130,20 @@ Se quiser remover o placeholder e mostrar APENAS as imagens, comente o bloco do 
 Criar arquivo `scripts/generate-placeholders.js`:
 
 ```javascript
-const fs = require('fs');
-const https = require('https');
-const path = require('path');
+const fs = require("fs");
+const https = require("https");
+const path = require("path");
 
 const screenshots = [
-  { name: 'feed.png', color: 'ff6b6b', text: 'Feed de Eventos' },
-  { name: 'profile.png', color: '8b5cf6', text: 'Perfil' },
-  { name: 'event-details.png', color: '3b82f6', text: 'Detalhes' },
-  { name: 'chat.png', color: '10b981', text: 'Chat' },
-  { name: 'create-event.png', color: 'f59e0b', text: 'Criar' },
-  { name: 'categories.png', color: 'ec4899', text: 'Categorias' },
+  { name: "feed.png", color: "ff6b6b", text: "Feed de Eventos" },
+  { name: "profile.png", color: "8b5cf6", text: "Perfil" },
+  { name: "event-details.png", color: "3b82f6", text: "Detalhes" },
+  { name: "chat.png", color: "10b981", text: "Chat" },
+  { name: "create-event.png", color: "f59e0b", text: "Criar" },
+  { name: "categories.png", color: "ec4899", text: "Categorias" },
 ];
 
-const outputDir = path.join(__dirname, '..', 'public', 'screenshots');
+const outputDir = path.join(__dirname, "..", "public", "screenshots");
 
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
@@ -142,21 +152,22 @@ if (!fs.existsSync(outputDir)) {
 screenshots.forEach(({ name, color, text }) => {
   const url = `https://via.placeholder.com/1400x900/${color}/ffffff?text=${encodeURIComponent(text)}`;
   const outputPath = path.join(outputDir, name);
-  
+
   const file = fs.createWriteStream(outputPath);
   https.get(url, (response) => {
     response.pipe(file);
-    file.on('finish', () => {
+    file.on("finish", () => {
       file.close();
       console.log(`✅ ${name} criado!`);
     });
   });
 });
 
-console.log('🎨 Gerando placeholders...');
+console.log("🎨 Gerando placeholders...");
 ```
 
 Execute:
+
 ```bash
 node scripts/generate-placeholders.js
 ```
@@ -166,6 +177,7 @@ node scripts/generate-placeholders.js
 ## Checklist de Implementação
 
 ### Fase 1: Desenvolvimento (Agora)
+
 - [x] Landing page com placeholders visuais criada
 - [x] Seção de screenshots implementada
 - [x] Responsividade configurada
@@ -173,12 +185,14 @@ node scripts/generate-placeholders.js
 - [ ] Ajustar cores e espaçamentos se necessário
 
 ### Fase 2: Screenshots Temporários (Opcional)
+
 - [ ] Decidir entre placeholder ou imagens temporárias
 - [ ] Gerar/baixar imagens placeholder
 - [ ] Descomentar tag `<img>` no código
 - [ ] Testar carregamento das imagens
 
 ### Fase 3: Screenshots Reais (Antes do Lançamento)
+
 - [ ] Capturar screenshots reais seguindo SCREENSHOTS_GUIDE.md
 - [ ] Otimizar imagens para web
 - [ ] Substituir arquivos em `public/screenshots/`
@@ -191,6 +205,7 @@ node scripts/generate-placeholders.js
 ## Visualizar a Landing Page
 
 ### Modo Desenvolvimento
+
 ```bash
 npm run dev
 ```
@@ -198,6 +213,7 @@ npm run dev
 Acesse: `http://localhost:5173/public/Landingv2` ou `http://localhost:5173/landing`
 
 ### Modo Produção (Build)
+
 ```bash
 npm run build
 npm run preview
@@ -208,11 +224,13 @@ npm run preview
 ## Dicas Profissionais
 
 ✅ **Recomendado:**
+
 - Manter os placeholders visuais atuais até ter screenshots reais
 - São profissionais e mostram a estrutura claramente
 - Não parecem "quebrados" ou incompletos
 
 ❌ **Evitar:**
+
 - Imagens genéricas que não representam o We Party
 - Screenshots de concorrentes (problemas legais)
 - Links externos quebrados
@@ -235,6 +253,7 @@ Quando tiver os screenshots reais, considere:
 ## Resultado Atual
 
 A landing page já está **100% funcional** com:
+
 - ✅ Nova seção "Veja o We Party em Ação"
 - ✅ 6 cards interativos com placeholders
 - ✅ Animações e transições suaves
@@ -248,5 +267,6 @@ A landing page já está **100% funcional** com:
 ---
 
 Precisa de ajuda? Consulte:
+
 - `SCREENSHOTS_GUIDE.md` - Guia completo de captura
 - `README.md` - Documentação geral do projeto

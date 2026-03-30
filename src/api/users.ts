@@ -28,7 +28,7 @@ export async function createUser (userData: NewUser) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao criar usuário:', error)
+    logger.error('Erro ao criar usuário:', error)
     throw error
   }
 }
@@ -44,7 +44,7 @@ export async function loginUser (credentials: LoginCredentials) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao fazer login:', error)
+    logger.error('Erro ao fazer login:', error)
     throw error
   }
 }
@@ -65,7 +65,7 @@ export async function reqeustSendPin ({
     )
     return response
   } catch (error) {
-    console.error('Erro ao verificar e-mail:', error)
+    logger.error('Erro ao verificar e-mail:', error)
     throw error
   }
 }
@@ -80,7 +80,7 @@ export async function reqeustResendPin (email: string) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao reenviar PIN:', error)
+    logger.error('Erro ao reenviar PIN:', error)
     throw error
   }
 }
@@ -125,7 +125,41 @@ export async function getUserRecomendations () {
     )
     return response
   } catch (error) {
-    console.error('Erro ao buscar recomendações de usuários:', error)
+    logger.error('Erro ao buscar recomendações de usuários:', error)
+    throw error
+  }
+}
+
+/**
+ * Busca usuários por nome ou username
+ * @param query - Termo de busca (nome ou username)
+ * @param page - Página de resultados (padrão: 1)
+ * @param limit - Limite de resultados por página (padrão: 20)
+ */
+export async function searchUsers (query: string, page = 1, limit = 20) {
+  try {
+    const response = await callApi(
+      'GET',
+      `/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
+      {},
+      true,
+    )
+    return response
+  } catch (error: any) {
+    // Tratamento específico para endpoint não implementado
+    if (error.response?.status === 404) {
+      logger.warn('Endpoint de busca de usuários não implementado no backend')
+      // Retorna resposta vazia ao invés de quebrar
+      return {
+        data: {
+          success: false,
+          message: 'Funcionalidade de busca temporariamente indisponível',
+          data: [],
+        },
+        status: 200,
+      }
+    }
+    logger.error('Erro ao buscar usuários:', error)
     throw error
   }
 }
@@ -146,7 +180,7 @@ export async function getUserProfile (userId: string) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao buscar perfil do usuário:', error)
+    logger.error('Erro ao buscar perfil do usuário:', error)
     throw error
   }
 }
@@ -218,8 +252,6 @@ export async function uploadProfileImage (file: File) {
       body: formData,
     })
 
-    console.log('Resposta do servidor (status):', response.status)
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }))
       throw new Error(errorData.message || `Erro ao fazer upload da imagem (${response.status})`)
@@ -253,8 +285,6 @@ export async function uploadBannerImage (file: File) {
       },
       body: formData,
     })
-
-    console.log('Resposta do servidor (status):', response.status)
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }))

@@ -344,8 +344,10 @@
 
 .page-container {
   display: flex;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  /* iOS Safari */
   background-color: #ffffffee;
   font-family: 'Poppins', sans-serif;
   overflow: hidden;

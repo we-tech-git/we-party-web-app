@@ -1,21 +1,36 @@
 <script setup lang="ts">
   import type { FeedItem } from '@/stores/events'
-  import { computed, nextTick, onMounted, ref, watch } from 'vue'
+  import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
 
   import { useRoute, useRouter } from 'vue-router'
 
-  import { getEventRecomendations, getEventsToday, getFavoriteEvents, getTrendingEvents, searchByEvents } from '@/api/event'
-  import { getInterests } from '@/api/interest'
+  import {
+    getEventRecomendations,
+    getEventsToday,
+    getFavoriteEvents,
+    getPublicEventRecomendations,
+    getPublicEventsToday,
+    getPublicTrendingEvents,
+    getTrendingEvents,
+    searchByEvents,
+    searchPublicEvents,
+  } from '@/api/event'
   import { getUserInterests } from '@/api/users'
 
   import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
   import { useAuth } from '@/composables/useAuth'
+  import { useGuestMode } from '@/composables/useGuestMode'
   import { useEventsStore } from '@/stores/events'
   import { logger } from '@/utils/logger'
   import FeedCard from './FeedCard.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
   import FeedTopHeader from './FeedTopHeader.vue'
+
+  // Props do componente
+  const props = defineProps<{
+    guestMode?: boolean
+  }>()
 
   interface NavItem {
     id: string
@@ -40,291 +55,14 @@
   const router = useRouter()
   const route = useRoute()
   const { loggedUser, userDisplayName } = useAuth()
+  const { requireLogin } = useGuestMode()
 
   const activeNav = ref((route.query.tab as string) || 'home')
   const activeTab = ref('for-you')
   const searchQuery = ref('')
 
-  // ── Filter state ──────────────────────────────────────────────────────────
-  const filterOpen = ref(false)
-  const activeCategories = ref<string[]>([])
-  const activeDateFilter = ref<string | null>(null)
-  const showCategorySearch = ref(false)
-  const categorySearchQuery = ref('')
-  const searchedCategories = ref<Array<{ id: string, label: string }>>([])
-  const searchingCategories = ref(false)
+  // Timeout para debounce da busca
   let searchTimeout: ReturnType<typeof setTimeout> | null = null
-  const categorySearchInput = ref<HTMLInputElement | null>(null)
-
-  // Função auxiliar para mapear ícones aos interesses
-  function getInterestIcon (name: string): string {
-    const lowerName = name.toLowerCase()
-    const iconMap: Record<string, string> = {
-      'rock': '🎸',
-      'vinhos': '🍷',
-      'cerveja artesanal': '🍺',
-      'cerveja': '🍺',
-      'teatro': '🎭',
-      'stand-up': '🎤',
-      'stand-up comedy': '🎤',
-      'podcast': '🎙️',
-      'marketing': '📢',
-      'marketing digital': '📢',
-      'empreendedorismo': '💼',
-      'startups': '🚀',
-      'arte urbana': '🎨',
-      'moda': '👗',
-      'filosofia': '💭',
-      'psicologia': '🧠',
-      'história': '📜',
-      'ciência': '🔬',
-      'gaming': '🎮',
-      'artes marciais': '🥋',
-      'dança': '💃',
-      'fitness': '💪',
-      'meditação': '🧘',
-      'yoga': '🧘‍♀️',
-      'fotografia': '📸',
-      'design gráfico': '🎨',
-      'programação': '💻',
-      'web': '🌐',
-      'tecnologia': '💻',
-      'ia': '🤖',
-      'viagens': '✈️',
-      'ásia': '🌏',
-      'europa': '🌍',
-      'culinária': '🍽️',
-      'mexicana': '🌮',
-      'japonesa': '🍱',
-      'italiana': '🍝',
-      'poesia': '📝',
-      'leitura': '📚',
-      'filmes': '🎬',
-      'sci-fi': '🚀',
-      'horror': '👻',
-      'drama': '🎭',
-      'comédia': '😂',
-      'ação': '💥',
-      'ciclismo': '🚴',
-      'corrida': '🏃',
-      'skate': '🛹',
-      'surf': '🏄',
-      'natação': '🏊',
-      'tênis': '🎾',
-      'vôlei': '🏐',
-      'basquete': '🏀',
-      'basketball': '🏀',
-      'futebol': '⚽',
-      'música': '🎵',
-      'musica': '🎵',
-      'eletrônica': '🎧',
-      'jazz': '🎷',
-      'clássica': '🎻',
-      'pop': '🎤',
-    }
-
-    return iconMap[lowerName] || '🎯'
-  }
-
-  // Carregar categorias da API
-  const userInterestChips = ref<Array<{ id: string, label: string }>>([])
-  const allInterestsCache = ref<Array<{ id: string, label: string, name: string }>>([])
-  const loadingCategories = ref(false)
-
-  // Categorias exibidas (usuário ou pesquisadas)
-  const displayedCategories = computed(() => {
-    // Modo explorar com busca ativa
-    if (showCategorySearch.value && searchedCategories.value.length > 0) {
-      return searchedCategories.value
-    }
-
-    if (showCategorySearch.value && categorySearchQuery.value.trim()) {
-      return []
-    }
-
-    // Modo explorar sem busca: mostra populares (10 primeiras do cache)
-    if (showCategorySearch.value && !categorySearchQuery.value.trim()) {
-      return allInterestsCache.value.slice(0, 10).map(i => ({ id: i.id, label: i.label }))
-    }
-
-    return userInterestChips.value
-  })
-
-  // Categorias ativas resolvías (label de qualquer fonte)
-  const activeCategoryLabels = computed(() => {
-    return activeCategories.value.map(catId => {
-      const fromUser = userInterestChips.value.find(c => c.id === catId)
-      if (fromUser) return fromUser
-      const fromAll = allInterestsCache.value.find(c => c.id === catId)
-      if (fromAll) return { id: fromAll.id, label: fromAll.label }
-      return { id: catId, label: catId }
-    })
-  })
-
-  // Contador de resultados da busca
-  const searchResultsCount = computed(() => {
-    if (!showCategorySearch.value || !categorySearchQuery.value.trim()) return 0
-    return searchedCategories.value.length
-  })
-
-  async function loadCategories () {
-    try {
-      loadingCategories.value = true
-
-      // Buscar interesses do usuário e todos os interesses em paralelo
-      const [userResponse, allResponse] = await Promise.all([
-        getUserInterests(),
-        getInterests(),
-      ])
-
-      logger.log('📊 [Feed] Resposta da API de interesses:', {
-        userResponseStatus: userResponse?.status,
-        allResponseStatus: allResponse?.status,
-        userDataStructure: userResponse?.data ? Object.keys(userResponse.data) : 'null',
-        allDataStructure: allResponse?.data ? Object.keys(allResponse.data) : 'null',
-        userDataType: Array.isArray(userResponse?.data) ? 'array' : typeof userResponse?.data,
-        allDataType: Array.isArray(allResponse?.data) ? 'array' : typeof allResponse?.data,
-      })
-
-      // Processar interesses do usuário
-      let userInterests: any[] = []
-      if (Array.isArray(userResponse?.data)) {
-        userInterests = userResponse.data
-      } else if (Array.isArray(userResponse?.data?.data)) {
-        userInterests = userResponse.data.data
-      } else if (Array.isArray(userResponse?.data?.interests)) {
-        userInterests = userResponse.data.interests
-      } else if (Array.isArray(userResponse?.data?.content)) {
-        userInterests = userResponse.data.content
-      } else if (Array.isArray(userResponse?.data?.items)) {
-        userInterests = userResponse.data.items
-      } else if (Array.isArray(userResponse?.data?.results)) {
-        userInterests = userResponse.data.results
-      }
-
-      logger.log('✅ [Feed] Interesses do usuário processados:', userInterests.length)
-
-      if (userInterests.length > 0) {
-        userInterestChips.value = userInterests
-          .slice(0, 10)
-          .map((interest: any) => {
-            const interestData = interest.interest || interest
-            const id = interestData.id || interestData._id
-            const name = interestData.name
-
-            if (!id || !name) {
-              logger.warn('⚠️ [Feed] Interesse com dados incompletos:', interestData)
-              return null
-            }
-
-            return {
-              id: String(id),
-              label: `${getInterestIcon(name)} ${name}`,
-            }
-          })
-          .filter(Boolean) as Array<{ id: string, label: string }>
-      }
-
-      // Cachear todos os interesses para busca local
-      let allInterests: any[] = []
-      if (Array.isArray(allResponse?.data)) {
-        allInterests = allResponse.data
-      } else if (Array.isArray(allResponse?.data?.data)) {
-        allInterests = allResponse.data.data
-      } else if (Array.isArray(allResponse?.data?.interests)) {
-        allInterests = allResponse.data.interests
-      } else if (Array.isArray(allResponse?.data?.content)) {
-        allInterests = allResponse.data.content
-      } else if (Array.isArray(allResponse?.data?.items)) {
-        allInterests = allResponse.data.items
-      } else if (Array.isArray(allResponse?.data?.results)) {
-        allInterests = allResponse.data.results
-      }
-
-      logger.log('✅ [Feed] Todos os interesses processados:', allInterests.length)
-      if (allInterests.length > 0) {
-        logger.log('📝 [Feed] Exemplo de interesse:', allInterests[0])
-      }
-
-      if (allInterests.length > 0) {
-        allInterestsCache.value = allInterests
-          .map((interest: any) => {
-            const id = interest.id || interest._id
-            const name = interest.name
-
-            if (!id || !name) {
-              logger.warn('⚠️ [Feed] Interesse com dados incompletos:', interest)
-              return null
-            }
-
-            return {
-              id: String(id),
-              label: `${getInterestIcon(name)} ${name}`,
-              name: name,
-            }
-          })
-          .filter(Boolean) as Array<{ id: string, label: string, name: string }>
-
-        logger.log('✅ [Feed] Cache de interesses preenchido:', allInterestsCache.value.length)
-      } else {
-        logger.warn('⚠️ [Feed] Nenhum interesse retornado pela API /interest')
-        logger.warn('⚠️ [Feed] Resposta completa:', allResponse)
-      }
-    } catch (error: any) {
-      logger.error('❌ [Feed] Erro ao carregar categorias:', error)
-      logger.error('❌ [Feed] Detalhes:', {
-        message: error?.message,
-        response: error?.response?.data,
-        status: error?.response?.status,
-      })
-    } finally {
-      loadingCategories.value = false
-    }
-  }
-
-  // Filtrar categorias localmente a partir do cache
-  function filterCategories () {
-    const query = categorySearchQuery.value.trim().toLowerCase()
-
-    if (!query) {
-      searchedCategories.value = []
-      searchingCategories.value = false
-      return
-    }
-
-    searchedCategories.value = allInterestsCache.value
-      .filter(interest => interest.name.toLowerCase().includes(query))
-      .map(interest => ({
-        id: interest.id,
-        label: interest.label,
-      }))
-
-    searchingCategories.value = false
-  }
-
-  // Filtrar categorias localmente com debounce leve
-  watch(categorySearchQuery, newValue => {
-    if (searchTimeout) {
-      clearTimeout(searchTimeout)
-    }
-
-    if (newValue.trim()) {
-      searchingCategories.value = true
-      searchTimeout = setTimeout(() => {
-        filterCategories()
-      }, 150)
-    } else {
-      searchedCategories.value = []
-      searchingCategories.value = false
-    }
-  })
-
-  const DATE_CHIPS = [
-    { id: 'today', label: 'Hoje' },
-    { id: 'tomorrow', label: 'Amanhã' },
-    { id: 'week', label: 'Esta semana' },
-    { id: 'month', label: 'Este mês' },
-  ]
 
   const rawEventDates = ref<Record<string, Date>>({})
 
@@ -334,6 +72,27 @@
     { id: 'favorites', label: t('feed.nav.favorites'), icon: 'bookmark' },
     { id: 'profile', label: t('feed.nav.profile'), icon: 'profile' },
   ])
+
+  // IDs de navegação que requerem autenticação
+  const protectedNavIds = new Set(['favorites', 'profile'])
+
+  // Retorna todos os itens de navegação (não filtra mais em modo guest)
+  // O diálogo de login será mostrado ao clicar em itens protegidos
+  const guestFilteredNavItems = computed<NavItem[]>(() => {
+    return navItems.value
+  })
+
+  /**
+   * Gerencia seleção de navegação com verificação de modo guest
+   */
+  function handleNavSelect (navId: string) {
+    if (props.guestMode && protectedNavIds.has(navId)) {
+      const actionName = navId === 'favorites' ? 'ver seus favoritos' : 'acessar seu perfil'
+      requireLogin(actionName)
+      return
+    }
+    activeNav.value = navId
+  }
 
   const tabs = computed<TabItem[]>(() => {
     if (activeNav.value === 'top-events') {
@@ -360,6 +119,7 @@
   const page = ref(1)
   const limit = 10
   const hasMore = ref(true)
+  const userInterests = ref<string[]>([])
 
   function getFirstValidString (...values: unknown[]): string {
     for (const val of values) {
@@ -368,6 +128,74 @@
       }
     }
     return ''
+  }
+
+  /**
+   * Busca os interesses do usuário autenticado
+   */
+  async function fetchUserInterests () {
+    if (props.guestMode) return
+
+    try {
+      const response = await getUserInterests()
+      const data = response?.data
+
+      // Extrai os nomes dos interesses e normaliza para comparação
+      let interests: string[] = []
+
+      if (Array.isArray(data)) {
+        interests = data.map((item: any) =>
+          (item.interest?.name || item.name || '').toLowerCase(),
+        ).filter(Boolean)
+      } else if (data?.interests && Array.isArray(data.interests)) {
+        interests = data.interests.map((item: any) =>
+          (item.interest?.name || item.name || '').toLowerCase(),
+        ).filter(Boolean)
+      } else if (data?.data && Array.isArray(data.data)) {
+        interests = data.data.map((item: any) =>
+          (item.interest?.name || item.name || '').toLowerCase(),
+        ).filter(Boolean)
+      }
+
+      userInterests.value = interests
+      logger.log('📋 Interesses do usuário carregados:', interests)
+    } catch (error) {
+      logger.error('Erro ao buscar interesses do usuário:', error)
+      userInterests.value = []
+    }
+  }
+
+  /**
+   * Calcula o número de interesses em comum entre evento e usuário
+   */
+  function calculateInterestMatch (eventInterests: string[]): number {
+    if (userInterests.value.length === 0 || eventInterests.length === 0) return 0
+
+    const normalizedEventInterests = new Set(eventInterests.map(i => i.toLowerCase()))
+
+    return userInterests.value.filter(userInterest =>
+      normalizedEventInterests.has(userInterest),
+    ).length
+  }
+
+  /**
+   * Ordena eventos priorizando aqueles com mais interesses em comum
+   */
+  function sortEventsByInterestMatch (events: FeedItem[]): FeedItem[] {
+    if (userInterests.value.length === 0) return events
+
+    return events.toSorted((a, b) => {
+      const matchA = calculateInterestMatch(a.interests || [])
+      const matchB = calculateInterestMatch(b.interests || [])
+
+      // Eventos com mais matches primeiro
+      if (matchB !== matchA) {
+        return matchB - matchA
+      }
+
+      // Mantém ordem original para eventos com mesmo score
+      return 0
+    })
   }
 
   function extractPhotoUrl (photos: unknown): string {
@@ -438,6 +266,16 @@
 
     const likesCount = resolveLikesCount(event)
 
+    // Extrai interesses do evento
+    const eventInterests = (event.eventInterests || event.interests || event.categories || event.tags || [])
+      .map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name)
+      .filter(Boolean)
+
+    // Calcula quais interesses do evento correspondem aos do usuário
+    const matchedInterests = eventInterests.filter((interest: string) =>
+      userInterests.value.includes(interest.toLowerCase()),
+    )
+
     return {
       id: event.id,
       banner: rawBanner,
@@ -450,7 +288,8 @@
       confirmed: event.confirmedCount || event._count?.attendances || 0,
       interested: event.interestedCount || 0,
       likes: likesCount,
-      interests: (event.eventInterests || event.interests || event.categories || event.tags || []).map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name).filter(Boolean),
+      interests: eventInterests,
+      matchedInterests,
       commentsCount: event.commentsCount ?? event._count?.comments ?? 0,
     }
   }
@@ -468,6 +307,18 @@
 
     try {
       const fetchPromise = (async () => {
+        // Em modo guest, usa as funções públicas (sem autenticação)
+        if (props.guestMode) {
+          if (activeNav.value === 'top-events') {
+            return await getPublicTrendingEvents(page.value, limit)
+          } else if (activeTab.value === 'today') {
+            return await getPublicEventsToday(page.value, limit)
+          } else {
+            return await getPublicEventRecomendations(page.value, limit)
+          }
+        }
+
+        // Modo autenticado - usa funções normais
         if (activeNav.value === 'top-events') {
           return await getTrendingEvents(page.value, limit)
         } else if (activeTab.value === 'today') {
@@ -489,9 +340,12 @@
 
       const mappedEvents = events.map((event: any) => mapEventToFeedItem(event))
 
-      hasMore.value = mappedEvents.length >= limit
+      // Ordena por interesses matching (eventos com interesses em comum primeiro)
+      const sortedEvents = sortEventsByInterestMatch(mappedEvents)
 
-      items.value = isLoadMore ? [...items.value, ...mappedEvents] : mappedEvents
+      hasMore.value = sortedEvents.length >= limit
+
+      items.value = isLoadMore ? [...items.value, ...sortedEvents] : sortedEvents
 
       if (isLoadMore && mappedEvents.length === 0) {
         // Reverte o incremento de página se não trouxe resultados
@@ -511,18 +365,16 @@
     }
   }
 
-  onMounted(() => {
-    // Aplicar filtro de data vindo da query string (ex: footer)
-    const dateFilterParam = route.query.dateFilter as string | undefined
-    if (dateFilterParam && ['today', 'tomorrow', 'week', 'month'].includes(dateFilterParam)) {
-      activeDateFilter.value = dateFilterParam
-      filterOpen.value = true
+  onMounted(async () => {
+    // Busca os interesses do usuário primeiro (se autenticado)
+    if (!props.guestMode) {
+      await fetchUserInterests()
     }
 
-    // Carregar categorias da API
-    loadCategories()
-
-    if (activeNav.value === 'favorites') {
+    // Em modo guest, não tenta carregar favoritos
+    if (props.guestMode) {
+      fetchEvents()
+    } else if (activeNav.value === 'favorites') {
       fetchFavoriteEvents()
       // Sincroniza favoritos com o servidor ao montar a página
       eventsStore.syncFavoritesWithServer()
@@ -588,12 +440,19 @@
     }
   }
 
+  function scrollToTop () {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   function clearSearch () {
     searchQuery.value = ''
   }
 
   async function requestSearchEvents (normalizedSearch: string) {
-    const resp = await searchByEvents(normalizedSearch, 1, 20)
+    // Usa versão pública no modo guest
+    const resp = props.guestMode
+      ? await searchPublicEvents(normalizedSearch, 1, 20)
+      : await searchByEvents(normalizedSearch, 1, 20)
     return resp.data.events || resp.data || []
   }
 
@@ -686,7 +545,10 @@
 
       const mappedEvents = events.map((evt: any) => mapEventToFeedItem(evt))
 
-      items.value = isLoadMore ? [...items.value, ...mappedEvents] : mappedEvents
+      // Ordena por interesses matching (eventos com interesses em comum primeiro)
+      const sortedEvents = sortEventsByInterestMatch(mappedEvents)
+
+      items.value = isLoadMore ? [...items.value, ...sortedEvents] : sortedEvents
       filteredItems.value = items.value
     } catch (error) {
       logger.error('Erro ao buscar eventos favoritos:', error)
@@ -700,118 +562,7 @@
     }
   }
 
-  // ── Filter helpers ───────────────────────────────────────────────────────
-  function toggleCategory (id: string) {
-    const idx = activeCategories.value.indexOf(id)
-    if (idx === -1) {
-      activeCategories.value.push(id)
-    } else {
-      activeCategories.value.splice(idx, 1)
-    }
-  }
-
-  function toggleDateFilter (id: string) {
-    activeDateFilter.value = activeDateFilter.value === id ? null : id
-  }
-
-  function clearFilters () {
-    activeCategories.value = []
-    activeDateFilter.value = null
-    categorySearchQuery.value = ''
-    searchedCategories.value = []
-  }
-
-  function toggleExploreMode () {
-    showCategorySearch.value = !showCategorySearch.value
-    categorySearchQuery.value = ''
-    searchedCategories.value = []
-    // Melhoria 5: Auto-focus no input ao abrir explorar
-    if (showCategorySearch.value) {
-      nextTick(() => {
-        categorySearchInput.value?.focus()
-      })
-    }
-  }
-
-  const activeFiltersCount = computed(() =>
-    activeCategories.value.length + (activeDateFilter.value ? 1 : 0),
-  )
-
-  const hasActiveFilters = computed(() => activeFiltersCount.value > 0)
-
-  function isDateInFilter (eventId: string): boolean {
-    const date = rawEventDates.value[eventId]
-    if (!date) return true
-
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
-    const eventDateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0)
-
-    switch (activeDateFilter.value) {
-      case 'today': {
-        return eventDateOnly.getTime() === today.getTime()
-      }
-      case 'tomorrow': {
-        const tomorrow = new Date(today)
-        tomorrow.setDate(tomorrow.getDate() + 1)
-        return eventDateOnly.getTime() === tomorrow.getTime()
-      }
-      case 'week': {
-        const currentDay = today.getDay()
-        const daysUntilSunday = currentDay === 0 ? 0 : 7 - currentDay
-        const endOfWeek = new Date(today)
-        endOfWeek.setDate(today.getDate() + daysUntilSunday)
-        return eventDateOnly.getTime() >= today.getTime() && eventDateOnly.getTime() <= endOfWeek.getTime()
-      }
-      case 'month': {
-        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 0, 0, 0, 0)
-        return eventDateOnly.getTime() >= today.getTime() && eventDateOnly.getTime() <= endOfMonth.getTime()
-      }
-      default: {
-        return true
-      }
-    }
-  }
-
-  // Resolve o nome (sem emoji) de uma categoria pelo ID
-  function resolveCategoryName (catId: string): string {
-    const fromUser = userInterestChips.value.find(c => c.id === catId)
-    if (fromUser) return fromUser.label.replace(/^\S+\s/, '').toLowerCase()
-    const fromAll = allInterestsCache.value.find(c => c.id === catId)
-    if (fromAll) return fromAll.name.toLowerCase()
-    return catId.toLowerCase()
-  }
-
-  // Retorna os interesses de um evento que fazem match com as categorias ativas
-  function getMatchedInterests (item: FeedItem): string[] {
-    if (!item.interests || activeCategories.value.length === 0) return []
-    return item.interests.filter((interest: string) =>
-      activeCategories.value.some(catId => {
-        const catName = resolveCategoryName(catId)
-        return interest.toLowerCase().includes(catName)
-          || catName.includes(interest.toLowerCase())
-      }),
-    )
-  }
-
-  const displayedItems = computed(() => {
-    let result = filteredItems.value
-    if (activeCategories.value.length > 0) {
-      result = result.filter(item =>
-        item.interests?.some((interest: string) =>
-          activeCategories.value.some(catId => {
-            const catName = resolveCategoryName(catId)
-            return interest.toLowerCase().includes(catName)
-              || catName.includes(interest.toLowerCase())
-          }),
-        ),
-      )
-    }
-    if (activeDateFilter.value) {
-      result = result.filter(item => isDateInFilter(String(item.id)))
-    }
-    return result
-  })
+  const displayedItems = computed(() => filteredItems.value)
 
   /**
    * Gerencia o toggle de favorito com atualização da lista quando necessário
@@ -838,7 +589,7 @@
 </script>
 <template>
   <div class="feed-page">
-    <FeedTopHeader :user="user">
+    <FeedTopHeader :guest-mode="props.guestMode" :user="user">
       <template #center-content>
         <section class="feed-controls">
           <label class="search" role="search">
@@ -870,226 +621,28 @@
             </button>
           </label>
 
-          <div class="tabs-row">
-            <nav aria-label="Seções do feed" class="tabs">
-              <button
-                v-for="tab in tabs"
-                :key="tab.id"
-                :class="{ active: activeTab === tab.id }"
-                type="button"
-                @click="selectTab(tab.id)"
-              >
-                {{ tab.label }}
-              </button>
-            </nav>
-
+          <nav aria-label="Seções do feed" class="tabs">
             <button
-              class="filter-toggle-btn"
-              :class="{ 'filter-active': hasActiveFilters, 'filter-open': filterOpen }"
+              v-for="tab in tabs"
+              :key="tab.id"
+              :class="{ active: activeTab === tab.id }"
               type="button"
-              @click="filterOpen = !filterOpen"
+              @click="selectTab(tab.id)"
             >
-              <svg
-                fill="none"
-                height="15"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="15"
-              >
-                <path d="M22 3H2l8 9.46V19l4 2v-8.54z" />
-              </svg>
-              <span class="filter-btn-label">Filtros</span>
-              <span v-if="activeFiltersCount > 0" class="filter-count-badge">{{ activeFiltersCount }}</span>
-              <svg
-                class="filter-chevron"
-                :class="{ rotated: filterOpen }"
-                fill="none"
-                height="13"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2.5"
-                viewBox="0 0 24 24"
-                width="13"
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
+              {{ tab.label }}
             </button>
-          </div>
-
-          <Transition name="filter-expand">
-            <div v-if="filterOpen" class="filter-panel">
-              <div class="filter-section">
-                <div class="filter-section-header">
-                  <span class="filter-section-label">Categoria</span>
-                  <button
-                    v-if="userInterestChips.length > 0"
-                    class="explore-categories-btn"
-                    type="button"
-                    @click="toggleExploreMode"
-                  >
-                    {{ showCategorySearch ? '✨ Meus interesses' : '🔍 Explorar categorias' }}
-                  </button>
-                </div>
-
-                <!-- Tags removíveis das categorias selecionadas -->
-                <div v-if="activeCategoryLabels.length > 0" class="active-tags">
-                  <button
-                    v-for="cat in activeCategoryLabels"
-                    :key="'tag-' + cat.id"
-                    class="active-tag"
-                    type="button"
-                    @click="toggleCategory(cat.id)"
-                  >
-                    {{ cat.label }}
-                    <span class="active-tag-x">×</span>
-                  </button>
-                </div>
-
-                <div v-if="showCategorySearch" class="category-search-box">
-                  <span class="search-box-icon">
-                    <svg
-                      fill="none"
-                      height="14"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                      width="14"
-                    >
-                      <circle cx="11" cy="11" r="8" />
-                      <path d="m21 21-4.35-4.35" />
-                    </svg>
-                  </span>
-                  <input
-                    ref="categorySearchInput"
-                    v-model="categorySearchQuery"
-                    autocomplete="off"
-                    class="category-search-input"
-                    placeholder="Ex: Rock, Yoga, Cinema..."
-                    type="text"
-                  >
-                  <button
-                    v-if="categorySearchQuery"
-                    class="search-clear-btn"
-                    type="button"
-                    @click="categorySearchQuery = ''"
-                  >
-                    <svg
-                      fill="none"
-                      height="14"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2.5"
-                      viewBox="0 0 24 24"
-                      width="14"
-                    >
-                      <path d="M18 6 6 18M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                <!-- Contador de resultados -->
-                <div
-                  v-if="showCategorySearch && categorySearchQuery.trim() && !searchingCategories"
-                  class="search-results-count"
-                >
-                  <span v-if="searchResultsCount > 0">{{ searchResultsCount }} categoria{{ searchResultsCount !== 1 ?
-                    's' : '' }} encontrada{{ searchResultsCount !== 1 ? 's' : '' }}</span>
-                  <span v-else class="no-results">Nenhum resultado</span>
-                </div>
-
-                <!-- Label "Populares" quando no modo explorar sem busca -->
-                <span
-                  v-if="showCategorySearch && !categorySearchQuery.trim() && allInterestsCache.length > 0"
-                  class="filter-subsection-label"
-                >
-                  Populares
-                </span>
-
-                <div v-if="searchingCategories && categorySearchQuery.trim()" class="empty-categories">
-                  <p>🔍 Buscando categorias...</p>
-                </div>
-                <div v-else-if="displayedCategories.length > 0" class="filter-chips">
-                  <button
-                    v-for="cat in displayedCategories"
-                    :key="cat.id"
-                    class="filter-chip"
-                    :class="{ active: activeCategories.includes(cat.id) }"
-                    type="button"
-                    @click="toggleCategory(cat.id)"
-                  >
-                    {{ cat.label }}
-                  </button>
-                </div>
-                <div
-                  v-else-if="showCategorySearch && categorySearchQuery.trim() && !searchingCategories"
-                  class="empty-categories"
-                >
-                  <p>Nenhuma categoria encontrada para "{{ categorySearchQuery }}"</p>
-                  <p class="hint">Tente outros termos de busca</p>
-                </div>
-                <div
-                  v-else-if="!loadingCategories && userInterestChips.length === 0 && !showCategorySearch"
-                  class="empty-categories"
-                >
-                  <p>Você ainda não escolheu seus interesses.</p>
-                  <p class="hint">Complete seu perfil para ver categorias personalizadas!</p>
-                </div>
-              </div>
-
-              <div class="filter-section">
-                <span class="filter-section-label">Quando</span>
-                <div class="filter-chips">
-                  <button
-                    v-for="d in DATE_CHIPS"
-                    :key="d.id"
-                    class="filter-chip filter-chip--date"
-                    :class="{ active: activeDateFilter === d.id }"
-                    type="button"
-                    @click="toggleDateFilter(d.id)"
-                  >
-                    {{ d.label }}
-                  </button>
-                </div>
-              </div>
-
-              <Transition name="fade">
-                <div v-if="hasActiveFilters" class="filter-clear-row">
-                  <span class="filter-results-hint">
-                    {{ displayedItems.length }} evento{{ displayedItems.length !== 1 ? 's' : '' }} encontrado{{
-                      displayedItems.length !== 1 ? 's' : '' }}
-                  </span>
-                  <button class="filter-clear-btn" type="button" @click="clearFilters">
-                    <svg
-                      fill="none"
-                      height="12"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2.5"
-                      viewBox="0 0 24 24"
-                      width="12"
-                    >
-                      <path d="M18 6 6 18M6 6l12 12" />
-                    </svg>
-                    Limpar filtros
-                  </button>
-                </div>
-              </Transition>
-            </div>
-          </Transition>
+          </nav>
         </section>
       </template>
     </FeedTopHeader>
 
     <section class="feed-shell">
-      <FeedSidebarNav :active="activeNav" class="feed-sidebar" :items="navItems" @select="activeNav = $event" />
+      <FeedSidebarNav
+        :active="activeNav"
+        class="feed-sidebar"
+        :items="guestFilteredNavItems"
+        @select="handleNavSelect"
+      />
 
       <main class="feed-main">
         <!-- Breadcrumb Navigation -->
@@ -1140,6 +693,7 @@
             :comments-count="item.commentsCount"
             :confirmed="item.confirmed"
             :description="item.description"
+            :guest-mode="props.guestMode"
             :highlight="activeNav === 'top-events'"
             :host-avatar="item.hostAvatar"
             :host-name="item.creator.name"
@@ -1149,7 +703,6 @@
             :liked="eventsStore.isLiked(item.id)"
             :likes="(item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0)"
             :location="item.location"
-            :matched-interests="getMatchedInterests(item)"
             :rank="activeNav === 'top-events' ? index + 1 : undefined"
             :schedule="item.schedule"
             :title="item.title"
@@ -1168,20 +721,35 @@
             <span v-if="loadingMore" class="spinner" />
             {{ loadingMore ? 'Carregando' : 'Carregar mais eventos' }}
           </button>
+          <button class="scroll-to-top-btn" type="button" @click="scrollToTop">
+            <svg
+              fill="none"
+              height="20"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.5"
+              viewBox="0 0 24 24"
+              width="20"
+            >
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+            Voltar ao topo
+          </button>
         </div>
 
         <div v-else-if="!loading && !hasMore && displayedItems.length > 0 && !isSearching" class="end-of-results">
           <div class="end-icon">✓</div>
           <p class="end-message">
-            {{ hasActiveFilters ? 'Você visualizou todos os eventos com esses filtros.' : 'Você visualizou todos os eventos disponíveis.' }}
+            Você visualizou todos os eventos disponíveis.
           </p>
           <p class="end-hint">
-            {{ hasActiveFilters ? 'Tente ajustar os filtros para descobrir mais eventos.' : 'Novos eventos são adicionados diariamente.' }}
+            Novos eventos são adicionados diariamente.
           </p>
         </div>
 
         <p v-else-if="!loading && displayedItems.length === 0" class="empty">
-          {{ hasActiveFilters ? 'Nenhum evento encontrado com esses filtros.' : t('feed.empty') }}
+          {{ t('feed.empty') }}
         </p>
       </main>
 
@@ -1242,8 +810,15 @@
   margin: 0 auto;
   padding: 0.75rem 0.5rem 1rem;
   background: linear-gradient(180deg, rgba(249, 249, 255, 0.92) 0%, rgba(255, 255, 255, 0.92) 100%);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(8px);
   border-radius: 24px;
+}
+
+@media (max-width: 768px) {
+  .feed-controls {
+    backdrop-filter: blur(4px);
+    background: linear-gradient(180deg, rgba(249, 249, 255, 0.95) 0%, rgba(255, 255, 255, 0.95) 100%);
+  }
 }
 
 .search {
@@ -1450,6 +1025,7 @@
 .load-more-container {
   display: flex;
   justify-content: center;
+  gap: 1rem;
   padding: 2rem 0;
   width: 100%;
 }
@@ -1480,6 +1056,38 @@
   opacity: 0.7;
   cursor: not-allowed;
   transform: none;
+}
+
+.scroll-to-top-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.5rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.15), rgba(255, 95, 166, 0.15));
+  color: #ff5fa6;
+  border: 2px solid rgba(255, 95, 166, 0.3);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.scroll-to-top-btn:hover {
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  color: white;
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 95, 166, 0.4);
+}
+
+.scroll-to-top-btn svg {
+  transition: transform 0.3s ease;
+}
+
+.scroll-to-top-btn:hover svg {
+  transform: translateY(-2px);
 }
 
 .spinner {
@@ -1652,6 +1260,18 @@
     /* Chrome/Safari */
   }
 
+  .load-more-container {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .load-more-btn,
+  .scroll-to-top-btn {
+    width: 100%;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.95rem;
+  }
+
   .breadcrumb-nav {
     padding: 0.6rem 1rem;
     border-radius: 14px;
@@ -1712,440 +1332,6 @@
     font-size: 0.8rem;
     padding: 0.25rem 0.6rem;
     border-radius: 8px;
-  }
-}
-
-/* ─── Filter ─── */
-.tabs-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  width: 100%;
-}
-
-.tabs-row .tabs {
-  flex: 1;
-  justify-content: flex-start;
-}
-
-.filter-toggle-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 999px;
-  border: 1.5px solid rgba(0, 0, 0, 0.1);
-  background: #fff;
-  color: #5a6080;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.filter-toggle-btn:hover {
-  border-color: rgba(255, 95, 166, 0.4);
-  color: #ff5fa6;
-  box-shadow: 0 2px 12px rgba(255, 95, 166, 0.12);
-}
-
-.filter-toggle-btn.filter-active {
-  border-color: #ff5fa6;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.08) 0%, rgba(255, 95, 166, 0.08) 100%);
-  color: #ff5fa6;
-}
-
-.filter-toggle-btn.filter-open {
-  border-color: #ff5fa6;
-  color: #ff5fa6;
-}
-
-.filter-btn-label {
-  letter-spacing: 0.01em;
-}
-
-.filter-count-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
-  color: #fff;
-  font-size: 0.68rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.filter-chevron {
-  transition: transform 0.25s ease;
-  flex-shrink: 0;
-}
-
-.filter-chevron.rotated {
-  transform: rotate(180deg);
-}
-
-/* Filter panel */
-.filter-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  padding: 1rem 1.15rem;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 248, 252, 0.98) 100%);
-  border: 1px solid rgba(255, 95, 166, 0.14);
-  border-radius: 18px;
-  box-shadow: 0 4px 24px rgba(255, 95, 166, 0.09), 0 1px 4px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
-}
-
-.filter-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
-.filter-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.filter-section-label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.38);
-}
-
-.explore-categories-btn {
-  background: transparent;
-  border: none;
-  padding: 0.25rem 0.65rem;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #e91e63;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  white-space: nowrap;
-}
-
-.explore-categories-btn:hover {
-  background: rgba(233, 30, 99, 0.08);
-  transform: translateY(-1px);
-}
-
-.explore-categories-btn:active {
-  transform: translateY(0);
-}
-
-.active-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.35rem;
-  margin-bottom: 0.25rem;
-}
-
-.active-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.55rem;
-  border: none;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-family: inherit;
-  font-weight: 600;
-  background: #e91e63;
-  color: white;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.active-tag:hover {
-  background: #c2185b;
-}
-
-.active-tag-x {
-  font-size: 0.85rem;
-  line-height: 1;
-  opacity: 0.8;
-}
-
-.category-search-box {
-  position: relative;
-  margin-top: 0.25rem;
-  display: flex;
-  align-items: center;
-}
-
-.search-box-icon {
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: rgba(0, 0, 0, 0.35);
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-}
-
-.category-search-input {
-  width: 100%;
-  padding: 0.6rem 2.2rem 0.6rem 2.2rem;
-  border: 1.5px solid rgba(0, 0, 0, 0.12);
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-family: inherit;
-  transition: all 0.2s ease;
-  background: white;
-}
-
-.category-search-input:focus {
-  outline: none;
-  border-color: #e91e63;
-  box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.1);
-}
-
-.category-search-input::placeholder {
-  color: rgba(0, 0, 0, 0.35);
-}
-
-.search-clear-btn {
-  position: absolute;
-  right: 0.5rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.08);
-  border: none;
-  border-radius: 50%;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: rgba(0, 0, 0, 0.5);
-  transition: all 0.15s ease;
-  padding: 0;
-}
-
-.search-clear-btn:hover {
-  background: rgba(0, 0, 0, 0.15);
-  color: rgba(0, 0, 0, 0.7);
-}
-
-.search-results-count {
-  font-size: 0.72rem;
-  color: rgba(0, 0, 0, 0.45);
-  margin-top: 0.25rem;
-  padding-left: 0.1rem;
-}
-
-.search-results-count .no-results {
-  color: #e91e63;
-}
-
-.filter-subsection-label {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 0.5rem;
-  margin-bottom: 0.1rem;
-}
-
-.search-loading {
-  position: absolute;
-  right: 0.9rem;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.9rem;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-
-  50% {
-    opacity: 1;
-  }
-}
-
-.empty-categories {
-  padding: 1.5rem 1rem;
-  text-align: center;
-  color: rgba(0, 0, 0, 0.5);
-  background: rgba(0, 0, 0, 0.02);
-  border-radius: 8px;
-  border: 1.5px dashed rgba(0, 0, 0, 0.1);
-}
-
-.empty-categories p {
-  margin: 0;
-  font-size: 0.85rem;
-  line-height: 1.5;
-}
-
-.empty-categories .hint {
-  margin-top: 0.4rem;
-  font-size: 0.75rem;
-  color: rgba(0, 0, 0, 0.4);
-}
-
-.filter-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.filter-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.32rem 0.85rem;
-  border-radius: 999px;
-  border: 1.5px solid rgba(0, 0, 0, 0.1);
-  background: #fff;
-  color: #4a5070;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  user-select: none;
-}
-
-.filter-chip:hover {
-  border-color: rgba(255, 95, 166, 0.45);
-  color: #ff5fa6;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(255, 95, 166, 0.15);
-}
-
-.filter-chip.active {
-  border-color: transparent;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
-  color: #fff;
-  box-shadow: 0 3px 12px rgba(255, 95, 166, 0.3);
-  transform: translateY(-1px);
-}
-
-.filter-chip--date {
-  padding: 0.32rem 0.95rem;
-}
-
-.filter-clear-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 0.35rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.filter-results-hint {
-  font-size: 0.75rem;
-  color: rgba(0, 0, 0, 0.4);
-  font-weight: 500;
-}
-
-.filter-clear-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.3rem 0.75rem;
-  border-radius: 999px;
-  border: 1.5px solid rgba(255, 95, 166, 0.3);
-  background: rgba(255, 95, 166, 0.06);
-  color: #ff5fa6;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.filter-clear-btn:hover {
-  background: rgba(255, 95, 166, 0.12);
-  border-color: #ff5fa6;
-}
-
-/* Filter transitions */
-.filter-expand-enter-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-}
-
-.filter-expand-leave-active {
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-}
-
-.filter-expand-enter-from,
-.filter-expand-leave-to {
-  opacity: 0;
-  transform: translateY(-8px) scaleY(0.95);
-  max-height: 0;
-}
-
-.filter-expand-enter-to,
-.filter-expand-leave-from {
-  opacity: 1;
-  transform: translateY(0) scaleY(1);
-  max-height: 400px;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-@media (max-width: 640px) {
-  .filter-btn-label {
-    display: none;
-  }
-
-  .filter-toggle-btn {
-    padding: 0.45rem 0.65rem;
-    gap: 0.3rem;
-  }
-
-  .filter-chip {
-    font-size: 0.75rem;
-    padding: 0.28rem 0.7rem;
   }
 }
 </style>

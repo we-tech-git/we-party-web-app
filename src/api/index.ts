@@ -50,11 +50,15 @@ export async function callApi (
       message: error.message,
     })
 
+    // Só faz logout se havia um usuário logado E recebeu erro de autenticação
+    const hadToken = localStorage.getItem('ACCESS_TOKEN')
     if (
-      error.response?.status === 401
-      || error.response?.data?.erros?.[0] === 'Invalid JWT token'
-      || error.response?.data?.erros?.[0]
-      === 'Required request header \'auth\' for method parameter type String is not present'
+      hadToken && (
+        error.response?.status === 401
+        || error.response?.data?.erros?.[0] === 'Invalid JWT token'
+        || error.response?.data?.erros?.[0]
+        === 'Required request header \'auth\' for method parameter type String is not present'
+      )
     ) {
       AuthService.logout()
       router.push('/')

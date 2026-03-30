@@ -57,11 +57,6 @@
 
       email.value = testData.email
       password.value = testData.password
-
-      console.log('📝 Dados de teste de login gerados:', {
-        email: testData.email,
-        senha: testData.password,
-      })
     }
   }
 

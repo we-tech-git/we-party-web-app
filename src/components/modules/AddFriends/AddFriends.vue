@@ -1,10 +1,11 @@
 <script setup lang="ts">
-  import { computed, onMounted, ref } from 'vue'
+  import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import { requestFollowUser, requestUnFollowUser } from '@/api/follows'
-  import { getUserRecomendations } from '@/api/users'
+  import { getUserRecomendations, searchUsers } from '@/api/users'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import { svgIcons } from '@/utils/svgSet'
 
   // i18n
@@ -13,50 +14,243 @@
 
   // Modelo de dados do usuário listado para convite
   export interface User {
-    id: number
+    id: number | string
     name: string
-    profileImage: string
+    username?: string
+    profileImage?: string
     isFollowing: boolean
-    currentStatus: string
+    currentStatus?: string
   }
 
   // Estado reativo
   const searchQuery = ref('')
-
-  // Fonte de dados mockada (apenas para UI)
   const users = ref<User[]>([])
-  // const selectedUsers = ref<User[]>([])
+  const recommendedUsers = ref<User[]>([]) // Cache das recomendações iniciais
+  const isLoading = ref(false)
+  const isSearching = ref(false)
+  const hasError = ref(false)
+  const errorMessage = ref('')
+
+  // Snackbar
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
+
+  // Debounce para busca
+  let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
+  function showSnackbar (message: string, color = '#ff9800') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+    snackbarVisible.value = true
+  }
+
+  // Gera avatar placeholder com iniciais
+  function getAvatarUrl (user: User): string {
+    if (user.profileImage) {
+      // Se começa com http ou https, usa direto
+      if (user.profileImage.startsWith('http')) {
+        return user.profileImage
+      }
+      // Se não, assume que é relativo ao baseURL da API
+      const baseUrl = import.meta.env.VITE__BASE_URL || ''
+      return `${baseUrl}${user.profileImage}`
+    }
+    // Retorna URL vazia para usar o placeholder CSS
+    return ''
+  }
+
+  // Pega as iniciais do nome do usuário
+  function getUserInitials (user: User): string {
+    const name = user.name || user.username || '?'
+    const parts = name.trim().split(' ')
+    if (parts.length >= 2 && parts[0] && parts.at(-1)) {
+      const first = parts[0][0] || ''
+      const last = parts.at(-1)?.[0] || ''
+      return (first + last).toUpperCase()
+    }
+    return name.slice(0, 2).toUpperCase()
+  }
+
+  // Cor do avatar baseado no ID
+  function getAvatarColor (user: User): string {
+    const colors = [
+      '#FF5FA6', '#FFC25B', '#A78BFA', '#60A5FA', '#34D399',
+      '#F87171', '#FBBF24', '#A3E635', '#2DD4BF', '#818CF8',
+    ]
+    const id = typeof user.id === 'string' ? Number.parseInt(user.id) : user.id
+    return colors[id % colors.length] ?? '#FF5FA6'
+  }
 
   async function followUser (user: User) {
-    await requestFollowUser(user)
+    try {
+      await requestFollowUser(user)
+      showSnackbar(`Você começou a seguir ${user.name}`, '#22c55e')
+    } catch (error: any) {
+      console.error('Erro ao seguir usuário:', error)
+      showSnackbar(error?.response?.data?.message || 'Erro ao seguir usuário', '#ef4444')
+      // Reverte o estado em caso de erro
+      user.isFollowing = false
+    }
   }
 
   async function unFollowUser (user: User) {
-    await requestUnFollowUser(user)
+    try {
+      await requestUnFollowUser(user)
+      showSnackbar(`Você deixou de seguir ${user.name}`, '#6b7280')
+    } catch (error: any) {
+      console.error('Erro ao deixar de seguir usuário:', error)
+      showSnackbar(error?.response?.data?.message || 'Erro ao deixar de seguir', '#ef4444')
+      // Reverte o estado em caso de erro
+      user.isFollowing = true
+    }
   }
 
   async function requestUserRecomendations () {
-    const userToFollowRecomendations = await getUserRecomendations()
+    try {
+      isLoading.value = true
+      hasError.value = false
+      errorMessage.value = ''
 
-    users.value = userToFollowRecomendations.data.data.users
+      const response = await getUserRecomendations()
+      console.log('📥 Resposta de recomendações:', response)
+
+      // Tenta extrair os usuários de diferentes estruturas de resposta
+      let userData: any[] = []
+      if (response?.data?.data?.users) {
+        userData = response.data.data.users
+      } else if (response?.data?.users) {
+        userData = response.data.users
+      } else if (Array.isArray(response?.data?.data)) {
+        userData = response.data.data
+      } else if (Array.isArray(response?.data)) {
+        userData = response.data
+      }
+
+      console.log('👥 Usuários extraídos:', userData)
+
+      // Mapeia para o formato esperado
+      users.value = userData.map((u: any) => ({
+        id: u.id || u._id,
+        name: u.name || u.username || 'Usuário',
+        username: u.username,
+        profileImage: u.profileImage || u.profilePhoto || u.avatar || u.photo,
+        isFollowing: u.isFollowing || u.following || false,
+        currentStatus: u.currentStatus || u.status,
+      }))
+
+      // Salva as recomendações para restaurar quando limpar a busca
+      recommendedUsers.value = [...users.value]
+
+      if (users.value.length === 0) {
+        errorMessage.value = 'Nenhum usuário encontrado no momento'
+      }
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar recomendações de usuários:', error)
+      hasError.value = true
+      errorMessage.value = error?.response?.data?.message || 'Erro ao carregar usuários'
+      showSnackbar(errorMessage.value, '#ef4444')
+    } finally {
+      isLoading.value = false
+    }
   }
 
-  // Filtro de usuários por nome (case-insensitive)
-  const filteredUsers = computed(() => {
-    if (!searchQuery.value) return users.value
-    return users.value.filter(user =>
-      user.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
-    )
+  async function performSearch (query: string) {
+    if (!query.trim()) {
+      // Quando limpar a busca, restaura as recomendações iniciais (sem nova requisição)
+      users.value = [...recommendedUsers.value]
+      isSearching.value = false
+      hasError.value = false
+      errorMessage.value = ''
+      return
+    }
+
+    try {
+      isSearching.value = true
+      hasError.value = false
+      errorMessage.value = ''
+
+      console.log('🔍 Buscando usuários com query:', query)
+      const response = await searchUsers(query.trim())
+      console.log('📥 Resposta da busca:', response)
+
+      // Tenta extrair os usuários
+      let userData: any[] = []
+      if (response?.data?.data?.users) {
+        userData = response.data.data.users
+      } else if (response?.data?.users) {
+        userData = response.data.users
+      } else if (Array.isArray(response?.data?.data)) {
+        userData = response.data.data
+      } else if (Array.isArray(response?.data)) {
+        userData = response.data
+      }
+
+      users.value = userData.map((u: any) => ({
+        id: u.id || u._id,
+        name: u.name || u.username || 'Usuário',
+        username: u.username,
+        profileImage: u.profileImage || u.profilePhoto || u.avatar || u.photo,
+        isFollowing: u.isFollowing || u.following || false,
+        currentStatus: u.currentStatus || u.status,
+      }))
+
+      if (users.value.length === 0) {
+        errorMessage.value = `Nenhum usuário encontrado para "${query}"`
+      }
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar usuários:', error)
+      hasError.value = true
+      users.value = []
+
+      // Mensagem de erro sem fallback
+      errorMessage.value = error?.response?.status === 404 || error?.message?.includes('404')
+        ? 'Endpoint de busca não disponível. Aguarde implementação no backend.'
+        : error?.response?.data?.message || 'Erro ao buscar usuários'
+      showSnackbar(errorMessage.value, '#ef4444')
+    } finally {
+      isSearching.value = false
+    }
+  }
+
+  // Watch com debounce para busca
+  watch(searchQuery, newQuery => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout)
+    }
+
+    if (!newQuery.trim()) {
+      // Quando limpar a busca, restaura recomendações iniciais sem nova requisição
+      isSearching.value = false
+      users.value = [...recommendedUsers.value]
+      hasError.value = false
+      errorMessage.value = ''
+      return
+    }
+
+    isSearching.value = true
+    searchTimeout = setTimeout(() => {
+      performSearch(newQuery)
+    }, 500) // 500ms de debounce
   })
 
-  // Alterna status do convite (pending <-> sent)
+  // Filtro de usuários por nome (case-insensitive) - Local apenas
+  const filteredUsers = computed(() => {
+    return users.value
+  })
+
+  // Alterna status do convite (atualização otimista)
   function toggleInvite (user: User) {
-    if (user.isFollowing) {
+    const previousState = user.isFollowing
+
+    // Atualização otimista
+    user.isFollowing = !user.isFollowing
+
+    if (previousState) {
       unFollowUser(user)
     } else {
       followUser(user)
     }
-    user.isFollowing = !user.isFollowing
   }
 
   function finishSelection () {
@@ -65,6 +259,15 @@
 
   function skipStep () {
     router.push('/public/Congratulations')
+  }
+
+  // Refaz a última ação (busca ou recomendações)
+  function retryLastAction () {
+    if (searchQuery.value.trim()) {
+      performSearch(searchQuery.value)
+    } else {
+      requestUserRecomendations()
+    }
   }
 
   onMounted(() => {
@@ -85,10 +288,6 @@
         {{ t('addFriends.subtitle') }}
       </p>
       <div class="search-input-wrapper il-theme--pink">
-        <!-- searchIcon
-             Origem: ícone de busca (ver svgSet.ts -> searchIcon)
-             Uso: campo de busca desta tela
-        -->
         <svg
           v-if="svgIcons.searchIcon"
           class="search-input-icon"
@@ -103,14 +302,64 @@
             :fill-rule="path.fillRule"
           />
         </svg>
-        <input v-model="searchQuery" class="search-input" :placeholder="t('addFriends.searchPlaceholder')" type="text">
+        <input
+          v-model="searchQuery"
+          class="search-input"
+          :placeholder="t('addFriends.searchPlaceholder')"
+          type="text"
+        >
       </div>
 
-      <ul class="user-list">
+      <!-- Estado de loading -->
+      <div v-if="isLoading || isSearching" class="loading-state">
+        <div class="loading-spinner" />
+        <p>{{ isSearching ? 'Buscando usuários...' : 'Carregando...' }}</p>
+      </div>
+
+      <!-- Estado de erro -->
+      <div v-else-if="hasError && users.length === 0" class="error-state">
+        <div class="error-icon">⚠️</div>
+        <p>{{ errorMessage }}</p>
+        <button class="retry-btn" type="button" @click="retryLastAction">
+          Tentar novamente
+        </button>
+      </div>
+
+      <!-- Estado vazio -->
+      <div v-else-if="!isLoading && users.length === 0" class="empty-state">
+        <div class="empty-icon">👥</div>
+        <h3>{{ errorMessage || 'Nenhum usuário disponível' }}</h3>
+        <p v-if="searchQuery">Tente buscar por outro nome</p>
+      </div>
+
+      <!-- Lista de usuários -->
+      <ul v-else class="user-list">
         <li v-for="user in filteredUsers" :key="user.id" class="user-item">
-          <img :alt="user.name" class="avatar" :src="user.profileImage">
-          <span class="name">{{ user.name }}</span>
-          <button :class="['invite-btn', user.isFollowing ? 'sent' : 'send']" type="button" @click="toggleInvite(user)">
+          <div class="avatar-wrapper">
+            <img
+              v-if="getAvatarUrl(user)"
+              :alt="user.name"
+              class="avatar"
+              :src="getAvatarUrl(user)"
+              @error="($event.target as HTMLImageElement).style.display = 'none'"
+            >
+            <div
+              v-if="!getAvatarUrl(user)"
+              class="avatar-placeholder"
+              :style="{ backgroundColor: getAvatarColor(user) }"
+            >
+              {{ getUserInitials(user) }}
+            </div>
+          </div>
+          <div class="user-info">
+            <span class="name">{{ user.name }}</span>
+            <span v-if="user.username" class="username">@{{ user.username }}</span>
+          </div>
+          <button
+            :class="['invite-btn', user.isFollowing ? 'sent' : 'send']"
+            type="button"
+            @click="toggleInvite(user)"
+          >
             <svg v-if="svgIcons.planeIcon" class="plane-icon" fill="currentColor" :viewBox="svgIcons.planeIcon.viewBox">
               <path v-for="(path, index) in svgIcons.planeIcon.paths" :key="index" :d="path.d" />
             </svg>
@@ -144,6 +393,9 @@
       </div>
     </template>
   </AuthLayout>
+
+  <!-- Snackbar para feedback -->
+  <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />
 </template>
 
 <style scoped>
@@ -213,6 +465,71 @@
   border-color: #F978A3;
 }
 
+/* Estados de loading, erro e vazio */
+.loading-state,
+.error-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+  gap: 1rem;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #E5E7EB;
+  border-top-color: #FF5FA6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-state p,
+.error-state p,
+.empty-state p {
+  color: #6B7280;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.error-icon,
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state h3 {
+  color: #1F2937;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.retry-btn {
+  margin-top: 1rem;
+  padding: 0.5rem 1.5rem;
+  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.retry-btn:hover {
+  transform: translateY(-2px);
+}
+
 .user-list {
   list-style: none;
   padding: 0;
@@ -222,6 +539,8 @@
   flex-direction: column;
   gap: 1rem;
   margin-bottom: 2rem;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .user-item {
@@ -230,17 +549,60 @@
   gap: 0.75rem;
 }
 
+/* Avatar wrapper e placeholder */
+.avatar-wrapper {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   object-fit: cover;
+  border: 2px solid #E5E7EB;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.user-info {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
 }
 
 .name {
-  flex-grow: 1;
-  font-weight: 500;
-  color: #374151;
+  font-weight: 600;
+  color: #1F2937;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.username {
+  font-size: 0.8rem;
+  color: #6B7280;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .invite-btn {

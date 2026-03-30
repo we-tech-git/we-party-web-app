@@ -6,10 +6,14 @@
   import * as THREE from 'three'
   import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
   import { useRouter } from 'vue-router'
+  import LoginRequiredDialog from '@/components/UI/LoginRequiredDialog/LoginRequiredDialog.vue'
+  import { useGuestMode } from '@/composables/useGuestMode'
+  import { logger } from '@/utils/logger'
 
   gsap.registerPlugin(ScrollTrigger)
 
   const router = useRouter()
+  const { requireLogin } = useGuestMode()
 
   // Three.js refs
   const canvasContainer = ref<HTMLDivElement | null>(null)
@@ -97,7 +101,7 @@
 
     // Simular envio de email (substitua com sua lógica real de API)
     setTimeout(() => {
-      console.log('Email enviado:', contactForm.value)
+      logger.log('Email enviado:', contactForm.value)
       sendingEmail.value = false
       emailSent.value = true
 
@@ -396,7 +400,13 @@
     router.push('/public/Login')
   }
   function goToFeed () {
-    router.push('/private/feed')
+    router.push('/public/explore')
+  }
+  function goToFavorites () {
+    requireLogin('ver seus favoritos')
+  }
+  function goToProfile () {
+    requireLogin('acessar seu perfil')
   }
 </script>
 
@@ -439,6 +449,8 @@
           <nav class="nav-menu">
             <a class="nav-link" href="#como-funciona">Como funciona</a>
             <a class="nav-link" href="#contato">Entre em contato</a>
+            <a class="nav-link" href="#" @click.prevent="goToFavorites">Favoritos</a>
+            <a class="nav-link" href="#" @click.prevent="goToProfile">Perfil</a>
           </nav>
           <div class="auth-buttons">
             <button class="btn-ghost" type="button" @click="goToLogin">Entrar</button>
@@ -886,6 +898,9 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Login Required Dialog -->
+    <LoginRequiredDialog />
   </div>
 </template>
 
@@ -978,6 +993,12 @@ img {
   animation-delay: var(--delay);
   filter: drop-shadow(0 4px 8px rgba(255, 183, 77, 0.15));
   transition: opacity 0.4s ease;
+  will-change: transform;
+  contain: layout style paint;
+}
+
+.float-emoji:not(:hover) {
+  will-change: auto;
 }
 
 .float-emoji.size-sm {
@@ -1023,19 +1044,19 @@ img {
 
   0%,
   100% {
-    transform: translateY(0) rotate(0deg) scale(1);
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
   }
 
   25% {
-    transform: translateY(-15px) rotate(5deg) scale(1.05);
+    transform: translate3d(0, -15px, 0) rotate(5deg) scale(1.05);
   }
 
   50% {
-    transform: translateY(-8px) rotate(-3deg) scale(1);
+    transform: translate3d(0, -8px, 0) rotate(-3deg) scale(1);
   }
 
   75% {
-    transform: translateY(-18px) rotate(3deg) scale(1.03);
+    transform: translate3d(0, -18px, 0) rotate(3deg) scale(1.03);
   }
 }
 
@@ -1071,10 +1092,18 @@ img {
   z-index: 1000;
   padding: 1.25rem 0;
   background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 183, 77, 0.08);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 20px rgba(255, 183, 77, 0.06);
+}
+
+@media (max-width: 768px) {
+  .header {
+    backdrop-filter: blur(6px);
+    background: rgba(255, 255, 255, 0.95);
+  }
 }
 
 .header-content {
@@ -1090,10 +1119,11 @@ img {
   gap: 0.75rem;
   cursor: pointer;
   transition: transform 0.3s ease;
+  transform: translateZ(0);
 }
 
 .logo:hover {
-  transform: scale(1.05);
+  transform: scale(1.05) translateZ(0);
 }
 
 .logo-img {
@@ -1146,7 +1176,7 @@ h2 .logo-text,
   text-decoration: none;
   font-weight: 600;
   font-size: 0.95rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
 
@@ -1182,8 +1212,10 @@ h2 .logo-text,
   font-weight: 600;
   padding: 0.875rem 1.5rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 10px;
+  transform: translateZ(0);
 }
 
 .btn-ghost:hover {
@@ -1202,12 +1234,14 @@ h2 .logo-text,
   padding: 0.875rem 1.75rem;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 20px rgba(255, 183, 77, 0.35);
+  transform: translateZ(0);
 }
 
 .btn-primary-glow:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) translateZ(0);
   box-shadow: 0 8px 30px rgba(255, 183, 77, 0.45);
 }
 
@@ -1400,10 +1434,12 @@ h2 .logo-text,
   font-weight: 700;
   font-size: 1.1rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 10px 40px rgba(255, 183, 77, 0.35);
   position: relative;
   overflow: hidden;
+  transform: translateZ(0);
 }
 
 .btn-cta-primary .btn-glow {
@@ -1419,7 +1455,7 @@ h2 .logo-text,
 }
 
 .btn-cta-primary:hover {
-  transform: translateY(-3px);
+  transform: translateY(-3px) translateZ(0);
   box-shadow: 0 16px 50px rgba(255, 183, 77, 0.45);
 }
 
@@ -1435,14 +1471,24 @@ h2 .logo-text,
   font-weight: 700;
   font-size: 1.1rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(10px);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+  transform: translateZ(0);
+}
+
+@media (max-width: 768px) {
+  .btn-cta-secondary {
+    backdrop-filter: blur(4px);
+  }
 }
 
 .btn-cta-secondary:hover {
   background: white;
   border-color: rgba(255, 183, 77, 0.3);
-  transform: translateY(-3px);
+  transform: translateY(-3px) translateZ(0);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
 }
 
@@ -2673,12 +2719,19 @@ h2 .logo-text,
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  z-index: 9999;
+  z-index: 3000;
+}
+
+@media (max-width: 768px) {
+  .terms-modal-overlay {
+    backdrop-filter: blur(3px);
+    background: rgba(0, 0, 0, 0.85);
+  }
 }
 
 .terms-modal {

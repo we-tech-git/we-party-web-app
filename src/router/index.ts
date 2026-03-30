@@ -2,6 +2,7 @@
  * router/index.ts
  *
  * Automatic routes for `./src/pages/*.vue`
+ * Com lazy loading implementado para melhor performance
  */
 
 // Composables
@@ -10,6 +11,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { routes as autoRoutes } from 'vue-router/auto-routes'
 import { privateRouteGuard, publicRouteGuard } from '@/composables/useAuth'
 import { logger } from '@/utils/logger'
+
+// Lazy loading aplicado automaticamente pelas auto-routes do unplugin-vue-router
+// As rotas são carregadas sob demanda, reduzindo o bundle inicial
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),

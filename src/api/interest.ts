@@ -66,3 +66,26 @@ export function saveUserInterests (interestIds: string[]) {
   // Usamos 'PUT' pois é semanticamente correto para substituir um recurso.
   return callApi('PUT', '/users/interest', body, true)
 }
+
+/**
+ * Solicita a criação de novos interesses para avaliação.
+ * Envia uma lista de nomes de interesses que não existem no sistema
+ * para o backend avaliar e aprovar/criar posteriormente.
+ * Rota autenticada.
+ * @param interestNames - Um array com os nomes dos interesses solicitados.
+ */
+export function requestNewInterests (interestNames: string[]) {
+  const body = { interests: interestNames }
+  return callApi('POST', '/interest/request', body, true)
+}
+
+/**
+ * Envia a sugestão de um novo interesse para aprovação dos desenvolvedores.
+ * O interesse fica com status "pendente" até ser aprovado/rejeitado.
+ * Rota autenticada.
+ * @param name - O nome do interesse sugerido pelo usuário.
+ */
+export function suggestInterest (name: string) {
+  const body = { name }
+  return callApi('POST', '/create/interest', body, true)
+}
