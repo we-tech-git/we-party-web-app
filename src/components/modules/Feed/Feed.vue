@@ -631,7 +631,153 @@
             >
               {{ tab.label }}
             </button>
-          </nav>
+          </div>
+
+          <Transition name="filter-expand">
+            <div v-if="filterOpen" class="filter-panel">
+              <div class="filter-section">
+                <div class="filter-section-header">
+                  <span class="filter-section-label">Categoria</span>
+                  <button
+                    v-if="userInterestChips.length > 0"
+                    class="explore-categories-btn"
+                    type="button"
+                    @click="toggleExploreMode"
+                  >
+                    {{ showCategorySearch ? '✨ Meus interesses' : '🔍 Explorar categorias' }}
+                  </button>
+                </div>
+
+                <!-- Tags removíveis das categorias selecionadas -->
+                <div v-if="activeCategoryLabels.length > 0" class="active-tags">
+                  <button
+                    v-for="cat in activeCategoryLabels"
+                    :key="'tag-' + cat.id"
+                    class="active-tag"
+                    type="button"
+                    @click="toggleCategory(cat.id)"
+                  >
+                    {{ cat.label }}
+                    <span class="active-tag-x">×</span>
+                  </button>
+                </div>
+
+                <div v-if="showCategorySearch" class="category-search-box">
+                  <span class="search-box-icon">
+                    <svg
+                      fill="none"
+                      height="14"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="14"
+                    ><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+                  </span>
+                  <input
+                    ref="categorySearchInput"
+                    v-model="categorySearchQuery"
+                    autocomplete="off"
+                    class="category-search-input"
+                    placeholder="Ex: Rock, Yoga, Cinema..."
+                    type="text"
+                  >
+                  <button
+                    v-if="categorySearchQuery"
+                    class="search-clear-btn"
+                    type="button"
+                    @click="categorySearchQuery = ''"
+                  >
+                    <svg
+                      fill="none"
+                      height="14"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.5"
+                      viewBox="0 0 24 24"
+                      width="14"
+                    ><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  </button>
+                </div>
+
+                <!-- Contador de resultados -->
+                <div v-if="showCategorySearch && categorySearchQuery.trim() && !searchingCategories" class="search-results-count">
+                  <span v-if="searchResultsCount > 0">{{ searchResultsCount }} categoria{{ searchResultsCount !== 1 ? 's' : '' }} encontrada{{ searchResultsCount !== 1 ? 's' : '' }}</span>
+                  <span v-else class="no-results">Nenhum resultado</span>
+                </div>
+
+                <!-- Label "Populares" quando no modo explorar sem busca -->
+                <span v-if="showCategorySearch && !categorySearchQuery.trim() && allInterestsCache.length > 0" class="filter-subsection-label">
+                  Populares
+                </span>
+
+                <div v-if="searchingCategories && categorySearchQuery.trim()" class="empty-categories">
+                  <p>🔍 Buscando categorias...</p>
+                </div>
+                <div v-else-if="displayedCategories.length > 0" class="filter-chips">
+                  <button
+                    v-for="cat in displayedCategories"
+                    :key="cat.id"
+                    class="filter-chip"
+                    :class="{ active: activeCategories.includes(cat.id) }"
+                    type="button"
+                    @click="toggleCategory(cat.id)"
+                  >
+                    {{ cat.label }}
+                  </button>
+                </div>
+                <div v-else-if="showCategorySearch && categorySearchQuery.trim() && !searchingCategories" class="empty-categories">
+                  <p>Nenhuma categoria encontrada para "{{ categorySearchQuery }}"</p>
+                  <p class="hint">Tente outros termos de busca</p>
+                </div>
+                <div v-else-if="!loadingCategories && userInterestChips.length === 0 && !showCategorySearch" class="empty-categories">
+                  <p>Você ainda não escolheu seus interesses.</p>
+                  <p class="hint">Complete seu perfil para ver categorias personalizadas!</p>
+                </div>
+              </div>
+
+              <div class="filter-section">
+                <span class="filter-section-label">Quando</span>
+                <div class="filter-chips">
+                  <button
+                    v-for="d in DATE_CHIPS"
+                    :key="d.id"
+                    class="filter-chip filter-chip--date"
+                    :class="{ active: activeDateFilter === d.id }"
+                    type="button"
+                    @click="toggleDateFilter(d.id)"
+                  >
+                    {{ d.label }}
+                  </button>
+                </div>
+              </div>
+
+              <Transition name="fade">
+                <div v-if="hasActiveFilters" class="filter-clear-row">
+                  <span class="filter-results-hint">
+                    {{ displayedItems.length }} evento{{ displayedItems.length !== 1 ? 's' : '' }} encontrado{{ displayedItems.length !== 1 ? 's' : '' }}
+                  </span>
+                  <button class="filter-clear-btn" type="button" @click="clearFilters">
+                    <svg
+                      fill="none"
+                      height="12"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.5"
+                      viewBox="0 0 24 24"
+                      width="12"
+                    >
+                      <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
+                    Limpar filtros
+                  </button>
+                </div>
+              </Transition>
+            </div>
+          </Transition>
         </section>
       </template>
     </FeedTopHeader>
@@ -1332,6 +1478,432 @@
     font-size: 0.8rem;
     padding: 0.25rem 0.6rem;
     border-radius: 8px;
+  }
+}
+
+/* ─── Filter ─── */
+.tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.tabs-row .tabs {
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.filter-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+  color: #5a6080;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.filter-toggle-btn:hover {
+  border-color: rgba(255, 95, 166, 0.4);
+  color: #ff5fa6;
+  box-shadow: 0 2px 12px rgba(255, 95, 166, 0.12);
+}
+
+.filter-toggle-btn.filter-active {
+  border-color: #ff5fa6;
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.08) 0%, rgba(255, 95, 166, 0.08) 100%);
+  color: #ff5fa6;
+}
+
+.filter-toggle-btn.filter-open {
+  border-color: #ff5fa6;
+  color: #ff5fa6;
+}
+
+.filter-btn-label {
+  letter-spacing: 0.01em;
+}
+
+.filter-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.filter-chevron {
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
+}
+
+.filter-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+/* Filter panel */
+.filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1.15rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 248, 252, 0.98) 100%);
+  border: 1px solid rgba(255, 95, 166, 0.14);
+  border-radius: 18px;
+  box-shadow: 0 4px 24px rgba(255, 95, 166, 0.09), 0 1px 4px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.filter-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.filter-section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.38);
+}
+
+.explore-categories-btn {
+  background: transparent;
+  border: none;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #e91e63;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.explore-categories-btn:hover {
+  background: rgba(233, 30, 99, 0.08);
+  transform: translateY(-1px);
+}
+
+.explore-categories-btn:active {
+  transform: translateY(0);
+}
+
+.active-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.active-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border: none;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-family: inherit;
+  font-weight: 600;
+  background: #e91e63;
+  color: white;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.active-tag:hover {
+  background: #c2185b;
+}
+
+.active-tag-x {
+  font-size: 0.85rem;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.category-search-box {
+  position: relative;
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.search-box-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.category-search-input {
+  width: 100%;
+  padding: 0.6rem 2.2rem 0.6rem 2.2rem;
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.category-search-input:focus {
+  outline: none;
+  border-color: #e91e63;
+  box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.1);
+}
+
+.category-search-input::placeholder {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.08);
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.5);
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.search-clear-btn:hover {
+  background: rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.search-results-count {
+  font-size: 0.72rem;
+  color: rgba(0, 0, 0, 0.45);
+  margin-top: 0.25rem;
+  padding-left: 0.1rem;
+}
+
+.search-results-count .no-results {
+  color: #e91e63;
+}
+
+.filter-subsection-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.5rem;
+  margin-bottom: 0.1rem;
+}
+
+.search-loading {
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.9rem;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.empty-categories {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+  border: 1.5px dashed rgba(0, 0, 0, 0.1);
+}
+
+.empty-categories p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.empty-categories .hint {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.32rem 0.85rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+  color: #4a5070;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
+}
+
+.filter-chip:hover {
+  border-color: rgba(255, 95, 166, 0.45);
+  color: #ff5fa6;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(255, 95, 166, 0.15);
+}
+
+.filter-chip.active {
+  border-color: transparent;
+  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(255, 95, 166, 0.3);
+  transform: translateY(-1px);
+}
+
+.filter-chip--date {
+  padding: 0.32rem 0.95rem;
+}
+
+.filter-clear-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.filter-results-hint {
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.4);
+  font-weight: 500;
+}
+
+.filter-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255, 95, 166, 0.3);
+  background: rgba(255, 95, 166, 0.06);
+  color: #ff5fa6;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-clear-btn:hover {
+  background: rgba(255, 95, 166, 0.12);
+  border-color: #ff5fa6;
+}
+
+/* Filter transitions */
+.filter-expand-enter-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.filter-expand-leave-active {
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.filter-expand-enter-from,
+.filter-expand-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scaleY(0.95);
+  max-height: 0;
+}
+
+.filter-expand-enter-to,
+.filter-expand-leave-from {
+  opacity: 1;
+  transform: translateY(0) scaleY(1);
+  max-height: 400px;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+@media (max-width: 640px) {
+  .filter-btn-label {
+    display: none;
+  }
+
+  .filter-toggle-btn {
+    padding: 0.45rem 0.65rem;
+    gap: 0.3rem;
+  }
+
+  .filter-chip {
+    font-size: 0.75rem;
+    padding: 0.28rem 0.7rem;
   }
 }
 </style>
