@@ -280,7 +280,7 @@
           gl_Position = projectionMatrix * mvPosition;
         }
       `,
-      fragmentShader: `
+        fragmentShader: `
         varying vec3 vColor;
         void main() {
           float dist = length(gl_PointCoord - vec2(0.5));
@@ -289,40 +289,40 @@
           gl_FragColor = vec4(vColor, alpha * 0.5);
         }
       `,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    })
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
 
-    particles = new THREE.Points(geometry, material)
-    scene.add(particles)
+      particles = new THREE.Points(geometry, material)
+      scene.add(particles)
 
-    function animate () {
-      animationFrameId = requestAnimationFrame(animate)
-      const time = performance.now() * 0.001
-      ; (material.uniforms.time as { value: number }).value = time
-      particles.rotation.x += (mouseY * 0.000_03 - particles.rotation.x) * 0.05
-      particles.rotation.y += (mouseX * 0.000_03 - particles.rotation.y) * 0.05
-      particles.rotation.z += 0.0002
-      renderer.render(scene, camera)
-    }
-    animate()
+      function animate () {
+        animationFrameId = requestAnimationFrame(animate)
+        const time = performance.now() * 0.001
+        ; (material.uniforms.time as { value: number }).value = time
+        particles.rotation.x += (mouseY * 0.000_03 - particles.rotation.x) * 0.05
+        particles.rotation.y += (mouseX * 0.000_03 - particles.rotation.y) * 0.05
+        particles.rotation.z += 0.0002
+        renderer.render(scene, camera)
+      }
+      animate()
 
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseX = e.clientX - window.innerWidth / 2
-      mouseY = e.clientY - window.innerHeight / 2
-    }
-    window.addEventListener('mousemove', handleMouseMove)
+      const handleMouseMove = (e: MouseEvent) => {
+        mouseX = e.clientX - window.innerWidth / 2
+        mouseY = e.clientY - window.innerHeight / 2
+      }
+      window.addEventListener('mousemove', handleMouseMove)
 
-    const handleResize = () => {
-      if (!canvasContainer.value) return
-      const w = canvasContainer.value.clientWidth
-      const h = canvasContainer.value.clientHeight
-      camera.aspect = w / h
-      camera.updateProjectionMatrix()
-      renderer.setSize(w, h)
-    }
-    window.addEventListener('resize', handleResize)
+      const handleResize = () => {
+        if (!canvasContainer.value) return
+        const w = canvasContainer.value.clientWidth
+        const h = canvasContainer.value.clientHeight
+        camera.aspect = w / h
+        camera.updateProjectionMatrix()
+        renderer.setSize(w, h)
+      }
+      window.addEventListener('resize', handleResize)
     } catch (error) {
       logger.error('Erro ao inicializar Three.js:', error)
       // Continúa funcionando sem o canvas 3D
