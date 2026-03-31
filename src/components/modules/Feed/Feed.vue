@@ -424,6 +424,89 @@
 
   const isSearching = computed(() => searchQuery.value.trim().length > 0)
 
+  // Filter panel state
+  const filterOpen = ref(false)
+  const showCategorySearch = ref(false)
+  const categorySearchQuery = ref('')
+  const searchingCategories = ref(false)
+  const loadingCategories = ref(false)
+  const allInterestsCache = ref<Array<{ id: string, label: string }>>([])
+  const activeCategories = ref<string[]>([])
+  const activeDateFilter = ref<string>('')
+
+  // Date filter chips
+  const DATE_CHIPS = [
+    { id: 'today', label: 'Hoje' },
+    { id: 'tomorrow', label: 'Amanhã' },
+    { id: 'this-week', label: 'Esta Semana' },
+    { id: 'this-weekend', label: 'Fim de Semana' },
+    { id: 'next-week', label: 'Próxima Semana' },
+  ]
+
+  // Computed: user interest chips
+  const userInterestChips = computed(() => {
+    return userInterests.value.map((name, idx) => ({
+      id: `user-${idx}`,
+      label: name.charAt(0).toUpperCase() + name.slice(1),
+    }))
+  })
+
+  // Computed: active category labels
+  const activeCategoryLabels = computed(() => {
+    return activeCategories.value.map(id => {
+      const found = allInterestsCache.value.find(cat => cat.id === id)
+      return found || { id, label: id }
+    })
+  })
+
+  // Computed: displayed categories (filtered by search)
+  const displayedCategories = computed(() => {
+    if (!categorySearchQuery.value.trim()) {
+      return showCategorySearch.value ? allInterestsCache.value : userInterestChips.value
+    }
+
+    const query = categorySearchQuery.value.toLowerCase()
+    return allInterestsCache.value.filter(cat =>
+      cat.label.toLowerCase().includes(query),
+    )
+  })
+
+  // Computed: search results count
+  const searchResultsCount = computed(() => displayedCategories.value.length)
+
+  // Computed: has active filters
+  const hasActiveFilters = computed(() => {
+    return activeCategories.value.length > 0 || activeDateFilter.value !== ''
+  })
+
+  // Toggle explore mode
+  function toggleExploreMode () {
+    showCategorySearch.value = !showCategorySearch.value
+    categorySearchQuery.value = ''
+  }
+
+  // Toggle category filter
+  function toggleCategory (categoryId: string) {
+    const idx = activeCategories.value.indexOf(categoryId)
+    if (idx === -1) {
+      activeCategories.value.push(categoryId)
+    } else {
+      activeCategories.value.splice(idx, 1)
+    }
+  }
+
+  // Toggle date filter
+  function toggleDateFilter (dateId: string) {
+    activeDateFilter.value = activeDateFilter.value === dateId ? '' : dateId
+  }
+
+  // Clear all filters
+  function clearFilters () {
+    activeCategories.value = []
+    activeDateFilter.value = ''
+    categorySearchQuery.value = ''
+  }
+
   function selectTab (id: string) {
     if (activeTab.value === id) return
 
@@ -631,7 +714,7 @@
             >
               {{ tab.label }}
             </button>
-          </div>
+          </nav>
 
           <Transition name="filter-expand">
             <div v-if="filterOpen" class="filter-panel">
@@ -673,7 +756,10 @@
                       stroke-width="2"
                       viewBox="0 0 24 24"
                       width="14"
-                    ><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+                    >
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.35-4.35" />
+                    </svg>
                   </span>
                   <input
                     ref="categorySearchInput"
@@ -698,18 +784,27 @@
                       stroke-width="2.5"
                       viewBox="0 0 24 24"
                       width="14"
-                    ><path d="M18 6 6 18M6 6l12 12" /></svg>
+                    >
+                      <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
                   </button>
                 </div>
 
                 <!-- Contador de resultados -->
-                <div v-if="showCategorySearch && categorySearchQuery.trim() && !searchingCategories" class="search-results-count">
-                  <span v-if="searchResultsCount > 0">{{ searchResultsCount }} categoria{{ searchResultsCount !== 1 ? 's' : '' }} encontrada{{ searchResultsCount !== 1 ? 's' : '' }}</span>
+                <div
+                  v-if="showCategorySearch && categorySearchQuery.trim() && !searchingCategories"
+                  class="search-results-count"
+                >
+                  <span v-if="searchResultsCount > 0">{{ searchResultsCount }} categoria{{ searchResultsCount !== 1 ?
+                    's' : '' }} encontrada{{ searchResultsCount !== 1 ? 's' : '' }}</span>
                   <span v-else class="no-results">Nenhum resultado</span>
                 </div>
 
                 <!-- Label "Populares" quando no modo explorar sem busca -->
-                <span v-if="showCategorySearch && !categorySearchQuery.trim() && allInterestsCache.length > 0" class="filter-subsection-label">
+                <span
+                  v-if="showCategorySearch && !categorySearchQuery.trim() && allInterestsCache.length > 0"
+                  class="filter-subsection-label"
+                >
                   Populares
                 </span>
 
@@ -728,11 +823,17 @@
                     {{ cat.label }}
                   </button>
                 </div>
-                <div v-else-if="showCategorySearch && categorySearchQuery.trim() && !searchingCategories" class="empty-categories">
+                <div
+                  v-else-if="showCategorySearch && categorySearchQuery.trim() && !searchingCategories"
+                  class="empty-categories"
+                >
                   <p>Nenhuma categoria encontrada para "{{ categorySearchQuery }}"</p>
                   <p class="hint">Tente outros termos de busca</p>
                 </div>
-                <div v-else-if="!loadingCategories && userInterestChips.length === 0 && !showCategorySearch" class="empty-categories">
+                <div
+                  v-else-if="!loadingCategories && userInterestChips.length === 0 && !showCategorySearch"
+                  class="empty-categories"
+                >
                   <p>Você ainda não escolheu seus interesses.</p>
                   <p class="hint">Complete seu perfil para ver categorias personalizadas!</p>
                 </div>
@@ -757,7 +858,8 @@
               <Transition name="fade">
                 <div v-if="hasActiveFilters" class="filter-clear-row">
                   <span class="filter-results-hint">
-                    {{ displayedItems.length }} evento{{ displayedItems.length !== 1 ? 's' : '' }} encontrado{{ displayedItems.length !== 1 ? 's' : '' }}
+                    {{ displayedItems.length }} evento{{ displayedItems.length !== 1 ? 's' : '' }} encontrado{{
+                      displayedItems.length !== 1 ? 's' : '' }}
                   </span>
                   <button class="filter-clear-btn" type="button" @click="clearFilters">
                     <svg
@@ -1745,8 +1847,15 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 .empty-categories {
@@ -1782,6 +1891,7 @@
     opacity: 0;
     transform: translateY(-5px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

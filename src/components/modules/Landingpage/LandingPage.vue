@@ -325,7 +325,7 @@
       window.addEventListener('resize', handleResize)
     } catch (error) {
       logger.error('Erro ao inicializar Three.js:', error)
-      // Continúa funcionando sem o canvas 3D
+    // Continúa funcionando sem o canvas 3D
     }
   }
 

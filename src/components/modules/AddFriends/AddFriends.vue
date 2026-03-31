@@ -302,12 +302,7 @@
             :fill-rule="path.fillRule"
           />
         </svg>
-        <input
-          v-model="searchQuery"
-          class="search-input"
-          :placeholder="t('addFriends.searchPlaceholder')"
-          type="text"
-        >
+        <input v-model="searchQuery" class="search-input" :placeholder="t('addFriends.searchPlaceholder')" type="text">
       </div>
 
       <!-- Estado de loading -->
@@ -355,11 +350,7 @@
             <span class="name">{{ user.name }}</span>
             <span v-if="user.username" class="username">@{{ user.username }}</span>
           </div>
-          <button
-            :class="['invite-btn', user.isFollowing ? 'sent' : 'send']"
-            type="button"
-            @click="toggleInvite(user)"
-          >
+          <button :class="['invite-btn', user.isFollowing ? 'sent' : 'send']" type="button" @click="toggleInvite(user)">
             <svg v-if="svgIcons.planeIcon" class="plane-icon" fill="currentColor" :viewBox="svgIcons.planeIcon.viewBox">
               <path v-for="(path, index) in svgIcons.planeIcon.paths" :key="index" :d="path.d" />
             </svg>
