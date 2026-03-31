@@ -1,21 +1,25 @@
 # 📸 Guia de Screenshots para Landing Page
 
 ## Visão Geral
+
 Este guia explica quais screenshots você precisa capturar do We Party e onde colocá-los na landing page.
 
 ---
 
 ## 🎯 Screenshots Necessários
 
-### 1. **Feed de Eventos** 
+### 1. **Feed de Eventos**
+
 **Arquivo:** `public/screenshots/feed.png`  
 **O que mostrar:**
+
 - Vista principal do feed com vários eventos
 - Cards de eventos com imagens, títulos, datas
 - Interface de navegação e filtros
 - Botões de interação (curtir, comentar, participar)
 
 **Dicas:**
+
 - Capture quando houver eventos variados visíveis
 - Mostre a barra de navegação superior
 - Inclua pelo menos 2-3 eventos completos
@@ -23,14 +27,17 @@ Este guia explica quais screenshots você precisa capturar do We Party e onde co
 ---
 
 ### 2. **Perfil Interativo**
+
 **Arquivo:** `public/screenshots/profile.png`  
 **O que mostrar:**
+
 - Foto de perfil e informações do usuário
 - Eventos que o usuário vai participar
 - Amigos/seguidores
 - Botões de editar perfil
 
 **Dicas:**
+
 - Use um perfil com boa quantidade de informações
 - Mostre eventos confirmados
 - Inclua estatísticas (se houver)
@@ -38,8 +45,10 @@ Este guia explica quais screenshots você precisa capturar do We Party e onde co
 ---
 
 ### 3. **Detalhes do Evento**
+
 **Arquivo:** `public/screenshots/event-details.png`  
 **O que mostrar:**
+
 - Imagem principal do evento em destaque
 - Informações completas (data, horário, local)
 - Lista de participantes confirmados
@@ -48,6 +57,7 @@ Este guia explica quais screenshots você precisa capturar do We Party e onde co
 - Mapa de localização (se disponível)
 
 **Dicas:**
+
 - Escolha um evento com boa imagem
 - Mostre vários participantes confirmados
 - Capture comentários se houver
@@ -55,14 +65,17 @@ Este guia explica quais screenshots você precisa capturar do We Party e onde co
 ---
 
 ### 4. **Chat e Interações**
+
 **Arquivo:** `public/screenshots/chat.png`  
 **O que mostrar:**
+
 - Interface de mensagens/chat
 - Conversas sobre eventos
 - Notificações de interações
 - Sistema de comentários inline
 
 **Dicas:**
+
 - Mostre conversas naturais e relevantes
 - Inclua avatares dos usuários
 - Capture a interface de envio de mensagem
@@ -70,8 +83,10 @@ Este guia explica quais screenshots você precisa capturar do We Party e onde co
 ---
 
 ### 5. **Criar Evento**
+
 **Arquivo:** `public/screenshots/create-event.png`  
 **O que mostrar:**
+
 - Formulário de criação de evento
 - Campos de upload de imagem
 - Seleção de data/hora
@@ -79,6 +94,7 @@ Este guia explica quais screenshots você precisa capturar do We Party e onde co
 - Seleção de categoria/tags
 
 **Dicas:**
+
 - Mostre o formulário parcialmente preenchido
 - Destaque a simplicidade da interface
 - Inclua preview se disponível
@@ -86,14 +102,17 @@ Este guia explica quais screenshots você precisa capturar do We Party e onde co
 ---
 
 ### 6. **Explorar Categorias**
+
 **Arquivo:** `public/screenshots/categories.png`  
 **O que mostrar:**
+
 - Grid ou lista de categorias de eventos
 - Filtros de pesquisa
 - Tags e interesses
 - Eventos filtrados por categoria
 
 **Dicas:**
+
 - Mostre diversas categorias (Festas, Shows, Esportes, etc.)
 - Inclua ícones ou imagens das categorias
 - Capture a interface de filtros ativos
@@ -103,6 +122,7 @@ Este guia explica quais screenshots você precisa capturar do We Party e onde co
 ## 📁 Estrutura de Pastas
 
 Crie a pasta de screenshots:
+
 ```
 public/
   screenshots/
@@ -119,12 +139,14 @@ public/
 ## 🎨 Especificações Técnicas
 
 ### Dimensões Recomendadas:
+
 - **Largura:** 1200px - 1600px
 - **Altura:** 800px - 1200px (dependendo do conteúdo)
 - **Formato:** PNG (melhor qualidade) ou JPG (menor tamanho)
 - **Proporção:** 4:3 ou 16:9
 
 ### Qualidade:
+
 - Resolução alta (não pixelado)
 - Cores vibrantes e nítidas
 - Sem informações pessoais sensíveis
@@ -135,6 +157,7 @@ public/
 ## 🔧 Como Capturar Screenshots
 
 ### Método 1: Ferramentas do Navegador (Recomendado)
+
 1. Abra a página que deseja capturar
 2. Pressione **F12** (DevTools)
 3. Pressione **Ctrl+Shift+P** (Mac: **Cmd+Shift+P**)
@@ -142,10 +165,12 @@ public/
 5. Escolha "Capture full size screenshot"
 
 ### Método 2: Extensões de Navegador
+
 - **Chrome/Edge:** Awesome Screenshot, Nimbus Screenshot
 - **Firefox:** Firefox Screenshots (nativo)
 
 ### Método 3: Ferramentas Especializadas
+
 - **Windows:** Snipping Tool, Snip & Sketch, ShareX
 - **Mac:** Command+Shift+4 (área selecionada)
 - **Linux:** Shutter, Flameshot
@@ -155,6 +180,7 @@ public/
 ## 🎭 Dados de Demonstração
 
 Para melhores screenshots, use dados realistas:
+
 - ✅ Nomes de eventos interessantes e criativos
 - ✅ Imagens atrativas e de alta qualidade
 - ✅ Datas próximas e relevantes
@@ -163,6 +189,7 @@ Para melhores screenshots, use dados realistas:
 - ✅ Comentários construtivos e naturais
 
 Evite:
+
 - ❌ Lorem ipsum ou texto placeholder
 - ❌ Imagens quebradas ou de baixa qualidade
 - ❌ Dados obviamente falsos
@@ -180,9 +207,14 @@ Evite:
    - As imagens já estão configuradas no código
 
 3. **Descomente as tags de imagem**:
+
    ```vue
    <!-- Remova o comentário desta linha -->
-   <img :src="screenshot.image" :alt="screenshot.title" class="screenshot-image" />
+   <img
+     :src="screenshot.image"
+     :alt="screenshot.title"
+     class="screenshot-image"
+   />
    ```
 
 4. **Remova ou oculte o placeholder** (opcional):
@@ -203,6 +235,7 @@ imagemin public/screenshots/*.png --out-dir=public/screenshots/optimized
 ```
 
 Ou use ferramentas online:
+
 - [TinyPNG](https://tinypng.com/)
 - [Squoosh](https://squoosh.app/)
 - [ImageOptim](https://imageoptim.com/)
@@ -212,6 +245,7 @@ Ou use ferramentas online:
 ## ✅ Checklist Final
 
 Antes de publicar, verifique:
+
 - [ ] Todos os 6 screenshots foram capturados
 - [ ] As imagens estão em alta resolução
 - [ ] Não há dados sensíveis ou pessoais visíveis
@@ -225,7 +259,9 @@ Antes de publicar, verifique:
 ## 🎨 Melhorias Adicionais Implementadas
 
 ### Nova Seção "Veja o We Party em Ação"
+
 ✨ Seção completamente nova entre "Features" e "Como Funciona"
+
 - Grid responsivo de 6 cards com screenshots
 - Tags coloridas para cada categoria
 - Animações suaves e interativas
@@ -236,6 +272,7 @@ Antes de publicar, verifique:
 - Totalmente responsivo (mobile-first)
 
 ### Design Aprimorado
+
 - Gradientes modernos e vibrantes
 - Sombras e elevações sofisticadas
 - Transições suaves e naturais
@@ -257,6 +294,7 @@ Antes de publicar, verifique:
 ## 📞 Precisa de Ajuda?
 
 Se tiver dúvidas sobre:
+
 - Qual parte específica capturar
 - Como otimizar as imagens
 - Como atualizar o código

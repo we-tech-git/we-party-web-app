@@ -13,6 +13,7 @@
   defineProps<{
     user: UserSummary
     showBackBtn?: boolean
+    guestMode?: boolean
   }>()
   const { t } = useI18n()
   const router = useRouter()
@@ -40,6 +41,14 @@
     authLogout()
     router.push('/public/Login')
   }
+
+  function goToLogin () {
+    router.push('/public/Login')
+  }
+
+  function goToSignup () {
+    router.push('/public/Signup')
+  }
 </script>
 
 <template>
@@ -64,7 +73,10 @@
             <path v-for="(path, idx) in svgIcons.backArrow.paths" :key="idx" v-bind="path" />
           </svg>
         </button>
-        <span aria-hidden="true" class="brand notranslate" translate="no">WE PARTY</span>
+        <div class="brand-logo-wrapper">
+          <img alt="We Party Logo" class="brand-logo-img" src="/logoweparty.png">
+          <span aria-hidden="true" class="brand notranslate" translate="no">WE PARTY</span>
+        </div>
       </div>
       <div class="center-container">
         <slot name="center-content" />
@@ -74,90 +86,105 @@
           <LanguageSwitcher />
         </div>
 
-        <v-menu location="bottom" transition="slide-y-transition">
-          <template #activator="{ props: menuProps }">
-            <img
-              v-if="user.avatar"
-              v-bind="menuProps"
-              :alt="user.name"
-              class="avatar"
-              loading="lazy"
-              :src="user.avatar"
-            >
-            <div
-              v-else
-              v-bind="menuProps"
-              class="avatar avatar-placeholder"
-              :style="{ backgroundColor: getAvatarColor(user.name) }"
-            >
-              {{ getInitial(user.name) }}
-            </div>
-          </template>
+        <!-- Modo Guest: Botões de Login/Cadastro -->
+        <template v-if="guestMode">
+          <div class="guest-actions">
+            <button class="btn-guest-login" type="button" @click="goToLogin">
+              Entrar
+            </button>
+            <button class="btn-guest-signup" type="button" @click="goToSignup">
+              Criar Conta
+            </button>
+          </div>
+        </template>
 
-          <v-list class="user-dropdown-list" density="compact" :lines="false">
-            <!-- Cabeçalho com info do usuário -->
-            <div class="user-dropdown-header">
-              <div class="dropdown-avatar" :style="{ backgroundColor: getAvatarColor(user.name) }">
-                <img
-                  v-if="user.avatar"
-                  :alt="user.name"
-                  :src="user.avatar"
-                  style="width:100%;height:100%;border-radius:50%;object-fit:cover;"
-                >
-                <span v-else>{{ getInitial(user.name) }}</span>
+        <!-- Modo Autenticado: Menu do Usuário -->
+        <template v-else>
+          <v-menu location="bottom" transition="slide-y-transition">
+            <template #activator="{ props: menuProps }">
+              <img
+                v-if="user.avatar"
+                v-bind="menuProps"
+                :alt="user.name"
+                class="avatar"
+                loading="lazy"
+                :src="user.avatar"
+              >
+              <div
+                v-else
+                v-bind="menuProps"
+                class="avatar avatar-placeholder"
+                :style="{ backgroundColor: getAvatarColor(user.name) }"
+              >
+                {{ getInitial(user.name) }}
               </div>
-              <div class="dropdown-user-info">
-                <p class="dropdown-user-name">{{ user.name }}</p>
-                <p v-if="loggedUser?.email" class="dropdown-user-email">{{ loggedUser.email }}</p>
+            </template>
+
+            <v-list class="user-dropdown-list" density="compact" :lines="false">
+              <!-- Cabeçalho com info do usuário -->
+              <div class="user-dropdown-header">
+                <div class="dropdown-avatar" :style="{ backgroundColor: getAvatarColor(user.name) }">
+                  <img
+                    v-if="user.avatar"
+                    :alt="user.name"
+                    :src="user.avatar"
+                    style="width:100%;height:100%;border-radius:50%;object-fit:cover;"
+                  >
+                  <span v-else>{{ getInitial(user.name) }}</span>
+                </div>
+                <div class="dropdown-user-info">
+                  <p class="dropdown-user-name">{{ user.name }}</p>
+                  <p v-if="loggedUser?.email" class="dropdown-user-email">{{ loggedUser.email }}</p>
+                </div>
               </div>
-            </div>
 
-            <v-divider class="my-1" />
+              <v-divider class="my-1" />
 
-            <!-- Navegar para perfil -->
-            <v-list-item class="dropdown-action-item" rounded="lg" @click="router.push('/private/profile')">
-              <template #prepend>
-                <svg
-                  fill="none"
-                  height="18"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  viewBox="0 0 24 24"
-                  width="18"
-                >
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                </svg>
-              </template>
-              <v-list-item-title>{{ t('feed.profileActions.profile') }}</v-list-item-title>
-            </v-list-item>
+              <!-- Navegar para perfil -->
+              <v-list-item class="dropdown-action-item" rounded="lg" @click="router.push('/private/profile')">
+                <template #prepend>
+                  <svg
+                    fill="none"
+                    height="18"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="18"
+                  >
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                  </svg>
+                </template>
+                <v-list-item-title>{{ t('feed.profileActions.profile') }}</v-list-item-title>
+              </v-list-item>
 
-            <v-divider class="my-1" />
+              <v-divider class="my-1" />
 
-            <!-- Sair -->
-            <v-list-item class="dropdown-action-item dropdown-logout" rounded="lg" @click="logout">
-              <template #prepend>
-                <svg
-                  fill="none"
-                  height="18"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  viewBox="0 0 24 24"
-                  width="18"
-                >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" x2="9" y1="12" y2="12" />
-                </svg>
-              </template>
-              <v-list-item-title>{{ t('feed.profileActions.logout') }}</v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-menu>
+              <!-- Sair -->
+              <v-list-item class="dropdown-action-item dropdown-logout" rounded="lg" @click="logout">
+                <template #prepend>
+                  <svg
+                    fill="none"
+                    height="18"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="18"
+                  >
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" x2="9" y1="12" y2="12" />
+                  </svg>
+                </template>
+                <v-list-item-title>{{ t('feed.profileActions.logout') }}</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </template>
       </div>
     </div>
   </header>
@@ -193,6 +220,18 @@
   align-items: center;
   gap: 0.8rem;
   flex-shrink: 0;
+}
+
+.brand-logo-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.brand-logo-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
 }
 
 .nav-back-btn {
@@ -254,6 +293,46 @@
   border-radius: 999px;
   box-shadow: 0 10px 30px rgba(14, 23, 58, 0.08);
   /* Similar shadow to generic cards */
+}
+
+/* Guest mode action buttons */
+.guest-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn-guest-login,
+.btn-guest-signup {
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-guest-login {
+  background: transparent;
+  color: #1a1d2e;
+  border: 1.5px solid rgba(26, 29, 46, 0.2);
+}
+
+.btn-guest-login:hover {
+  background: rgba(26, 29, 46, 0.05);
+  border-color: rgba(26, 29, 46, 0.3);
+}
+
+.btn-guest-signup {
+  background: linear-gradient(135deg, #ff9ab5 0%, #ffb74d 100%);
+  color: #1a1d2e;
+  box-shadow: 0 4px 12px rgba(255, 154, 181, 0.3);
+}
+
+.btn-guest-signup:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 154, 181, 0.4);
 }
 
 .avatar {

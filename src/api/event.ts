@@ -1,22 +1,92 @@
 import { callApi } from '.'
+import { logger } from '@/utils/logger'
 
-export async function getAllEvents (page = 1, limit = 50) {
+// ============================================================
+// FUNÇÕES PÚBLICAS (sem autenticação) - Para modo guest/explore
+// ============================================================
+
+/**
+ * Busca eventos recomendados (público - sem autenticação)
+ */
+export async function getPublicEventRecomendations (page = 1, limit = 10) {
   try {
-    console.log('Chamando API getAllEvents...')
     const response = await callApi(
       'GET',
-      `/events?page=${page}&limit=${limit}`,
+      `/events/recommendations?page=${page}&limit=${limit}`,
       {},
-      false, // Sem autenticação para landing page
+      false, // Sem autenticação
     )
-    console.log('Response getAllEvents:', response)
     return response
   } catch (error) {
-    console.error('Erro ao buscar eventos:', error)
-    console.error('Error details:', JSON.stringify(error, null, 2))
+    logger.error('Erro ao buscar recomendações públicas:', error)
     throw error
   }
 }
+
+/**
+ * Busca eventos em alta/trending (público - sem autenticação)
+ */
+export async function getPublicTrendingEvents (page = 1, limit = 10) {
+  try {
+    const response = await callApi(
+      'GET',
+      `/events/top?page=${page}&limit=${limit}`,
+      {},
+      false, // Sem autenticação
+    )
+    return response
+  } catch (error) {
+    logger.error('Erro ao buscar eventos em alta (público):', error)
+    throw error
+  }
+}
+
+/**
+ * Busca eventos de hoje (público - sem autenticação)
+ */
+export async function getPublicEventsToday (page = 1, limit = 10) {
+  try {
+    const now = new Date()
+    const startDate = now.toISOString().split('T')[0]
+
+    const nextDay = new Date(now)
+    nextDay.setDate(now.getDate() + 1)
+    const endDate = nextDay.toISOString().split('T')[0]
+
+    const response = await callApi(
+      'GET',
+      `/events/by-date-range?startDate=${startDate}&endDate=${endDate}&page=${page}&limit=${limit}`,
+      {},
+      false, // Sem autenticação
+    )
+    return response
+  } catch (error) {
+    logger.error('Erro ao buscar eventos de hoje (público):', error)
+    throw error
+  }
+}
+
+/**
+ * Pesquisa eventos por nome (público - sem autenticação)
+ */
+export async function searchPublicEvents (search: string, page = 1, limit = 10) {
+  try {
+    const response = await callApi(
+      'GET',
+      `/events/search/name?query=${search}&page=${page}&limit=${limit}`,
+      {},
+      false, // Sem autenticação
+    )
+    return response
+  } catch (error) {
+    logger.error('Erro ao buscar eventos (público):', error)
+    throw error
+  }
+}
+
+// ============================================================
+// FUNÇÕES AUTENTICADAS - Para usuários logados
+// ============================================================
 
 export async function getEventRecomendations (page = 1, limit = 10) {
   try {
@@ -28,7 +98,7 @@ export async function getEventRecomendations (page = 1, limit = 10) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao buscar recomendações:', error)
+    logger.error('Erro ao buscar recomendações:', error)
     throw error
   }
 }
@@ -43,7 +113,7 @@ export async function searchByEvents (search: string, page = 1, limit = 10) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao buscar eventos:', error)
+    logger.error('Erro ao buscar eventos:', error)
     throw error
   }
 }
@@ -58,7 +128,7 @@ export async function getTrendingEvents (page = 1, limit = 10) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao buscar eventos em alta:', error)
+    logger.error('Erro ao buscar eventos em alta:', error)
     throw error
   }
 }
@@ -80,7 +150,7 @@ export async function getEventsToday (page = 1, limit = 10) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao buscar eventos de hoje:', error)
+    logger.error('Erro ao buscar eventos de hoje:', error)
     throw error
   }
 }
@@ -95,7 +165,7 @@ export async function getEventById (id: string | number) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao buscar evento:', error)
+    logger.error('Erro ao buscar evento:', error)
     throw error
   }
 }
@@ -110,7 +180,7 @@ export async function toggleLikeEvent (id: string | number) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao curtir evento:', error)
+    logger.error('Erro ao curtir evento:', error)
     throw error
   }
 }
@@ -129,7 +199,7 @@ export async function toggleFavoriteEvent (eventId: string | number) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao favoritar evento:', error)
+    logger.error('Erro ao favoritar evento:', error)
     throw error
   }
 }
@@ -148,7 +218,7 @@ export async function getFavoriteStatus (eventId: string | number) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao verificar status de favorito:', error)
+    logger.error('Erro ao verificar status de favorito:', error)
     throw error
   }
 }
@@ -168,7 +238,7 @@ export async function getFavoriteEvents (page = 1, limit = 10) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao buscar eventos favoritos:', error)
+    logger.error('Erro ao buscar eventos favoritos:', error)
     throw error
   }
 }
@@ -187,7 +257,7 @@ export async function toggleAttendance (eventId: string | number) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao confirmar presença:', error)
+    logger.error('Erro ao confirmar presença:', error)
     throw error
   }
 }
@@ -206,7 +276,7 @@ export async function getAttendanceStatus (eventId: string | number) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao verificar presença:', error)
+    logger.error('Erro ao verificar presença:', error)
     throw error
   }
 }
@@ -226,7 +296,7 @@ export async function getLikedEvents (page = 1, limit = 10) {
     )
     return response
   } catch (error) {
-    console.error('Erro ao buscar eventos curtidos:', error)
+    logger.error('Erro ao buscar eventos curtidos:', error)
     throw error
   }
 }

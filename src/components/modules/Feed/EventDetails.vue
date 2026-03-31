@@ -61,6 +61,15 @@
   const openFaqIndex = ref<number | null>(null)
   const showFaqs = ref(false)
 
+  // Terms and Privacy Modal
+  const showTermsModal = ref(false)
+  const termsModalPdf = ref<'terms' | 'privacy'>('terms')
+
+  function openTermsModal (type: 'terms' | 'privacy') {
+    termsModalPdf.value = type
+    showTermsModal.value = true
+  }
+
   const faqs = ref([
     {
       icon: 'mdi-ticket-confirmation-outline',
@@ -233,14 +242,16 @@
     return (event.value.organizer?.name || 'O').charAt(0).toUpperCase()
   })
 
+  const isEventPast = computed(() => eventStatus.value === 'past')
+
   function toggleLike () {
-    if (event.value.id) {
+    if (event.value.id && !isEventPast.value) {
       eventsStore.toggleLike(event.value.id)
     }
   }
 
   function toggleSave () {
-    if (!event.value.id) return
+    if (!event.value.id || isEventPast.value) return
 
     const feedItem = {
       id: event.value.id,
@@ -259,6 +270,8 @@
   }
 
   function handleConfirmAttendance () {
+    if (isEventPast.value) return
+
     if (isConfirmed.value) {
       // Se já confirmou, desconfirma direto
       eventsStore.toggleConfirm(event.value.id)
@@ -369,12 +382,36 @@
 
         <!-- Floating Action Buttons -->
         <div class="floating-actions">
-          <button class="fab-btn like-btn" :class="{ active: isLiked }" @click="toggleLike">
-            <i class="mdi" :class="isLiked ? 'mdi-heart' : 'mdi-heart-outline'" />
+          <button
+            class="fab-btn like-btn"
+            :class="{ active: isLiked, disabled: isEventPast }"
+            :disabled="isEventPast"
+            @click="toggleLike"
+          >
+            <svg
+              class="fab-icon"
+              :fill="isLiked ? 'currentColor' : 'none'"
+              height="17"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="17"
+            >
+              <path
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+              />
+            </svg>
             <span class="fab-count">{{ displayLikes }}</span>
           </button>
 
-          <button class="fab-btn save-btn" :class="{ active: isSaved }" @click="toggleSave">
+          <button
+            class="fab-btn save-btn"
+            :class="{ active: isSaved, disabled: isEventPast }"
+            :disabled="isEventPast"
+            @click="toggleSave"
+          >
             <i class="mdi" :class="isSaved ? 'mdi-bookmark' : 'mdi-bookmark-outline'" />
           </button>
 
@@ -427,7 +464,21 @@
       <div class="stats-bar">
         <div class="stat-item">
           <div class="stat-icon likes">
-            <i class="mdi mdi-heart" />
+            <svg
+              class="stat-icon-img"
+              fill="none"
+              height="20"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="20"
+            >
+              <path
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+              />
+            </svg>
           </div>
           <div class="stat-info">
             <span class="stat-value">{{ displayLikes }}</span>
@@ -625,17 +676,22 @@
           <span class="cta-label">{{ isConfirmed ? 'Você confirmou presença!' : 'Garanta sua vaga!' }}</span>
           <span class="cta-sub">{{ displayConfirmed }} pessoas confirmadas</span>
         </div>
-        <button class="cta-button" :class="{ confirmed: isConfirmed }" @click="handleConfirmAttendance">
+        <button
+          class="cta-button"
+          :class="{ confirmed: isConfirmed, disabled: isEventPast }"
+          :disabled="isEventPast"
+          @click="handleConfirmAttendance"
+        >
           <i class="mdi" :class="isConfirmed ? 'mdi-check-circle' : 'mdi-party-popper'" />
-          <span>{{ isConfirmed ? 'CONFIRMADO!' : 'EU VOU!' }}</span>
+          <span>{{ isEventPast ? 'EVENTO ENCERRADO' : (isConfirmed ? 'CONFIRMADO!' : 'EU VOU!') }}</span>
         </button>
       </div>
 
       <!-- Legal Links -->
       <div class="legal-section">
-        <a href="/termos-de-uso.pdf" rel="noopener noreferrer" target="_blank">Termos de uso</a>
+        <button class="legal-link" type="button" @click="openTermsModal('terms')">Termos de uso</button>
         <span class="legal-dot">•</span>
-        <a href="/politica-de-privacidade.pdf" rel="noopener noreferrer" target="_blank">Política de privacidade</a>
+        <button class="legal-link" type="button" @click="openTermsModal('privacy')">Política de privacidade</button>
       </div>
     </template>
 
@@ -653,6 +709,47 @@
               <button class="modal-btn cancel" @click="showConfirmModal = false">Cancelar</button>
               <button class="modal-btn confirm" @click="confirmAttendance">
                 <i class="mdi mdi-check" /> Confirmar!
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Modal de Termos / Política -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showTermsModal" class="terms-modal-overlay" @click.self="showTermsModal = false">
+          <div class="terms-modal">
+            <div class="terms-modal-header">
+              <h3 class="terms-modal-title">
+                {{ termsModalPdf === 'terms' ? 'Termos de Uso' : 'Política de Privacidade' }}
+              </h3>
+              <button class="terms-modal-close" type="button" @click="showTermsModal = false">
+                <svg
+                  fill="none"
+                  height="18"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="18"
+                >
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div class="terms-modal-body">
+              <iframe
+                class="terms-pdf-viewer"
+                :src="termsModalPdf === 'terms' ? '/termos-de-uso.pdf' : '/politica-de-privacidade.pdf'"
+                title="Documento legal"
+              />
+            </div>
+            <div class="terms-modal-footer">
+              <button class="terms-close-btn" type="button" @click="showTermsModal = false">
+                Fechar
               </button>
             </div>
           </div>
@@ -930,12 +1027,47 @@
 }
 
 .fab-btn.like-btn.active i {
-  animation: heartBeat 0.6s ease;
+  animation: confettiBurst 0.6s ease;
+}
+
+.fab-btn img {
+  width: 20px;
+  height: 20px;
+  filter: brightness(0) saturate(100%) invert(20%) sepia(0%) saturate(0%) hue-rotate(180deg) brightness(95%) contrast(95%);
+}
+
+.fab-btn.like-btn.active img {
+  filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(100%) contrast(100%);
+  animation: confettiBurst 0.6s ease;
+}
+
+.fab-icon {
+  width: 20px;
+  height: 20px;
+  filter: brightness(0) saturate(100%);
+}
+
+.fab-btn.like-btn.active .fab-icon {
+  filter: brightness(0) saturate(100%) invert(100%);
+  animation: confettiBurst 0.6s ease;
 }
 
 .fab-btn.save-btn.active {
   background: linear-gradient(135deg, #ffba4b 0%, #ffa502 100%);
   color: white;
+}
+
+.fab-btn.disabled,
+.fab-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.fab-btn.disabled:hover,
+.fab-btn:disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
 }
 
 .fab-count {
@@ -956,25 +1088,25 @@
   box-shadow: 0 2px 8px rgba(255, 95, 166, 0.4);
 }
 
-@keyframes heartBeat {
+@keyframes confettiBurst {
   0% {
-    transform: scale(1);
+    transform: scale(1) rotate(0deg);
   }
 
   25% {
-    transform: scale(1.3);
+    transform: scale(1.3) rotate(-10deg);
   }
 
   50% {
-    transform: scale(1);
+    transform: scale(1.4) rotate(10deg);
   }
 
   75% {
-    transform: scale(1.2);
+    transform: scale(1.2) rotate(-5deg);
   }
 
   100% {
-    transform: scale(1);
+    transform: scale(1) rotate(0deg);
   }
 }
 
@@ -1133,6 +1265,10 @@
   color: #ff5fa6;
 }
 
+.stat-icon svg {
+  color: inherit;
+}
+
 .stat-icon.confirmed {
   background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(129, 199, 132, 0.15) 100%);
   color: #4CAF50;
@@ -1141,6 +1277,11 @@
 .stat-icon.share {
   background: linear-gradient(135deg, rgba(33, 150, 243, 0.15) 0%, rgba(100, 181, 246, 0.15) 100%);
   color: #2196F3;
+}
+
+.stat-icon-img {
+  width: 24px;
+  height: 24px;
 }
 
 .stat-info {
@@ -1568,6 +1709,21 @@
   box-shadow: 0 12px 35px rgba(76, 175, 80, 0.45);
 }
 
+.cta-button.disabled,
+.cta-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: linear-gradient(135deg, #999 0%, #777 100%);
+  box-shadow: none;
+}
+
+.cta-button.disabled:hover,
+.cta-button:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 /* Legal Section */
 .legal-section {
   display: flex;
@@ -1578,14 +1734,19 @@
   background: #fafafa;
 }
 
-.legal-section a {
+.legal-link {
+  background: none;
+  border: none;
   color: #888;
   font-size: 0.8rem;
   text-decoration: none;
   transition: color 0.2s;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
 }
 
-.legal-section a:hover {
+.legal-link:hover {
   color: #ff5fa6;
 }
 
@@ -2382,5 +2543,111 @@
   .modal-actions {
     flex-direction: column;
   }
+}
+
+/* ---- Modal de Termos ---- */
+.terms-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.terms-modal {
+  background: #fff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.terms-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.terms-modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.terms-modal-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.terms-modal-close:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.terms-modal-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+.terms-pdf-viewer {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: none;
+}
+
+.terms-modal-footer {
+  display: flex;
+  gap: 10px;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f3f4f6;
+  justify-content: flex-end;
+}
+
+.terms-close-btn {
+  padding: 0.55rem 1.2rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #F978A3 0%, #f97316 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(249, 120, 163, 0.3);
+}
+
+.terms-close-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(249, 120, 163, 0.4);
+}
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
 }
 </style>

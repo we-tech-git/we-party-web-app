@@ -2,6 +2,7 @@
  * router/index.ts
  *
  * Automatic routes for `./src/pages/*.vue`
+ * Com lazy loading implementado para melhor performance
  */
 
 // Composables
@@ -9,6 +10,10 @@ import { setupLayouts } from 'virtual:generated-layouts'
 import { createRouter, createWebHistory } from 'vue-router'
 import { routes as autoRoutes } from 'vue-router/auto-routes'
 import { privateRouteGuard, publicRouteGuard } from '@/composables/useAuth'
+import { logger } from '@/utils/logger'
+
+// Lazy loading aplicado automaticamente pelas auto-routes do unplugin-vue-router
+// As rotas são carregadas sob demanda, reduzindo o bundle inicial
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -58,14 +63,14 @@ router.beforeEach((to, from, next) => {
 router.onError((err, to) => {
   if (err?.message?.includes?.('Failed to fetch dynamically imported module')) {
     if (localStorage.getItem('vuetify:dynamic-reload')) {
-      console.error('Dynamic import error, reloading page did not fix it', err)
+      logger.error('Dynamic import error, reloading page did not fix it', err)
     } else {
-      console.log('Reloading page to fix dynamic import error')
+      logger.log('Reloading page to fix dynamic import error')
       localStorage.setItem('vuetify:dynamic-reload', 'true')
       location.assign(to.fullPath)
     }
   } else {
-    console.error(err)
+    logger.error(err)
   }
 })
 

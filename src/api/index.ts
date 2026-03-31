@@ -1,6 +1,7 @@
 import axios from 'axios'
 import router from '@/router'
 import { AuthService } from '@/services/auth'
+import { logger } from '@/utils/logger'
 
 interface DynamicObject {
   [key: string]: any
@@ -28,6 +29,8 @@ export async function callApi (
 
   url = `${import.meta.env.VITE__BASE_URL}${url}`
 
+  logger.log(`🌐 [API] ${method} ${url}`, auth ? '🔒 auth' : '')
+
   try {
     const response = await axios({
       method,
@@ -35,15 +38,27 @@ export async function callApi (
       data,
       headers,
     })
+
+    logger.log(`✅ [API] ${method} ${url} - Status: ${response.status}`)
+
     return response
   } catch (error: any) {
-    console.error('Erro na chamada API:', error)
+    logger.error(`❌ [API] ${method} ${url} - Erro:`, {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+    })
 
+    // Só faz logout se havia um usuário logado E recebeu erro de autenticação
+    const hadToken = localStorage.getItem('ACCESS_TOKEN')
     if (
-      error.response?.status === 401
-      || error.response?.data?.erros?.[0] === 'Invalid JWT token'
-      || error.response?.data?.erros?.[0]
-      === 'Required request header \'auth\' for method parameter type String is not present'
+      hadToken && (
+        error.response?.status === 401
+        || error.response?.data?.erros?.[0] === 'Invalid JWT token'
+        || error.response?.data?.erros?.[0]
+        === 'Required request header \'auth\' for method parameter type String is not present'
+      )
     ) {
       AuthService.logout()
       router.push('/')

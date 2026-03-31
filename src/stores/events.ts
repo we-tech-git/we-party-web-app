@@ -20,6 +20,7 @@ export interface FeedItem {
   interested: number
   likes?: number
   interests?: string[]
+  matchedInterests?: string[]
   commentsCount?: number
 }
 

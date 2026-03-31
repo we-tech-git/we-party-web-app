@@ -568,6 +568,7 @@
   const saving = ref(false)
 
   function openEditModal () {
+    // Sempre carrega os valores atuais do perfil ao abrir
     editForm.name = user.name
     editForm.username = user.username.replace('@', '')
     editForm.bio = user.bio
@@ -577,6 +578,11 @@
 
   function closeEditModal () {
     showEditModal.value = false
+    // Reset dos campos para os valores originais ao fechar sem salvar
+    editForm.name = user.name
+    editForm.username = user.username.replace('@', '')
+    editForm.bio = user.bio
+    editForm.location = user.location
   }
 
   async function saveProfile () {
@@ -586,6 +592,8 @@
       if (!userId) {
         throw new Error('ID do usuário não encontrado')
       }
+
+      // Envia para o backend
       await updateUserProfile(userId, {
         name: editForm.name,
         username: editForm.username.replace('@', ''),
@@ -593,6 +601,7 @@
         location: editForm.location,
       })
 
+      // Só atualiza localmente após sucesso do backend
       user.name = editForm.name
       user.username = `@${editForm.username.replace('@', '')}`
       user.bio = editForm.bio
@@ -606,8 +615,10 @@
       })
 
       showSnackbar('Perfil atualizado com sucesso! ✅')
-    } catch {
+    } catch (error: any) {
+      // Em caso de erro, não atualiza nada e mantém os valores originais
       showSnackbar('Erro ao salvar perfil. Tente novamente.', '#ef4444')
+      console.error('Erro ao atualizar perfil:', error)
     } finally {
       saving.value = false
     }
@@ -926,7 +937,8 @@
             :class="{ active: activeTab === tab.id }"
             @click="activeTab = tab.id"
           >
-            <i class="mdi tab-icon" :class="tab.icon" />
+            <img v-if="tab.icon.startsWith('/')" alt="Icon" class="tab-icon-img" :src="tab.icon">
+            <i v-else class="mdi tab-icon" :class="tab.icon" />
             {{ tab.label }}
           </button>
         </div>
@@ -988,7 +1000,21 @@
                         {{ item.confirmed }}
                       </span>
                       <span class="mini-stat">
-                        <i class="mdi mdi-heart" :class="{ 'liked': eventsStore.isLiked(item.id) }" />
+                        <svg
+                          class="mini-stat-icon"
+                          :fill="eventsStore.isLiked(item.id) ? 'currentColor' : 'none'"
+                          height="14"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          viewBox="0 0 24 24"
+                          width="14"
+                        >
+                          <path
+                            d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                          />
+                        </svg>
                         {{ (item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0) }}
                       </span>
                     </div>
@@ -1006,7 +1032,21 @@
             </div>
             <div v-else class="empty-state">
               <div class="empty-icon">
-                <i class="mdi mdi-heart-outline" />
+                <svg
+                  class="empty-icon-img"
+                  fill="none"
+                  height="48"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="48"
+                >
+                  <path
+                    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                  />
+                </svg>
               </div>
               <h3>Nenhum evento curtido</h3>
               <p>Curta eventos para salvá-los aqui e acessá-los rapidamente depois</p>
@@ -1697,9 +1737,31 @@
   font-size: 1rem;
 }
 
-/* ── Liked Events Panel ── */
-.liked-events-panel {
-  min-height: 200px;
+.tab-btn svg {
+  margin-right: 0.5rem;
+  color: #888;
+}
+
+.tab-btn.active svg {
+  color: var(--accent);
+}
+
+.tab-icon-img {
+  width: 20px;
+  height: 20px;
+  margin-right: 0.5rem;
+  filter: brightness(0) saturate(100%) invert(53%) sepia(0%) saturate(0%) hue-rotate(180deg) brightness(95%) contrast(85%);
+}
+
+.tab-btn.active .tab-icon-img {
+  filter: brightness(0) saturate(100%) invert(45%) sepia(91%) saturate(1945%) hue-rotate(318deg) brightness(101%) contrast(101%);
+}
+
+/* ── Tab Panel ── */
+.tab-panel {
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
 }
 
 .loading-liked {
@@ -1916,11 +1978,25 @@
   color: #9aa0b8;
 }
 
-.mini-stat i.liked {
-  color: #ff5fa6;
+.mini-stat svg {
+  color: #9aa0b8;
 }
 
-/* Transitions para mini cards */
+.mini-stat svg.liked {
+  color: var(--accent);
+}
+
+.mini-stat-icon {
+  width: 14px;
+  height: 14px;
+  filter: brightness(0) saturate(100%) invert(65%) sepia(10%) saturate(500%) hue-rotate(180deg) brightness(95%) contrast(85%);
+}
+
+.mini-stat-icon.liked {
+  filter: brightness(0) saturate(100%) invert(45%) sepia(91%) saturate(1945%) hue-rotate(318deg) brightness(101%) contrast(101%);
+}
+
+/* Mini card transitions */
 .mini-card-enter-active {
   transition: all 0.4s ease-out;
 }
@@ -2090,8 +2166,14 @@
   color: #ff5fa6;
 }
 
-.empty-icon.fav {
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.1), rgba(255, 152, 0, 0.15));
+.empty-icon svg {
+  color: #ff5fa6;
+}
+
+.empty-icon-img {
+  width: 60px;
+  height: 60px;
+  filter: brightness(0) saturate(100%) invert(45%) sepia(91%) saturate(1945%) hue-rotate(318deg) brightness(101%) contrast(101%);
 }
 
 .empty-icon.fav i {

@@ -1,13 +1,13 @@
 <script lang="ts" setup>
-import { watchEffect } from 'vue'
-import { useI18n } from 'vue-i18n'
-import ShareSheet from '@/components/modules/UI/ShareSheet/ShareSheet.vue'
+  import { watchEffect } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import ShareSheet from '@/components/modules/UI/ShareSheet/ShareSheet.vue'
 
-const { locale } = useI18n()
+  const { locale } = useI18n()
 
-watchEffect(() => {
-  document.documentElement.lang = locale.value
-})
+  watchEffect(() => {
+    document.documentElement.lang = locale.value
+  })
 </script>
 
 <template>

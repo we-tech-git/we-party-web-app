@@ -29,7 +29,6 @@
     // Recupera email da URL ou localStorage
     // const emailFromQuery = route.query.email as string
     const emailFromStorage = localStorage?.getItem(STORAGE_KEYS.RESET_PASSWORD_EMAIL)
-    console.log('Email do localStorage:', emailFromStorage)
 
     userEmail.value = JSON.parse(emailFromStorage || '') || 'usuario@exemplo.com'
   })
@@ -95,8 +94,10 @@
 
 .page-container {
   display: flex;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  /* iOS Safari */
   background-color: #ffffffee;
   font-family: 'Poppins', sans-serif;
   overflow: hidden;

@@ -1,5 +1,7 @@
 ﻿<script setup lang="ts">
   import { computed, ref, watch } from 'vue'
+  import { useRouter } from 'vue-router'
+  import { useGuestMode } from '@/composables/useGuestMode'
   import { useShareStore } from '@/stores/share'
   import { svgIcons } from '@/utils/svgSet'
   import InlineComments from './InlineComments.vue'
@@ -23,11 +25,54 @@
     interests?: string[]
     commentsCount?: number
     matchedInterests?: string[]
+    guestMode?: boolean
   }>()
 
   const emit = defineEmits<{
     (e: 'toggle-save' | 'toggle-like'): void
   }>()
+
+  const router = useRouter()
+  const { requireLogin } = useGuestMode()
+
+  /**
+   * Navega para detalhes do evento ou mostra dialog de login em modo guest
+   */
+  function handleDetailsClick () {
+    if (props.guestMode) {
+      requireLogin('ver detalhes do evento')
+      return
+    }
+    router.push(`/private/event/${props.id}`)
+  }
+
+  /**
+   * Intercepta ações que precisam de autenticação no modo guest
+   */
+  function handleProtectedAction (action: () => void, actionName: string) {
+    if (props.guestMode) {
+      requireLogin(actionName)
+      return
+    }
+    action()
+  }
+
+  function handleToggleLike () {
+    handleProtectedAction(() => emit('toggle-like'), 'curtir eventos')
+  }
+
+  function handleToggleSave () {
+    handleProtectedAction(() => emit('toggle-save'), 'salvar eventos')
+  }
+
+  function handleCommentsToggle () {
+    if (props.guestMode) {
+      requireLogin('ver e publicar comentários')
+      return
+    }
+    showComments.value = !showComments.value
+    showInterests.value = false
+  }
 
   function formatCount (value: number | undefined | null): string {
     const num = Number(value) || 0
@@ -158,7 +203,7 @@
         class="bookmark"
         :class="{ saved: isSaved }"
         type="button"
-        @click.stop="emit('toggle-save')"
+        @click.stop="handleToggleSave"
       >
         <svg
           aria-hidden="true"
@@ -274,12 +319,10 @@
         <!-- Footer: stats + actions -->
         <footer class="footer">
           <div aria-label="Indicadores do evento" class="stats">
-            <button class="stat stat-action" :class="{ liked }" type="button" @click.stop="emit('toggle-like')">
+            <button class="stat stat-action" :class="{ liked }" type="button" @click.stop="handleToggleLike">
               <svg
-                aria-hidden="true"
                 :fill="liked ? 'currentColor' : 'none'"
                 height="17"
-                role="presentation"
                 stroke="currentColor"
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -288,17 +331,17 @@
                 width="17"
               >
                 <path
-                  d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
                 />
               </svg>
               {{ formatCount(likes) }}
             </button>
             <button
-              aria-label="ComentÃ¡rios"
+              aria-label="Comentários"
               class="stat stat-action comments-action"
               :class="{ active: showComments }"
               type="button"
-              @click.stop="showComments = !showComments; showInterests = false"
+              @click.stop="handleCommentsToggle"
             >
               <svg
                 fill="none"
@@ -342,7 +385,7 @@
           </div>
 
           <div class="actions">
-            <router-link aria-label="Ver detalhes" class="icon-button" :to="`/private/event/${id}`">
+            <button aria-label="Ver detalhes" class="icon-button" type="button" @click.stop="handleDetailsClick">
               <svg
                 v-if="svgIcons.infoIcon"
                 fill="none"
@@ -366,7 +409,7 @@
                 location="top"
                 offset="10"
               >Detalhes</v-tooltip>
-            </router-link>
+            </button>
             <button aria-label="Compartilhar" class="icon-button" type="button" @click.prevent="handleShare">
               <svg
                 v-if="svgIcons.shareIcon"
@@ -403,18 +446,32 @@
 
 <style>
 /* Global â€” strict to feed-card tooltips via content-class */
-.v-overlay__content.feed-card-tooltip {
-  background: rgba(14, 20, 38, 0.88) !important;
-  backdrop-filter: blur(14px);
+.feed-card .v-overlay__content.feed-card-tooltip {
+  background: rgba(14, 20, 38, 0.92);
+  backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.13);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-  border-radius: 12px !important;
-  padding: 6px 12px !important;
-  font-size: 0.72rem !important;
+  border-radius: 12px;
+  padding: 6px 12px;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #ffba4b !important;
+  color: #ffba4b;
+}
+
+@media (max-width: 768px) {
+  .feed-card .v-overlay__content.feed-card-tooltip {
+    backdrop-filter: blur(4px);
+    background: rgba(14, 20, 38, 0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-card .v-overlay__content.feed-card-tooltip {
+    backdrop-filter: none;
+    background: rgba(14, 20, 38, 0.98);
+  }
 }
 </style>
 
@@ -439,12 +496,19 @@
     box-shadow 0.35s ease;
   padding: 0.35rem;
   width: 100%;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
 }
 
 .feed-card:hover {
-  transform: translateY(-6px);
+  transform: translateY(-6px) translateZ(0);
   box-shadow: 0 36px 70px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(var(--accent-rgb), 0.18);
+}
+
+.feed-card:not(:hover) {
+  will-change: auto;
 }
 
 /* Highlight card */
@@ -561,7 +625,7 @@
   padding: 0.4rem 0.8rem 0.4rem 0.45rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.93);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   color: #1a1d35;
   font-size: 0.8rem;
@@ -569,6 +633,12 @@
   letter-spacing: 0.02em;
   border: 1px solid rgba(255, 255, 255, 0.6);
   transition: transform 0.2s ease;
+}
+
+@media (max-width: 768px) {
+  .host-tag {
+    backdrop-filter: blur(4px);
+  }
 }
 
 .host-tag:hover {
@@ -606,10 +676,19 @@
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(7, 10, 22, 0.55);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(6px);
   color: #fff;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (max-width: 768px) {
+  .bookmark {
+    backdrop-filter: blur(3px);
+  }
 }
 
 .bookmark:hover {
@@ -633,9 +712,16 @@
   right: 0;
   z-index: 20;
   padding: 1rem 1.2rem 1.35rem;
-  background: rgba(6, 7, 20, 0.82);
-  backdrop-filter: blur(20px);
+  background: rgba(6, 7, 20, 0.88);
+  backdrop-filter: blur(12px);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 768px) {
+  .interests-panel {
+    backdrop-filter: blur(6px);
+    background: rgba(6, 7, 20, 0.92);
+  }
 }
 
 .interests-panel-header {
@@ -663,7 +749,7 @@
   background: rgba(255, 255, 255, 0.07);
   color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .interests-close:hover {
@@ -705,6 +791,7 @@
   text-transform: uppercase;
   white-space: nowrap;
   transition: background 0.2s ease, transform 0.15s ease;
+  transform: translateZ(0);
 }
 
 .interest-chip:hover {
@@ -753,11 +840,18 @@
   font-weight: 600;
   letter-spacing: 0.02em;
   background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: rgba(255, 255, 255, 0.85);
   white-space: nowrap;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  transform: translateZ(0);
+}
+
+@media (max-width: 768px) {
+  .interest-tag {
+    backdrop-filter: blur(3px);
+  }
 }
 
 .interest-tag.matched {
@@ -784,11 +878,17 @@
   padding: 0.32rem 0.75rem;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   align-self: flex-start;
   max-width: 100%;
   overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .meta-wrapper {
+    backdrop-filter: blur(3px);
+  }
 }
 
 .meta-wrapper svg {
@@ -862,6 +962,30 @@
 
 .stat-action.liked {
   color: var(--accent);
+  animation: heartPulse 0.3s ease;
+}
+
+.stat-action svg {
+  color: #888;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.stat-action.liked svg {
+  color: var(--accent);
+}
+
+@keyframes heartPulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 .stat-action.comments-action:hover {
@@ -873,32 +997,33 @@
 }
 
 /* Interests action button */
-.interests-action {
+.feed-card .interests-action {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   padding: 0.28rem 0.65rem;
   border-radius: 999px;
-  border: 1px solid rgba(var(--accent-rgb), 0.3) !important;
-  background: rgba(var(--accent-rgb), 0.1) !important;
-  color: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.03em;
-  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s !important;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+  transform: translateZ(0);
 }
 
-.interests-action:hover {
-  background: rgba(var(--accent-rgb), 0.22) !important;
-  border-color: rgba(var(--accent-rgb), 0.55) !important;
-  color: var(--accent-light) !important;
-  transform: translateY(-1px) !important;
+.feed-card .interests-action:hover {
+  background: rgba(var(--accent-rgb), 0.22);
+  border-color: rgba(var(--accent-rgb), 0.55);
+  color: var(--accent-light);
+  transform: translateY(-1px) translateZ(0);
 }
 
-.interests-action.active {
-  background: rgba(var(--accent-rgb), 0.28) !important;
-  border-color: rgba(var(--accent-light-rgb), 0.55) !important;
-  color: var(--accent-light) !important;
+.feed-card .interests-action.active {
+  background: rgba(var(--accent-rgb), 0.28);
+  border-color: rgba(var(--accent-light-rgb), 0.55);
+  color: var(--accent-light);
 }
 
 /* ─── Actions (icon buttons) ─────────────────────────────────────────────── */
@@ -917,17 +1042,33 @@
   border-radius: 13px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(6px);
   color: #fff;
   cursor: pointer;
-  transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: background 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translateZ(0);
+}
+
+@media (max-width: 768px) {
+  .icon-button {
+    backdrop-filter: blur(3px);
+  }
 }
 
 .icon-button:hover {
   background: linear-gradient(135deg, var(--accent-light), var(--accent));
-  transform: translateY(-3px) scale(1.05);
+  transform: translateY(-3px) scale(1.05) translateZ(0);
   box-shadow: 0 8px 18px rgba(var(--accent-rgb), 0.4);
   border-color: transparent;
+}
+
+@media (hover: none) {
+  .icon-button:hover {
+    transform: translateZ(0);
+  }
 }
 
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
@@ -972,8 +1113,8 @@
   }
 
   .host-avatar {
-    width: 22px;
-    height: 22px;
+    width: 23px;
+    height: 23px;
   }
 
   .bookmark {

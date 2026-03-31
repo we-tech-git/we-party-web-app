@@ -1,4 +1,7 @@
 {
+  "common": {
+    "back": "Back"
+  },
   "global": {
     "skipStepByNow": "Skip this step for now"
   },
@@ -60,6 +63,7 @@
       "tagline": "Plan your experiences",
       "home": "Home",
       "topEvents": "Top events",
+      "myEvents": "My Events",
       "favorites": "Saved events",
       "notifications": "Notifications",
       "profile": "Profile",
@@ -125,7 +129,10 @@
       "placeholder": "E.g: Electronic Party, Rock Concert...",
       "cancel": "Cancel",
       "submit": "Request",
-      "submitting": "Submitting..."
+      "submitting": "Sending...",
+      "noInterests": "Add at least one interest",
+      "successMessage": "Request sent successfully! Awaiting approval.",
+      "errorMessage": "Error sending request. Please try again."
     }
   },
   "congratulations": {

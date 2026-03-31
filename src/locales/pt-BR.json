@@ -1,4 +1,7 @@
 {
+  "common": {
+    "back": "Voltar"
+  },
   "global": {
     "skipStepByNow": "Pular esta etapa por enquanto"
   },
@@ -60,6 +63,7 @@
       "tagline": "Planeje suas experiências",
       "home": "Home",
       "topEvents": "Top eventos",
+      "myEvents": "Meus Eventos",
       "favorites": "Eventos favoritos",
       "notifications": "Notificações",
       "profile": "Perfil",
@@ -125,7 +129,10 @@
       "placeholder": "Ex: Festa Eletrônica, Show de Rock...",
       "cancel": "Cancelar",
       "submit": "Solicitar",
-      "submitting": "Enviando..."
+      "submitting": "Enviando...",
+      "noInterests": "Adicione pelo menos um interesse",
+      "successMessage": "Solicitação enviada com sucesso! Aguarde aprovação.",
+      "errorMessage": "Erro ao enviar solicitação. Tente novamente."
     }
   },
   "congratulations": {
