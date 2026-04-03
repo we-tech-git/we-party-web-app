@@ -58,16 +58,16 @@
 </template>
 
 <style scoped>
+/* ----- FONTES E ESTILOS GLOBAIS ----- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&display=swap');
+
 .auth-language-switcher {
   position: absolute;
   top: calc(1rem + env(safe-area-inset-top, 0px));
   right: calc(1rem + env(safe-area-inset-right, 0px));
   z-index: 100;
 }
-
-/* ----- FONTES E ESTILOS GLOBAIS ----- */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&display=swap');
 
 .page-container {
   display: flex;

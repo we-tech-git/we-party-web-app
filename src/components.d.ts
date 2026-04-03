@@ -21,6 +21,7 @@ declare module 'vue' {
     EventView: typeof import('./components/modules/Feed/EventView.vue')['default']
     Feed: typeof import('./components/modules/Feed/Feed.vue')['default']
     FeedCard: typeof import('./components/modules/Feed/FeedCard.vue')['default']
+    FeedCardStandalone: typeof import('./components/FeedCardStandalone.vue')['default']
     FeedSidebarNav: typeof import('./components/modules/Feed/FeedSidebarNav.vue')['default']
     FeedTopHeader: typeof import('./components/modules/Feed/FeedTopHeader.vue')['default']
     FeedTrendsPanel: typeof import('./components/modules/Feed/FeedTrendsPanel.vue')['default']
