@@ -41,6 +41,7 @@ declare module 'vue' {
     ShareSheet: typeof import('./components/modules/UI/ShareSheet/ShareSheet.vue')['default']
     Signup: typeof import('./components/modules/Signup/Signup.vue')['default']
     Snackbar: typeof import('./components/UI/Snackbar/Snackbar.vue')['default']
+    SocialAuthButtons: typeof import('./components/UI/SocialAuthButtons/SocialAuthButtons.vue')['default']
     VerifyPin: typeof import('./components/modules/PasswordRecovery/VerifyPin.vue')['default']
   }
 }

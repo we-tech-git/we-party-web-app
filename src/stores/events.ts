@@ -22,6 +22,14 @@ export interface FeedItem {
   interests?: string[]
   matchedInterests?: string[]
   commentsCount?: number
+  sourceUrl?: string
+  images?: {
+    thumbnail?: string
+    small?: string
+    medium?: string
+    large?: string
+    original?: string
+  }
 }
 
 const SAVED_EVENTS_KEY = 'SAVED_EVENTS'

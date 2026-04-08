@@ -505,7 +505,7 @@
           </p>
 
           <div class="hero-cta-group">
-            <button class="hero-cta-animated btn-cta-primary" type="button" @click="goToSignup">
+            <button class="hero-cta-animated btn-cta-primary" type="button" @click="goToFeed">
               <span>Experimentar</span>
               <div class="btn-glow" />
             </button>

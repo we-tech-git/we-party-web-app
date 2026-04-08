@@ -1,337 +1,461 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { getEventById } from '@/api/event'
-import { useEventsStore } from '@/stores/events'
-import { useShareStore } from '@/stores/share'
+  import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+  import { getEventById } from '@/api/event'
+  import { useEventsStore } from '@/stores/events'
+  import { useShareStore } from '@/stores/share'
 
-const props = defineProps<{
-  eventId: string | string[]
-}>()
+  const props = defineProps<{
+    eventId: string | string[]
+  }>()
 
-const eventsStore = useEventsStore()
+  const eventsStore = useEventsStore()
 
-type EventDetail = {
-  id: string | number
-  title: string
-  date: string
-  rawDate: Date | null
-  location: string
-  image: string
-  description: string
-  attractions: string[]
-  contactInfo: string
-  categories: string[]
-  confirmedCount: number
-  likes?: number
-  organizer?: { name: string, avatar: string }
-}
-
-const fallbackImage = 'https://via.placeholder.com/1200x600?text=Evento'
-
-function resolveAsset(val?: string) {
-  if (!val) return fallbackImage
-  if (/^https?:\/\//i.test(val)) return val
-  const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
-  const path = val.startsWith('/') ? val : `/${val}`
-  return `${base}${path}`
-}
-
-const event = ref<EventDetail>({
-  id: '',
-  title: 'Carregando evento...',
-  date: '',
-  rawDate: null,
-  location: '',
-  image: fallbackImage,
-  description: '',
-  attractions: [],
-  contactInfo: '',
-  categories: [],
-  confirmedCount: 0,
-  likes: 0,
-  organizer: { name: '', avatar: '' },
-})
-
-const loading = ref(false)
-const errorMessage = ref('')
-const showConfirmModal = ref(false)
-const activeTab = ref<'info' | 'location' | 'lineup'>('info')
-
-// FAQs state
-const openFaqIndex = ref<number | null>(null)
-const showFaqs = ref(false)
-
-// Terms and Privacy Modal
-const showTermsModal = ref(false)
-const termsModalPdf = ref<'terms' | 'privacy'>('terms')
-
-function openTermsModal(type: 'terms' | 'privacy') {
-  termsModalPdf.value = type
-  showTermsModal.value = true
-}
-
-const faqs = ref([
-  {
-    icon: 'mdi-ticket-confirmation-outline',
-    question: 'Como faço para adquirir meu ingresso?',
-    answer: 'Os ingressos podem ser adquiridos diretamente nesta página. Após a confirmação, você receberá um e-mail com o QR Code para entrada no evento. Você também pode salvar o ingresso na sua carteira digital.',
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  },
-  {
-    icon: 'mdi-calendar-clock',
-    question: 'Qual o horário de abertura dos portões?',
-    answer: 'Os portões abrem 2 horas antes do horário oficial do evento. Recomendamos chegar com antecedência para evitar filas e aproveitar ao máximo a experiência.',
-    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-  },
-  {
-    icon: 'mdi-food-fork-drink',
-    question: 'Posso levar comida e bebida?',
-    answer: 'Por questões de segurança, não é permitida a entrada com alimentos e bebidas. O evento contará com diversos food trucks e barracas com opções variadas de gastronomia. Garrafas de água lacradas são permitidas.',
-    gradient: 'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)',
-  },
-  {
-    icon: 'mdi-car-multiple',
-    question: 'O local oferece estacionamento?',
-    answer: 'Sim! Temos estacionamento próprio com mais de 500 vagas. O valor é de R$ 30,00 e pode ser pago no local (dinheiro ou cartão). Também recomendamos o uso de aplicativos de transporte para sua comodidade.',
-    gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-  },
-  {
-    icon: 'mdi-account-multiple-check',
-    question: 'Menores de idade podem participar?',
-    answer: 'Este evento é classificado para maiores de 18 anos. Menores entre 16-17 anos podem entrar acompanhados dos pais ou responsáveis legais com autorização autenticada. Crianças até 12 anos não pagam ingresso quando acompanhadas.',
-    gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-  },
-  {
-    icon: 'mdi-weather-partly-cloudy',
-    question: 'E se chover? O evento será cancelado?',
-    answer: 'O evento acontece com chuva ou sol! Possuímos áreas cobertas e toda estrutura preparada para qualquer condição climática. Em caso de condições extremas, informaremos através dos nossos canais oficiais e redes sociais.',
-    gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-  },
-])
-
-function toggleFaq(index: number) {
-  openFaqIndex.value = openFaqIndex.value === index ? null : index
-}
-
-// Countdown timer
-const countdown = ref({ days: 0, hours: 0, minutes: 0, seconds: 0 })
-let countdownInterval: ReturnType<typeof setInterval> | null = null
-
-function updateCountdown() {
-  if (!event.value.rawDate) {
-    countdown.value = { days: 0, hours: 0, minutes: 0, seconds: 0 }
-    return
+  type EventDetail = {
+    id: string | number
+    title: string
+    date: string
+    rawDate: Date | null
+    location: string
+    image: string
+    description: string
+    attractions: string[]
+    contactInfo: string
+    categories: string[]
+    confirmedCount: number
+    likes?: number
+    organizer?: { name: string, avatar: string }
+    sourceUrl?: string
+    images?: {
+      thumbnail?: string
+      small?: string
+      medium?: string
+      large?: string
+      original?: string
+    }
   }
 
-  const now = Date.now()
-  const eventTime = event.value.rawDate.getTime()
-  const distance = eventTime - now
+  /**
+   * Extrai a melhor imagem de alta qualidade para detalhes do evento
+   * Prioriza: original > large > medium > small > thumbnail
+   */
+  function extractBestQualityImage (images: any): string {
+    if (!images || typeof images !== 'object') return ''
 
-  if (distance < 0) {
-    countdown.value = { days: 0, hours: 0, minutes: 0, seconds: 0 }
-    return
+    return images.original
+      || images.large
+      || images.medium
+      || images.small
+      || images.thumbnail
+      || ''
   }
 
-  countdown.value = {
-    days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-    hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-    minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-    seconds: Math.floor((distance % (1000 * 60)) / 1000),
+  /**
+   * Extrai a melhor URL de foto do objeto photos com suporte a múltiplas resoluções
+   */
+  function extractPhotoUrl (photos: unknown): string {
+    if (!photos) return ''
+
+    // Se for array, procura pela melhor resolução
+    if (Array.isArray(photos)) {
+      if (photos.length === 0) return ''
+
+      // Se o array contém objetos com resoluções, extrai a melhor
+      if (typeof photos[0] === 'object' && photos[0] !== null) {
+        const photo = photos[0] as any
+        return photo.original || photo.large || photo.url || photo.src || String(photo)
+      }
+
+      // Se é array de strings, pega a primeira
+      return photos[0] || ''
+    }
+
+    // Se for objeto, busca pelas propriedades de maior resolução
+    if (typeof photos === 'object' && photos !== null) {
+      const photoObj = photos as Record<string, any>
+
+      // Tenta propriedades comuns de alta resolução primeiro
+      const highQualityKeys = ['original', 'large', 'high', 'hd', '1920', '1080', 'full']
+      for (const key of highQualityKeys) {
+        if (photoObj[key]) return photoObj[key]
+      }
+
+      // Tenta propriedades de resolução média
+      const mediumQualityKeys = ['medium', 'med', '720', '800']
+      for (const key of mediumQualityKeys) {
+        if (photoObj[key]) return photoObj[key]
+      }
+
+      // Fallback para primeira propriedade disponível
+      const keys = Object.keys(photoObj)
+      if (keys.length > 0) {
+        const firstKey = keys[0]
+        if (firstKey) return photoObj[firstKey] || ''
+      }
+    }
+
+    return ''
   }
-}
 
-function startCountdown() {
-  if (countdownInterval) clearInterval(countdownInterval)
-  updateCountdown()
-  countdownInterval = setInterval(updateCountdown, 1000)
-}
+  /**
+   * Força parâmetros de alta qualidade na URL da imagem
+   */
+  function enhanceImageUrl (url: string): string {
+    if (!url) return ''
 
-onUnmounted(() => {
-  if (countdownInterval) clearInterval(countdownInterval)
-})
+    try {
+      // Se já é uma URL completa, tenta adicionar parâmetros de qualidade
+      if (/^https?:\/\//i.test(url)) {
+        const urlObj = new URL(url)
 
-function resolveEventDate(data: any): Date | null {
-  const candidates = [
-    data?.date,
-    data?.startDate,
-    data?.dateTime,
-    data?.startAt,
-    data?.eventDate,
-    data?.start_date,
-    data?.schedule,
-  ]
-  for (const val of candidates) {
-    if (!val) continue
-    const parsed = new Date(val)
-    if (!Number.isNaN(parsed.getTime())) return parsed
+        // Remove parâmetros de baixa qualidade comuns
+        urlObj.searchParams.delete('w')
+        urlObj.searchParams.delete('h')
+        urlObj.searchParams.delete('width')
+        urlObj.searchParams.delete('height')
+        urlObj.searchParams.delete('q')
+        urlObj.searchParams.delete('quality')
+        urlObj.searchParams.delete('fit')
+        urlObj.searchParams.delete('crop')
+
+        // Adiciona parâmetros de alta qualidade
+        urlObj.searchParams.set('quality', '100')
+        urlObj.searchParams.set('fm', 'jpg')
+        urlObj.searchParams.set('auto', 'format')
+
+        return urlObj.toString()
+      }
+    } catch (error) {
+      // Se falhar ao parsear URL, retorna original
+      console.warn('Erro ao processar URL de imagem:', error)
+    }
+
+    return url
   }
-  return null
-}
 
-function formatEventDate(d: Date | null): string {
-  if (!d) return 'Data não informada'
-  return d.toLocaleString('pt-BR', {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  function resolveAsset (val?: string) {
+    if (!val) return ''
+    if (/^https?:\/\//i.test(val)) return val
+    const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
+    const path = val.startsWith('/') ? val : `/${val}`
+    return `${base}${path}`
+  }
+
+  const event = ref<EventDetail>({
+    id: '',
+    title: 'Carregando evento...',
+    date: '',
+    rawDate: null,
+    location: '',
+    image: '',
+    description: '',
+    attractions: [],
+    contactInfo: '',
+    categories: [],
+    confirmedCount: 0,
+    likes: 0,
+    organizer: { name: '', avatar: '' },
+    sourceUrl: undefined,
+    images: undefined,
   })
-}
 
-function mapEventPayload(data: any): EventDetail {
-  const rawDate = resolveEventDate(data)
-  return {
-    id: data?.id,
-    title: data?.name || data?.title || 'Evento sem título',
-    date: formatEventDate(rawDate),
-    rawDate,
-    location: data?.location || data?.address || data?.place || 'Local não informado',
-    image: resolveAsset(data?.bannerUrl || data?.banner || data?.photos?.[0]),
-    description: data?.description || 'Sem descrição disponível.',
-    attractions: data?.attractions || data?.lineup || [],
-    contactInfo: data?.contactInfo || 'Informações de contato não disponíveis.',
-    categories: data?.categories || data?.tags || (data?.eventInterests || []).map((i: any) => i.interest?.name).filter(Boolean) || [],
-    confirmedCount: data?.confirmedCount || data?.confirmed || 0,
-    likes: data?.likes || data?._count?.likes || 0,
-    organizer: {
-      name: data?.organizer?.name || data?.hostName || data?.creator?.name || 'Organizador',
-      avatar: data?.organizer?.avatar || data?.hostAvatar || data?.creator?.profileImage || '',
+  const loading = ref(false)
+  const errorMessage = ref('')
+  const showConfirmModal = ref(false)
+  const activeTab = ref<'info' | 'location' | 'lineup'>('info')
+
+  // FAQs state
+  const openFaqIndex = ref<number | null>(null)
+  const showFaqs = ref(false)
+
+  // Terms and Privacy Modal
+  const showTermsModal = ref(false)
+  const termsModalPdf = ref<'terms' | 'privacy'>('terms')
+
+  function openTermsModal (type: 'terms' | 'privacy') {
+    termsModalPdf.value = type
+    showTermsModal.value = true
+  }
+
+  const faqs = ref([
+    {
+      icon: 'mdi-ticket-confirmation-outline',
+      question: 'Como faço para adquirir meu ingresso?',
+      answer: 'Os ingressos podem ser adquiridos diretamente nesta página. Após a confirmação, você receberá um e-mail com o QR Code para entrada no evento. Você também pode salvar o ingresso na sua carteira digital.',
+      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     },
+    {
+      icon: 'mdi-calendar-clock',
+      question: 'Qual o horário de abertura dos portões?',
+      answer: 'Os portões abrem 2 horas antes do horário oficial do evento. Recomendamos chegar com antecedência para evitar filas e aproveitar ao máximo a experiência.',
+      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    },
+    {
+      icon: 'mdi-food-fork-drink',
+      question: 'Posso levar comida e bebida?',
+      answer: 'Por questões de segurança, não é permitida a entrada com alimentos e bebidas. O evento contará com diversos food trucks e barracas com opções variadas de gastronomia. Garrafas de água lacradas são permitidas.',
+      gradient: 'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)',
+    },
+    {
+      icon: 'mdi-car-multiple',
+      question: 'O local oferece estacionamento?',
+      answer: 'Sim! Temos estacionamento próprio com mais de 500 vagas. O valor é de R$ 30,00 e pode ser pago no local (dinheiro ou cartão). Também recomendamos o uso de aplicativos de transporte para sua comodidade.',
+      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    },
+    {
+      icon: 'mdi-account-multiple-check',
+      question: 'Menores de idade podem participar?',
+      answer: 'Este evento é classificado para maiores de 18 anos. Menores entre 16-17 anos podem entrar acompanhados dos pais ou responsáveis legais com autorização autenticada. Crianças até 12 anos não pagam ingresso quando acompanhadas.',
+      gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    },
+    {
+      icon: 'mdi-weather-partly-cloudy',
+      question: 'E se chover? O evento será cancelado?',
+      answer: 'O evento acontece com chuva ou sol! Possuímos áreas cobertas e toda estrutura preparada para qualquer condição climática. Em caso de condições extremas, informaremos através dos nossos canais oficiais e redes sociais.',
+      gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+    },
+  ])
+
+  function toggleFaq (index: number) {
+    openFaqIndex.value = openFaqIndex.value === index ? null : index
   }
-}
 
-const isLiked = computed(() => eventsStore.isLiked(event.value.id))
-const isSaved = computed(() => eventsStore.isSaved(event.value.id))
-const isConfirmed = computed(() => eventsStore.isConfirmed(event.value.id))
-const displayLikes = computed(() => {
-  return (event.value.likes || 0) + (isLiked.value ? 1 : 0)
-})
+  // Countdown timer
+  const countdown = ref({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+  let countdownInterval: ReturnType<typeof setInterval> | null = null
 
-const displayConfirmed = computed(() => {
-  return event.value.confirmedCount + (isConfirmed.value ? 1 : 0)
-})
+  function updateCountdown () {
+    if (!event.value.rawDate) {
+      countdown.value = { days: 0, hours: 0, minutes: 0, seconds: 0 }
+      return
+    }
 
-const eventStatus = computed(() => {
-  if (!event.value.rawDate) return 'upcoming'
-  const now = new Date()
-  const eventDate = event.value.rawDate
-  if (eventDate < now) return 'past'
-  const diffDays = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  if (diffDays <= 3) return 'soon'
-  return 'upcoming'
-})
+    const now = Date.now()
+    const eventTime = event.value.rawDate.getTime()
+    const distance = eventTime - now
 
-// Avatar color logic
-const avatarColors = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-  '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-]
+    if (distance < 0) {
+      countdown.value = { days: 0, hours: 0, minutes: 0, seconds: 0 }
+      return
+    }
 
-const organizerAvatarColor = computed(() => {
-  const name = event.value.organizer?.name || ''
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
+    countdown.value = {
+      days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+      minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+      seconds: Math.floor((distance % (1000 * 60)) / 1000),
+    }
   }
-  return avatarColors[Math.abs(hash) % avatarColors.length]
-})
 
-const organizerInitial = computed(() => {
-  return (event.value.organizer?.name || 'O').charAt(0).toUpperCase()
-})
-
-const isEventPast = computed(() => eventStatus.value === 'past')
-
-function toggleLike() {
-  if (event.value.id && !isEventPast.value) {
-    eventsStore.toggleLike(event.value.id)
+  function startCountdown () {
+    if (countdownInterval) clearInterval(countdownInterval)
+    updateCountdown()
+    countdownInterval = setInterval(updateCountdown, 1000)
   }
-}
 
-function toggleSave() {
-  if (!event.value.id || isEventPast.value) return
-
-  const feedItem = {
-    id: event.value.id,
-    banner: event.value.image,
-    creator: event.value.organizer ? { name: event.value.organizer.name } : { name: 'Unknown' },
-    hostAvatar: event.value.organizer ? event.value.organizer.avatar : '',
-    schedule: event.value.date,
-    location: event.value.location,
-    title: event.value.title,
-    description: event.value.description,
-    confirmed: event.value.confirmedCount,
-    interested: 0,
-    likes: event.value.likes,
-  }
-  eventsStore.toggleSave(feedItem)
-}
-
-function handleConfirmAttendance() {
-  if (isEventPast.value) return
-
-  if (isConfirmed.value) {
-    // Se já confirmou, desconfirma direto
-    eventsStore.toggleConfirm(event.value.id)
-  } else {
-    showConfirmModal.value = true
-  }
-}
-
-function confirmAttendance() {
-  eventsStore.toggleConfirm(event.value.id)
-  showConfirmModal.value = false
-}
-
-async function fetchEventDetails(id: string | number) {
-  loading.value = true
-  errorMessage.value = ''
-  try {
-    const response = await getEventById(id)
-    const payload = response?.data?.event || response?.data || response
-    event.value = mapEventPayload(payload)
-    startCountdown()
-  } catch (error) {
-    console.error(error)
-    errorMessage.value = 'Não foi possível carregar os detalhes do evento.'
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(() => {
-  const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
-  if (id) fetchEventDetails(id)
-})
-
-watch(
-  () => props.eventId,
-  newId => {
-    const id = Array.isArray(newId) ? newId[0] : newId
-    if (id) fetchEventDetails(id)
-  },
-)
-
-function openMap() {
-  const loc = event.value?.location
-  if (!loc) return
-  const query = encodeURIComponent(loc)
-  const url = `https://www.google.com/maps/search/?api=1&query=${query}`
-  window.open(url, '_blank', 'noopener')
-}
-
-const shareStore = useShareStore()
-
-function handleShare() {
-  const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
-  shareStore.open({
-    title: event.value.title,
-    text: event.value.description,
-    url: `${window.location.origin}/private/event/${id}`,
+  onUnmounted(() => {
+    if (countdownInterval) clearInterval(countdownInterval)
   })
-}
+
+  function resolveEventDate (data: any): Date | null {
+    const candidates = [
+      data?.date,
+      data?.startDate,
+      data?.dateTime,
+      data?.startAt,
+      data?.eventDate,
+      data?.start_date,
+      data?.schedule,
+    ]
+    for (const val of candidates) {
+      if (!val) continue
+      const parsed = new Date(val)
+      if (!Number.isNaN(parsed.getTime())) return parsed
+    }
+    return null
+  }
+
+  function formatEventDate (d: Date | null): string {
+    if (!d) return 'Data não informada'
+    return d.toLocaleString('pt-BR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  function mapEventPayload (data: any): EventDetail {
+    const rawDate = resolveEventDate(data)
+
+    // Extrai a melhor imagem de alta qualidade com múltiplos fallbacks
+    const bestImageFromImages = extractBestQualityImage(data?.images)
+    const bestPhotoUrl = extractPhotoUrl(data?.photos)
+
+    let finalImage = bestImageFromImages || bestPhotoUrl || data?.bannerUrl || data?.banner || ''
+
+    // Melhora a qualidade da URL de imagem
+    finalImage = enhanceImageUrl(finalImage)
+
+    return {
+      id: data?.id,
+      title: data?.name || data?.title || 'Evento sem título',
+      date: formatEventDate(rawDate),
+      rawDate,
+      location: data?.location || data?.address || data?.place || 'Local não informado',
+      image: resolveAsset(finalImage),
+      description: data?.description || 'Sem descrição disponível.',
+      attractions: data?.attractions || data?.lineup || [],
+      contactInfo: data?.contactInfo || 'Informações de contato não disponíveis.',
+      categories: data?.categories || data?.tags || (data?.eventInterests || []).map((i: any) => i.interest?.name).filter(Boolean) || [],
+      confirmedCount: data?.confirmedCount || data?.confirmed || 0,
+      likes: data?.likes || data?._count?.likes || 0,
+      organizer: {
+        name: data?.organizer?.name || data?.hostName || data?.creator?.name || 'Organizador',
+        avatar: data?.organizer?.avatar || data?.hostAvatar || data?.creator?.profileImage || '',
+      },
+      sourceUrl: data?.sourceUrl || data?.source_url || data?.externalUrl || data?.external_url || undefined,
+      images: data?.images || undefined,
+    }
+  }
+
+  const isLiked = computed(() => eventsStore.isLiked(event.value.id))
+  const isSaved = computed(() => eventsStore.isSaved(event.value.id))
+  const isConfirmed = computed(() => eventsStore.isConfirmed(event.value.id))
+  const displayLikes = computed(() => {
+    return (event.value.likes || 0) + (isLiked.value ? 1 : 0)
+  })
+
+  const displayConfirmed = computed(() => {
+    return event.value.confirmedCount + (isConfirmed.value ? 1 : 0)
+  })
+
+  const eventStatus = computed(() => {
+    if (!event.value.rawDate) return 'upcoming'
+    const now = new Date()
+    const eventDate = event.value.rawDate
+    if (eventDate < now) return 'past'
+    const diffDays = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    if (diffDays <= 3) return 'soon'
+    return 'upcoming'
+  })
+
+  // Avatar color logic
+  const avatarColors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+  ]
+
+  const organizerAvatarColor = computed(() => {
+    const name = event.value.organizer?.name || ''
+    let hash = 0
+    for (let i = 0; i < name.length; i++) {
+      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
+    }
+    return avatarColors[Math.abs(hash) % avatarColors.length]
+  })
+
+  const organizerInitial = computed(() => {
+    return (event.value.organizer?.name || 'O').charAt(0).toUpperCase()
+  })
+
+  const isEventPast = computed(() => eventStatus.value === 'past')
+
+  function toggleLike () {
+    if (event.value.id && !isEventPast.value) {
+      eventsStore.toggleLike(event.value.id)
+    }
+  }
+
+  function toggleSave () {
+    if (!event.value.id || isEventPast.value) return
+
+    const feedItem = {
+      id: event.value.id,
+      banner: event.value.image,
+      creator: event.value.organizer ? { name: event.value.organizer.name } : { name: 'Unknown' },
+      hostAvatar: event.value.organizer ? event.value.organizer.avatar : '',
+      schedule: event.value.date,
+      location: event.value.location,
+      title: event.value.title,
+      description: event.value.description,
+      confirmed: event.value.confirmedCount,
+      interested: 0,
+      likes: event.value.likes,
+    }
+    eventsStore.toggleSave(feedItem)
+  }
+
+  function handleConfirmAttendance () {
+    if (isEventPast.value) return
+
+    if (isConfirmed.value) {
+      // Se já confirmou, desconfirma direto
+      eventsStore.toggleConfirm(event.value.id)
+    } else {
+      showConfirmModal.value = true
+    }
+  }
+
+  function confirmAttendance () {
+    eventsStore.toggleConfirm(event.value.id)
+    showConfirmModal.value = false
+  }
+
+  async function fetchEventDetails (id: string | number) {
+    loading.value = true
+    errorMessage.value = ''
+    try {
+      const response = await getEventById(id)
+      const payload = response?.data?.event || response?.data || response
+      event.value = mapEventPayload(payload)
+      startCountdown()
+    } catch (error) {
+      console.error(error)
+      errorMessage.value = 'Não foi possível carregar os detalhes do evento.'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  onMounted(() => {
+    const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
+    if (id) fetchEventDetails(id)
+  })
+
+  watch(
+    () => props.eventId,
+    newId => {
+      const id = Array.isArray(newId) ? newId[0] : newId
+      if (id) fetchEventDetails(id)
+    },
+  )
+
+  function openMap () {
+    const loc = event.value?.location
+    if (!loc) return
+    const query = encodeURIComponent(loc)
+    const url = `https://www.google.com/maps/search/?api=1&query=${query}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  function _openSourceUrl () {
+    if (event.value?.sourceUrl) {
+      window.open(event.value.sourceUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  const shareStore = useShareStore()
+
+  function handleShare () {
+    const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
+    shareStore.open({
+      title: event.value.title,
+      text: event.value.description,
+      url: `${window.location.origin}/private/event/${id}`,
+    })
+  }
 </script>
 
 <template>
@@ -361,36 +485,61 @@ function handleShare() {
       <!-- Hero Section -->
       <div class="hero-section">
         <div class="hero-image-wrapper">
-          <img :alt="event.title" class="hero-image" :src="event.image">
+          <img v-if="event.image" :alt="event.title" class="hero-image" :src="event.image">
+          <div v-else class="hero-image-placeholder">
+            <i class="mdi mdi-image-off-outline" />
+            <p>Imagem do evento não disponível</p>
+          </div>
           <div class="hero-overlay" />
           <div class="hero-gradient" />
         </div>
 
         <!-- Status Badge -->
         <div class="status-badge" :class="eventStatus">
-          <i class="mdi" :class="{
-            'mdi-clock-fast': eventStatus === 'soon',
-            'mdi-calendar-check': eventStatus === 'upcoming',
-            'mdi-check-circle': eventStatus === 'past'
-          }" />
+          <i
+            class="mdi"
+            :class="{
+              'mdi-clock-fast': eventStatus === 'soon',
+              'mdi-calendar-check': eventStatus === 'upcoming',
+              'mdi-check-circle': eventStatus === 'past'
+            }"
+          />
           <span>{{ eventStatus === 'soon' ? 'Em breve!' : eventStatus === 'past' ? 'Evento encerrado' : 'Confirmado'
           }}</span>
         </div>
 
         <!-- Floating Action Buttons -->
         <div class="floating-actions">
-          <button class="fab-btn like-btn" :class="{ active: isLiked, disabled: isEventPast }" :disabled="isEventPast"
-            @click="toggleLike">
-            <svg class="fab-icon" :fill="isLiked ? 'currentColor' : 'none'" height="17" stroke="currentColor"
-              stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="17">
+          <button
+            class="fab-btn like-btn"
+            :class="{ active: isLiked, disabled: isEventPast }"
+            :disabled="isEventPast"
+            @click="toggleLike"
+          >
+            <svg
+              class="fab-icon"
+              :fill="isLiked ? 'currentColor' : 'none'"
+              height="17"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="17"
+            >
               <path
-                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+              />
             </svg>
             <span class="fab-count">{{ displayLikes }}</span>
           </button>
 
-          <button class="fab-btn save-btn" :class="{ active: isSaved, disabled: isEventPast }" :disabled="isEventPast"
-            @click="toggleSave">
+          <button
+            class="fab-btn save-btn"
+            :class="{ active: isSaved, disabled: isEventPast }"
+            :disabled="isEventPast"
+            @click="toggleSave"
+          >
             <i class="mdi" :class="isSaved ? 'mdi-bookmark' : 'mdi-bookmark-outline'" />
           </button>
 
@@ -443,10 +592,20 @@ function handleShare() {
       <div class="stats-bar">
         <div class="stat-item">
           <div class="stat-icon likes">
-            <svg class="stat-icon-img" fill="none" height="20" stroke="currentColor" stroke-linecap="round"
-              stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="20">
+            <svg
+              class="stat-icon-img"
+              fill="none"
+              height="20"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="20"
+            >
               <path
-                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+              />
             </svg>
           </div>
           <div class="stat-info">
@@ -501,8 +660,12 @@ function handleShare() {
           <i class="mdi mdi-map-marker-outline" />
           <span>Local</span>
         </button>
-        <button v-if="event.attractions.length > 0" class="tab-btn" :class="{ active: activeTab === 'lineup' }"
-          @click="activeTab = 'lineup'">
+        <button
+          v-if="event.attractions.length > 0"
+          class="tab-btn"
+          :class="{ active: activeTab === 'lineup' }"
+          @click="activeTab = 'lineup'"
+        >
           <i class="mdi mdi-star-outline" />
           <span>Atrações</span>
         </button>
@@ -556,8 +719,13 @@ function handleShare() {
             <Transition name="faq-expand">
               <div v-if="showFaqs" class="faqs-content">
                 <div class="faqs-list">
-                  <div v-for="(faq, index) in faqs" :key="index" class="faq-item"
-                    :class="{ open: openFaqIndex === index }" :style="{ animationDelay: `${index * 0.05}s` }">
+                  <div
+                    v-for="(faq, index) in faqs"
+                    :key="index"
+                    class="faq-item"
+                    :class="{ open: openFaqIndex === index }"
+                    :style="{ animationDelay: `${index * 0.05}s` }"
+                  >
                     <button class="faq-question" :style="{ background: faq.gradient }" @click="toggleFaq(index)">
                       <div class="faq-q-content">
                         <div class="faq-icon">
@@ -613,8 +781,12 @@ function handleShare() {
 
         <!-- Lineup Tab -->
         <div v-show="activeTab === 'lineup'" class="tab-panel lineup-panel">
-          <div v-for="(attraction, index) in event.attractions" :key="index" class="lineup-card"
-            :style="{ animationDelay: `${index * 0.1}s` }">
+          <div
+            v-for="(attraction, index) in event.attractions"
+            :key="index"
+            class="lineup-card"
+            :style="{ animationDelay: `${index * 0.1}s` }"
+          >
             <div class="lineup-number">{{ String(index + 1).padStart(2, '0') }}</div>
             <div class="lineup-info">
               <span class="lineup-name">{{ attraction }}</span>
@@ -632,8 +804,12 @@ function handleShare() {
           <span class="cta-label">{{ isConfirmed ? 'Você confirmou presença!' : 'Garanta sua vaga!' }}</span>
           <span class="cta-sub">{{ displayConfirmed }} pessoas confirmadas</span>
         </div>
-        <button class="cta-button" :class="{ confirmed: isConfirmed, disabled: isEventPast }" :disabled="isEventPast"
-          @click="handleConfirmAttendance">
+        <button
+          class="cta-button"
+          :class="{ confirmed: isConfirmed, disabled: isEventPast }"
+          :disabled="isEventPast"
+          @click="handleConfirmAttendance"
+        >
           <i class="mdi" :class="isConfirmed ? 'mdi-check-circle' : 'mdi-party-popper'" />
           <span>{{ isEventPast ? 'EVENTO ENCERRADO' : (isConfirmed ? 'CONFIRMADO!' : 'EU VOU!') }}</span>
         </button>
@@ -678,16 +854,26 @@ function handleShare() {
                 {{ termsModalPdf === 'terms' ? 'Termos de Uso' : 'Política de Privacidade' }}
               </h3>
               <button class="terms-modal-close" type="button" @click="showTermsModal = false">
-                <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                  stroke-width="2" viewBox="0 0 24 24" width="18">
+                <svg
+                  fill="none"
+                  height="18"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="18"
+                >
                   <path d="M18 6 6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
             <div class="terms-modal-body">
-              <iframe class="terms-pdf-viewer"
+              <iframe
+                class="terms-pdf-viewer"
                 :src="termsModalPdf === 'terms' ? '/termos-de-uso.pdf' : '/politica-de-privacidade.pdf'"
-                title="Documento legal" />
+                title="Documento legal"
+              />
             </div>
             <div class="terms-modal-footer">
               <button class="terms-close-btn" type="button" @click="showTermsModal = false">
@@ -847,6 +1033,20 @@ function handleShare() {
   height: 100%;
   object-fit: cover;
   transition: transform 0.5s ease;
+
+  /* For\u00e7a renderiza\u00e7\u00e3o de alta qualidade */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: high-quality;
+
+  /* Suaviza\u00e7\u00e3o avan\u00e7ada para melhor qualidade */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+
+  /* For\u00e7a a GPU a processar a imagem */
+  will-change: transform;
 }
 
 .event-details-container:hover .hero-image {
@@ -2594,5 +2794,193 @@ function handleShare() {
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
+}
+
+/* ─── Hero Image Placeholder ─────────────────────────────────────────────── */
+.hero-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+  color: #999;
+}
+
+.hero-image-placeholder i {
+  font-size: 4rem;
+  opacity: 0.5;
+}
+
+.hero-image-placeholder p {
+  font-size: 1rem;
+  font-weight: 600;
+  opacity: 0.7;
+  margin: 0;
+}
+
+/* ─── Source URL Section ─────────────────────────────────────────────────── */
+.source-url-section {
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, #fff8fa 0%, #f8f9ff 100%);
+  border-top: 1px solid rgba(255, 95, 166, 0.1);
+  border-bottom: 1px solid rgba(255, 95, 166, 0.1);
+}
+
+.source-url-full-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1.25rem 1.5rem;
+  border: 2px solid rgba(255, 95, 166, 0.2);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.05) 0%, rgba(255, 95, 166, 0.05) 100%);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.source-url-full-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s ease;
+}
+
+.source-url-full-btn:hover::before {
+  left: 100%;
+}
+
+.source-url-full-btn:hover {
+  border-color: rgba(255, 95, 166, 0.4);
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.1) 0%, rgba(255, 95, 166, 0.1) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 95, 166, 0.15);
+}
+
+.source-url-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  color: white;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.3);
+}
+
+.source-url-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 0.25rem;
+  text-align: left;
+}
+
+.source-url-label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #333;
+  letter-spacing: -0.01em;
+}
+
+.source-url-sublabel {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.source-url-arrow {
+  font-size: 1.5rem;
+  color: #ff5fa6;
+  transition: transform 0.3s ease;
+}
+
+.source-url-full-btn:hover .source-url-arrow {
+  transform: translateX(5px);
+}
+
+/* ─── CTA Buttons Adjustments ────────────────────────────────────────────── */
+.cta-confirm-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 8px 25px rgba(255, 95, 166, 0.35);
+}
+
+.cta-confirm-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(255, 95, 166, 0.45);
+}
+
+.cta-confirm-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.cta-confirm-btn.confirmed {
+  background: linear-gradient(135deg, #4CAF50 0%, #81C784 100%);
+  box-shadow: 0 8px 25px rgba(76, 175, 80, 0.35);
+}
+
+.cta-confirm-btn.confirmed:hover {
+  box-shadow: 0 12px 35px rgba(76, 175, 80, 0.45);
+}
+
+.cta-confirm-btn.disabled,
+.cta-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: linear-gradient(135deg, #999 0%, #777 100%);
+}
+
+.cta-sublabel {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+@media (max-width: 640px) {
+  .source-url-full-btn {
+    padding: 1rem 1.25rem;
+  }
+
+  .source-url-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .source-url-label {
+    font-size: 0.95rem;
+  }
+
+  .source-url-sublabel {
+    font-size: 0.75rem;
+  }
+
+  .source-url-arrow {
+    font-size: 1.2rem;
+  }
 }
 </style>

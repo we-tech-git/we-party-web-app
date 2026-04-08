@@ -26,6 +26,7 @@
     commentsCount?: number
     matchedInterests?: string[]
     guestMode?: boolean
+    sourceUrl?: string
   }>()
 
   const emit = defineEmits<{
@@ -82,8 +83,6 @@
     return `${formatted}k`
   }
 
-  const fallbackBanner = 'https://via.placeholder.com/1200x600?text=Evento'
-
   function resolveAsset (val?: string) {
     if (!val) return ''
     if (/^https?:\/\//i.test(val)) return val
@@ -93,9 +92,14 @@
   }
 
   const bannerSrc = computed(() => {
-    const src = resolveAsset(props.banner)
-    return src || fallbackBanner
+    return resolveAsset(props.banner)
   })
+
+  function openSourceUrl () {
+    if (props.sourceUrl) {
+      window.open(props.sourceUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
 
   const hostAvatarSrc = computed(() => resolveAsset(props.hostAvatar))
 
@@ -178,7 +182,17 @@
 
     <figure class="media">
       <!-- Banner Image -->
-      <img :alt="title" class="banner" loading="lazy" :src="bannerSrc">
+      <img
+        v-if="bannerSrc"
+        :alt="title"
+        class="banner"
+        loading="lazy"
+        :src="bannerSrc"
+      >
+      <div v-else class="banner-placeholder">
+        <i class="mdi mdi-image-off-outline" />
+        <span>Imagem indisponível</span>
+      </div>
 
       <!-- Gradient layers -->
       <div class="gradient-vignette" />
@@ -314,6 +328,19 @@
             </svg>
             <span class="location">{{ location }}</span>
           </template>
+        </div>
+
+        <!-- Source URL Button -->
+        <div v-if="sourceUrl" class="source-url-container">
+          <button
+            class="source-url-btn"
+            title="Ver página original do evento"
+            type="button"
+            @click.stop="openSourceUrl"
+          >
+            <i class="mdi mdi-open-in-new" />
+            <span>Ver mais detalhes</span>
+          </button>
         </div>
 
         <!-- Footer: stats + actions -->
@@ -583,6 +610,20 @@
   height: clamp(380px, 42vw, 520px);
   object-fit: cover;
   transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* For\u00e7a renderiza\u00e7\u00e3o de alta qualidade */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: high-quality;
+
+  /* Suaviza\u00e7\u00e3o avan\u00e7ada para melhor qualidade */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+
+  /* For\u00e7a a GPU a processar a imagem */
+  will-change: transform;
 }
 
 .feed-card:hover .banner {
@@ -1227,5 +1268,65 @@
     font-size: 0.63rem;
     padding: 0.18rem 0.55rem;
   }
+}
+
+/* ─── Banner Placeholder ─────────────────────────────────────────────────── */
+.banner-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+  color: #999;
+}
+
+.banner-placeholder i {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+
+.banner-placeholder span {
+  font-size: 0.9rem;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+/* ─── Source URL Container ───────────────────────────────────────────────── */
+.source-url-container {
+  padding: 0 1.2rem 0.5rem;
+}
+
+.source-url-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  color: white;
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.source-url-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.source-url-btn i {
+  font-size: 1.1rem;
 }
 </style>

@@ -198,15 +198,105 @@
     })
   }
 
+  /**
+   * Extrai a melhor imagem disponível do objeto images da API
+   * Prioriza: original > large > medium > small > thumbnail
+   */
+  function extractBestImage (images: any): string {
+    if (!images || typeof images !== 'object') return ''
+
+    // Ordem de preferência para máxima qualidade no feed
+    return images.original
+      || images.large
+      || images.medium
+      || images.small
+      || images.thumbnail
+      || ''
+  }
+
+  /**
+   * Extrai a melhor URL de foto do objeto photos
+   * Suporta array de URLs, objetos com resoluções, e URLs simples
+   */
   function extractPhotoUrl (photos: unknown): string {
     if (!photos) return ''
-    if (Array.isArray(photos) && photos.length > 0) return photos[0] || ''
-    if (typeof photos === 'object' && photos !== null) {
-      const keys = Object.keys(photos as Record<string, unknown>)
-      const firstKey = keys[0]
-      if (firstKey !== undefined) return (photos as Record<string, string>)[firstKey] || ''
+
+    // Se for array, procura pela melhor resolução
+    if (Array.isArray(photos)) {
+      if (photos.length === 0) return ''
+
+      // Se o array contém objetos com resoluções, extrai a melhor
+      if (typeof photos[0] === 'object' && photos[0] !== null) {
+        const photo = photos[0] as any
+        return photo.original || photo.large || photo.url || photo.src || String(photo)
+      }
+
+      // Se é array de strings, pega a primeira
+      return photos[0] || ''
     }
+
+    // Se for objeto, busca pelas propriedades de maior resolução
+    if (typeof photos === 'object' && photos !== null) {
+      const photoObj = photos as Record<string, any>
+
+      // Tenta propriedades comuns de alta resolução primeiro
+      const highQualityKeys = ['original', 'large', 'high', 'hd', '1920', '1080', 'full']
+      for (const key of highQualityKeys) {
+        if (photoObj[key]) return photoObj[key]
+      }
+
+      // Tenta propriedades de resolução média
+      const mediumQualityKeys = ['medium', 'med', '720', '800']
+      for (const key of mediumQualityKeys) {
+        if (photoObj[key]) return photoObj[key]
+      }
+
+      // Fallback para primeira propriedade disponível
+      const keys = Object.keys(photoObj)
+      if (keys.length > 0) {
+        const firstKey = keys[0]
+        if (firstKey) return photoObj[firstKey] || ''
+      }
+    }
+
     return ''
+  }
+
+  /**
+   * Força parâmetros de alta qualidade na URL da imagem
+   */
+  function enhanceImageUrl (url: string): string {
+    if (!url) return ''
+
+    try {
+      // Se já é uma URL completa, tenta adicionar parâmetros de qualidade
+      if (/^https?:\/\//i.test(url)) {
+        const urlObj = new URL(url)
+
+        // Remove parâmetros de baixa qualidade comuns
+        urlObj.searchParams.delete('w')
+        urlObj.searchParams.delete('h')
+        urlObj.searchParams.delete('width')
+        urlObj.searchParams.delete('height')
+        urlObj.searchParams.delete('q')
+        urlObj.searchParams.delete('quality')
+        urlObj.searchParams.delete('fit')
+        urlObj.searchParams.delete('crop')
+
+        // Adiciona parâmetros de alta qualidade (funcionam em muitos CDNs)
+        // Estes parâmetros são ignorados se o CDN não os suportar
+        urlObj.searchParams.set('quality', '100')
+        urlObj.searchParams.set('fm', 'jpg') // formato
+        urlObj.searchParams.set('auto', 'format') // formato automático otimizado
+
+        return urlObj.toString()
+      }
+    } catch (error) {
+      // Se falhar ao parsear URL, retorna original
+      logger.warn('Erro ao processar URL de imagem:', error)
+    }
+
+    return url
   }
 
   function resolveLikesCount (event: any): number {
@@ -252,15 +342,21 @@
       }
     }
 
-    const rawBanner = getFirstValidString(
+    // Extrai a melhor imagem disponível com múltiplos fallbacks
+    const bestImageFromImages = extractBestImage(event.images)
+    const bestPhotoUrl = extractPhotoUrl(event.photos)
+
+    let rawBanner = bestImageFromImages || bestPhotoUrl || getFirstValidString(
       event.bannerUrl,
       event.banner,
-      extractPhotoUrl(event.photos),
       event.image,
       event.imageUrl,
       event.cover,
       event.thumbnail,
     )
+
+    // Melhora a qualidade da URL de imagem quando possível
+    rawBanner = enhanceImageUrl(rawBanner)
 
     const calculatedHostName = event.organizer?.name || event.hostName || event.creator?.name || 'Organizador'
 
@@ -291,6 +387,8 @@
       interests: eventInterests,
       matchedInterests,
       commentsCount: event.commentsCount ?? event._count?.comments ?? 0,
+      sourceUrl: event.sourceUrl || event.source_url || event.externalUrl || event.external_url || undefined,
+      images: event.images || undefined,
     }
   }
 
@@ -951,8 +1049,10 @@
             :liked="eventsStore.isLiked(item.id)"
             :likes="(item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0)"
             :location="item.location"
+            :matched-interests="item.matchedInterests"
             :rank="activeNav === 'top-events' ? index + 1 : undefined"
             :schedule="item.schedule"
+            :source-url="item.sourceUrl"
             :title="item.title"
             @toggle-like="eventsStore.toggleLike(item.id)"
             @toggle-save="handleToggleSave(item)"

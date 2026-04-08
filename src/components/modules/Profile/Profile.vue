@@ -4,6 +4,7 @@
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import { callApi } from '@/api'
+  import { addUserInterest, getInterests, removeUserInterest, searchInterestsByName } from '@/api/interest'
   import { getUserInterests, getUserProfile, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
   import AppFooter from '@/components/AppFooter.vue'
   import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
@@ -399,6 +400,188 @@
       }
     } catch {
       userInterests.value = []
+    }
+  }
+
+  // ── Manage Interests Modal ──
+  const showInterestsModal = ref(false)
+  const interestsSearchQuery = ref('')
+  const searchedInterests = ref<UserInterest[]>([])
+  const suggestedInterests = ref<UserInterest[]>([])
+  const tempUserInterests = ref<UserInterest[]>([]) // Interesses temporários (enquanto modal está aberto)
+  const isSearchingInterests = ref(false)
+  const isSavingInterests = ref(false)
+  const isLoadingSuggestions = ref(false)
+  let interestsSearchTimeout: ReturnType<typeof setTimeout> | null = null
+
+  async function openInterestsModal () {
+    // Cria cópia dos interesses atuais para trabalhar temporariamente
+    tempUserInterests.value = [...userInterests.value]
+    showInterestsModal.value = true
+    interestsSearchQuery.value = ''
+    searchedInterests.value = []
+    await loadSuggestedInterests()
+  }
+
+  async function loadSuggestedInterests () {
+    try {
+      isLoadingSuggestions.value = true
+      const response = await getInterests()
+      const data = response?.data
+
+      let interests: UserInterest[] = []
+      if (data?.data?.interests) {
+        interests = data.data.interests
+      } else if (data?.interests) {
+        interests = data.interests
+      } else if (Array.isArray(data?.data)) {
+        interests = data.data
+      } else if (Array.isArray(data)) {
+        interests = data
+      }
+
+      // Filtra interesses que o usuário já possui (usa tempUserInterests) e limita a 20 sugestões
+      const userInterestIds = new Set(tempUserInterests.value.map(i => i.id))
+      suggestedInterests.value = interests
+        .filter(i => !userInterestIds.has(i.id))
+        .slice(0, 20)
+    } catch (error) {
+      console.error('Erro ao carregar interesses sugeridos:', error)
+      suggestedInterests.value = []
+    } finally {
+      isLoadingSuggestions.value = false
+    }
+  }
+
+  function closeInterestsModal () {
+    // Descarta mudanças temporárias ao fechar sem salvar
+    tempUserInterests.value = []
+    showInterestsModal.value = false
+    interestsSearchQuery.value = ''
+    searchedInterests.value = []
+    suggestedInterests.value = []
+  }
+
+  async function searchInterestsDebounced (query: string) {
+    if (interestsSearchTimeout) {
+      clearTimeout(interestsSearchTimeout)
+    }
+
+    if (!query.trim()) {
+      searchedInterests.value = []
+      isSearchingInterests.value = false
+      return
+    }
+
+    isSearchingInterests.value = true
+
+    interestsSearchTimeout = setTimeout(async () => {
+      try {
+        const response = await searchInterestsByName(query.trim())
+        const data = response?.data
+
+        let interests: UserInterest[] = []
+        if (data?.data?.interests) {
+          interests = data.data.interests
+        } else if (data?.interests) {
+          interests = data.interests
+        } else if (Array.isArray(data?.data)) {
+          interests = data.data
+        } else if (Array.isArray(data)) {
+          interests = data
+        }
+
+        // Filtra interesses que o usuário já possui (usa tempUserInterests)
+        const userInterestIds = new Set(tempUserInterests.value.map(i => i.id))
+        searchedInterests.value = interests.filter(i => !userInterestIds.has(i.id)).slice(0, 10)
+      } catch (error) {
+        console.error('Erro ao buscar interesses:', error)
+        searchedInterests.value = []
+      } finally {
+        isSearchingInterests.value = false
+      }
+    }, 500)
+  }
+
+  function addInterestToUser (interest: UserInterest) {
+    // Adiciona apenas na lista temporária (não faz requisição ainda)
+    tempUserInterests.value.push(interest)
+
+    // Remove dos resultados de busca e sugestões
+    searchedInterests.value = searchedInterests.value.filter(i => i.id !== interest.id)
+    suggestedInterests.value = suggestedInterests.value.filter(i => i.id !== interest.id)
+  }
+
+  function removeInterestFromUser (interestId: string) {
+    // Remove apenas da lista temporária (não faz requisição ainda)
+    const removed = tempUserInterests.value.find(i => i.id === interestId)
+    tempUserInterests.value = tempUserInterests.value.filter(i => i.id !== interestId)
+
+    // Se removeu, adiciona de volta às sugestões
+    if (removed) {
+      suggestedInterests.value.unshift(removed)
+    }
+  }
+
+  async function saveInterestsChanges () {
+    try {
+      isSavingInterests.value = true
+
+      // Identifica interesses adicionados e removidos
+      const originalIds = new Set(userInterests.value.map(i => i.id))
+      const tempIds = new Set(tempUserInterests.value.map(i => i.id))
+
+      const toAdd = tempUserInterests.value.filter(i => !originalIds.has(i.id))
+      const toRemove = userInterests.value.filter(i => !tempIds.has(i.id))
+
+      // Faz as requisições para adicionar
+      const addPromises = toAdd.map(interest => addUserInterest(interest.id))
+
+      // Faz as requisições para remover
+      const removePromises = toRemove.map(interest => removeUserInterest(interest.id))
+
+      // Aguarda todas as requisições
+      await Promise.all([...addPromises, ...removePromises])
+
+      // Atualiza a lista real com os valores temporários
+      userInterests.value = [...tempUserInterests.value]
+
+      showSnackbar('Interesses atualizados com sucesso! ✅', '#22c55e')
+      closeInterestsModal()
+    } catch (error) {
+      console.error('Erro ao salvar interesses:', error)
+      showSnackbar('Erro ao salvar interesses. Tente novamente.', '#ef4444')
+    } finally {
+      isSavingInterests.value = false
+    }
+  }
+
+  watch(interestsSearchQuery, newQuery => {
+    searchInterestsDebounced(newQuery)
+  })
+
+  // ── Remove interesse diretamente (usado no botão X da sidebar) ──
+  async function removeInterestDirectly (interestId: string) {
+    try {
+      console.log('🗑️ Tentando remover interesse:', interestId)
+
+      // Confirmação antes de remover
+      if (!confirm('Deseja realmente remover este interesse?')) {
+        console.log('❌ Remoção cancelada pelo usuário')
+        return
+      }
+
+      console.log('📡 Fazendo requisição para remover interesse...')
+      await removeUserInterest(interestId)
+
+      // Remove da lista local
+      userInterests.value = userInterests.value.filter(i => i.id !== interestId)
+
+      console.log('✅ Interesse removido com sucesso')
+      showSnackbar('Interesse removido com sucesso!', '#22c55e')
+    } catch (error) {
+      console.error('❌ Erro ao remover interesse:', error)
+      showSnackbar('Erro ao remover interesse', '#ef4444')
     }
   }
 
@@ -1112,10 +1295,23 @@
       <!-- Right Sidebar -->
       <aside class="layout-extras">
         <div class="sidebar-card interests-card">
-          <h3>Interesses</h3>
+          <div class="interests-header">
+            <h3>Interesses</h3>
+            <button class="add-interest-btn" title="Gerenciar interesses" @click="openInterestsModal">
+              <i class="mdi mdi-plus" />
+            </button>
+          </div>
           <div v-if="userInterests.length > 0" class="interests-tags">
             <span v-for="interest in userInterests" :key="interest.id" class="tag">
               {{ interest.name }}
+              <button
+                class="remove-interest-btn"
+                title="Remover interesse"
+                type="button"
+                @click.stop="removeInterestDirectly(interest.id)"
+              >
+                <i class="mdi mdi-close" />
+              </button>
             </span>
           </div>
           <p v-else class="interests-empty">Nenhum interesse adicionado ainda.</p>
@@ -1304,6 +1500,109 @@
               <button class="btn-save" :disabled="uploadingAvatar" @click="confirmCrop">
                 <i v-if="uploadingAvatar" class="mdi mdi-loading mdi-spin" />
                 {{ uploadingAvatar ? 'Enviando...' : 'Aplicar' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Manage Interests Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showInterestsModal" class="modal-overlay" @click.self="closeInterestsModal">
+          <div class="interests-modal-container">
+            <div class="interests-modal-header">
+              <h2>Gerenciar Interesses</h2>
+              <button class="modal-close" @click="closeInterestsModal">
+                <i class="mdi mdi-close" />
+              </button>
+            </div>
+
+            <div class="interests-modal-body">
+              <!-- Busca de interesses -->
+              <div class="interests-search-section">
+                <div class="search-input-wrapper">
+                  <i class="mdi mdi-magnify search-icon" />
+                  <input
+                    v-model="interestsSearchQuery"
+                    class="interests-search-input"
+                    placeholder="Buscar interesses..."
+                    type="text"
+                  >
+                  <i v-if="isSearchingInterests" class="mdi mdi-loading mdi-spin search-loading" />
+                </div>
+              </div>
+
+              <!-- Resultados da busca -->
+              <div v-if="interestsSearchQuery.trim() && searchedInterests.length > 0" class="search-results-section">
+                <h4>Resultados da busca</h4>
+                <div class="interests-list">
+                  <div v-for="interest in searchedInterests" :key="interest.id" class="interest-item">
+                    <span class="interest-name">{{ interest.name }}</span>
+                    <button class="add-btn" @click="addInterestToUser(interest)">
+                      <i class="mdi mdi-plus" />
+                      Adicionar
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mensagem quando não há resultados -->
+              <div
+                v-else-if="interestsSearchQuery.trim() && !isSearchingInterests && searchedInterests.length === 0"
+                class="no-results"
+              >
+                <i class="mdi mdi-emoticon-sad-outline" />
+                <p>Nenhum interesse encontrado</p>
+              </div>
+
+              <!-- Sugestões de interesses (quando não há busca ativa) -->
+              <div v-if="!interestsSearchQuery.trim()" class="suggestions-section">
+                <h4>Sugestões de interesses</h4>
+                <div v-if="isLoadingSuggestions" class="loading-suggestions">
+                  <i class="mdi mdi-loading mdi-spin" />
+                  <p>Carregando sugestões...</p>
+                </div>
+                <div v-else-if="suggestedInterests.length > 0" class="interests-list">
+                  <div v-for="interest in suggestedInterests" :key="interest.id" class="interest-item">
+                    <span class="interest-name">{{ interest.name }}</span>
+                    <button class="add-btn" @click="addInterestToUser(interest)">
+                      <i class="mdi mdi-plus" />
+                      Adicionar
+                    </button>
+                  </div>
+                </div>
+                <p v-else class="empty-suggestions">
+                  Nenhuma sugestão disponível no momento.
+                </p>
+              </div>
+
+              <!-- Meus interesses atuais -->
+              <div class="current-interests-section">
+                <h4>Meus interesses ({{ tempUserInterests.length }})</h4>
+                <div v-if="tempUserInterests.length > 0" class="interests-list">
+                  <div v-for="interest in tempUserInterests" :key="interest.id" class="interest-item current">
+                    <span class="interest-name">{{ interest.name }}</span>
+                    <button class="remove-btn" @click="removeInterestFromUser(interest.id)">
+                      <i class="mdi mdi-close" />
+                      Remover
+                    </button>
+                  </div>
+                </div>
+                <p v-else class="empty-message">
+                  Você ainda não adicionou nenhum interesse.
+                </p>
+              </div>
+            </div>
+
+            <div class="interests-modal-footer">
+              <button class="btn-cancel" @click="closeInterestsModal">
+                Cancelar
+              </button>
+              <button class="btn-done" :disabled="isSavingInterests" @click="saveInterestsChanges">
+                <i v-if="isSavingInterests" class="mdi mdi-loading mdi-spin" />
+                {{ isSavingInterests ? 'Salvando...' : 'Concluído' }}
               </button>
             </div>
           </div>
@@ -2444,6 +2743,376 @@
   color: #555b77;
   font-weight: 500;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  position: relative;
+}
+
+.tag:hover {
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.12), rgba(255, 95, 166, 0.12));
+}
+
+.interests-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.interests-header h3 {
+  margin: 0;
+}
+
+.add-interest-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(255, 95, 166, 0.2);
+}
+
+.add-interest-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.3);
+}
+
+.add-interest-btn:active {
+  transform: scale(0.95);
+}
+
+.add-interest-btn i {
+  font-size: 1.2rem;
+}
+
+.remove-interest-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+  margin-left: 6px;
+  position: relative;
+  z-index: 10;
+}
+
+.remove-interest-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  transform: scale(1.15);
+}
+
+.remove-interest-btn:active {
+  transform: scale(0.9);
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.remove-interest-btn i {
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+/* ── Manage Interests Modal ── */
+.interests-modal-container {
+  background: white;
+  border-radius: 20px;
+  width: min(560px, 90vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.interests-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+}
+
+.interests-modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1a1c2e;
+  font-weight: 700;
+}
+
+.interests-modal-body {
+  padding: 1.5rem 2rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.interests-search-section {
+  margin-bottom: 1.5rem;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  font-size: 1.2rem;
+  color: #9aa0b8;
+  pointer-events: none;
+}
+
+.search-loading {
+  position: absolute;
+  right: 1rem;
+  font-size: 1.2rem;
+  color: #ff5fa6;
+}
+
+.interests-search-input {
+  width: 100%;
+  padding: 0.875rem 3rem 0.875rem 3rem;
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-family: 'Baloo Thambi 2', sans-serif;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.interests-search-input:focus {
+  border-color: #ff5fa6;
+  box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
+}
+
+.search-results-section {
+  margin-bottom: 2rem;
+}
+
+.search-results-section h4,
+.suggestions-section h4,
+.current-interests-section h4 {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9aa0b8;
+  font-weight: 600;
+}
+
+.interests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.interest-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+
+.interest-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.interest-item.current {
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.08), rgba(255, 95, 166, 0.08));
+}
+
+.interest-item.current:hover {
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.12), rgba(255, 95, 166, 0.12));
+}
+
+.interest-name {
+  font-size: 0.95rem;
+  color: #1a1c2e;
+  font-weight: 500;
+}
+
+.add-btn,
+.remove-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Baloo Thambi 2', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.2s;
+}
+
+.add-btn {
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  color: white;
+  box-shadow: 0 2px 8px rgba(255, 95, 166, 0.2);
+}
+
+.add-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.3);
+}
+
+.add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.remove-btn {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.remove-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  transform: translateY(-2px);
+}
+
+.no-results {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #9aa0b8;
+}
+
+.no-results i {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.5;
+}
+
+.no-results p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.suggestions-section {
+  margin-top: 1rem;
+}
+
+.loading-suggestions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  gap: 0.75rem;
+  color: #9aa0b8;
+}
+
+.loading-suggestions i {
+  font-size: 2rem;
+  color: #FF629F;
+}
+
+.loading-suggestions p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.empty-suggestions {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #9aa0b8;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.current-interests-section {
+  margin-top: 2rem;
+}
+
+.empty-message {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #9aa0b8;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.interests-modal-footer {
+  padding: 1.25rem 2rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.btn-cancel {
+  padding: 0.75rem 2rem;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  color: #6c7080;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.btn-cancel:active {
+  transform: scale(0.98);
+}
+
+.btn-done {
+  padding: 0.75rem 2rem;
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: 'Baloo Thambi 2', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.2);
+}
+
+.btn-done:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 95, 166, 0.3);
+}
+
+.btn-done:active {
+  transform: translateY(0);
+}
+
+.btn-done:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-done:disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.2);
 }
 
 .tag:hover {

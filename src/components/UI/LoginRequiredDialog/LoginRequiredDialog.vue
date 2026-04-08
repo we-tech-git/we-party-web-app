@@ -1,13 +1,83 @@
 <script setup lang="ts">
-import { useGuestMode } from '@/composables/useGuestMode'
+  import { ref } from 'vue'
+  import { useRouter } from 'vue-router'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
+  import { useGuestMode } from '@/composables/useGuestMode'
+  import { socialAuthService } from '@/services/socialAuth'
+  import { logger } from '@/utils/logger'
 
-const {
-  showLoginRequiredDialog,
-  lastBlockedAction,
-  closeDialog,
-  goToLogin,
-  goToSignup,
-} = useGuestMode()
+  const router = useRouter()
+  const {
+    showLoginRequiredDialog,
+    lastBlockedAction,
+    closeDialog,
+    goToLogin,
+    goToSignup,
+  } = useGuestMode()
+
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
+
+  function showSnackbar (message: string, color = '#ff9800') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+
+    if (snackbarVisible.value) {
+      snackbarVisible.value = false
+      requestAnimationFrame(() => {
+        snackbarVisible.value = true
+      })
+      return
+    }
+
+    snackbarVisible.value = true
+  }
+
+  async function handleGoogleAuth () {
+    try {
+      showSnackbar('Autenticando com Google...', '#4285F4')
+      const result = await socialAuthService.loginWithGoogle()
+
+      if (result.success) {
+        showSnackbar('Login com Google realizado com sucesso! 🎉', '#22c55e')
+        closeDialog()
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
+      } else {
+        showSnackbar(result.message || 'Erro ao fazer login com Google', '#ef4444')
+      }
+    } catch (error: any) {
+      logger.error('Erro na autenticação Google:', error)
+      showSnackbar(error.message || 'Erro ao fazer login com Google', '#ef4444')
+    }
+  }
+
+  async function handleFacebookAuth () {
+    try {
+      showSnackbar('Autenticando com Facebook...', '#1877F2')
+      const result = await socialAuthService.loginWithFacebook()
+
+      if (result.success) {
+        showSnackbar('Login com Facebook realizado com sucesso! 🎉', '#22c55e')
+        closeDialog()
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
+      } else {
+        showSnackbar(result.message || 'Erro ao fazer login com Facebook', '#ef4444')
+      }
+    } catch (error: any) {
+      logger.error('Erro na autenticação Facebook:', error)
+      showSnackbar(error.message || 'Erro ao fazer login com Facebook', '#ef4444')
+    }
+  }
+
+  function handleEmailAuth () {
+    goToLogin()
+  }
 </script>
 
 <template>
@@ -17,9 +87,24 @@ const {
         <div class="login-required-dialog">
           <!-- Ícone decorativo -->
           <div class="dialog-icon">
-            <svg fill="none" height="48" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-              stroke-width="1.5" viewBox="0 0 24 24" width="48">
-              <rect height="11" rx="2" ry="2" width="18" x="3" y="11" />
+            <svg
+              fill="none"
+              height="48"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 24 24"
+              width="48"
+            >
+              <rect
+                height="11"
+                rx="2"
+                ry="2"
+                width="18"
+                x="3"
+                y="11"
+              />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
           </div>
@@ -31,14 +116,36 @@ const {
             é necessário ter uma conta na We Party.
           </p>
           <p class="dialog-submessage">
-            Crie sua conta gratuitamente e aproveite todos os recursos da plataforma!
+            Escolha uma das opções abaixo para continuar:
           </p>
 
-          <!-- Botões de ação -->
+          <!-- Botões de autenticação social -->
+          <SocialAuthButtons
+            mode="login"
+            :show-email="true"
+            @email-auth="handleEmailAuth"
+            @facebook-auth="handleFacebookAuth"
+            @google-auth="handleGoogleAuth"
+          />
+
+          <!-- Divisor -->
+          <div class="or-divider">
+            <span>ou</span>
+          </div>
+
+          <!-- Botões de ação tradicionais -->
           <div class="dialog-actions">
             <button class="btn-primary" type="button" @click="goToSignup">
-              <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                stroke-width="2" viewBox="0 0 24 24" width="18">
+              <svg
+                fill="none"
+                height="18"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="18"
+              >
                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                 <circle cx="8.5" cy="7" r="4" />
                 <line x1="20" x2="20" y1="8" y2="14" />
@@ -53,8 +160,16 @@ const {
 
           <!-- Botão fechar -->
           <button aria-label="Fechar" class="dialog-close" type="button" @click="closeDialog">
-            <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-              stroke-width="2" viewBox="0 0 24 24" width="20">
+            <svg
+              fill="none"
+              height="20"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="20"
+            >
               <line x1="18" x2="6" y1="6" y2="18" />
               <line x1="6" x2="18" y1="6" y2="18" />
             </svg>
@@ -62,6 +177,9 @@ const {
         </div>
       </div>
     </Transition>
+
+    <!-- Snackbar para mensagens -->
+    <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" />
   </Teleport>
 </template>
 
@@ -144,8 +262,36 @@ const {
 .dialog-submessage {
   font-size: 0.875rem;
   color: #6c757d;
-  margin: 0 0 1.75rem;
+  margin: 0 0 1rem;
   line-height: 1.4;
+}
+
+.or-divider {
+  margin: 1rem 0;
+  text-align: center;
+  position: relative;
+}
+
+.or-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+      rgba(255, 154, 181, 0.1) 0%,
+      rgba(255, 154, 181, 0.3) 50%,
+      rgba(255, 154, 181, 0.1) 100%);
+}
+
+.or-divider span {
+  position: relative;
+  background: linear-gradient(180deg, #fff5f5 0%, #fff0f3 50%, #ffeef2 100%);
+  padding: 0 1rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 500;
 }
 
 .dialog-actions {
