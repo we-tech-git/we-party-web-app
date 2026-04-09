@@ -9,7 +9,9 @@
   import { STORAGE_KEYS } from '@/common/storage'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
   import router from '@/router'
+  import { socialAuthService } from '@/services/socialAuth'
   import { logger } from '@/utils/logger'
   import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
@@ -301,6 +303,49 @@
       senha: testData.password,
     })
   })
+
+  // ===============================
+  // AUTENTICAÇÃO SOCIAL
+  // ===============================
+  async function handleGoogleAuth () {
+    try {
+      showSnackbar('Cadastrando com Google...', '#4285F4')
+      const result = await socialAuthService.loginWithGoogle()
+
+      if (result.success) {
+        triggerConfetti()
+        showSnackbar('Cadastro com Google realizado com sucesso! 🎉', '#22c55e')
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
+      } else {
+        showSnackbar(result.message || 'Erro ao fazer cadastro com Google', '#ef4444')
+      }
+    } catch (error: any) {
+      logger.error('Erro na autenticação Google:', error)
+      showSnackbar(error.message || 'Erro ao fazer cadastro com Google', '#ef4444')
+    }
+  }
+
+  async function handleFacebookAuth () {
+    try {
+      showSnackbar('Cadastrando com Facebook...', '#1877F2')
+      const result = await socialAuthService.loginWithFacebook()
+
+      if (result.success) {
+        triggerConfetti()
+        showSnackbar('Cadastro com Facebook realizado com sucesso! 🎉', '#22c55e')
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
+      } else {
+        showSnackbar(result.message || 'Erro ao fazer cadastro com Facebook', '#ef4444')
+      }
+    } catch (error: any) {
+      logger.error('Erro na autenticação Facebook:', error)
+      showSnackbar(error.message || 'Erro ao fazer cadastro com Facebook', '#ef4444')
+    }
+  }
 </script>
 
 <template>
@@ -480,6 +525,15 @@
           <span v-if="isSubmitting" aria-hidden="true" class="loader" />
           <span>{{ isSubmitting ? 'Enviando...' : $t('signup.button') }}</span>
         </button>
+
+        <!-- Botões de autenticação social -->
+        <SocialAuthButtons
+          mode="signup"
+          :show-email="false"
+          @facebook-auth="handleFacebookAuth"
+          @google-auth="handleGoogleAuth"
+        />
+
         <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />
       </form>
 

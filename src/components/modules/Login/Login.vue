@@ -14,8 +14,11 @@
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
   import router from '@/router'
   import { AuthService } from '@/services/auth'
+  import { socialAuthService } from '@/services/socialAuth'
+  import { logger } from '@/utils/logger'
 
   const { t } = useI18n()
 
@@ -246,6 +249,47 @@
       rememberMe.value = true // Marca a caixa para refletir o estado salvo
     }
   })
+
+  // ===============================
+  // AUTENTICAÇÃO SOCIAL
+  // ===============================
+  async function handleGoogleAuth () {
+    try {
+      showSnackbar('Autenticando com Google...', '#4285F4')
+      const result = await socialAuthService.loginWithGoogle()
+
+      if (result.success) {
+        showSnackbar('Login com Google realizado com sucesso! 🎉', '#22c55e')
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
+      } else {
+        showSnackbar(result.message || 'Erro ao fazer login com Google', '#ef4444')
+      }
+    } catch (error: any) {
+      logger.error('Erro na autenticação Google:', error)
+      showSnackbar(error.message || 'Erro ao fazer login com Google', '#ef4444')
+    }
+  }
+
+  async function handleFacebookAuth () {
+    try {
+      showSnackbar('Autenticando com Facebook...', '#1877F2')
+      const result = await socialAuthService.loginWithFacebook()
+
+      if (result.success) {
+        showSnackbar('Login com Facebook realizado com sucesso! 🎉', '#22c55e')
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
+      } else {
+        showSnackbar(result.message || 'Erro ao fazer login com Facebook', '#ef4444')
+      }
+    } catch (error: any) {
+      logger.error('Erro na autenticação Facebook:', error)
+      showSnackbar(error.message || 'Erro ao fazer login com Facebook', '#ef4444')
+    }
+  }
 </script>
 
 <!--
@@ -314,6 +358,14 @@
             <span v-if="isSubmitting" aria-hidden="true" class="loader" />
             <span>{{ isSubmitting ? 'Entrando...' : $t('login.button') }}</span>
           </button>
+
+          <!-- Botões de autenticação social -->
+          <SocialAuthButtons
+            mode="login"
+            :show-email="false"
+            @facebook-auth="handleFacebookAuth"
+            @google-auth="handleGoogleAuth"
+          />
         </div>
 
         <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />

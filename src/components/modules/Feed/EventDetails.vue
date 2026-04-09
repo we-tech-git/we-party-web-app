@@ -24,12 +24,116 @@
     confirmedCount: number
     likes?: number
     organizer?: { name: string, avatar: string }
+    sourceUrl?: string
+    images?: {
+      thumbnail?: string
+      small?: string
+      medium?: string
+      large?: string
+      original?: string
+    }
   }
 
-  const fallbackImage = 'https://via.placeholder.com/1200x600?text=Evento'
+  /**
+   * Extrai a melhor imagem de alta qualidade para detalhes do evento
+   * Prioriza: original > large > medium > small > thumbnail
+   */
+  function extractBestQualityImage (images: any): string {
+    if (!images || typeof images !== 'object') return ''
+
+    return images.original
+      || images.large
+      || images.medium
+      || images.small
+      || images.thumbnail
+      || ''
+  }
+
+  /**
+   * Extrai a melhor URL de foto do objeto photos com suporte a múltiplas resoluções
+   */
+  function extractPhotoUrl (photos: unknown): string {
+    if (!photos) return ''
+
+    // Se for array, procura pela melhor resolução
+    if (Array.isArray(photos)) {
+      if (photos.length === 0) return ''
+
+      // Se o array contém objetos com resoluções, extrai a melhor
+      if (typeof photos[0] === 'object' && photos[0] !== null) {
+        const photo = photos[0] as any
+        return photo.original || photo.large || photo.url || photo.src || String(photo)
+      }
+
+      // Se é array de strings, pega a primeira
+      return photos[0] || ''
+    }
+
+    // Se for objeto, busca pelas propriedades de maior resolução
+    if (typeof photos === 'object' && photos !== null) {
+      const photoObj = photos as Record<string, any>
+
+      // Tenta propriedades comuns de alta resolução primeiro
+      const highQualityKeys = ['original', 'large', 'high', 'hd', '1920', '1080', 'full']
+      for (const key of highQualityKeys) {
+        if (photoObj[key]) return photoObj[key]
+      }
+
+      // Tenta propriedades de resolução média
+      const mediumQualityKeys = ['medium', 'med', '720', '800']
+      for (const key of mediumQualityKeys) {
+        if (photoObj[key]) return photoObj[key]
+      }
+
+      // Fallback para primeira propriedade disponível
+      const keys = Object.keys(photoObj)
+      if (keys.length > 0) {
+        const firstKey = keys[0]
+        if (firstKey) return photoObj[firstKey] || ''
+      }
+    }
+
+    return ''
+  }
+
+  /**
+   * Força parâmetros de alta qualidade na URL da imagem
+   */
+  function enhanceImageUrl (url: string): string {
+    if (!url) return ''
+
+    try {
+      // Se já é uma URL completa, tenta adicionar parâmetros de qualidade
+      if (/^https?:\/\//i.test(url)) {
+        const urlObj = new URL(url)
+
+        // Remove parâmetros de baixa qualidade comuns
+        urlObj.searchParams.delete('w')
+        urlObj.searchParams.delete('h')
+        urlObj.searchParams.delete('width')
+        urlObj.searchParams.delete('height')
+        urlObj.searchParams.delete('q')
+        urlObj.searchParams.delete('quality')
+        urlObj.searchParams.delete('fit')
+        urlObj.searchParams.delete('crop')
+
+        // Adiciona parâmetros de alta qualidade
+        urlObj.searchParams.set('quality', '100')
+        urlObj.searchParams.set('fm', 'jpg')
+        urlObj.searchParams.set('auto', 'format')
+
+        return urlObj.toString()
+      }
+    } catch (error) {
+      // Se falhar ao parsear URL, retorna original
+      console.warn('Erro ao processar URL de imagem:', error)
+    }
+
+    return url
+  }
 
   function resolveAsset (val?: string) {
-    if (!val) return fallbackImage
+    if (!val) return ''
     if (/^https?:\/\//i.test(val)) return val
     const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
     const path = val.startsWith('/') ? val : `/${val}`
@@ -42,7 +146,7 @@
     date: '',
     rawDate: null,
     location: '',
-    image: fallbackImage,
+    image: '',
     description: '',
     attractions: [],
     contactInfo: '',
@@ -50,6 +154,8 @@
     confirmedCount: 0,
     likes: 0,
     organizer: { name: '', avatar: '' },
+    sourceUrl: undefined,
+    images: undefined,
   })
 
   const loading = ref(false)
@@ -182,13 +288,23 @@
 
   function mapEventPayload (data: any): EventDetail {
     const rawDate = resolveEventDate(data)
+
+    // Extrai a melhor imagem de alta qualidade com múltiplos fallbacks
+    const bestImageFromImages = extractBestQualityImage(data?.images)
+    const bestPhotoUrl = extractPhotoUrl(data?.photos)
+
+    let finalImage = bestImageFromImages || bestPhotoUrl || data?.bannerUrl || data?.banner || ''
+
+    // Melhora a qualidade da URL de imagem
+    finalImage = enhanceImageUrl(finalImage)
+
     return {
       id: data?.id,
       title: data?.name || data?.title || 'Evento sem título',
       date: formatEventDate(rawDate),
       rawDate,
       location: data?.location || data?.address || data?.place || 'Local não informado',
-      image: resolveAsset(data?.bannerUrl || data?.banner || data?.photos?.[0]),
+      image: resolveAsset(finalImage),
       description: data?.description || 'Sem descrição disponível.',
       attractions: data?.attractions || data?.lineup || [],
       contactInfo: data?.contactInfo || 'Informações de contato não disponíveis.',
@@ -199,6 +315,8 @@
         name: data?.organizer?.name || data?.hostName || data?.creator?.name || 'Organizador',
         avatar: data?.organizer?.avatar || data?.hostAvatar || data?.creator?.profileImage || '',
       },
+      sourceUrl: data?.sourceUrl || data?.source_url || data?.externalUrl || data?.external_url || undefined,
+      images: data?.images || undefined,
     }
   }
 
@@ -319,7 +437,13 @@
     if (!loc) return
     const query = encodeURIComponent(loc)
     const url = `https://www.google.com/maps/search/?api=1&query=${query}`
-    window.open(url, '_blank', 'noopener')
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  function _openSourceUrl () {
+    if (event.value?.sourceUrl) {
+      window.open(event.value.sourceUrl, '_blank', 'noopener,noreferrer')
+    }
   }
 
   const shareStore = useShareStore()
@@ -361,7 +485,11 @@
       <!-- Hero Section -->
       <div class="hero-section">
         <div class="hero-image-wrapper">
-          <img :alt="event.title" class="hero-image" :src="event.image">
+          <img v-if="event.image" :alt="event.title" class="hero-image" :src="event.image">
+          <div v-else class="hero-image-placeholder">
+            <i class="mdi mdi-image-off-outline" />
+            <p>Imagem do evento não disponível</p>
+          </div>
           <div class="hero-overlay" />
           <div class="hero-gradient" />
         </div>
@@ -905,6 +1033,20 @@
   height: 100%;
   object-fit: cover;
   transition: transform 0.5s ease;
+
+  /* For\u00e7a renderiza\u00e7\u00e3o de alta qualidade */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: high-quality;
+
+  /* Suaviza\u00e7\u00e3o avan\u00e7ada para melhor qualidade */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+
+  /* For\u00e7a a GPU a processar a imagem */
+  will-change: transform;
 }
 
 .event-details-container:hover .hero-image {
@@ -2119,8 +2261,8 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(5px);
+  background: rgba(255, 250, 250, 0.65);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2129,13 +2271,14 @@
 }
 
 .modal-content {
-  background: white;
+  background: linear-gradient(180deg, #fff5f5 0%, #fff0f3 50%, #ffeef2 100%);
   border-radius: 24px;
   padding: 2rem;
   max-width: 400px;
   width: 100%;
   text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px rgba(255, 154, 181, 0.2);
+  border: 1px solid rgba(255, 154, 181, 0.15);
 }
 
 .modal-icon {
@@ -2550,8 +2693,8 @@
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(4px);
+  background: rgba(255, 250, 250, 0.65);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2559,15 +2702,16 @@
 }
 
 .terms-modal {
-  background: #fff;
+  background: linear-gradient(180deg, #fff5f5 0%, #fff0f3 50%, #ffeef2 100%);
   border-radius: 20px;
   width: 100%;
   max-width: 640px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 60px rgba(255, 154, 181, 0.2);
   overflow: hidden;
+  border: 1px solid rgba(255, 154, 181, 0.15);
 }
 
 .terms-modal-header {
@@ -2575,7 +2719,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 1.2rem 1.5rem;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid rgba(255, 154, 181, 0.15);
 }
 
 .terms-modal-title {
@@ -2592,20 +2736,21 @@
   height: 32px;
   border-radius: 50%;
   border: none;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: rgba(255, 154, 181, 0.1);
+  color: #ff5fa6;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .terms-modal-close:hover {
-  background: #fee2e2;
-  color: #ef4444;
+  background: rgba(255, 154, 181, 0.2);
+  color: #f97316;
 }
 
 .terms-modal-body {
   flex: 1;
   overflow: hidden;
+  background: #ffffff;
 }
 
 .terms-pdf-viewer {
@@ -2619,7 +2764,7 @@
   display: flex;
   gap: 10px;
   padding: 1rem 1.5rem;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid rgba(255, 154, 181, 0.15);
   justify-content: flex-end;
 }
 
@@ -2649,5 +2794,193 @@
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
+}
+
+/* ─── Hero Image Placeholder ─────────────────────────────────────────────── */
+.hero-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+  color: #999;
+}
+
+.hero-image-placeholder i {
+  font-size: 4rem;
+  opacity: 0.5;
+}
+
+.hero-image-placeholder p {
+  font-size: 1rem;
+  font-weight: 600;
+  opacity: 0.7;
+  margin: 0;
+}
+
+/* ─── Source URL Section ─────────────────────────────────────────────────── */
+.source-url-section {
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, #fff8fa 0%, #f8f9ff 100%);
+  border-top: 1px solid rgba(255, 95, 166, 0.1);
+  border-bottom: 1px solid rgba(255, 95, 166, 0.1);
+}
+
+.source-url-full-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1.25rem 1.5rem;
+  border: 2px solid rgba(255, 95, 166, 0.2);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.05) 0%, rgba(255, 95, 166, 0.05) 100%);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.source-url-full-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s ease;
+}
+
+.source-url-full-btn:hover::before {
+  left: 100%;
+}
+
+.source-url-full-btn:hover {
+  border-color: rgba(255, 95, 166, 0.4);
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.1) 0%, rgba(255, 95, 166, 0.1) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 95, 166, 0.15);
+}
+
+.source-url-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  color: white;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.3);
+}
+
+.source-url-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 0.25rem;
+  text-align: left;
+}
+
+.source-url-label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #333;
+  letter-spacing: -0.01em;
+}
+
+.source-url-sublabel {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.source-url-arrow {
+  font-size: 1.5rem;
+  color: #ff5fa6;
+  transition: transform 0.3s ease;
+}
+
+.source-url-full-btn:hover .source-url-arrow {
+  transform: translateX(5px);
+}
+
+/* ─── CTA Buttons Adjustments ────────────────────────────────────────────── */
+.cta-confirm-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 8px 25px rgba(255, 95, 166, 0.35);
+}
+
+.cta-confirm-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(255, 95, 166, 0.45);
+}
+
+.cta-confirm-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.cta-confirm-btn.confirmed {
+  background: linear-gradient(135deg, #4CAF50 0%, #81C784 100%);
+  box-shadow: 0 8px 25px rgba(76, 175, 80, 0.35);
+}
+
+.cta-confirm-btn.confirmed:hover {
+  box-shadow: 0 12px 35px rgba(76, 175, 80, 0.45);
+}
+
+.cta-confirm-btn.disabled,
+.cta-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: linear-gradient(135deg, #999 0%, #777 100%);
+}
+
+.cta-sublabel {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+@media (max-width: 640px) {
+  .source-url-full-btn {
+    padding: 1rem 1.25rem;
+  }
+
+  .source-url-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .source-url-label {
+    font-size: 0.95rem;
+  }
+
+  .source-url-sublabel {
+    font-size: 0.75rem;
+  }
+
+  .source-url-arrow {
+    font-size: 1.2rem;
+  }
 }
 </style>

@@ -21,6 +21,7 @@ declare module 'vue' {
     EventView: typeof import('./components/modules/Feed/EventView.vue')['default']
     Feed: typeof import('./components/modules/Feed/Feed.vue')['default']
     FeedCard: typeof import('./components/modules/Feed/FeedCard.vue')['default']
+    FeedCardStandalone: typeof import('./components/FeedCardStandalone.vue')['default']
     FeedSidebarNav: typeof import('./components/modules/Feed/FeedSidebarNav.vue')['default']
     FeedTopHeader: typeof import('./components/modules/Feed/FeedTopHeader.vue')['default']
     FeedTrendsPanel: typeof import('./components/modules/Feed/FeedTrendsPanel.vue')['default']
@@ -40,6 +41,7 @@ declare module 'vue' {
     ShareSheet: typeof import('./components/modules/UI/ShareSheet/ShareSheet.vue')['default']
     Signup: typeof import('./components/modules/Signup/Signup.vue')['default']
     Snackbar: typeof import('./components/UI/Snackbar/Snackbar.vue')['default']
+    SocialAuthButtons: typeof import('./components/UI/SocialAuthButtons/SocialAuthButtons.vue')['default']
     VerifyPin: typeof import('./components/modules/PasswordRecovery/VerifyPin.vue')['default']
   }
 }

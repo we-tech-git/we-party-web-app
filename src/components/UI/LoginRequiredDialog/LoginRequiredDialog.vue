@@ -1,6 +1,13 @@
 <script setup lang="ts">
+  import { ref } from 'vue'
+  import { useRouter } from 'vue-router'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
   import { useGuestMode } from '@/composables/useGuestMode'
+  import { socialAuthService } from '@/services/socialAuth'
+  import { logger } from '@/utils/logger'
 
+  const router = useRouter()
   const {
     showLoginRequiredDialog,
     lastBlockedAction,
@@ -8,6 +15,69 @@
     goToLogin,
     goToSignup,
   } = useGuestMode()
+
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
+
+  function showSnackbar (message: string, color = '#ff9800') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+
+    if (snackbarVisible.value) {
+      snackbarVisible.value = false
+      requestAnimationFrame(() => {
+        snackbarVisible.value = true
+      })
+      return
+    }
+
+    snackbarVisible.value = true
+  }
+
+  async function handleGoogleAuth () {
+    try {
+      showSnackbar('Autenticando com Google...', '#4285F4')
+      const result = await socialAuthService.loginWithGoogle()
+
+      if (result.success) {
+        showSnackbar('Login com Google realizado com sucesso! 🎉', '#22c55e')
+        closeDialog()
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
+      } else {
+        showSnackbar(result.message || 'Erro ao fazer login com Google', '#ef4444')
+      }
+    } catch (error: any) {
+      logger.error('Erro na autenticação Google:', error)
+      showSnackbar(error.message || 'Erro ao fazer login com Google', '#ef4444')
+    }
+  }
+
+  async function handleFacebookAuth () {
+    try {
+      showSnackbar('Autenticando com Facebook...', '#1877F2')
+      const result = await socialAuthService.loginWithFacebook()
+
+      if (result.success) {
+        showSnackbar('Login com Facebook realizado com sucesso! 🎉', '#22c55e')
+        closeDialog()
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
+      } else {
+        showSnackbar(result.message || 'Erro ao fazer login com Facebook', '#ef4444')
+      }
+    } catch (error: any) {
+      logger.error('Erro na autenticação Facebook:', error)
+      showSnackbar(error.message || 'Erro ao fazer login com Facebook', '#ef4444')
+    }
+  }
+
+  function handleEmailAuth () {
+    goToLogin()
+  }
 </script>
 
 <template>
@@ -46,10 +116,24 @@
             é necessário ter uma conta na We Party.
           </p>
           <p class="dialog-submessage">
-            Crie sua conta gratuitamente e aproveite todos os recursos da plataforma!
+            Escolha uma das opções abaixo para continuar:
           </p>
 
-          <!-- Botões de ação -->
+          <!-- Botões de autenticação social -->
+          <SocialAuthButtons
+            mode="login"
+            :show-email="true"
+            @email-auth="handleEmailAuth"
+            @facebook-auth="handleFacebookAuth"
+            @google-auth="handleGoogleAuth"
+          />
+
+          <!-- Divisor -->
+          <div class="or-divider">
+            <span>ou</span>
+          </div>
+
+          <!-- Botões de ação tradicionais -->
           <div class="dialog-actions">
             <button class="btn-primary" type="button" @click="goToSignup">
               <svg
@@ -93,6 +177,9 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Snackbar para mensagens -->
+    <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" />
   </Teleport>
 </template>
 
@@ -104,7 +191,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(255, 250, 250, 0.65);
   backdrop-filter: blur(8px);
   padding: 1rem;
 }
@@ -113,14 +200,13 @@
   position: relative;
   width: 100%;
   max-width: 420px;
-  background: linear-gradient(145deg, #1a1d2e 0%, #0d0f1a 100%);
-  border: 1px solid rgba(255, 154, 181, 0.2);
+  background: linear-gradient(180deg, #fff5f5 0%, #fff0f3 50%, #ffeef2 100%);
+  border: 2px solid rgba(255, 154, 181, 0.2);
   border-radius: 24px;
   padding: 2.5rem 2rem 2rem;
   box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 154, 181, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 25px 50px -12px rgba(255, 154, 181, 0.2),
+    0 10px 30px rgba(255, 183, 77, 0.08);
   text-align: center;
   animation: dialogEnter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -130,6 +216,7 @@
     opacity: 0;
     transform: scale(0.9) translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -143,39 +230,68 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(255, 154, 181, 0.15), rgba(255, 183, 77, 0.15));
+  background: linear-gradient(135deg, rgba(255, 154, 181, 0.1), rgba(255, 183, 77, 0.1));
   border-radius: 50%;
-  border: 2px solid rgba(255, 154, 181, 0.3);
+  border: 2px solid rgba(255, 154, 181, 0.25);
 }
 
 .dialog-icon svg {
-  color: #ff9ab5;
+  color: #ff5fa6;
 }
 
 .dialog-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #fff;
+  color: #2c3e50;
   margin: 0 0 0.75rem;
   letter-spacing: -0.02em;
 }
 
 .dialog-message {
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: #4a5568;
   margin: 0 0 0.5rem;
   line-height: 1.5;
 }
 
 .dialog-message strong {
-  color: #ffb74d;
+  color: #ff5fa6;
+  font-weight: 600;
 }
 
 .dialog-submessage {
   font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0 0 1.75rem;
+  color: #6c757d;
+  margin: 0 0 1rem;
   line-height: 1.4;
+}
+
+.or-divider {
+  margin: 1rem 0;
+  text-align: center;
+  position: relative;
+}
+
+.or-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+      rgba(255, 154, 181, 0.1) 0%,
+      rgba(255, 154, 181, 0.3) 50%,
+      rgba(255, 154, 181, 0.1) 100%);
+}
+
+.or-divider span {
+  position: relative;
+  background: linear-gradient(180deg, #fff5f5 0%, #fff0f3 50%, #ffeef2 100%);
+  padding: 0 1rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 500;
 }
 
 .dialog-actions {
@@ -202,13 +318,13 @@
 
 .btn-primary {
   background: linear-gradient(135deg, #ff9ab5 0%, #ffb74d 100%);
-  color: #0d0f1a;
-  box-shadow: 0 4px 15px rgba(255, 154, 181, 0.4);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(255, 154, 181, 0.35);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 154, 181, 0.5);
+  box-shadow: 0 6px 20px rgba(255, 154, 181, 0.45);
 }
 
 .btn-primary:active {
@@ -216,14 +332,15 @@
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #f5f5f5;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
+  background: #e2e8f0;
+  border-color: #cbd5e0;
+  color: #2c3e50;
 }
 
 .dialog-close {
@@ -235,17 +352,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #f5f5f5;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
-  color: rgba(255, 255, 255, 0.6);
+  color: #6c757d;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .dialog-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: #fee2e2;
+  color: #ef4444;
+  border-color: #fecaca;
 }
 
 /* Transições */
