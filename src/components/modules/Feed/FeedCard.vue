@@ -598,6 +598,8 @@
 .media {
   position: relative;
   margin: 0;
+  /* Garante altura mínima para evitar colapso */
+  min-height: 380px;
   height: 100%;
   border-radius: 22px;
   overflow: hidden;
@@ -1273,25 +1275,69 @@
 /* ─── Banner Placeholder ─────────────────────────────────────────────────── */
 .banner-placeholder {
   width: 100%;
-  height: 100%;
+  /* Garante a mesma altura do banner para evitar colapso do card */
+  height: clamp(380px, 42vw, 520px);
+  min-height: 380px;
+  /* Altura mínima garantida */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
-  color: #999;
+  background: linear-gradient(135deg, #1a1d35 0%, #0e1428 100%);
+  color: rgba(255, 255, 255, 0.3);
+  /* Garante que ocupe o espaço esperado */
+  flex-shrink: 0;
 }
 
 .banner-placeholder i {
   font-size: 3rem;
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 .banner-placeholder span {
   font-size: 0.9rem;
   font-weight: 600;
-  opacity: 0.7;
+  opacity: 0.5;
+}
+
+/* ─── Banner Placeholder Responsive ──────────────────────────────────────── */
+@media (max-width: 640px) {
+  .banner-placeholder {
+    height: clamp(300px, 76vw, 400px);
+    min-height: 300px;
+  }
+
+  .banner-placeholder i {
+    font-size: 2.5rem;
+  }
+
+  .banner-placeholder span {
+    font-size: 0.8rem;
+  }
+
+  .media {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .banner-placeholder {
+    height: clamp(260px, 70vw, 340px);
+    min-height: 260px;
+  }
+
+  .banner-placeholder i {
+    font-size: 2rem;
+  }
+
+  .banner-placeholder span {
+    font-size: 0.75rem;
+  }
+
+  .media {
+    min-height: 260px;
+  }
 }
 
 /* ─── Source URL Container ───────────────────────────────────────────────── */

@@ -405,23 +405,36 @@
 
     try {
       const fetchPromise = (async () => {
+        logger.info('📡 Fetching events...', {
+          guestMode: props.guestMode,
+          activeNav: activeNav.value,
+          activeTab: activeTab.value,
+          page: page.value,
+        })
+
         // Em modo guest, usa as funções públicas (sem autenticação)
         if (props.guestMode) {
           if (activeNav.value === 'top-events') {
+            logger.info('→ Calling: getPublicTrendingEvents')
             return await getPublicTrendingEvents(page.value, limit)
           } else if (activeTab.value === 'today') {
+            logger.info('→ Calling: getPublicEventsToday')
             return await getPublicEventsToday(page.value, limit)
           } else {
+            logger.info('→ Calling: getPublicEventRecomendations')
             return await getPublicEventRecomendations(page.value, limit)
           }
         }
 
         // Modo autenticado - usa funções normais
         if (activeNav.value === 'top-events') {
+          logger.info('→ Calling: getTrendingEvents (authenticated)')
           return await getTrendingEvents(page.value, limit)
         } else if (activeTab.value === 'today') {
+          logger.info('→ Calling: getEventsToday (authenticated)')
           return await getEventsToday(page.value, limit)
         } else {
+          logger.info('→ Calling: getEventRecomendations (authenticated)')
           return await getEventRecomendations(page.value, limit)
         }
       })()
@@ -434,7 +447,109 @@
         waitPromise,
       ])
 
-      const events = response.data.events || response.data.content || response.data || []
+      logger.info('✅ API Response received:', {
+        status: response.status,
+        hasData: !!response.data,
+        dataType: typeof response.data,
+        isArray: Array.isArray(response.data),
+      })
+
+      // Extrai eventos da resposta garantindo que seja sempre um array
+      let events = response.data.events || response.data.content || response.data || []
+
+      // Validação: garante que events é um array
+      if (!Array.isArray(events)) {
+        logger.warn('Resposta da API não é um array, ajustando...', events)
+        events = []
+      }
+
+      logger.info('📊 Events extracted from API:', {
+        total: events.length,
+        firstEventTitle: events[0]?.title || 'N/A',
+        uniqueTitles: new Set(events.map((e: any) => e.title)).size,
+      })
+
+      // Remove duplicatas baseado em propriedades únicas do evento
+      // (não apenas ID, pois eventos iguais podem ter IDs diferentes)
+      if (events.length > 0) {
+        const originalLength = events.length
+
+        // Cria uma chave única baseada nas propriedades que definem um evento
+        const createEventKey = (event: any) => {
+          const title = (event.title || '').trim().toLowerCase()
+          const date = event.startDate || ''
+          const location = (event.location || '').trim().toLowerCase()
+          return `${title}|${date}|${location}`
+        }
+
+        // Remove duplicatas mantendo apenas a primeira ocorrência
+        const seen = new Set<string>()
+        events = events.filter((event: any) => {
+          const key = createEventKey(event)
+          if (seen.has(key)) {
+            return false
+          }
+          seen.add(key)
+          return true
+        })
+
+        if (events.length !== originalLength) {
+          logger.warn('⚠️ Eventos duplicados removidos!', {
+            total: originalLength,
+            únicos: events.length,
+            removidos: originalLength - events.length,
+          })
+        }
+      }
+
+      logger.info('🎯 Final events after deduplication:', {
+        count: events.length,
+        titles: events.map((e: any) => e.title).slice(0, 5),
+      })
+
+      // Fallback: Se modo autenticado retornou poucos eventos únicos, complementa com públicos
+      const MIN_EVENTS = 5
+      if (!props.guestMode && events.length < MIN_EVENTS && !isLoadMore) {
+        logger.warn('⚠️ Poucos eventos únicos retornados, buscando eventos públicos para complementar...')
+
+        try {
+          // Busca eventos públicos para complementar
+          const publicResponse = await getPublicEventRecomendations(page.value, limit)
+          const publicEvents = publicResponse.data.events || publicResponse.data.content || publicResponse.data || []
+
+          if (Array.isArray(publicEvents) && publicEvents.length > 0) {
+            // Cria Set com chaves dos eventos já existentes
+            const existingKeys = new Set(
+              events.map((e: any) => {
+                const title = (e.title || '').trim().toLowerCase()
+                const date = e.startDate || ''
+                const location = (e.location || '').trim().toLowerCase()
+                return `${title}|${date}|${location}`
+              }),
+            )
+
+            // Filtra eventos públicos que não estão duplicados
+            const newPublicEvents = publicEvents.filter((event: any) => {
+              const title = (event.title || '').trim().toLowerCase()
+              const date = event.startDate || ''
+              const location = (event.location || '').trim().toLowerCase()
+              const key = `${title}|${date}|${location}`
+              return !existingKeys.has(key)
+            })
+
+            // Adiciona eventos públicos ao final (priorizando personalizados no topo)
+            events = [...events, ...newPublicEvents]
+
+            logger.info('✅ Eventos públicos adicionados:', {
+              personalizados: events.length - newPublicEvents.length,
+              públicos: newPublicEvents.length,
+              total: events.length,
+            })
+          }
+        } catch (error) {
+          logger.error('Erro ao buscar eventos públicos de fallback:', error)
+        }
+      }
 
       const mappedEvents = events.map((event: any) => mapEventToFeedItem(event))
 

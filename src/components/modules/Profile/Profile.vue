@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import type { NavItem } from '@/types/navigation'
-  import { computed, onMounted, reactive, ref, watch } from 'vue'
+  import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import { callApi } from '@/api'
@@ -14,6 +14,26 @@
   import { AuthService } from '@/services/auth'
   import { useEventsStore } from '@/stores/events'
 
+  // ── Constantes (evita magic numbers) ──
+  const CONFIG = {
+    MAX_FILE_SIZE_MB: 5,
+    AVATAR_OUTPUT_SIZE: 512,
+    CROP_CONTAINER_SIZE: 300,
+    EVENTS_DISPLAY_INCREMENT: 5,
+    MAX_NAME_LENGTH: 50,
+    MAX_USERNAME_LENGTH: 30,
+    MAX_BIO_LENGTH: 160,
+    MAX_LOCATION_LENGTH: 60,
+    SEARCH_DEBOUNCE_MS: 500,
+    MAX_SEARCH_RESULTS: 10,
+    MAX_SUGGESTED_INTERESTS: 20,
+  } as const
+
+  const SNACKBAR_COLORS = {
+    success: '#22c55e',
+    error: '#ef4444',
+  } as const
+
   const { t } = useI18n()
   const router = useRouter()
   const { loggedUser, updateUser } = useAuth()
@@ -25,12 +45,15 @@
   const uploadingAvatar = ref(false)
   const uploadingBanner = ref(false)
 
+  // ── Timeout refs (declarados aqui para cleanup no onUnmounted) ──
+  let interestsSearchTimeout: ReturnType<typeof setTimeout> | null = null
+
   // ── Snackbar ──
   const snackbarVisible = ref(false)
   const snackbarMessage = ref('')
-  const snackbarColor = ref('#22c55e')
+  const snackbarColor = ref<string>(SNACKBAR_COLORS.success)
 
-  function showSnackbar (message: string, color = '#22c55e') {
+  function showSnackbar (message: string, color: string = SNACKBAR_COLORS.success) {
     snackbarMessage.value = message
     snackbarColor.value = color
     if (snackbarVisible.value) {
@@ -103,6 +126,14 @@
     }
   })
 
+  // Cleanup para evitar memory leaks
+  onUnmounted(() => {
+    if (interestsSearchTimeout) {
+      clearTimeout(interestsSearchTimeout)
+      interestsSearchTimeout = null
+    }
+  })
+
   // ── User interests ──
   interface UserInterest {
     id: string
@@ -136,8 +167,8 @@
   const cropImageNatural = reactive({ width: 0, height: 0 })
   let pendingAvatarInput: HTMLInputElement | null = null
 
-  // Container = 300px, circle area inside
-  const CROP_CONTAINER = 300
+  // Container usa a constante
+  const CROP_CONTAINER = CONFIG.CROP_CONTAINER_SIZE
 
   // Base display size: image fits entirely inside the container (contain)
   function getBaseSize () {
@@ -412,7 +443,6 @@
   const isSearchingInterests = ref(false)
   const isSavingInterests = ref(false)
   const isLoadingSuggestions = ref(false)
-  let interestsSearchTimeout: ReturnType<typeof setTimeout> | null = null
 
   async function openInterestsModal () {
     // Cria cópia dos interesses atuais para trabalhar temporariamente
@@ -967,15 +997,15 @@
   <div class="profile-page-layout">
     <FeedTopHeader :user="user" />
 
-    <section class="layout-shell">
+    <section aria-label="Conteúdo do perfil" class="layout-shell">
       <FeedSidebarNav :active="activeNav" class="layout-sidebar" :items="navItems" @select="handleNavSelect" />
 
       <!-- Main Content -->
-      <main class="layout-main">
-        <!-- Breadcrumb -->
-        <div class="breadcrumb-nav">
-          <button class="breadcrumb-back" type="button" @click="handleBackNavigation">
-            <span class="back-icon">
+      <main class="layout-main" role="main">
+        <!-- Breadcrumb com acessibilidade -->
+        <nav aria-label="Navegação" class="breadcrumb-nav">
+          <button aria-label="Voltar para o feed" class="breadcrumb-back" type="button" @click="handleBackNavigation">
+            <span aria-hidden="true" class="back-icon">
               <svg
                 fill="none"
                 height="16"
@@ -989,7 +1019,7 @@
             </span>
             <span class="back-text">Voltar</span>
           </button>
-          <span class="breadcrumb-separator">
+          <span aria-hidden="true" class="breadcrumb-separator">
             <svg
               fill="none"
               height="14"
@@ -1002,7 +1032,7 @@
             </svg>
           </span>
           <span class="breadcrumb-current">{{ t('feed.nav.profile') }}</span>
-        </div>
+        </nav>
 
         <!-- Profile Header Card -->
         <div class="profile-card">
@@ -1023,111 +1053,130 @@
           >
 
           <div
+            :aria-label="hasBanner ? 'Imagem de capa do perfil' : 'Capa padrão do perfil'"
             class="cover-image"
             :class="{ 'no-banner': !hasBanner }"
+            role="img"
             :style="hasBanner ? { backgroundImage: `url(${user.banner})` } : {}"
           >
-            <div class="overlay" />
+            <div aria-hidden="true" class="overlay" />
             <button
+              :aria-label="uploadingBanner ? 'Enviando imagem de capa...' : 'Alterar imagem de capa'"
               class="cover-edit-btn"
               :disabled="uploadingBanner"
-              title="Alterar capa"
               @click="triggerBannerUpload"
             >
-              <i v-if="uploadingBanner" class="mdi mdi-loading mdi-spin" />
-              <i v-else class="mdi mdi-camera-outline" />
+              <i v-if="uploadingBanner" aria-hidden="true" class="mdi mdi-loading mdi-spin" />
+              <i v-else aria-hidden="true" class="mdi mdi-camera-outline" />
             </button>
           </div>
 
           <div class="profile-content">
             <div class="avatar-section">
-              <div class="avatar-wrapper" @click="triggerAvatarUpload">
+              <button
+                :aria-label="uploadingAvatar ? 'Enviando foto de perfil...' : 'Alterar foto de perfil'"
+                class="avatar-wrapper"
+                type="button"
+                @click="triggerAvatarUpload"
+              >
                 <!-- Avatar com imagem -->
-                <img v-if="hasAvatar" :alt="user.name" class="avatar-img" :src="user.avatar">
+                <img v-if="hasAvatar" :alt="`Foto de perfil de ${user.name}`" class="avatar-img" :src="user.avatar">
                 <!-- Avatar com iniciais (fallback) -->
                 <div
                   v-else
+                  :aria-label="`Avatar com iniciais: ${getInitials(user.name)}`"
                   class="avatar-img avatar-placeholder"
+                  role="img"
                   :style="{ backgroundColor: getAvatarColor(user.name) }"
                 >
                   {{ getInitials(user.name) }}
                 </div>
-                <div class="status-indicator" />
-                <div class="avatar-edit-overlay">
+                <div aria-label="Usuário online" class="status-indicator" role="status" />
+                <div aria-hidden="true" class="avatar-edit-overlay">
                   <i v-if="uploadingAvatar" class="mdi mdi-loading mdi-spin" />
                   <i v-else class="mdi mdi-camera-outline" />
                 </div>
-              </div>
+              </button>
 
               <div class="profile-actions-top">
-                <button class="edit-btn" @click="openEditModal">
-                  <i class="mdi mdi-pencil-outline" />
+                <button aria-label="Editar informações do perfil" class="edit-btn" type="button" @click="openEditModal">
+                  <i aria-hidden="true" class="mdi mdi-pencil-outline" />
                   Editar Perfil
                 </button>
-                <button class="share-btn" title="Compartilhar perfil">
-                  <i class="mdi mdi-share-variant-outline" />
+                <button aria-label="Compartilhar perfil" class="share-btn" type="button">
+                  <i aria-hidden="true" class="mdi mdi-share-variant-outline" />
                 </button>
               </div>
             </div>
 
-            <div class="header-info">
+            <header class="header-info">
               <h1>{{ user.name || 'Seu Nome' }}</h1>
               <span class="handle">{{ user.username || '@username' }}</span>
               <p v-if="user.bio" class="bio">{{ user.bio }}</p>
               <p v-else class="bio bio-placeholder">Adicione uma bio clicando em "Editar Perfil"</p>
 
               <!-- User Interests -->
-              <div v-if="userInterests.length > 0" class="interests-section">
-                <div class="interests-chips">
-                  <span v-for="interest in userInterests" :key="interest.id" class="interest-chip">
+              <div v-if="userInterests.length > 0" aria-label="Seus interesses" class="interests-section">
+                <ul class="interests-chips" role="list">
+                  <li v-for="interest in userInterests" :key="interest.id" class="interest-chip">
                     {{ interest.name }}
-                  </span>
-                </div>
+                  </li>
+                </ul>
               </div>
 
               <div class="meta-row">
                 <span v-if="user.location" class="meta-item">
-                  <i class="mdi mdi-map-marker-outline" />
+                  <i aria-hidden="true" class="mdi mdi-map-marker-outline" />
                   {{ user.location }}
                 </span>
                 <span class="meta-item">
-                  <i class="mdi mdi-calendar-outline" />
+                  <i aria-hidden="true" class="mdi mdi-calendar-outline" />
                   Entrou em {{ user.joined }}
                 </span>
               </div>
 
-              <div class="stats-row">
-                <button class="stat-item" type="button">
+              <div aria-label="Estatísticas do perfil" class="stats-row" role="group">
+                <button aria-label="Ver lista de seguidores" class="stat-item" type="button">
                   <span class="stat-value">{{ user.stats.followers }}</span>
                   <span class="stat-label">Seguidores</span>
                 </button>
-                <div class="stat-dot" />
-                <button class="stat-item" type="button">
+                <div aria-hidden="true" class="stat-dot" />
+                <button aria-label="Ver lista de quem você segue" class="stat-item" type="button">
                   <span class="stat-value">{{ user.stats.following }}</span>
                   <span class="stat-label">Seguindo</span>
                 </button>
               </div>
-            </div>
+            </header>
           </div>
         </div>
 
-        <!-- Tabs -->
-        <div class="content-tabs">
+        <!-- Tabs com acessibilidade -->
+        <div aria-label="Navegação do perfil" class="content-tabs" role="tablist">
           <button
             v-for="tab in tabs"
+            :id="`tab-${tab.id}`"
             :key="tab.id"
+            :aria-controls="`tabpanel-${tab.id}`"
+            :aria-selected="activeTab === tab.id"
             class="tab-btn"
             :class="{ active: activeTab === tab.id }"
+            role="tab"
             @click="activeTab = tab.id"
           >
-            <img v-if="tab.icon.startsWith('/')" alt="Icon" class="tab-icon-img" :src="tab.icon">
-            <i v-else class="mdi tab-icon" :class="tab.icon" />
+            <img
+              v-if="tab.icon.startsWith('/')"
+              :alt="''"
+              aria-hidden="true"
+              class="tab-icon-img"
+              :src="tab.icon"
+            >
+            <i v-else aria-hidden="true" class="mdi tab-icon" :class="tab.icon" />
             {{ tab.label }}
           </button>
         </div>
 
         <!-- Tab Content -->
-        <div class="tab-panel">
+        <div :id="`tabpanel-${activeTab}`" :aria-labelledby="`tab-${activeTab}`" class="tab-panel" role="tabpanel">
           <!-- Badges - Comentado para primeira versão -->
           <!--
           <div v-if="activeTab === 'badges'" class="badges-grid">
@@ -1616,12 +1665,62 @@
 </template>
 
 <style scoped>
+/* ═════════════════════════════════════════════════════
+   CSS Custom Properties - Design System
+   ═════════════════════════════════════════════════════ */
 .profile-page-layout {
+  /* Cores primárias */
+  --color-primary: #ff5fa6;
+  --color-primary-light: #ff7eb3;
+  --color-secondary: #ffba4b;
+  --color-accent-gradient: linear-gradient(135deg, var(--color-secondary), var(--color-primary));
+
+  /* Cores neutras */
+  --color-text-primary: #1a1c2e;
+  --color-text-secondary: #555b77;
+  --color-text-muted: #9aa0b8;
+  --color-border: rgba(0, 0, 0, 0.04);
+  --color-border-strong: #e0e2ed;
+
+  /* Cores de fundo */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #fafbfc;
+  --color-bg-gradient: linear-gradient(142.35deg, rgba(252, 162, 89, 0.05) -1.66%, rgba(255, 98, 159, 0.08) 100.44%);
+
+  /* Espaçamentos */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+
+  /* Border radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Sombras */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-primary: 0 4px 16px rgba(255, 95, 166, 0.25);
+
+  /* Transições */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+
+  /* Tipografia */
+  --font-family: 'Baloo Thambi 2', sans-serif;
+
+  /* Layout base */
   min-height: 100vh;
-  background: linear-gradient(142.35deg, rgba(252, 162, 89, 0.05) -1.66%, rgba(255, 98, 159, 0.08) 100.44%);
+  background: var(--color-bg-gradient);
   display: flex;
   flex-direction: column;
-  font-family: 'Baloo Thambi 2', sans-serif;
+  font-family: var(--font-family);
 }
 
 /* ── Layout Grid ── */
@@ -1639,7 +1738,12 @@
 .layout-sidebar {
   grid-area: sidebar;
   position: sticky;
-  top: 120px;
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  /* Fica grudado logo abaixo do header */
+  align-self: flex-start;
+  /* Garante que não estica verticalmente */
+  z-index: 100;
+  /* Abaixo do header (200) mas acima do conteúdo */
 }
 
 .layout-main {
@@ -1656,6 +1760,10 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  position: sticky;
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  align-self: flex-start;
+  z-index: 100;
 }
 
 /* ── Profile Card ── */
@@ -3511,42 +3619,154 @@
   color: #1a1c2e;
 }
 
-/* ── Responsive ── */
-@media (max-width: 1240px) {
-  .layout-shell {
-    grid-template-columns: 220px 1fr;
-    grid-template-areas: 'sidebar main';
-    width: min(100%, 960px);
-    padding: 0 2rem;
+/* ═════════════════════════════════════════════════════
+   RESPONSIVE - Mobile First Approach
+   Base styles = Mobile (< 480px)
+   Min-width queries progressivamente maiores
+   ═════════════════════════════════════════════════════ */
+
+/* ── BASE MOBILE STYLES (≤ 479px) ── */
+.layout-shell {
+  grid-template-columns: 1fr;
+  grid-template-areas: 'main';
+  padding: var(--spacing-sm);
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.layout-sidebar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  top: auto;
+  z-index: 1000;
+}
+
+.layout-extras {
+  display: none;
+}
+
+.profile-content {
+  padding: 0 0.75rem 0.75rem;
+  margin-top: -32px;
+}
+
+.avatar-img {
+  width: 64px;
+  height: 64px;
+}
+
+.cover-image {
+  height: 100px;
+}
+
+.header-info h1 {
+  font-size: 1.05rem;
+}
+
+.tab-btn {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.72rem;
+}
+
+.tab-icon {
+  display: none;
+}
+
+.edit-btn {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.78rem;
+}
+
+.breadcrumb-nav {
+  padding: 0.5rem 0.85rem;
+}
+
+.breadcrumb-back {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+}
+
+.back-text {
+  display: none;
+}
+
+.modal-container {
+  max-width: 100%;
+  border-radius: var(--radius-lg);
+}
+
+.liked-mini-cards-grid,
+.skeleton-grid-mini {
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.mini-card-banner {
+  height: 160px;
+}
+
+.show-more-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.badge-card {
+  padding: var(--spacing-md);
+}
+
+.badge-icon {
+  width: 44px;
+  height: 44px;
+  font-size: 1.3rem;
+}
+
+.content-tabs {
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.content-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.stats-row {
+  flex-wrap: wrap;
+}
+
+/* ── SMALL PHONES (480px+) ── */
+@media (min-width: 480px) {
+  .profile-content {
+    padding: 0 1rem 1rem;
+    margin-top: -32px;
   }
 
-  .layout-extras {
-    display: none;
+  .avatar-img {
+    width: 72px;
+    height: 72px;
+  }
+
+  .cover-image {
+    height: 120px;
+  }
+
+  .tab-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.78rem;
   }
 }
 
-@media (max-width: 960px) {
+/* ── TABLETS (≥ 640px) ── */
+@media (min-width: 640px) {
   .layout-shell {
-    grid-template-columns: 1fr;
-    grid-template-areas: 'main';
-    width: 100%;
-    padding: 1rem;
-    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    padding: var(--spacing-md);
   }
 
-  .layout-sidebar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    top: auto;
-    z-index: 1000;
-  }
-}
-
-@media (max-width: 640px) {
   .profile-content {
     padding: 0 1.25rem 1.25rem;
+    margin-top: -36px;
   }
 
   .avatar-img {
@@ -3562,159 +3782,128 @@
     height: 140px;
   }
 
-  .profile-content {
-    margin-top: -36px;
-  }
-
   .tab-btn {
     padding: 0.5rem 0.75rem;
     font-size: 0.82rem;
   }
 
   .tab-icon {
-    display: none;
+    display: inline-block;
   }
 
   .breadcrumb-nav {
-    padding: 0.5rem 0.85rem;
+    padding: 0.65rem 1.15rem;
   }
 
   .breadcrumb-back {
-    padding: 0.35rem 0.7rem;
-    font-size: 0.82rem;
+    padding: 0.45rem 0.9rem;
+    font-size: 0.88rem;
   }
 
   .back-text {
-    display: none;
-  }
-
-  .modal-container {
-    max-width: 100%;
-    border-radius: 16px;
-  }
-
-  .liked-events-grid {
-    gap: 1rem;
-  }
-
-  .liked-mini-cards-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 0.85rem;
-  }
-
-  .skeleton-grid-mini {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 0.85rem;
-  }
-
-  .content-tabs {
-    gap: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .content-tabs::-webkit-scrollbar {
-    display: none;
+    display: inline;
   }
 
   .header-info h1 {
     font-size: 1.2rem;
   }
 
-  .stats-row {
-    flex-wrap: wrap;
-  }
-}
-
-@media (max-width: 480px) {
-  .layout-shell {
-    padding: 0.5rem;
-    padding-bottom: 5rem;
-  }
-
-  .profile-content {
-    padding: 0 1rem 1rem;
-  }
-
-  .avatar-img {
-    width: 72px;
-    height: 72px;
-  }
-
-  .cover-image {
-    height: 120px;
-  }
-
-  .profile-content {
-    margin-top: -32px;
-  }
-
-  .edit-btn {
-    padding: 0.45rem 0.9rem;
-    font-size: 0.78rem;
-  }
-
-  .tab-btn {
-    padding: 0.4rem 0.6rem;
-    font-size: 0.78rem;
-  }
-
-  .badge-card {
-    padding: 1rem;
-  }
-
-  .badge-icon {
-    width: 44px;
-    height: 44px;
-    font-size: 1.3rem;
-  }
-
-  .liked-mini-cards-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-
+  .liked-mini-cards-grid,
   .skeleton-grid-mini {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-
-  .mini-card-banner {
-    height: 160px;
-  }
-
-  .show-more-btn {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-@media (max-width: 360px) {
-  .avatar-img {
-    width: 64px;
-    height: 64px;
-  }
-
-  .cover-image {
-    height: 100px;
-  }
-
-  .header-info h1 {
-    font-size: 1.05rem;
-  }
-
-  .tab-btn {
-    padding: 0.35rem 0.5rem;
-    font-size: 0.72rem;
-  }
-
-  .profile-content {
-    padding: 0 0.75rem 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.85rem;
   }
 
   .modal-container {
-    padding: 1rem;
+    max-width: 520px;
+    border-radius: var(--radius-xl);
+  }
+
+  .badge-card {
+    padding: 1.25rem;
+  }
+
+  .badge-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 1.5rem;
+  }
+
+  .show-more-btn {
+    width: auto;
+  }
+
+  .stats-row {
+    flex-wrap: nowrap;
+  }
+}
+
+/* ── SMALL DESKTOP (≥ 960px) ── */
+@media (min-width: 960px) {
+  .layout-shell {
+    grid-template-columns: 220px 1fr;
+    grid-template-areas: 'sidebar main';
+    width: min(100%, 960px);
+    padding: 0 var(--spacing-xl);
+  }
+
+  .layout-sidebar {
+    position: sticky;
+    top: calc(1rem + env(safe-area-inset-top, 0px));
+    /* Consistente com o desktop */
+    bottom: auto;
+    left: auto;
+    right: auto;
+    align-self: flex-start;
+    z-index: 100;
+  }
+
+  .profile-content {
+    padding: 0 var(--spacing-xl) var(--spacing-xl);
+    margin-top: -48px;
+  }
+
+  .avatar-img {
+    width: 96px;
+    height: 96px;
+  }
+
+  .profile-actions-top {
+    padding-top: 56px;
+  }
+
+  .cover-image {
+    height: 180px;
+  }
+
+  .tab-btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .header-info h1 {
+    font-size: 1.4rem;
+  }
+
+  .liked-mini-cards-grid,
+  .skeleton-grid-mini {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+}
+
+/* ── LARGE DESKTOP (≥ 1240px) ── */
+@media (min-width: 1240px) {
+  .layout-shell {
+    grid-template-columns: 240px minmax(0, 720px) 320px;
+    grid-template-areas: 'sidebar main extras';
+    column-gap: var(--spacing-xl);
+    width: min(100%, 1280px);
+    padding: 0;
+  }
+
+  .layout-extras {
+    display: flex;
   }
 }
 
@@ -3864,5 +4053,159 @@
 .crop-modal-footer .btn-cancel:hover {
   color: #fff;
   border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ═════════════════════════════════════════════════════
+   MICRO-INTERAÇÕES E ANIMAÇÕES
+   ═════════════════════════════════════════════════════ */
+
+/* Animação de pulso para indicador online */
+@keyframes pulse-online {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.15);
+    opacity: 0.8;
+  }
+}
+
+.status-indicator {
+  animation: pulse-online 2s ease-in-out infinite;
+}
+
+/* Efeito de hover mais suave nos cards */
+.profile-card,
+.sidebar-card,
+.mini-event-card {
+  transition: transform var(--transition-slow), box-shadow var(--transition-slow);
+}
+
+/* Focus visible para acessibilidade */
+.tab-btn:focus-visible,
+.edit-btn:focus-visible,
+.share-btn:focus-visible,
+.stat-item:focus-visible,
+.avatar-wrapper:focus-visible,
+btn:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Transição suave para interesse chips */
+.interest-chip,
+.tag {
+  transition: all var(--transition-normal);
+}
+
+.interest-chip:hover,
+.tag:hover {
+  transform: translateY(-1px);
+}
+
+/* Animação de entrada para conteúdo carregado */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tab-panel>* {
+  animation: fade-in-up 0.4s ease-out;
+}
+
+/* Ripple effect para botões (usando pseudo-elemento) */
+.edit-btn,
+.share-btn,
+.show-more-btn,
+.empty-action {
+  position: relative;
+  overflow: hidden;
+}
+
+.edit-btn::after,
+.share-btn::after,
+.show-more-btn::after,
+.empty-action::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform 0.5s, opacity 0.3s;
+}
+
+.edit-btn:active::after,
+.share-btn:active::after,
+.show-more-btn:active::after,
+.empty-action:active::after {
+  transform: scale(2.5);
+  opacity: 1;
+  transition: transform 0s;
+}
+
+/* Skeleton shimmer melhorado */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-mini-banner,
+.skeleton-line {
+  background: linear-gradient(90deg,
+      #f0f0f0 0%,
+      #f8f8f8 25%,
+      #f0f0f0 50%,
+      #f8f8f8 75%,
+      #f0f0f0 100%);
+  background-size: 400% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Reduced motion para acessibilidade */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .status-indicator {
+    animation: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+
+  .profile-card,
+  .sidebar-card,
+  .mini-event-card {
+    border: 2px solid currentColor;
+  }
+
+  .tab-btn.active {
+    border: 2px solid var(--color-text-primary);
+  }
 }
 </style>
