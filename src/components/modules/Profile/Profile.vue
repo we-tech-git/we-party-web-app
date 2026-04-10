@@ -4,7 +4,7 @@
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import { callApi } from '@/api'
-  import { addUserInterest, getInterests, removeUserInterest, searchInterestsByName } from '@/api/interest'
+  import { addUserInterest, getInterests, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
   import { getUserInterests, getUserProfile, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
   import AppFooter from '@/components/AppFooter.vue'
   import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
@@ -444,6 +444,12 @@
   const isSavingInterests = ref(false)
   const isLoadingSuggestions = ref(false)
 
+  // ── Request New Interests Modal ──
+  const showRequestModal = ref(false)
+  const newInterestName = ref('')
+  const pendingInterests = ref<string[]>([])
+  const isSubmittingRequest = ref(false)
+
   async function openInterestsModal () {
     // Cria cópia dos interesses atuais para trabalhar temporariamente
     tempUserInterests.value = [...userInterests.value]
@@ -593,25 +599,75 @@
   // ── Remove interesse diretamente (usado no botão X da sidebar) ──
   async function removeInterestDirectly (interestId: string) {
     try {
-      console.log('🗑️ Tentando remover interesse:', interestId)
-
-      // Confirmação antes de remover
-      if (!confirm('Deseja realmente remover este interesse?')) {
-        console.log('❌ Remoção cancelada pelo usuário')
-        return
-      }
-
-      console.log('📡 Fazendo requisição para remover interesse...')
       await removeUserInterest(interestId)
 
       // Remove da lista local
       userInterests.value = userInterests.value.filter(i => i.id !== interestId)
 
-      console.log('✅ Interesse removido com sucesso')
       showSnackbar('Interesse removido com sucesso!', '#22c55e')
     } catch (error) {
       console.error('❌ Erro ao remover interesse:', error)
       showSnackbar('Erro ao remover interesse', '#ef4444')
+    }
+  }
+
+  // ── Request New Interests ──
+  function openRequestModal () {
+    newInterestName.value = interestsSearchQuery.value.trim()
+    pendingInterests.value = []
+    showRequestModal.value = true
+  }
+
+  function closeRequestModal () {
+    showRequestModal.value = false
+    newInterestName.value = ''
+    pendingInterests.value = []
+    isSubmittingRequest.value = false
+  }
+
+  function addToPending () {
+    const name = newInterestName.value.trim()
+    if (name && !pendingInterests.value.includes(name)) {
+      pendingInterests.value.push(name)
+      newInterestName.value = ''
+    }
+  }
+
+  function removePending (index: number) {
+    pendingInterests.value.splice(index, 1)
+  }
+
+  async function submitNewInterestRequest () {
+    // Adiciona o que estiver no input se o usuário esqueceu de clicar no +
+    addToPending()
+
+    if (pendingInterests.value.length === 0) {
+      showSnackbar('Adicione pelo menos um interesse', '#ef4444')
+      return
+    }
+
+    try {
+      isSubmittingRequest.value = true
+
+      // Envia a solicitação para o backend
+      await requestNewInterests([...pendingInterests.value])
+
+      // Limpa e fecha o modal
+      pendingInterests.value = []
+      closeRequestModal()
+
+      // Mostra mensagem de sucesso
+      showSnackbar('Solicitação enviada com sucesso! Aguarde aprovação. ✅', '#22c55e')
+
+      // Limpa a busca
+      interestsSearchQuery.value = ''
+      searchedInterests.value = []
+    } catch (error: any) {
+      console.error('❌ Erro ao solicitar novo interesse:', error)
+      const errorMessage = error?.response?.data?.message || 'Erro ao enviar solicitação. Tente novamente.'
+      showSnackbar(errorMessage, '#ef4444')
+    } finally {
+      isSubmittingRequest.value = false
     }
   }
 
@@ -1604,6 +1660,10 @@
               >
                 <i class="mdi mdi-emoticon-sad-outline" />
                 <p>Nenhum interesse encontrado</p>
+                <button class="request-interest-btn" @click="openRequestModal">
+                  <i class="mdi mdi-plus-circle" />
+                  Solicitar novo interesse
+                </button>
               </div>
 
               <!-- Sugestões de interesses (quando não há busca ativa) -->
@@ -1652,6 +1712,68 @@
               <button class="btn-done" :disabled="isSavingInterests" @click="saveInterestsChanges">
                 <i v-if="isSavingInterests" class="mdi mdi-loading mdi-spin" />
                 {{ isSavingInterests ? 'Salvando...' : 'Concluído' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Request New Interests Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showRequestModal" class="modal-overlay" @click.self="closeRequestModal">
+          <div class="request-modal-container">
+            <div class="request-modal-header">
+              <h2>Solicitar Novo Interesse</h2>
+              <button class="modal-close" @click="closeRequestModal">
+                <i class="mdi mdi-close" />
+              </button>
+            </div>
+
+            <div class="request-modal-body">
+              <p class="request-description">
+                Não encontrou o interesse que procura? Solicite e nossa equipe irá avaliar.
+              </p>
+
+              <div class="input-wrapper">
+                <label class="input-label" for="newInterest">Nome do interesse</label>
+                <div class="input-group">
+                  <input
+                    id="newInterest"
+                    v-model="newInterestName"
+                    class="request-input"
+                    placeholder="Ex: Rock Alternativo, Jazz"
+                    type="text"
+                    @keyup.enter="addToPending"
+                  >
+                  <button class="add-pending-btn" type="button" @click="addToPending">
+                    <i class="mdi mdi-plus" />
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="pendingInterests.length > 0" class="pending-list">
+                <span v-for="(item, index) in pendingInterests" :key="index" class="pending-chip">
+                  {{ item }}
+                  <button class="remove-pending-btn" type="button" @click="removePending(index)">
+                    <i class="mdi mdi-close" />
+                  </button>
+                </span>
+              </div>
+            </div>
+
+            <div class="request-modal-footer">
+              <button class="btn-cancel" @click="closeRequestModal">
+                Cancelar
+              </button>
+              <button
+                class="btn-submit"
+                :disabled="(pendingInterests.length === 0 && !newInterestName.trim()) || isSubmittingRequest"
+                @click="submitNewInterestRequest"
+              >
+                <i v-if="isSubmittingRequest" class="mdi mdi-loading mdi-spin" />
+                {{ isSubmittingRequest ? 'Enviando...' : 'Enviar Solicitação' }}
               </button>
             </div>
           </div>
@@ -3111,8 +3233,35 @@
 }
 
 .no-results p {
-  margin: 0;
+  margin: 0 0 1rem 0;
   font-size: 0.95rem;
+}
+
+.request-interest-btn {
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  color: white;
+  font-family: 'Baloo Thambi 2', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(255, 95, 166, 0.2);
+}
+
+.request-interest-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.3);
+}
+
+.request-interest-btn i {
+  font-size: 1.2rem;
 }
 
 .suggestions-section {
@@ -4207,5 +4356,171 @@ a:focus-visible {
   .tab-btn.active {
     border: 2px solid var(--color-text-primary);
   }
+}
+
+/* ── Request New Interests Modal ── */
+.request-modal-container {
+  background: white;
+  border-radius: 20px;
+  width: min(480px, 90vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.request-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.request-modal-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #1a1c2e;
+  font-weight: 700;
+}
+
+.request-modal-body {
+  padding: 2rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.request-description {
+  color: #555b77;
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.input-wrapper {
+  margin-bottom: 1.5rem;
+}
+
+.input-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a1c2e;
+  margin-bottom: 0.5rem;
+}
+
+.input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.request-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-family: 'Baloo Thambi 2', sans-serif;
+  transition: all 0.2s;
+}
+
+.request-input:focus {
+  outline: none;
+  border-color: #ff5fa6;
+  box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
+}
+
+.add-pending-btn {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.add-pending-btn:hover {
+  transform: scale(1.05);
+}
+
+.pending-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pending-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.1), rgba(255, 95, 166, 0.1));
+  border-radius: 20px;
+  font-size: 0.9rem;
+  color: #1a1c2e;
+  font-weight: 500;
+}
+
+.remove-pending-btn {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.remove-pending-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  transform: scale(1.1);
+}
+
+.request-modal-footer {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.btn-submit {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  color: white;
+  font-family: 'Baloo Thambi 2', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.btn-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.3);
+}
+
+.btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
