@@ -123,7 +123,7 @@
   })
 
   const eventImages = computed(() => {
-    if (!props.eventData?.images || props.eventData.images.length === 0) {
+    if (!Array.isArray(props.eventData?.images) || props.eventData.images.length === 0) {
       return { desktop: '', mobile: '' }
     }
 

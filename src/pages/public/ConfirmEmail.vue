@@ -112,16 +112,19 @@
     const pastedText = event.clipboardData?.getData('text') || ''
 
     // Extrai apenas os dígitos do texto colado
-    const digits = pastedText.replace(/\D/g, '').split('')
+    const digits: string[] = pastedText.replace(/\D/g, '').split('')
 
     // Distribui os dígitos a partir do índice atual
     for (let i = 0; i < Math.min(digits.length, 6 - index); i++) {
-      pinDigits.value[index + i] = digits[i]
+      const digit = digits[i]
+      if (digit !== undefined) {
+        pinDigits.value[index + i] = digit
+      }
     }
 
     // Foca no próximo input vazio ou no último
-    const nextEmptyIndex = pinDigits.value.findIndex((d) => d === '', index)
-    const focusIndex = nextEmptyIndex !== -1 ? nextEmptyIndex : 5
+    const nextEmptyIndex = pinDigits.value.indexOf('')
+    const focusIndex = nextEmptyIndex === -1 ? 5 : nextEmptyIndex
     nextTick(() => {
       pinInputs.value[focusIndex]?.focus()
     })
@@ -240,7 +243,7 @@
     const emailFromStorage = localStorage?.getItem(STORAGE_KEYS.NEW_CREATED_USER)
 
     // Garante string vazia se falhar
-    userEmail.value = JSON.parse(emailFromStorage || '""')
+    userEmail.value = JSON.parse(emailFromStorage || '""') || ''
 
     nextTick(() => {
       if (pinInputs.value[0]) {
