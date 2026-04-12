@@ -52,18 +52,13 @@
 
 <style scoped>
 .feed-trends {
-  position: sticky;
-  top: var(--feed-sticky-offset, 120px);
-  display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  padding: 0;
+  padding: 0 0 0 20px;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   min-width: 280px;
-  margin-left: clamp(1rem, 4vw, 6rem);
-
 }
 
 .head h2 {

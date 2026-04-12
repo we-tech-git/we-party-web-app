@@ -102,21 +102,24 @@
         <template v-else>
           <v-menu location="bottom" transition="slide-y-transition">
             <template #activator="{ props: menuProps }">
-              <img
-                v-if="user.avatar"
-                v-bind="menuProps"
-                :alt="user.name"
-                class="avatar"
-                loading="lazy"
-                :src="user.avatar"
-              >
-              <div
-                v-else
-                v-bind="menuProps"
-                class="avatar avatar-placeholder"
-                :style="{ backgroundColor: getAvatarColor(user.name) }"
-              >
-                {{ getInitial(user.name) }}
+              <div class="display-user-header">
+                <img
+                  v-if="user.avatar"
+                  v-bind="menuProps"
+                  :alt="user.name"
+                  class="avatar"
+                  loading="lazy"
+                  :src="user.avatar"
+                >
+                <div
+                  v-else
+                  v-bind="menuProps"
+                  class="avatar avatar-placeholder"
+                  :style="{ backgroundColor: getAvatarColor(user.name) }"
+                >
+                  {{ getInitial(user.name) }}
+                </div>
+                <p>Bem vindo, <br> {{ user.name }}</p>
               </div>
             </template>
 
@@ -194,25 +197,38 @@
 .feed-top-header {
   box-sizing: border-box;
   width: 100%;
-  padding: calc(.7rem + env(safe-area-inset-top, 0px)) 0 1.6rem;
-  position: sticky;
+  padding: 15px 0;
   top: 0;
   z-index: 200;
   background: rgba(255, 245, 247, 0.85);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  margin-bottom: 40px;
+}
+
+.display-user-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.display-user-header p {
+  font-weight: 700;
+  font-size: 14px;
 }
 
 .header-inner {
+  grid-template-columns: minmax(180px, 250px) 1fr minmax(200px, 250px);
+  grid-template-areas: 'sidebar main trends';
+  display: grid;
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   max-width: 1280px;
   margin: 0 auto;
   width: 100%;
   padding: 0 1rem;
+  align-items: center;
 }
 
 .brand-wrapper {
@@ -226,11 +242,12 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  margin: 0 auto;
 }
 
 .brand-logo-img {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
 }
 
@@ -267,7 +284,7 @@
 .brand {
   font-family: "Baloo Thambi 2", serif;
   font-weight: 800;
-  font-size: 2.8rem;
+  font-size: 2rem;
   background: linear-gradient(90deg, #ffba4b 0%, #ff5fa6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -286,7 +303,7 @@
 .user-summary {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  /* gap: 1.25rem; */
   flex-shrink: 0;
   padding: 0.5rem 0.75rem 0.5rem 1.25rem;
   background: linear-gradient(135deg, rgba(255, 186, 75, 0.281) 0%, rgba(255, 95, 167, 0.308) 100%);

@@ -1,4 +1,5 @@
 ﻿<script setup lang="ts">
+  import type { FeedItem } from '@/stores/events'
   import { computed, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import { useGuestMode } from '@/composables/useGuestMode'
@@ -14,6 +15,7 @@
     title: string
     description: string
     schedule: string
+    eventData: FeedItem
     location?: string
     confirmed: number
     interested: number
@@ -120,6 +122,34 @@
     return avatarColors[Math.abs(hash % avatarColors.length)]
   })
 
+  const eventImages = computed(() => {
+    if (!Array.isArray(props.eventData?.images) || props.eventData.images.length === 0) {
+      return { desktop: '', mobile: '' }
+    }
+
+    const images = props.eventData.images
+
+    // Desktop: melhor imagem 16_9 (maior resolução)
+    const landscapeImages = images
+      .filter(img => img.ratio === '16_9')
+      .sort((a, b) => b.width - a.width)
+
+    const desktopImage = landscapeImages[0]?.url || ''
+
+    // Mobile: preferir 3_2 (proporção mais vertical), senão usar a menor 16_9
+    const verticalImages = images.filter(img => img.ratio === '3_2')
+    const mobileImages = verticalImages.length > 0
+      ? verticalImages.sort((a, b) => b.width - a.width)
+      : landscapeImages.reverse()
+
+    const mobileImage = mobileImages[0]?.url || desktopImage
+
+    return {
+      desktop: desktopImage,
+      mobile: mobileImage,
+    }
+  })
+
   const shareStore = useShareStore()
 
   const showComments = ref(false)
@@ -183,11 +213,11 @@
     <figure class="media">
       <!-- Banner Image -->
       <img
-        v-if="bannerSrc"
+        v-if="eventImages.desktop || bannerSrc"
         :alt="title"
         class="banner"
         loading="lazy"
-        :src="bannerSrc"
+        :src="eventImages.desktop || bannerSrc"
       >
       <div v-else class="banner-placeholder">
         <i class="mdi mdi-image-off-outline" />
@@ -270,77 +300,70 @@
       <!-- Main overlay content -->
       <figcaption class="overlay">
 
-        <!-- Title -->
-        <h3 class="title">{{ title }}</h3>
+        <div class="container-main-card-info">
+          <!-- Title -->
+          <h3 class="title">{{ title }}</h3>
 
-        <!-- Interest tags -->
-        <div v-if="visibleInterestTags.length > 0" class="interest-tags">
-          <span
-            v-for="tag in visibleInterestTags"
-            :key="tag"
-            class="interest-tag"
-            :class="{ matched: isMatchedInterest(tag) }"
-          >{{ tag }}</span>
-          <span v-if="overflowCount > 0" class="interest-tag more">+{{ overflowCount }}</span>
-        </div>
+          <div class="container-card-info">
+            <!-- Interest tags -->
+            <div v-if="visibleInterestTags.length > 0" class="interest-tags">
+              <span
+                v-for="tag in visibleInterestTags"
+                :key="tag"
+                class="interest-tag"
+                :class="{ matched: isMatchedInterest(tag) }"
+              >{{ tag }}</span>
+              <span v-if="overflowCount > 0" class="interest-tag more">+{{ overflowCount }}</span>
+            </div>
 
-        <!-- Date + Location pill -->
-        <div class="meta-wrapper">
-          <!-- Calendar icon -->
-          <svg
-            fill="none"
-            height="13"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-            width="13"
-          >
-            <rect
-              height="18"
-              rx="2"
-              ry="2"
-              width="18"
-              x="3"
-              y="4"
-            />
-            <line x1="16" x2="16" y1="2" y2="6" />
-            <line x1="8" x2="8" y1="2" y2="6" />
-            <line x1="3" x2="21" y1="10" y2="10" />
-          </svg>
-          <span class="schedule">{{ schedule }}</span>
-          <template v-if="location">
-            <span class="meta-sep">Â·</span>
-            <!-- Location pin icon -->
-            <svg
-              fill="none"
-              height="12"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-              width="12"
-            >
-              <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-            <span class="location">{{ location }}</span>
-          </template>
-        </div>
+            <!-- Date + Location pill -->
+            <div class="meta-wrapper">
+              <!-- Calendar icon -->
+              <svg
+                fill="none"
+                height="13"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="13"
+              >
+                <rect
+                  height="18"
+                  rx="2"
+                  ry="2"
+                  width="18"
+                  x="3"
+                  y="4"
+                />
+                <line x1="16" x2="16" y1="2" y2="6" />
+                <line x1="8" x2="8" y1="2" y2="6" />
+                <line x1="3" x2="21" y1="10" y2="10" />
+              </svg>
+              <span class="schedule">{{ schedule }}</span>
+            </div>
 
-        <!-- Source URL Button -->
-        <div v-if="sourceUrl" class="source-url-container">
-          <button
-            class="source-url-btn"
-            title="Ver página original do evento"
-            type="button"
-            @click.stop="openSourceUrl"
-          >
-            <i class="mdi mdi-open-in-new" />
-            <span>Ver mais detalhes</span>
-          </button>
+            <div class="meta-wrapper">
+              <template v-if="location">
+                <!-- Location pin icon -->
+                <svg
+                  fill="none"
+                  height="12"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="12"
+                >
+                  <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <span class="location">{{ location }}</span>
+              </template>
+            </div>
+          </div>
         </div>
 
         <!-- Footer: stats + actions -->
@@ -503,6 +526,20 @@
 </style>
 
 <style scoped>
+.container-main-card-info {
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas: 'sidebar main trends';
+  display: grid;
+  align-items: end;
+}
+
+.container-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0 0 0 auto;
+}
+
 /* ─── CSS variable defaults ─────────────────────────────────────────────── */
 .feed-card {
   --accent: #ff5fa6;
@@ -598,6 +635,8 @@
 .media {
   position: relative;
   margin: 0;
+  /* Garante altura mínima para evitar colapso */
+  min-height: 380px;
   height: 100%;
   border-radius: 22px;
   overflow: hidden;
@@ -861,7 +900,11 @@
   line-height: 1.1;
   font-weight: 800;
   letter-spacing: -0.015em;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.65);
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* ─── Interest Tags ──────────────────────────────────────────────────────── */
@@ -870,6 +913,7 @@
   flex-wrap: wrap;
   gap: 0.3rem;
   margin-top: 0.35rem;
+  justify-content: end;
 }
 
 .interest-tag {
@@ -912,18 +956,15 @@
 
 /* ─── Meta pill ──────────────────────────────────────────────────────────── */
 .meta-wrapper {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: nowrap;
+  display: flex;
   gap: 0.4rem;
   padding: 0.32rem 0.75rem;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.09);
   backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  align-self: flex-start;
-  max-width: 100%;
   overflow: hidden;
+  align-content: flex-end;
 }
 
 @media (max-width: 768px) {
@@ -1273,25 +1314,69 @@
 /* ─── Banner Placeholder ─────────────────────────────────────────────────── */
 .banner-placeholder {
   width: 100%;
-  height: 100%;
+  /* Garante a mesma altura do banner para evitar colapso do card */
+  height: clamp(380px, 42vw, 520px);
+  min-height: 380px;
+  /* Altura mínima garantida */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
-  color: #999;
+  background: linear-gradient(135deg, #1a1d35 0%, #0e1428 100%);
+  color: rgba(255, 255, 255, 0.3);
+  /* Garante que ocupe o espaço esperado */
+  flex-shrink: 0;
 }
 
 .banner-placeholder i {
   font-size: 3rem;
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 .banner-placeholder span {
   font-size: 0.9rem;
   font-weight: 600;
-  opacity: 0.7;
+  opacity: 0.5;
+}
+
+/* ─── Banner Placeholder Responsive ──────────────────────────────────────── */
+@media (max-width: 640px) {
+  .banner-placeholder {
+    height: clamp(300px, 76vw, 400px);
+    min-height: 300px;
+  }
+
+  .banner-placeholder i {
+    font-size: 2.5rem;
+  }
+
+  .banner-placeholder span {
+    font-size: 0.8rem;
+  }
+
+  .media {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .banner-placeholder {
+    height: clamp(260px, 70vw, 340px);
+    min-height: 260px;
+  }
+
+  .banner-placeholder i {
+    font-size: 2rem;
+  }
+
+  .banner-placeholder span {
+    font-size: 0.75rem;
+  }
+
+  .media {
+    min-height: 260px;
+  }
 }
 
 /* ─── Source URL Container ───────────────────────────────────────────────── */

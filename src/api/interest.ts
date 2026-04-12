@@ -52,8 +52,13 @@ export function addUserInterest (interestId: string) {
   return callApi('POST', '/users/interest', body, true)
 }
 
+/**
+ * Remove um interesse do usuário logado.
+ * Rota autenticada.
+ * @param interestId - O ID do interesse a ser removido.
+ */
 export function removeUserInterest (interestId: string) {
-  return callApi('DELETE', `/users/interest/${interestId}`, '', true)
+  return callApi('DELETE', `/users/interest/${interestId}`, undefined, true)
 }
 
 /**
