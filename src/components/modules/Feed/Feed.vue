@@ -917,18 +917,6 @@
             </button>
           </label>
 
-          <nav aria-label="Seções do feed" class="tabs">
-            <button
-              v-for="tab in tabs"
-              :key="tab.id"
-              :class="{ active: activeTab === tab.id }"
-              type="button"
-              @click="selectTab(tab.id)"
-            >
-              {{ tab.label }}
-            </button>
-          </nav>
-
           <Transition name="filter-expand">
             <div v-if="filterOpen" class="filter-panel">
               <div class="filter-section">
@@ -1142,6 +1130,18 @@
           </span>
         </div>
 
+        <nav aria-label="Seções do feed" class="tabs">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            :class="{ active: activeTab === tab.id }"
+            type="button"
+            @click="selectTab(tab.id)"
+          >
+            {{ tab.label }}
+          </button>
+        </nav>
+
         <div v-if="loading" class="loading-state">
           <v-progress-circular color="#ff5fa6" indeterminate size="64" />
         </div>
@@ -1154,6 +1154,7 @@
             :comments-count="item.commentsCount"
             :confirmed="item.confirmed"
             :description="item.description"
+            :event-data="item"
             :guest-mode="props.guestMode"
             :highlight="activeNav === 'top-events'"
             :host-avatar="item.hostAvatar"
@@ -1232,9 +1233,9 @@
 .feed-shell {
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: 240px minmax(0, 720px) 320px;
+  grid-template-columns: minmax(180px, 250px) 1fr minmax(200px, 280px);
   grid-template-areas: 'sidebar main trends';
-  column-gap: 2rem;
+  column-gap: 1rem;
   row-gap: 0;
   width: min(100%, 1280px);
   margin: 0 auto 3.5rem;
@@ -1256,7 +1257,6 @@
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
-  padding-top: 1.75rem;
 }
 
 .feed-trends {
@@ -1271,10 +1271,10 @@
   width: 100%;
   max-width: 810px;
   margin: 0 auto;
-  padding: 0.75rem 0.5rem 1rem;
-  background: linear-gradient(180deg, rgba(249, 249, 255, 0.92) 0%, rgba(255, 255, 255, 0.92) 100%);
-  backdrop-filter: blur(8px);
-  border-radius: 24px;
+  /* padding: 0.75rem 0.5rem 1rem; */
+  /* background: linear-gradient(180deg, rgba(249, 249, 255, 0.92) 0%, rgba(255, 255, 255, 0.92) 100%); */
+  /* backdrop-filter: blur(8px); */
+  /* border-radius: 24px; */
 }
 
 @media (max-width: 768px) {

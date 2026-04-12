@@ -105,6 +105,35 @@
     }
   }
 
+  function handlePaste (index: number, event: ClipboardEvent) {
+    event.preventDefault()
+
+    // Extrai o texto colado
+    const pastedText = event.clipboardData?.getData('text') || ''
+
+    // Extrai apenas os dígitos do texto colado
+    const digits = pastedText.replace(/\D/g, '').split('')
+
+    // Distribui os dígitos a partir do índice atual
+    for (let i = 0; i < Math.min(digits.length, 6 - index); i++) {
+      pinDigits.value[index + i] = digits[i]
+    }
+
+    // Foca no próximo input vazio ou no último
+    const nextEmptyIndex = pinDigits.value.findIndex((d) => d === '', index)
+    const focusIndex = nextEmptyIndex !== -1 ? nextEmptyIndex : 5
+    nextTick(() => {
+      pinInputs.value[focusIndex]?.focus()
+    })
+
+    // Verifica se o PIN está completo
+    if (isPinComplete.value) {
+      setTimeout(() => {
+        verifyPin()
+      }, 200)
+    }
+  }
+
   async function verifyPin () {
     if (!isPinComplete.value || isVerifying.value) return
 
@@ -163,7 +192,7 @@
     try {
       // Tenta enviar. Se o email não existir, o backend DEVE retornar erro (400 ou 404)
       const response = await reqeustResendPin(userEmail.value)
-      console.log('Resend response:', response)
+      // console.log('Resend response:', response)
 
       // Se chegamos aqui, o email existe e o PIN foi enviado!
       showSnackbar(t('confirmEmail.pinSent'), '#22c55e')
@@ -228,8 +257,6 @@
     } else {
       showSnackbar('Email não identificado.', '#ef4444')
     }
-
-    console.log('🚀 Tela carregada para:', userEmail.value)
   })
 </script>
 
@@ -284,6 +311,7 @@
               type="text"
               @input="handlePinInput(index, $event)"
               @keydown="handleKeyDown(index, $event)"
+              @paste="handlePaste(index, $event)"
             >
           </div>
           <p class="pin-hint">{{ $t('confirmEmail.pinHint') }}</p>

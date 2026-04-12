@@ -16,11 +16,9 @@
 
   function handleLogout () {
     logout()
-    console.log('🚪 Fazendo logout...')
   }
 
   onMounted(() => {
-    console.log('🔍 Página de teste carregada')
     debugAuth()
   })
 </script>

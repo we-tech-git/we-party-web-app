@@ -91,17 +91,11 @@
 
 <style scoped>
 .feed-sidebar {
-  position: sticky;
-  top: var(--feed-sticky-offset, 120px);
-  display: flex;
   flex-direction: column;
   gap: 2rem;
-  padding: 1.75rem 1.5rem 2rem;
+  padding: 0 20px 0 0;
   border-radius: 32px;
-  /* background: #ffffff; */
-  /* box-shadow: 0 20px 60px rgba(20, 27, 68, 0.12); */
   min-height: 540px;
-
 }
 
 ul {

@@ -113,7 +113,6 @@
       errorMessage.value = ''
 
       const response = await getUserRecomendations()
-      console.log('📥 Resposta de recomendações:', response)
 
       // Tenta extrair os usuários de diferentes estruturas de resposta
       let userData: any[] = []
@@ -126,8 +125,6 @@
       } else if (Array.isArray(response?.data)) {
         userData = response.data
       }
-
-      console.log('👥 Usuários extraídos:', userData)
 
       // Mapeia para o formato esperado
       users.value = userData.map((u: any) => ({
@@ -170,9 +167,7 @@
       hasError.value = false
       errorMessage.value = ''
 
-      console.log('🔍 Buscando usuários com query:', query)
       const response = await searchUsers(query.trim())
-      console.log('📥 Resposta da busca:', response)
 
       // Tenta extrair os usuários
       let userData: any[] = []
