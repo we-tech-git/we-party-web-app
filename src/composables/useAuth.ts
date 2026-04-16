@@ -120,11 +120,15 @@ export function useAuth () {
 /**
  * Guards de navegação para uso no router
  */
-export function privateRouteGuard () {
+export function privateRouteGuard (path?: string) {
   const authenticated = AuthService.isAuthenticated()
   const user = AuthService.getUser()
 
   if (!authenticated) {
+    // Se está tentando acessar o feed privado sem login, redireciona para explore público
+    if (path?.includes('/private/feed')) {
+      return '/public/explore'
+    }
     return '/public/Login'
   }
 

@@ -38,7 +38,7 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   // Verifica se é uma rota privada
   if (to.path.startsWith('/private')) {
-    const canAccess = privateRouteGuard()
+    const canAccess = privateRouteGuard(to.path)
     if (typeof canAccess === 'string') {
       next(canAccess)
       return

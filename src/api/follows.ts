@@ -1,6 +1,6 @@
 import type { User } from '@/components/modules/AddFriends/AddFriends.vue'
-import { callApi } from './index'
 import { logger } from '@/utils/logger'
+import { callApi } from './index'
 
 export async function requestFollowUser (user: User) {
   try {

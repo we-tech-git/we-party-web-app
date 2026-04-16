@@ -1,207 +1,210 @@
 ﻿<script setup lang="ts">
-  import type { FeedItem } from '@/stores/events'
-  import { computed, ref, watch } from 'vue'
-  import { useRouter } from 'vue-router'
-  import { useGuestMode } from '@/composables/useGuestMode'
-  import { useShareStore } from '@/stores/share'
-  import { svgIcons } from '@/utils/svgSet'
-  import InlineComments from './InlineComments.vue'
+import type { FeedItem } from '@/stores/events'
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useGuestMode } from '@/composables/useGuestMode'
+import { useShareStore } from '@/stores/share'
+import { svgIcons } from '@/utils/svgSet'
+import InlineComments from './InlineComments.vue'
 
-  const props = defineProps<{
-    id: string | number
-    banner: string
-    hostName: string
-    hostAvatar: string
-    title: string
-    description: string
-    schedule: string
-    eventData: FeedItem
-    location?: string
-    confirmed: number
-    interested: number
-    isSaved?: boolean
-    likes?: number
-    liked?: boolean
-    highlight?: boolean
-    rank?: number
-    interests?: string[]
-    commentsCount?: number
-    matchedInterests?: string[]
-    guestMode?: boolean
-    sourceUrl?: string
-  }>()
+const props = defineProps<{
+  id: string | number
+  banner: string
+  hostName: string
+  hostAvatar: string
+  title: string
+  description: string
+  schedule: string
+  eventData: FeedItem
+  location?: string
+  confirmed: number
+  interested: number
+  isSaved?: boolean
+  likes?: number
+  liked?: boolean
+  highlight?: boolean
+  rank?: number
+  interests?: string[]
+  commentsCount?: number
+  matchedInterests?: string[]
+  guestMode?: boolean
+  sourceUrl?: string
+}>()
 
-  const emit = defineEmits<{
-    (e: 'toggle-save' | 'toggle-like'): void
-  }>()
+const emit = defineEmits<{
+  (e: 'toggle-save' | 'toggle-like'): void
+}>()
 
-  const router = useRouter()
-  const { requireLogin } = useGuestMode()
+const router = useRouter()
+const { requireLogin } = useGuestMode()
 
-  /**
-   * Navega para detalhes do evento ou mostra dialog de login em modo guest
-   */
-  function handleDetailsClick () {
-    if (props.guestMode) {
-      requireLogin('ver detalhes do evento')
-      return
-    }
-    router.push(`/private/event/${props.id}`)
+/**
+ * Navega para detalhes do evento ou abre sourceUrl se disponível
+ * Em modo guest, mostra dialog de login
+ */
+function handleDetailsClick() {
+  if (props.guestMode) {
+    requireLogin('ver detalhes do evento')
+    return
   }
 
-  /**
-   * Intercepta ações que precisam de autenticação no modo guest
-   */
-  function handleProtectedAction (action: () => void, actionName: string) {
-    if (props.guestMode) {
-      requireLogin(actionName)
-      return
-    }
-    action()
+  // Se tiver sourceUrl, abre o site original em nova aba
+  if (props.sourceUrl) {
+    window.open(props.sourceUrl, '_blank', 'noopener,noreferrer')
+    return
   }
 
-  function handleToggleLike () {
-    handleProtectedAction(() => emit('toggle-like'), 'curtir eventos')
+  // Caso contrário, navega para a página interna de detalhes
+  router.push(`/private/event/${props.id}`)
+}
+
+/**
+ * Intercepta ações que precisam de autenticação no modo guest
+ */
+function handleProtectedAction(action: () => void, actionName: string) {
+  if (props.guestMode) {
+    requireLogin(actionName)
+    return
+  }
+  action()
+}
+
+function handleToggleLike() {
+  handleProtectedAction(() => emit('toggle-like'), 'curtir eventos')
+}
+
+function handleToggleSave() {
+  handleProtectedAction(() => emit('toggle-save'), 'salvar eventos')
+}
+
+function handleCommentsToggle() {
+  if (props.guestMode) {
+    requireLogin('ver e publicar comentários')
+    return
+  }
+  showComments.value = !showComments.value
+  showInterests.value = false
+}
+
+function formatCount(value: number | undefined | null): string {
+  const num = Number(value) || 0
+  if (num < 1000) return num.toString()
+  const rounded = num / 1000
+  const formatted = rounded % 1 === 0 ? Math.trunc(rounded).toString() : rounded.toFixed(1)
+  return `${formatted}k`
+}
+
+function resolveAsset(val?: string) {
+  if (!val) return ''
+  if (/^https?:\/\//i.test(val)) return val
+  const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
+  const path = val.startsWith('/') ? val : `/${val}`
+  return `${base}${path}`
+}
+
+const bannerSrc = computed(() => {
+  return resolveAsset(props.banner)
+})
+
+const hostAvatarSrc = computed(() => resolveAsset(props.hostAvatar))
+
+const hostInitial = computed(() => (props.hostName || 'U').charAt(0).toUpperCase())
+
+const avatarColors = [
+  '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
+  '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
+  '#8BC34A', '#CDDC39', '#FFC107', '#FF9800', '#FF5722',
+]
+
+const avatarColor = computed(() => {
+  if (!props.hostName) return avatarColors[0]
+  let hash = 0
+  for (let i = 0; i < props.hostName.length; i++) {
+    hash = (props.hostName.codePointAt(i) || 0) + ((hash << 5) - hash)
+  }
+  return avatarColors[Math.abs(hash % avatarColors.length)]
+})
+
+const eventImages = computed(() => {
+  if (!Array.isArray(props.eventData?.images) || props.eventData.images.length === 0) {
+    return { desktop: '', mobile: '' }
   }
 
-  function handleToggleSave () {
-    handleProtectedAction(() => emit('toggle-save'), 'salvar eventos')
-  }
+  const images = props.eventData.images
 
-  function handleCommentsToggle () {
-    if (props.guestMode) {
-      requireLogin('ver e publicar comentários')
-      return
-    }
-    showComments.value = !showComments.value
-    showInterests.value = false
-  }
+  // Desktop: melhor imagem 16_9 (maior resolução)
+  const landscapeImages = images
+    .filter(img => img.ratio === '16_9')
+    .sort((a, b) => b.width - a.width)
 
-  function formatCount (value: number | undefined | null): string {
-    const num = Number(value) || 0
-    if (num < 1000) return num.toString()
-    const rounded = num / 1000
-    const formatted = rounded % 1 === 0 ? Math.trunc(rounded).toString() : rounded.toFixed(1)
-    return `${formatted}k`
-  }
+  const desktopImage = landscapeImages[0]?.url || ''
 
-  function resolveAsset (val?: string) {
-    if (!val) return ''
-    if (/^https?:\/\//i.test(val)) return val
-    const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
-    const path = val.startsWith('/') ? val : `/${val}`
-    return `${base}${path}`
-  }
+  // Mobile: preferir 3_2 (proporção mais vertical), senão usar a menor 16_9
+  const verticalImages = images.filter(img => img.ratio === '3_2')
+  const mobileImages = verticalImages.length > 0
+    ? verticalImages.sort((a, b) => b.width - a.width)
+    : landscapeImages.reverse()
 
-  const bannerSrc = computed(() => {
-    return resolveAsset(props.banner)
+  const mobileImage = mobileImages[0]?.url || desktopImage
+
+  return {
+    desktop: desktopImage,
+    mobile: mobileImage,
+  }
+})
+
+const shareStore = useShareStore()
+
+const showComments = ref(false)
+const showInterests = ref(false)
+const localCommentsCount = ref(props.commentsCount ?? 0)
+
+watch(() => props.commentsCount, val => {
+  if (val !== undefined) localCommentsCount.value = val
+})
+
+function handleUpdateCommentsCount(count: number) {
+  localCommentsCount.value = count
+}
+
+function handleShare() {
+  shareStore.open({
+    title: props.title,
+    text: props.description,
+    url: `${window.location.origin}/private/event/${props.id}`,
   })
+}
 
-  function openSourceUrl () {
-    if (props.sourceUrl) {
-      window.open(props.sourceUrl, '_blank', 'noopener,noreferrer')
-    }
-  }
+function toggleInterests(e: Event) {
+  e.stopPropagation()
+  showInterests.value = !showInterests.value
+  if (showInterests.value) showComments.value = false
+}
 
-  const hostAvatarSrc = computed(() => resolveAsset(props.hostAvatar))
-
-  const hostInitial = computed(() => (props.hostName || 'U').charAt(0).toUpperCase())
-
-  const avatarColors = [
-    '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
-    '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
-    '#8BC34A', '#CDDC39', '#FFC107', '#FF9800', '#FF5722',
-  ]
-
-  const avatarColor = computed(() => {
-    if (!props.hostName) return avatarColors[0]
-    let hash = 0
-    for (let i = 0; i < props.hostName.length; i++) {
-      hash = (props.hostName.codePointAt(i) || 0) + ((hash << 5) - hash)
-    }
-    return avatarColors[Math.abs(hash % avatarColors.length)]
+// Tags de interesses visíveis no card (max 3 + overflow)
+const visibleInterestTags = computed(() => {
+  if (!props.interests || props.interests.length === 0) return []
+  const matched = props.matchedInterests || []
+  // Prioriza os matched no topo
+  const sorted = [...props.interests].toSorted((a, b) => {
+    const aMatch = matched.some(m => m.toLowerCase() === a.toLowerCase())
+    const bMatch = matched.some(m => m.toLowerCase() === b.toLowerCase())
+    if (aMatch && !bMatch) return -1
+    if (!aMatch && bMatch) return 1
+    return 0
   })
+  return sorted.slice(0, 3)
+})
 
-  const eventImages = computed(() => {
-    if (!Array.isArray(props.eventData?.images) || props.eventData.images.length === 0) {
-      return { desktop: '', mobile: '' }
-    }
+const overflowCount = computed(() => {
+  if (!props.interests) return 0
+  return Math.max(0, props.interests.length - 3)
+})
 
-    const images = props.eventData.images
-
-    // Desktop: melhor imagem 16_9 (maior resolução)
-    const landscapeImages = images
-      .filter(img => img.ratio === '16_9')
-      .sort((a, b) => b.width - a.width)
-
-    const desktopImage = landscapeImages[0]?.url || ''
-
-    // Mobile: preferir 3_2 (proporção mais vertical), senão usar a menor 16_9
-    const verticalImages = images.filter(img => img.ratio === '3_2')
-    const mobileImages = verticalImages.length > 0
-      ? verticalImages.sort((a, b) => b.width - a.width)
-      : landscapeImages.reverse()
-
-    const mobileImage = mobileImages[0]?.url || desktopImage
-
-    return {
-      desktop: desktopImage,
-      mobile: mobileImage,
-    }
-  })
-
-  const shareStore = useShareStore()
-
-  const showComments = ref(false)
-  const showInterests = ref(false)
-  const localCommentsCount = ref(props.commentsCount ?? 0)
-
-  watch(() => props.commentsCount, val => {
-    if (val !== undefined) localCommentsCount.value = val
-  })
-
-  function handleUpdateCommentsCount (count: number) {
-    localCommentsCount.value = count
-  }
-
-  function handleShare () {
-    shareStore.open({
-      title: props.title,
-      text: props.description,
-      url: `${window.location.origin}/private/event/${props.id}`,
-    })
-  }
-
-  function toggleInterests (e: Event) {
-    e.stopPropagation()
-    showInterests.value = !showInterests.value
-    if (showInterests.value) showComments.value = false
-  }
-
-  // Tags de interesses visíveis no card (max 3 + overflow)
-  const visibleInterestTags = computed(() => {
-    if (!props.interests || props.interests.length === 0) return []
-    const matched = props.matchedInterests || []
-    // Prioriza os matched no topo
-    const sorted = [...props.interests].toSorted((a, b) => {
-      const aMatch = matched.some(m => m.toLowerCase() === a.toLowerCase())
-      const bMatch = matched.some(m => m.toLowerCase() === b.toLowerCase())
-      if (aMatch && !bMatch) return -1
-      if (!aMatch && bMatch) return 1
-      return 0
-    })
-    return sorted.slice(0, 3)
-  })
-
-  const overflowCount = computed(() => {
-    if (!props.interests) return 0
-    return Math.max(0, props.interests.length - 3)
-  })
-
-  function isMatchedInterest (tag: string): boolean {
-    if (!props.matchedInterests || props.matchedInterests.length === 0) return false
-    return props.matchedInterests.some(m => m.toLowerCase() === tag.toLowerCase())
-  }
+function isMatchedInterest(tag: string): boolean {
+  if (!props.matchedInterests || props.matchedInterests.length === 0) return false
+  return props.matchedInterests.some(m => m.toLowerCase() === tag.toLowerCase())
+}
 </script>
 
 <template>
@@ -212,13 +215,8 @@
 
     <figure class="media">
       <!-- Banner Image -->
-      <img
-        v-if="eventImages.desktop || bannerSrc"
-        :alt="title"
-        class="banner"
-        loading="lazy"
-        :src="eventImages.desktop || bannerSrc"
-      >
+      <img v-if="eventImages.desktop || bannerSrc" :alt="title" class="banner" loading="lazy"
+        :src="eventImages.desktop || bannerSrc">
       <div v-else class="banner-placeholder">
         <i class="mdi mdi-image-off-outline" />
         <span>Imagem indisponível</span>
@@ -242,25 +240,11 @@
       </div>
 
       <!-- Bookmark -->
-      <button
-        aria-label="Salvar evento"
-        class="bookmark"
-        :class="{ saved: isSaved }"
-        type="button"
-        @click.stop="handleToggleSave"
-      >
-        <svg
-          aria-hidden="true"
-          :fill="isSaved ? 'currentColor' : 'none'"
-          height="20"
-          role="presentation"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          viewBox="0 0 24 24"
-          width="20"
-        >
+      <button aria-label="Salvar evento" class="bookmark" :class="{ saved: isSaved }" type="button"
+        @click.stop="handleToggleSave">
+        <svg aria-hidden="true" :fill="isSaved ? 'currentColor' : 'none'" height="20" role="presentation"
+          stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"
+          width="20">
           <path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z" />
         </svg>
         <v-tooltip activator="parent" content-class="feed-card-tooltip" location="start" offset="10">
@@ -274,16 +258,8 @@
           <div class="interests-panel-header">
             <span class="interests-panel-title">Interesses do evento</span>
             <button class="interests-close" type="button" @click.stop="showInterests = false">
-              <svg
-                fill="none"
-                height="14"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2.5"
-                viewBox="0 0 24 24"
-                width="14"
-              >
+              <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                stroke-width="2.5" viewBox="0 0 24 24" width="14">
                 <line x1="18" x2="6" y1="6" y2="18" />
                 <line x1="6" x2="18" y1="6" y2="18" />
               </svg>
@@ -307,36 +283,17 @@
           <div class="container-card-info">
             <!-- Interest tags -->
             <div v-if="visibleInterestTags.length > 0" class="interest-tags">
-              <span
-                v-for="tag in visibleInterestTags"
-                :key="tag"
-                class="interest-tag"
-                :class="{ matched: isMatchedInterest(tag) }"
-              >{{ tag }}</span>
+              <span v-for="tag in visibleInterestTags" :key="tag" class="interest-tag"
+                :class="{ matched: isMatchedInterest(tag) }">{{ tag }}</span>
               <span v-if="overflowCount > 0" class="interest-tag more">+{{ overflowCount }}</span>
             </div>
 
             <!-- Date + Location pill -->
             <div class="meta-wrapper">
               <!-- Calendar icon -->
-              <svg
-                fill="none"
-                height="13"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="13"
-              >
-                <rect
-                  height="18"
-                  rx="2"
-                  ry="2"
-                  width="18"
-                  x="3"
-                  y="4"
-                />
+              <svg fill="none" height="13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                stroke-width="2" viewBox="0 0 24 24" width="13">
+                <rect height="18" rx="2" ry="2" width="18" x="3" y="4" />
                 <line x1="16" x2="16" y1="2" y2="6" />
                 <line x1="8" x2="8" y1="2" y2="6" />
                 <line x1="3" x2="21" y1="10" y2="10" />
@@ -347,16 +304,8 @@
             <div class="meta-wrapper">
               <template v-if="location">
                 <!-- Location pin icon -->
-                <svg
-                  fill="none"
-                  height="12"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  viewBox="0 0 24 24"
-                  width="12"
-                >
+                <svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                  stroke-width="2" viewBox="0 0 24 24" width="12">
                   <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z" />
                   <circle cx="12" cy="10" r="3" />
                 </svg>
@@ -370,63 +319,28 @@
         <footer class="footer">
           <div aria-label="Indicadores do evento" class="stats">
             <button class="stat stat-action" :class="{ liked }" type="button" @click.stop="handleToggleLike">
-              <svg
-                :fill="liked ? 'currentColor' : 'none'"
-                height="17"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="17"
-              >
+              <svg :fill="liked ? 'currentColor' : 'none'" height="17" stroke="currentColor" stroke-linecap="round"
+                stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="17">
                 <path
-                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                />
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
               {{ formatCount(likes) }}
             </button>
-            <button
-              aria-label="Comentários"
-              class="stat stat-action comments-action"
-              :class="{ active: showComments }"
-              type="button"
-              @click.stop="handleCommentsToggle"
-            >
-              <svg
-                fill="none"
-                height="17"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="17"
-              >
+            <button aria-label="Comentários" class="stat stat-action comments-action" :class="{ active: showComments }"
+              type="button" @click.stop="handleCommentsToggle">
+              <svg fill="none" height="17" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                stroke-width="2" viewBox="0 0 24 24" width="17">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
               {{ formatCount(localCommentsCount) }}
             </button>
 
             <!-- Interests toggle button -->
-            <button
-              v-if="interests && interests.length > 0"
-              aria-label="Ver interesses"
-              class="stat stat-action interests-action"
-              :class="{ active: showInterests }"
-              type="button"
-              @click="toggleInterests"
-            >
-              <svg
-                fill="none"
-                height="16"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="16"
-              >
+            <button v-if="interests && interests.length > 0" aria-label="Ver interesses"
+              class="stat stat-action interests-action" :class="{ active: showInterests }" type="button"
+              @click="toggleInterests">
+              <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                stroke-width="2" viewBox="0 0 24 24" width="16">
                 <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
                 <line x1="7" x2="7.01" y1="7" y2="7" />
               </svg>
@@ -436,54 +350,20 @@
 
           <div class="actions">
             <button aria-label="Ver detalhes" class="icon-button" type="button" @click.stop="handleDetailsClick">
-              <svg
-                v-if="svgIcons.infoIcon"
-                fill="none"
-                height="18"
-                viewBox="0 0 256 256"
-                width="18"
-              >
-                <path
-                  v-for="(path, index) in svgIcons.infoIcon.paths"
-                  :key="index"
-                  :d="path.d"
-                  fill="#ffffff"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="16"
-                />
+              <svg v-if="svgIcons.infoIcon" fill="none" height="18" viewBox="0 0 256 256" width="18">
+                <path v-for="(path, index) in svgIcons.infoIcon.paths" :key="index" :d="path.d" fill="#ffffff"
+                  stroke-linecap="round" stroke-linejoin="round" stroke-width="16" />
               </svg>
-              <v-tooltip
-                activator="parent"
-                content-class="feed-card-tooltip"
-                location="top"
-                offset="10"
-              >Detalhes</v-tooltip>
+              <v-tooltip activator="parent" content-class="feed-card-tooltip" location="top"
+                offset="10">Detalhes</v-tooltip>
             </button>
             <button aria-label="Compartilhar" class="icon-button" type="button" @click.prevent="handleShare">
-              <svg
-                v-if="svgIcons.shareIcon"
-                fill="none"
-                height="18"
-                viewBox="0 0 256 256"
-                width="18"
-              >
-                <path
-                  v-for="(path, index) in svgIcons.shareIcon.paths"
-                  :key="index"
-                  :d="path.d"
-                  fill="#ffffff"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="16"
-                />
+              <svg v-if="svgIcons.shareIcon" fill="none" height="18" viewBox="0 0 256 256" width="18">
+                <path v-for="(path, index) in svgIcons.shareIcon.paths" :key="index" :d="path.d" fill="#ffffff"
+                  stroke-linecap="round" stroke-linejoin="round" stroke-width="16" />
               </svg>
-              <v-tooltip
-                activator="parent"
-                content-class="feed-card-tooltip"
-                location="top"
-                offset="10"
-              >Compartilhar</v-tooltip>
+              <v-tooltip activator="parent" content-class="feed-card-tooltip" location="top"
+                offset="10">Compartilhar</v-tooltip>
             </button>
           </div>
         </footer>

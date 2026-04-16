@@ -1,5 +1,5 @@
-import { callApi } from '.'
 import { logger } from '@/utils/logger'
+import { callApi } from '.'
 
 // ============================================================
 // FUNÇÕES PÚBLICAS (sem autenticação) - Para modo guest/explore

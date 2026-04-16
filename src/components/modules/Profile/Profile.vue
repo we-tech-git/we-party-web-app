@@ -355,9 +355,9 @@
         await uploadProfileImage(croppedFile)
         await fetchUserProfile()
 
-        showSnackbar('Foto de perfil atualizada com sucesso! 🎉')
+        showSnackbar(t('profile.messages.profileImageSuccess'))
       } catch (error_: any) {
-        const errorMessage = error_.message || 'Erro ao fazer upload da foto. Tente novamente.'
+        const errorMessage = error_.message || t('profile.messages.profileImageError')
         showSnackbar(errorMessage, '#ef4444')
       } finally {
         uploadingAvatar.value = false
@@ -405,7 +405,7 @@
       // Busca os interesses do usuário
       await fetchUserInterests()
     } catch {
-      error.value = 'Erro ao carregar dados do perfil'
+      error.value = t('profile.messages.loadProfileError')
     } finally {
       loading.value = false
     }
@@ -582,11 +582,11 @@
       // Atualiza a lista real com os valores temporários
       userInterests.value = [...tempUserInterests.value]
 
-      showSnackbar('Interesses atualizados com sucesso! ✅', '#22c55e')
+      showSnackbar(t('profile.messages.interestsUpdateSuccess'), '#22c55e')
       closeInterestsModal()
     } catch (error) {
       console.error('Erro ao salvar interesses:', error)
-      showSnackbar('Erro ao salvar interesses. Tente novamente.', '#ef4444')
+      showSnackbar(t('profile.messages.interestsUpdateError'), '#ef4444')
     } finally {
       isSavingInterests.value = false
     }
@@ -604,10 +604,10 @@
       // Remove da lista local
       userInterests.value = userInterests.value.filter(i => i.id !== interestId)
 
-      showSnackbar('Interesse removido com sucesso!', '#22c55e')
+      showSnackbar(t('profile.messages.interestRemoveSuccess'), '#22c55e')
     } catch (error) {
       console.error('❌ Erro ao remover interesse:', error)
-      showSnackbar('Erro ao remover interesse', '#ef4444')
+      showSnackbar(t('profile.messages.interestRemoveError'), '#ef4444')
     }
   }
 
@@ -642,7 +642,7 @@
     addToPending()
 
     if (pendingInterests.value.length === 0) {
-      showSnackbar('Adicione pelo menos um interesse', '#ef4444')
+      showSnackbar(t('profile.messages.addAtLeastOne'), '#ef4444')
       return
     }
 
@@ -657,14 +657,14 @@
       closeRequestModal()
 
       // Mostra mensagem de sucesso
-      showSnackbar('Solicitação enviada com sucesso! Aguarde aprovação. ✅', '#22c55e')
+      showSnackbar(t('profile.messages.requestSuccess'), '#22c55e')
 
       // Limpa a busca
       interestsSearchQuery.value = ''
       searchedInterests.value = []
     } catch (error: any) {
       console.error('❌ Erro ao solicitar novo interesse:', error)
-      const errorMessage = error?.response?.data?.message || 'Erro ao enviar solicitação. Tente novamente.'
+      const errorMessage = error?.response?.data?.message || t('profile.messages.requestError')
       showSnackbar(errorMessage, '#ef4444')
     } finally {
       isSubmittingRequest.value = false
@@ -675,8 +675,18 @@
   function formatJoinDate (dateString: string): string {
     const date = new Date(dateString)
     const months = [
-      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+      t('profile.months.january'),
+      t('profile.months.february'),
+      t('profile.months.march'),
+      t('profile.months.april'),
+      t('profile.months.may'),
+      t('profile.months.june'),
+      t('profile.months.july'),
+      t('profile.months.august'),
+      t('profile.months.september'),
+      t('profile.months.october'),
+      t('profile.months.november'),
+      t('profile.months.december'),
     ]
     return `${months[date.getMonth()]} de ${date.getFullYear()}`
   }
@@ -685,13 +695,13 @@
   function formatShortDate (dateString: string): string {
     try {
       const date = new Date(dateString)
-      if (Number.isNaN(date.getTime())) return 'Em breve'
+      if (Number.isNaN(date.getTime())) return t('profile.likedEvents.soon')
 
       const day = date.getDate().toString().padStart(2, '0')
       const month = (date.getMonth() + 1).toString().padStart(2, '0')
       return `${day}/${month}`
     } catch {
-      return 'Em breve'
+      return t('profile.likedEvents.soon')
     }
   }
 
@@ -720,13 +730,13 @@
     // Validação do arquivo
     const maxSize = 5 * 1024 * 1024 // 5MB
     if (file.size > maxSize) {
-      showSnackbar('A imagem deve ter no máximo 5MB', '#ef4444')
+      showSnackbar(t('profile.messages.fileSizeError'), '#ef4444')
       input.value = ''
       return
     }
 
     if (!file.type.startsWith('image/')) {
-      showSnackbar('Por favor, selecione apenas arquivos de imagem', '#ef4444')
+      showSnackbar(t('profile.messages.fileTypeError'), '#ef4444')
       input.value = ''
       return
     }
@@ -750,13 +760,13 @@
     // Validação do arquivo
     const maxSize = 5 * 1024 * 1024 // 5MB
     if (file.size > maxSize) {
-      showSnackbar('A imagem deve ter no máximo 5MB', '#ef4444')
+      showSnackbar(t('profile.messages.fileSizeError'), '#ef4444')
       input.value = ''
       return
     }
 
     if (!file.type.startsWith('image/')) {
-      showSnackbar('Por favor, selecione apenas arquivos de imagem', '#ef4444')
+      showSnackbar(t('profile.messages.fileTypeError'), '#ef4444')
       input.value = ''
       return
     }
@@ -769,9 +779,9 @@
       // Recarrega o perfil para pegar as URLs atualizadas do servidor
       await fetchUserProfile()
 
-      showSnackbar('Capa atualizada com sucesso! 🎉')
+      showSnackbar(t('profile.messages.coverImageSuccess'))
     } catch (error_: any) {
-      const errorMessage = error_.message || 'Erro ao fazer upload da capa. Tente novamente.'
+      const errorMessage = error_.message || t('profile.messages.coverImageError')
       showSnackbar(errorMessage, '#ef4444')
     } finally {
       uploadingBanner.value = false
@@ -799,9 +809,9 @@
   const activeTab = ref('liked')
   const tabs = [
     // { id: 'badges', label: 'Conquistas', icon: 'mdi-trophy-outline' }, // Comentado - não será usado no primeiro momento
-    { id: 'liked', label: 'Curtidos', icon: 'mdi-heart-outline' },
+    { id: 'liked', label: t('profile.tabs.liked'), icon: 'mdi-heart-outline' },
     // Aba Favoritos removida do projeto
-    { id: 'settings', label: 'Preferências', icon: 'mdi-cog-outline' },
+    { id: 'settings', label: t('profile.tabs.settings'), icon: 'mdi-cog-outline' },
   ]
 
   // Refetch liked events quando entra na aba
@@ -883,10 +893,10 @@
         username: editForm.username.replace('@', ''),
       })
 
-      showSnackbar('Perfil atualizado com sucesso! ✅')
+      showSnackbar(t('profile.messages.profileUpdateSuccess'))
     } catch (error: any) {
       // Em caso de erro, não atualiza nada e mantém os valores originais
-      showSnackbar('Erro ao salvar perfil. Tente novamente.', '#ef4444')
+      showSnackbar(t('profile.messages.profileUpdateError'), '#ef4444')
       console.error('Erro ao atualizar perfil:', error)
     } finally {
       saving.value = false
@@ -929,16 +939,6 @@
   }
 
   // ── Helpers para eventos curtidos ──
-  function extractEventsFromResponse (data: any): any[] {
-    if (data?.data?.events && Array.isArray(data.data.events)) return data.data.events
-    if (data?.data?.items && Array.isArray(data.data.items)) return data.data.items
-    if (data?.events && Array.isArray(data.events)) return data.events
-    if (data?.items && Array.isArray(data.items)) return data.items
-    if (Array.isArray(data?.data)) return data.data
-    if (Array.isArray(data)) return data
-    return []
-  }
-
   function mapLikedEvent (evt: any): LikedEventItem {
     const rawBanner = evt.bannerUrl || evt.banner || (Array.isArray(evt.photos) ? evt.photos[0] : '') || ''
     const hostName = evt.organizer?.name || evt.hostName || evt.creator?.name || 'Organizador'
@@ -951,7 +951,7 @@
           return parsed.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
         }
       }
-      return 'Data a definir'
+      return t('profile.likedEvents.dateUndefined')
     }
     return {
       id: evt.id,
@@ -959,8 +959,8 @@
       creator: { name: hostName },
       hostAvatar: evt.organizer?.avatar || evt.hostAvatar || evt.creator?.profileImage || '',
       schedule: resolveSchedule(evt),
-      location: evt.location || evt.address || 'Local a definir',
-      title: evt.name || evt.title || 'Evento',
+      location: evt.location || evt.address || t('profile.likedEvents.locationUndefined'),
+      title: evt.name || evt.title || t('profile.likedEvents.eventTitle'),
       description: evt.description || '',
       confirmed: evt.confirmedCount || evt._count?.attendances || 0,
       interested: evt.interestedCount || 0,
@@ -973,44 +973,17 @@
   async function fetchLikedEvents () {
     loadingLiked.value = true
     try {
-      // Tenta endpoints de listagem bulk primeiro
-      const endpoints = [
-        '/users/liked-events',
-        '/users/likes',
-        '/events/liked-by-me',
-        '/events/my-likes',
-      ]
+      // Busca eventos curtidos salvos localmente
+      const likedIds = eventsStore.likedEvents
 
-      let events: any[] = []
-      let bulkSuccess = false
+      const results = await Promise.allSettled(
+        likedIds.map(id => callApi('GET', `/events/${id}`, {}, true)),
+      )
 
-      for (const endpoint of endpoints) {
-        try {
-          const response = await callApi('GET', `${endpoint}?page=1&limit=50`, {}, true)
-          const extracted = extractEventsFromResponse(response.data)
-          if (extracted.length > 0 || response.status === 200) {
-            events = extracted
-            bulkSuccess = true
-            break
-          }
-        } catch {
-        // endpoint não disponível, tenta próximo
-        }
-      }
-
-      // Fallback: busca cada evento pelo ID salvo no localStorage
-      if (!bulkSuccess) {
-        const likedIds = eventsStore.likedEvents
-
-        const results = await Promise.allSettled(
-          likedIds.map(id => callApi('GET', `/events/${id}`, {}, true)),
-        )
-
-        events = results
-          .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
-          .map(r => r.value?.data?.data ?? r.value?.data ?? r.value)
-          .filter(e => e && e.id)
-      }
+      const events = results
+        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+        .map(r => r.value?.data?.data ?? r.value?.data ?? r.value)
+        .filter(e => e && e.id)
 
       likedEventsItems.value = events.map(evt => mapLikedEvent(evt))
     } catch (error_) {
@@ -1053,14 +1026,19 @@
   <div class="profile-page-layout">
     <FeedTopHeader :user="user" />
 
-    <section aria-label="Conteúdo do perfil" class="layout-shell">
+    <section :aria-label="t('profile.aria.profileContent')" class="layout-shell">
       <FeedSidebarNav :active="activeNav" class="layout-sidebar" :items="navItems" @select="handleNavSelect" />
 
       <!-- Main Content -->
       <main class="layout-main" role="main">
         <!-- Breadcrumb com acessibilidade -->
-        <nav aria-label="Navegação" class="breadcrumb-nav">
-          <button aria-label="Voltar para o feed" class="breadcrumb-back" type="button" @click="handleBackNavigation">
+        <nav :aria-label="t('profile.aria.navigation')" class="breadcrumb-nav">
+          <button
+            :aria-label="t('profile.aria.backToFeed')"
+            class="breadcrumb-back"
+            type="button"
+            @click="handleBackNavigation"
+          >
             <span aria-hidden="true" class="back-icon">
               <svg
                 fill="none"
@@ -1073,7 +1051,7 @@
                 <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
             </span>
-            <span class="back-text">Voltar</span>
+            <span class="back-text">{{ t('common.back') }}</span>
           </button>
           <span aria-hidden="true" class="breadcrumb-separator">
             <svg
@@ -1109,7 +1087,7 @@
           >
 
           <div
-            :aria-label="hasBanner ? 'Imagem de capa do perfil' : 'Capa padrão do perfil'"
+            :aria-label="hasBanner ? t('profile.aria.coverImage') : t('profile.aria.defaultCover')"
             class="cover-image"
             :class="{ 'no-banner': !hasBanner }"
             role="img"
@@ -1117,7 +1095,7 @@
           >
             <div aria-hidden="true" class="overlay" />
             <button
-              :aria-label="uploadingBanner ? 'Enviando imagem de capa...' : 'Alterar imagem de capa'"
+              :aria-label="uploadingBanner ? t('profile.editModal.uploadingCover') : t('profile.editModal.changeCover')"
               class="cover-edit-btn"
               :disabled="uploadingBanner"
               @click="triggerBannerUpload"
@@ -1130,24 +1108,29 @@
           <div class="profile-content">
             <div class="avatar-section">
               <button
-                :aria-label="uploadingAvatar ? 'Enviando foto de perfil...' : 'Alterar foto de perfil'"
+                :aria-label="uploadingAvatar ? t('profile.editModal.uploadingAvatar') : t('profile.editModal.changeAvatar')"
                 class="avatar-wrapper"
                 type="button"
                 @click="triggerAvatarUpload"
               >
                 <!-- Avatar com imagem -->
-                <img v-if="hasAvatar" :alt="`Foto de perfil de ${user.name}`" class="avatar-img" :src="user.avatar">
+                <img
+                  v-if="hasAvatar"
+                  :alt="t('profile.aria.profilePicture', { name: user.name })"
+                  class="avatar-img"
+                  :src="user.avatar"
+                >
                 <!-- Avatar com iniciais (fallback) -->
                 <div
                   v-else
-                  :aria-label="`Avatar com iniciais: ${getInitials(user.name)}`"
+                  :aria-label="t('profile.aria.avatarInitials', { initials: getInitials(user.name) })"
                   class="avatar-img avatar-placeholder"
                   role="img"
                   :style="{ backgroundColor: getAvatarColor(user.name) }"
                 >
                   {{ getInitials(user.name) }}
                 </div>
-                <div aria-label="Usuário online" class="status-indicator" role="status" />
+                <div :aria-label="t('profile.aria.onlineStatus')" class="status-indicator" role="status" />
                 <div aria-hidden="true" class="avatar-edit-overlay">
                   <i v-if="uploadingAvatar" class="mdi mdi-loading mdi-spin" />
                   <i v-else class="mdi mdi-camera-outline" />
@@ -1155,24 +1138,24 @@
               </button>
 
               <div class="profile-actions-top">
-                <button aria-label="Editar informações do perfil" class="edit-btn" type="button" @click="openEditModal">
+                <button :aria-label="t('profile.editProfile')" class="edit-btn" type="button" @click="openEditModal">
                   <i aria-hidden="true" class="mdi mdi-pencil-outline" />
-                  Editar Perfil
+                  {{ t('profile.editProfile') }}
                 </button>
-                <button aria-label="Compartilhar perfil" class="share-btn" type="button">
+                <button :aria-label="t('profile.shareProfile')" class="share-btn" type="button">
                   <i aria-hidden="true" class="mdi mdi-share-variant-outline" />
                 </button>
               </div>
             </div>
 
             <header class="header-info">
-              <h1>{{ user.name || 'Seu Nome' }}</h1>
-              <span class="handle">{{ user.username || '@username' }}</span>
+              <h1>{{ user.name || t('profile.yourName') }}</h1>
+              <span class="handle">{{ user.username || `@${t('profile.username')}` }}</span>
               <p v-if="user.bio" class="bio">{{ user.bio }}</p>
-              <p v-else class="bio bio-placeholder">Adicione uma bio clicando em "Editar Perfil"</p>
+              <p v-else class="bio bio-placeholder">{{ t('profile.bioPlaceholder') }}</p>
 
               <!-- User Interests -->
-              <div v-if="userInterests.length > 0" aria-label="Seus interesses" class="interests-section">
+              <div v-if="userInterests.length > 0" :aria-label="t('profile.yourInterests')" class="interests-section">
                 <ul class="interests-chips" role="list">
                   <li v-for="interest in userInterests" :key="interest.id" class="interest-chip">
                     {{ interest.name }}
@@ -1187,19 +1170,19 @@
                 </span>
                 <span class="meta-item">
                   <i aria-hidden="true" class="mdi mdi-calendar-outline" />
-                  Entrou em {{ user.joined }}
+                  {{ t('profile.joinedIn') }} {{ user.joined }}
                 </span>
               </div>
 
-              <div aria-label="Estatísticas do perfil" class="stats-row" role="group">
-                <button aria-label="Ver lista de seguidores" class="stat-item" type="button">
+              <div :aria-label="t('profile.aria.profileStats')" class="stats-row" role="group">
+                <button :aria-label="t('profile.viewFollowers')" class="stat-item" type="button">
                   <span class="stat-value">{{ user.stats.followers }}</span>
-                  <span class="stat-label">Seguidores</span>
+                  <span class="stat-label">{{ t('profile.followers') }}</span>
                 </button>
                 <div aria-hidden="true" class="stat-dot" />
-                <button aria-label="Ver lista de quem você segue" class="stat-item" type="button">
+                <button :aria-label="t('profile.viewFollowing')" class="stat-item" type="button">
                   <span class="stat-value">{{ user.stats.following }}</span>
-                  <span class="stat-label">Seguindo</span>
+                  <span class="stat-label">{{ t('profile.following') }}</span>
                 </button>
               </div>
             </header>
@@ -1207,7 +1190,7 @@
         </div>
 
         <!-- Tabs com acessibilidade -->
-        <div aria-label="Navegação do perfil" class="content-tabs" role="tablist">
+        <div :aria-label="t('profile.aria.profileTabs')" class="content-tabs" role="tablist">
           <button
             v-for="tab in tabs"
             :id="`tab-${tab.id}`"
@@ -1280,7 +1263,7 @@
                     <h4 class="mini-card-title">{{ item.title }}</h4>
                     <div class="mini-card-location">
                       <i class="mdi mdi-map-marker" />
-                      {{ item.location || 'Local a definir' }}
+                      {{ item.location || t('profile.likedEvents.locationUndefined') }}
                     </div>
                     <div class="mini-card-stats">
                       <span class="mini-stat">
@@ -1313,7 +1296,7 @@
               <!-- Botão Mostrar Mais -->
               <div v-if="hasMoreEvents" class="show-more-container">
                 <button class="show-more-btn" @click="showMoreEvents">
-                  <span>Mostrar mais eventos</span>
+                  <span>{{ t('profile.likedEvents.showMore') }}</span>
                   <i class="mdi mdi-chevron-down" />
                 </button>
               </div>
@@ -1336,11 +1319,11 @@
                   />
                 </svg>
               </div>
-              <h3>Nenhum evento curtido</h3>
-              <p>Curta eventos para salvá-los aqui e acessá-los rapidamente depois</p>
+              <h3>{{ t('profile.likedEvents.empty') }}</h3>
+              <p>{{ t('profile.likedEvents.emptyDescription') }}</p>
               <button class="empty-action" @click="router.push('/private/feed')">
                 <i class="mdi mdi-compass-outline" />
-                Explorar Eventos
+                {{ t('profile.likedEvents.exploreEvents') }}
               </button>
             </div>
           </div>
@@ -1350,15 +1333,15 @@
           <!-- Settings -->
           <div v-if="activeTab === 'settings'" class="settings-panel">
             <div class="settings-group">
-              <h4 class="settings-group-title">Geral</h4>
+              <h4 class="settings-group-title">{{ t('profile.settings.general') }}</h4>
               <div class="setting-item" @click="settingsNotifications = !settingsNotifications">
                 <div class="setting-left">
                   <div class="setting-icon-wrap">
                     <i class="mdi mdi-bell-outline" />
                   </div>
                   <div>
-                    <span class="setting-name">Notificações</span>
-                    <span class="setting-desc">Receba alertas sobre eventos e amigos</span>
+                    <span class="setting-name">{{ t('profile.settings.notifications') }}</span>
+                    <span class="setting-desc">{{ t('profile.settings.notificationsDesc') }}</span>
                   </div>
                 </div>
                 <div class="toggle-switch" :class="{ checked: settingsNotifications }" />
@@ -1367,15 +1350,15 @@
             </div>
 
             <div class="settings-group">
-              <h4 class="settings-group-title">Conta</h4>
+              <h4 class="settings-group-title">{{ t('profile.settings.account') }}</h4>
               <div class="setting-item" @click="openEditModal">
                 <div class="setting-left">
                   <div class="setting-icon-wrap">
                     <i class="mdi mdi-account-edit-outline" />
                   </div>
                   <div>
-                    <span class="setting-name">Editar Perfil</span>
-                    <span class="setting-desc">Altere nome, bio e foto</span>
+                    <span class="setting-name">{{ t('profile.settings.editProfile') }}</span>
+                    <span class="setting-desc">{{ t('profile.settings.editProfileDesc') }}</span>
                   </div>
                 </div>
                 <i class="mdi mdi-chevron-right setting-arrow" />
@@ -1386,8 +1369,8 @@
                     <i class="mdi mdi-logout" />
                   </div>
                   <div>
-                    <span class="setting-name">Sair da conta</span>
-                    <span class="setting-desc">Encerrar sessão atual</span>
+                    <span class="setting-name">{{ t('profile.settings.logout') }}</span>
+                    <span class="setting-desc">{{ t('profile.settings.logoutDesc') }}</span>
                   </div>
                 </div>
                 <i class="mdi mdi-chevron-right setting-arrow" />
@@ -1401,8 +1384,8 @@
       <aside class="layout-extras">
         <div class="sidebar-card interests-card">
           <div class="interests-header">
-            <h3>Interesses</h3>
-            <button class="add-interest-btn" title="Gerenciar interesses" @click="openInterestsModal">
+            <h3>{{ t('profile.interests.title') }}</h3>
+            <button class="add-interest-btn" :title="t('profile.interests.manage')" @click="openInterestsModal">
               <i class="mdi mdi-plus" />
             </button>
           </div>
@@ -1411,7 +1394,7 @@
               {{ interest.name }}
               <button
                 class="remove-interest-btn"
-                title="Remover interesse"
+                :title="t('profile.interests.remove')"
                 type="button"
                 @click.stop="removeInterestDirectly(interest.id)"
               >
@@ -1419,7 +1402,7 @@
               </button>
             </span>
           </div>
-          <p v-else class="interests-empty">Nenhum interesse adicionado ainda.</p>
+          <p v-else class="interests-empty">{{ t('profile.interests.empty') }}</p>
         </div>
       </aside>
     </section>
@@ -1432,7 +1415,7 @@
         <div v-if="showEditModal" class="modal-overlay" @click.self="closeEditModal">
           <div class="modal-container">
             <div class="modal-header">
-              <h2>Editar Perfil</h2>
+              <h2>{{ t('profile.editModal.title') }}</h2>
               <button class="modal-close" @click="closeEditModal">
                 <i class="mdi mdi-close" />
               </button>
@@ -1482,7 +1465,11 @@
                   >
                     {{ getInitials(user.name) }}
                   </div>
-                  <button class="modal-avatar-edit" :disabled="uploadingAvatar" title="Alterar foto">
+                  <button
+                    class="modal-avatar-edit"
+                    :disabled="uploadingAvatar"
+                    :title="t('profile.editModal.changeAvatar')"
+                  >
                     <i v-if="uploadingAvatar" class="mdi mdi-loading mdi-spin" />
                     <i v-else class="mdi mdi-camera-outline" />
                   </button>
@@ -1491,20 +1478,20 @@
 
               <!-- Form fields -->
               <div class="form-group">
-                <label class="form-label" for="edit-name">Nome</label>
+                <label class="form-label" for="edit-name">{{ t('profile.editModal.name') }}</label>
                 <input
                   id="edit-name"
                   v-model="editForm.name"
                   class="form-input"
                   maxlength="50"
-                  placeholder="Seu nome completo"
+                  :placeholder="t('profile.editModal.namePlaceholder')"
                   type="text"
                 >
                 <span class="char-count">{{ editForm.name.length }}/50</span>
               </div>
 
               <div class="form-group">
-                <label class="form-label" for="edit-username">Nome de usuário</label>
+                <label class="form-label" for="edit-username">{{ t('profile.editModal.username') }}</label>
                 <div class="input-with-prefix">
                   <span class="input-prefix">@</span>
                   <input
@@ -1512,27 +1499,27 @@
                     v-model="editForm.username"
                     class="form-input with-prefix"
                     maxlength="30"
-                    placeholder="seunome"
+                    :placeholder="t('profile.editModal.usernamePlaceholder')"
                     type="text"
                   >
                 </div>
               </div>
 
               <div class="form-group">
-                <label class="form-label" for="edit-bio">Bio</label>
+                <label class="form-label" for="edit-bio">{{ t('profile.editModal.bio') }}</label>
                 <textarea
                   id="edit-bio"
                   v-model="editForm.bio"
                   class="form-textarea"
                   maxlength="160"
-                  placeholder="Conte um pouco sobre você..."
+                  :placeholder="t('profile.editModal.bioPlaceholder')"
                   rows="3"
                 />
                 <span class="char-count">{{ editForm.bio.length }}/160</span>
               </div>
 
               <div class="form-group">
-                <label class="form-label" for="edit-location">Localização</label>
+                <label class="form-label" for="edit-location">{{ t('profile.editModal.location') }}</label>
                 <div class="input-with-icon">
                   <i class="mdi mdi-map-marker-outline input-icon" />
                   <input
@@ -1540,7 +1527,7 @@
                     v-model="editForm.location"
                     class="form-input with-icon"
                     maxlength="60"
-                    placeholder="Sua cidade"
+                    :placeholder="t('profile.editModal.locationPlaceholder')"
                     type="text"
                   >
                 </div>
@@ -1548,10 +1535,10 @@
             </div>
 
             <div class="modal-footer">
-              <button class="btn-cancel" @click="closeEditModal">Cancelar</button>
+              <button class="btn-cancel" @click="closeEditModal">{{ t('profile.editModal.cancel') }}</button>
               <button class="btn-save" :disabled="saving" @click="saveProfile">
                 <i v-if="saving" class="mdi mdi-loading mdi-spin" />
-                {{ saving ? 'Salvando...' : 'Salvar' }}
+                {{ saving ? t('profile.editModal.saving') : t('profile.editModal.save') }}
               </button>
             </div>
           </div>
@@ -1565,7 +1552,7 @@
         <div v-if="showCropModal" class="modal-overlay crop-modal-overlay" @click.self="closeCropModal">
           <div class="crop-modal-container">
             <div class="crop-modal-header">
-              <h2>Enquadrar foto</h2>
+              <h2>{{ t('profile.cropModal.title') }}</h2>
               <button class="modal-close" @click="closeCropModal">
                 <i class="mdi mdi-close" />
               </button>
@@ -1601,10 +1588,10 @@
             </div>
 
             <div class="crop-modal-footer">
-              <button class="btn-cancel" @click="closeCropModal">Cancelar</button>
+              <button class="btn-cancel" @click="closeCropModal">{{ t('profile.cropModal.cancel') }}</button>
               <button class="btn-save" :disabled="uploadingAvatar" @click="confirmCrop">
                 <i v-if="uploadingAvatar" class="mdi mdi-loading mdi-spin" />
-                {{ uploadingAvatar ? 'Enviando...' : 'Aplicar' }}
+                {{ uploadingAvatar ? t('profile.cropModal.uploading') : t('profile.cropModal.apply') }}
               </button>
             </div>
           </div>
@@ -1618,7 +1605,7 @@
         <div v-if="showInterestsModal" class="modal-overlay" @click.self="closeInterestsModal">
           <div class="interests-modal-container">
             <div class="interests-modal-header">
-              <h2>Gerenciar Interesses</h2>
+              <h2>{{ t('profile.interestsModal.title') }}</h2>
               <button class="modal-close" @click="closeInterestsModal">
                 <i class="mdi mdi-close" />
               </button>
@@ -1632,7 +1619,7 @@
                   <input
                     v-model="interestsSearchQuery"
                     class="interests-search-input"
-                    placeholder="Buscar interesses..."
+                    :placeholder="t('profile.interests.searchPlaceholder')"
                     type="text"
                   >
                   <i v-if="isSearchingInterests" class="mdi mdi-loading mdi-spin search-loading" />
@@ -1641,13 +1628,13 @@
 
               <!-- Resultados da busca -->
               <div v-if="interestsSearchQuery.trim() && searchedInterests.length > 0" class="search-results-section">
-                <h4>Resultados da busca</h4>
+                <h4>{{ t('profile.interests.searchResults') }}</h4>
                 <div class="interests-list">
                   <div v-for="interest in searchedInterests" :key="interest.id" class="interest-item">
                     <span class="interest-name">{{ interest.name }}</span>
                     <button class="add-btn" @click="addInterestToUser(interest)">
                       <i class="mdi mdi-plus" />
-                      Adicionar
+                      {{ t('profile.interests.add') }}
                     </button>
                   </div>
                 </div>
@@ -1659,59 +1646,59 @@
                 class="no-results"
               >
                 <i class="mdi mdi-emoticon-sad-outline" />
-                <p>Nenhum interesse encontrado</p>
+                <p>{{ t('profile.interests.noResults') }}</p>
                 <button class="request-interest-btn" @click="openRequestModal">
                   <i class="mdi mdi-plus-circle" />
-                  Solicitar novo interesse
+                  {{ t('profile.interests.requestNew') }}
                 </button>
               </div>
 
               <!-- Sugestões de interesses (quando não há busca ativa) -->
               <div v-if="!interestsSearchQuery.trim()" class="suggestions-section">
-                <h4>Sugestões de interesses</h4>
+                <h4>{{ t('profile.interests.suggestions') }}</h4>
                 <div v-if="isLoadingSuggestions" class="loading-suggestions">
                   <i class="mdi mdi-loading mdi-spin" />
-                  <p>Carregando sugestões...</p>
+                  <p>{{ t('profile.interests.loadingSuggestions') }}</p>
                 </div>
                 <div v-else-if="suggestedInterests.length > 0" class="interests-list">
                   <div v-for="interest in suggestedInterests" :key="interest.id" class="interest-item">
                     <span class="interest-name">{{ interest.name }}</span>
                     <button class="add-btn" @click="addInterestToUser(interest)">
                       <i class="mdi mdi-plus" />
-                      Adicionar
+                      {{ t('profile.interests.add') }}
                     </button>
                   </div>
                 </div>
                 <p v-else class="empty-suggestions">
-                  Nenhuma sugestão disponível no momento.
+                  {{ t('profile.interests.noSuggestions') }}
                 </p>
               </div>
 
               <!-- Meus interesses atuais -->
               <div class="current-interests-section">
-                <h4>Meus interesses ({{ tempUserInterests.length }})</h4>
+                <h4>{{ t('profile.interests.myInterests') }} ({{ tempUserInterests.length }})</h4>
                 <div v-if="tempUserInterests.length > 0" class="interests-list">
                   <div v-for="interest in tempUserInterests" :key="interest.id" class="interest-item current">
                     <span class="interest-name">{{ interest.name }}</span>
                     <button class="remove-btn" @click="removeInterestFromUser(interest.id)">
                       <i class="mdi mdi-close" />
-                      Remover
+                      {{ t('profile.interests.remove') }}
                     </button>
                   </div>
                 </div>
                 <p v-else class="empty-message">
-                  Você ainda não adicionou nenhum interesse.
+                  {{ t('profile.interests.emptyMessage') }}
                 </p>
               </div>
             </div>
 
             <div class="interests-modal-footer">
               <button class="btn-cancel" @click="closeInterestsModal">
-                Cancelar
+                {{ t('profile.interestsModal.cancel') }}
               </button>
               <button class="btn-done" :disabled="isSavingInterests" @click="saveInterestsChanges">
                 <i v-if="isSavingInterests" class="mdi mdi-loading mdi-spin" />
-                {{ isSavingInterests ? 'Salvando...' : 'Concluído' }}
+                {{ isSavingInterests ? t('profile.interestsModal.saving') : t('profile.interestsModal.done') }}
               </button>
             </div>
           </div>
@@ -1725,7 +1712,7 @@
         <div v-if="showRequestModal" class="modal-overlay" @click.self="closeRequestModal">
           <div class="request-modal-container">
             <div class="request-modal-header">
-              <h2>Solicitar Novo Interesse</h2>
+              <h2>{{ t('profile.requestInterestModal.title') }}</h2>
               <button class="modal-close" @click="closeRequestModal">
                 <i class="mdi mdi-close" />
               </button>
@@ -1733,17 +1720,17 @@
 
             <div class="request-modal-body">
               <p class="request-description">
-                Não encontrou o interesse que procura? Solicite e nossa equipe irá avaliar.
+                {{ t('profile.requestInterestModal.description') }}
               </p>
 
               <div class="input-wrapper">
-                <label class="input-label" for="newInterest">Nome do interesse</label>
+                <label class="input-label" for="newInterest">{{ t('profile.requestInterestModal.label') }}</label>
                 <div class="input-group">
                   <input
                     id="newInterest"
                     v-model="newInterestName"
                     class="request-input"
-                    placeholder="Ex: Rock Alternativo, Jazz"
+                    :placeholder="t('profile.requestInterestModal.placeholder')"
                     type="text"
                     @keyup.enter="addToPending"
                   >
@@ -1765,7 +1752,7 @@
 
             <div class="request-modal-footer">
               <button class="btn-cancel" @click="closeRequestModal">
-                Cancelar
+                {{ t('profile.requestInterestModal.cancel') }}
               </button>
               <button
                 class="btn-submit"
@@ -1773,7 +1760,8 @@
                 @click="submitNewInterestRequest"
               >
                 <i v-if="isSubmittingRequest" class="mdi mdi-loading mdi-spin" />
-                {{ isSubmittingRequest ? 'Enviando...' : 'Enviar Solicitação' }}
+                {{ isSubmittingRequest ? t('profile.requestInterestModal.submitting') :
+                  t('profile.requestInterestModal.submit') }}
               </button>
             </div>
           </div>
