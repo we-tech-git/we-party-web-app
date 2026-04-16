@@ -17,10 +17,11 @@
   import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
   import router from '@/router'
   import { AuthService } from '@/services/auth'
-  import { socialAuthService } from '@/services/socialAuth'
+  import { SocialAuthService } from '@/services/socialAuth'
   import { logger } from '@/utils/logger'
 
   const { t } = useI18n()
+  const socialAuthService = new SocialAuthService()
 
   // ===============================
   // GERADOR DE DADOS DE TESTE
@@ -253,23 +254,66 @@
   // ===============================
   // AUTENTICAÇÃO SOCIAL
   // ===============================
-  async function handleGoogleAuth () {
+  /**
+   * 🔐 NOVO: Handler para sucesso do Google OAuth via SDK
+   * Chamado quando o SocialAuthButtons emite 'google-success' com os dados procesados
+   */
+  async function handleGoogleSuccess (data: any) {
     try {
-      showSnackbar('Autenticando com Google...', '#4285F4')
-      const result = await socialAuthService.loginWithGoogle()
+      logger.log('[GOOGLE AUTH] Dados recebidos:', {
+        data,
+        userId: data.user?.id,
+        email: data.user?.email,
+        isNewUser: data.isNewUser,
+      })
 
-      if (result.success) {
-        showSnackbar('Login com Google realizado com sucesso! 🎉', '#22c55e')
-        setTimeout(() => {
-          router.push('/private/feed')
-        }, 1500)
-      } else {
-        showSnackbar(result.message || 'Erro ao fazer login com Google', '#ef4444')
+      // Salva dados de autenticação (já feito no socialAuthService, mas reforça aqui)
+      if (data.token && data.user) {
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token)
+        localStorage.setItem(STORAGE_KEYS.USER_ID, data.user.id)
+        AuthService.saveAuthData({
+          success: true,
+          message: data.message,
+          token: data.token,
+          user: data.user,
+        })
       }
+
+      // Mostra sucesso e redireciona
+      showSnackbar('✅ Login com Google realizado! 🎉', '#22c55e')
+      logger.log('[GOOGLE AUTH] 🎉 Redirecionando para /private/feed')
+
+      setTimeout(() => {
+        router.push('/private/feed')
+      }, 1000)
     } catch (error: any) {
-      logger.error('Erro na autenticação Google:', error)
-      showSnackbar(error.message || 'Erro ao fazer login com Google', '#ef4444')
+      logger.error('[GOOGLE AUTH] ❌ Erro ao processar sucesso:', error)
+      showSnackbar('Erro ao processar resposta do login', '#ef4444')
     }
+  }
+
+  /**
+   * 🔐 NOVO: Handler para erro do Google OAuth
+   * Chamado quando ocorre erro no SocialAuthButtons
+   */
+  async function handleGoogleError (error: any) {
+    logger.error('[GOOGLE AUTH] ❌ Erro recebido do SocialAuthButtons:', error)
+    const errorMessage = error?.message || error?.error || 'Erro ao fazer login com Google'
+    showSnackbar(errorMessage, '#ef4444')
+  }
+
+  /**
+   * 🔐 LEGADO: Handler ao clicar no botão do Google (compatibilidade)
+   * NOTA: Com o novo fluxo OAuth (authorization code), o SocialAuthButtons
+   * já cuida de tudo e emite @google-success ou @google-error.
+   * Este handler é mantido APENAS por compatibilidade, mas não deve ser usado.
+   * O novo fluxo vai direto para handleGoogleSuccess via evento.
+   */
+  async function handleGoogleAuth () {
+    // Este handler não deve ser chamado com o novo fluxo OAuth
+    // O SocialAuthButtons.vue já emite @google-success/error
+    // Este é um handler legado mantido para compatibilidade
+    logger.log('[GOOGLE AUTH] ⚠️ handleGoogleAuth (legado) - não deveria ser chamado com novo fluxo')
   }
 
   async function handleFacebookAuth () {
@@ -364,7 +408,8 @@
             mode="login"
             :show-email="false"
             @facebook-auth="handleFacebookAuth"
-            @google-auth="handleGoogleAuth"
+            @google-error="handleGoogleError"
+            @google-success="handleGoogleSuccess"
           />
         </div>
 

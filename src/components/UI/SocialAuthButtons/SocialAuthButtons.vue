@@ -1,9 +1,14 @@
 <!--
   Componente: SocialAuthButtons.vue
   Descrição: Botões de autenticação social (Google, Facebook, Email)
+  OAuth: Google usa SDK nativo com ID Token flow para máxima segurança
 -->
 <script setup lang="ts">
-  import { ref } from 'vue'
+  import axios from 'axios'
+  import { onMounted, ref } from 'vue'
+  import { STORAGE_KEYS } from '@/common/storage'
+  import { AuthService } from '@/services/auth'
+  import { SocialAuthService } from '@/services/socialAuth'
 
   interface Props {
     mode?: 'login' | 'signup'
@@ -21,6 +26,8 @@
     'google-auth': []
     'facebook-auth': []
     'email-auth': []
+    'google-success': [data: any]
+    'google-error': [error: any]
   }>()
 
   const isLoading = ref({
@@ -28,16 +35,178 @@
     facebook: false,
   })
 
+  const socialAuthService = new SocialAuthService()
+  let googleInitialized = false
+
+  /**
+   * Inicializa o Google SDK na montagem do componente
+   */
+  onMounted(async () => {
+    try {
+      // Se o SDK já está carregado globalmente, não faz nada
+      if (window.google?.accounts?.id) {
+        initializeGoogleButton()
+        return
+      }
+
+      // Aguarda o SDK ser carregado (já deve estar no index.html)
+      const googleScriptTimer = setInterval(() => {
+        if (window.google?.accounts?.id) {
+          clearInterval(googleScriptTimer)
+          initializeGoogleButton()
+        }
+      }, 100)
+
+      // Timeout após 5s
+      setTimeout(() => {
+        clearInterval(googleScriptTimer)
+        // console.warn('⚠️ Google SDK não carregou no timeout')
+      }, 5000)
+    } catch (error) {
+      console.error('❌ Erro ao inicializar Google SDK:', error)
+    }
+  })
+
+  /**
+   * Inicializa o botão do Google com callback
+   * Usa renderButton() para renderizar um botão padrão do Google
+   * Evita o One Tap prompt deprecated
+   */
+  function initializeGoogleButton () {
+    if (googleInitialized || !window.google?.accounts?.id) {
+      return
+    }
+
+    googleInitialized = true
+    const clientId = import.meta.env.VITE__GOOGLE_CLIENT_ID
+
+    if (!clientId) {
+      // console.warn('⚠️ VITE__GOOGLE_CLIENT_ID não configurado')
+      return
+    }
+
+    // Inicializa o cliente Google com callback (UMA ÚNICA VEZ)
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleCredential,
+      auto_select: false,
+      ux_mode: 'popup', // Usa popup em vez de redirect
+    })
+  }
+
+  /**
+   * Callback recebe a resposta do Google Sign-In
+   * @param response - { credential: idToken, select_by: 'user'|'auto' }
+   */
+  async function handleGoogleCredential (response: any) {
+    try {
+      isLoading.value.google = true
+
+      if (!response?.credential) {
+        throw new Error('Nenhum token recebido do Google')
+      }
+
+      // Usa o callback do serviço para processar o token
+      const callback = socialAuthService.getGoogleSignInCallback()
+      const result = await callback(response)
+
+      // Emite evento de sucesso para o componente pai
+      emit('google-success', result)
+      emit('google-auth')
+    } catch (error: any) {
+      console.error('[GOOGLE AUTH] ❌ Erro:', error)
+      emit('google-error', error)
+    } finally {
+      isLoading.value.google = false
+    }
+  }
+
+  /**
+   * 🔐 NOVO: Handler ao clicar no botão do Google
+   * Abre o popup de login do Google usando requestCode()
+   * Não usa o deprecated One Tap prompt
+   */
   async function handleGoogleAuth () {
-    if (isLoading.value.google) return
+    if (isLoading.value.google || !googleInitialized) return
     isLoading.value.google = true
 
     try {
-      emit('google-auth')
+      const clientId = import.meta.env.VITE__GOOGLE_CLIENT_ID
+      if (!clientId) {
+        throw new Error('Client ID não configurado')
+      }
+
+      // Usa requestCode para popup de autenticação
+      // Este é o fluxo recomendado pelo Google (não deprecated)
+      const client = window.google.accounts.oauth2.initCodeClient({
+        client_id: clientId,
+        scope: 'profile email', // Scopes que você quer solicitar
+        ux_mode: 'popup', // Abre em popup, não redirect
+        callback: handleCodeResponse, // Callback quando código é recebido
+        // Configurações do popup (altura e largura)
+        width: 500, // largura em pixels (padrão: 450-500)
+        height: 600, // altura em pixels (padrão: 600-700)
+      })
+
+      // Abre o popup
+      client.requestCode()
+    } catch (error: any) {
+      console.error('❌ Erro ao abrir Google Sign-In:', error)
+      emit('google-error', { message: error.message })
+      isLoading.value.google = false
+    }
+  }
+
+  /**
+   * Callback para quando o código de autorização é recebido
+   * Converte o código em ID Token via backend
+   */
+  async function handleCodeResponse (response: any) {
+    try {
+      if (!response?.code) {
+        throw new Error('Nenhum código recebido do Google')
+      }
+
+      // Envia o código para o backend fazer a troca por ID Token
+      // O backend usará o Google OAuth library para validar
+      const apiBaseUrl = import.meta.env.VITE__BASE_URL || 'http://localhost:8000'
+      const endpoint = `${apiBaseUrl}/users/google-auth`
+
+      const axiosResponse = await axios.post(endpoint, { code: response.code })
+
+      if (axiosResponse.data?.success && axiosResponse.data?.data) {
+        const result = {
+          success: true,
+          token: axiosResponse.data.data.token,
+          user: axiosResponse.data.data,
+          message: axiosResponse.data.message || 'Autenticado com sucesso',
+        }
+
+        // Salva dados de autenticação (igual ao fluxo de ID Token)
+        if (result.token && result.user) {
+          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, result.token)
+          localStorage.setItem(STORAGE_KEYS.USER_ID, result.user.id)
+          AuthService.saveAuthData({
+            success: true,
+            message: result.message,
+            token: result.token,
+            user: result.user,
+          })
+        }
+
+        // Emite evento de sucesso
+        emit('google-success', result)
+        emit('google-auth')
+      } else {
+        throw new Error('Backend retornou erro')
+      }
+    } catch (error: any) {
+      // console.error('[GOOGLE AUTH] ❌ Erro ao processar código:', error)
+      emit('google-error', {
+        message: error.response?.data?.message || error.message || 'Erro na autenticação',
+      })
     } finally {
-      setTimeout(() => {
-        isLoading.value.google = false
-      }, 1000)
+      isLoading.value.google = false
     }
   }
 
@@ -104,25 +273,6 @@
         <span v-if="!compact" class="btn-text">Google</span>
       </button>
 
-      <!-- Facebook -->
-      <button
-        class="social-btn facebook-btn"
-        :class="{ loading: isLoading.facebook, compact }"
-        :disabled="isLoading.facebook"
-        type="button"
-        @click="handleFacebookAuth"
-      >
-        <span v-if="!isLoading.facebook" class="btn-icon">
-          <svg fill="#1877F2" height="20" viewBox="0 0 24 24" width="20">
-            <path
-              d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
-            />
-          </svg>
-        </span>
-        <span v-else class="spinner" />
-        <span v-if="!compact" class="btn-text">Facebook</span>
-      </button>
-
       <!-- Email (opcional) -->
       <button
         v-if="showEmail"
@@ -181,8 +331,8 @@
 /* Container dos botões */
 .social-buttons {
     display: flex;
-    gap: 0.75rem;
     width: 100%;
+    justify-content: center;
 }
 
 .social-buttons.compact {
@@ -192,7 +342,6 @@
 
 /* Botão social base */
 .social-btn {
-    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -206,8 +355,6 @@
     color: #374151;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
 }
 
 .social-btn.compact {
@@ -255,6 +402,7 @@
 .google-btn:hover {
     border-color: #4285F4;
     background: #f8f9ff;
+    max-width: ;
 }
 
 .facebook-btn:hover {
