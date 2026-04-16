@@ -1,75 +1,70 @@
 <script setup lang="ts">
-  import { useI18n } from 'vue-i18n'
-  import { useRouter } from 'vue-router'
-  import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
-  import { useAuth } from '@/composables/useAuth'
-  import { svgIcons } from '@/utils/svgSet'
+import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import { useAuth } from '@/composables/useAuth'
+import { svgIcons } from '@/utils/svgSet'
 
-  interface UserSummary {
-    name: string
-    avatar: string
+interface UserSummary {
+  name: string
+  avatar: string
+  username?: string
+  bio?: string
+  stats?: {
+    followers: number
+    following: number
   }
+}
 
-  defineProps<{
-    user: UserSummary
-    showBackBtn?: boolean
-    guestMode?: boolean
-  }>()
-  const { t } = useI18n()
-  const router = useRouter()
-  const { logout: authLogout, loggedUser } = useAuth()
+defineProps<{
+  user: UserSummary
+  showBackBtn?: boolean
+  guestMode?: boolean
+}>()
+const { t } = useI18n()
+const router = useRouter()
+const { logout: authLogout, loggedUser } = useAuth()
 
-  const avatarColors = [
-    '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
-    '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
-  ]
+const avatarColors = [
+  '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
+  '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
+]
 
-  function getAvatarColor (name: string): string {
-    let hash = 0
-    for (let i = 0; i < name.length; i++) {
-      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
-    }
-    const index = Math.abs(hash % avatarColors.length)
-    return avatarColors[index] ?? '#F44336'
+function getAvatarColor(name: string): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
   }
+  const index = Math.abs(hash % avatarColors.length)
+  return avatarColors[index] ?? '#F44336'
+}
 
-  function getInitial (name: string): string {
-    return (name || 'U').charAt(0).toUpperCase()
-  }
+function getInitial(name: string): string {
+  return (name || 'U').charAt(0).toUpperCase()
+}
 
-  function logout () {
-    authLogout()
-    router.push('/public/Login')
-  }
+function logout() {
+  authLogout()
+  router.push('/public/Login')
+}
 
-  function goToLogin () {
-    router.push('/public/Login')
-  }
+function goToLogin() {
+  router.push('/public/Login')
+}
 
-  function goToSignup () {
-    router.push('/public/Signup')
-  }
+function goToSignup() {
+  router.push('/public/Signup')
+}
 </script>
 
 <template>
   <header aria-label="Brand header" class="feed-top-header">
     <div class="header-inner">
       <div class="brand-wrapper">
-        <button
-          v-if="showBackBtn"
-          :aria-label="t('common.back') || 'Voltar'"
-          class="nav-back-btn"
-          type="button"
-          @click="router.back()"
-        >
-          <svg
-            fill="none"
-            height="24"
-            stroke="currentColor"
-            stroke-width="2.5"
-            :viewBox="svgIcons.backArrow.viewBox"
-            width="24"
-          >
+        <button v-if="showBackBtn" :aria-label="t('common.back') || 'Voltar'" class="nav-back-btn" type="button"
+          @click="router.back()">
+          <svg fill="none" height="24" stroke="currentColor" stroke-width="2.5" :viewBox="svgIcons.backArrow.viewBox"
+            width="24">
             <path v-for="(path, idx) in svgIcons.backArrow.paths" :key="idx" v-bind="path" />
           </svg>
         </button>
@@ -102,24 +97,26 @@
         <template v-else>
           <v-menu location="bottom" transition="slide-y-transition">
             <template #activator="{ props: menuProps }">
-              <div class="display-user-header">
-                <img
-                  v-if="user.avatar"
-                  v-bind="menuProps"
-                  :alt="user.name"
-                  class="avatar"
-                  loading="lazy"
-                  :src="user.avatar"
-                >
-                <div
-                  v-else
-                  v-bind="menuProps"
-                  class="avatar avatar-placeholder"
-                  :style="{ backgroundColor: getAvatarColor(user.name) }"
-                >
-                  {{ getInitial(user.name) }}
+              <div class="display-user-header" v-bind="menuProps">
+                <div class="user-avatar-section">
+                  <img v-if="user.avatar" :alt="user.name" class="avatar" loading="lazy" :src="user.avatar">
+                  <div v-else class="avatar avatar-placeholder" :style="{ backgroundColor: getAvatarColor(user.name) }">
+                    {{ getInitial(user.name) }}
+                  </div>
                 </div>
-                <p>Bem vindo, <br> {{ user.name }}</p>
+                <div class="user-info-section">
+                  <h2 class="user-name">{{ user.name }}</h2>
+                  <span v-if="user.username" class="user-handle">{{ user.username }}</span>
+                  <div v-if="user.stats" class="user-stats-mini">
+                    <span class="stat-mini">
+                      <strong>{{ user.stats.followers }}</strong> Seguidores
+                    </span>
+                    <span class="stat-dot">•</span>
+                    <span class="stat-mini">
+                      <strong>{{ user.stats.following }}</strong> Seguindo
+                    </span>
+                  </div>
+                </div>
               </div>
             </template>
 
@@ -127,12 +124,8 @@
               <!-- Cabeçalho com info do usuário -->
               <div class="user-dropdown-header">
                 <div class="dropdown-avatar" :style="{ backgroundColor: getAvatarColor(user.name) }">
-                  <img
-                    v-if="user.avatar"
-                    :alt="user.name"
-                    :src="user.avatar"
-                    style="width:100%;height:100%;border-radius:50%;object-fit:cover;"
-                  >
+                  <img v-if="user.avatar" :alt="user.name" :src="user.avatar"
+                    style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
                   <span v-else>{{ getInitial(user.name) }}</span>
                 </div>
                 <div class="dropdown-user-info">
@@ -146,16 +139,8 @@
               <!-- Navegar para perfil -->
               <v-list-item class="dropdown-action-item" rounded="lg" @click="router.push('/private/profile')">
                 <template #prepend>
-                  <svg
-                    fill="none"
-                    height="18"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    width="18"
-                  >
+                  <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                    stroke-width="2" viewBox="0 0 24 24" width="18">
                     <circle cx="12" cy="8" r="4" />
                     <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                   </svg>
@@ -168,16 +153,8 @@
               <!-- Sair -->
               <v-list-item class="dropdown-action-item dropdown-logout" rounded="lg" @click="logout">
                 <template #prepend>
-                  <svg
-                    fill="none"
-                    height="18"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    width="18"
-                  >
+                  <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                    stroke-width="2" viewBox="0 0 24 24" width="18">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                     <polyline points="16 17 21 12 16 7" />
                     <line x1="21" x2="9" y1="12" y2="12" />
@@ -209,12 +186,65 @@
 .display-user-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.85rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 12px;
+  transition: background 0.2s ease;
 }
 
-.display-user-header p {
+.display-user-header:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.user-avatar-section {
+  flex-shrink: 0;
+}
+
+.user-info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.user-name {
   font-weight: 700;
-  font-size: 14px;
+  font-size: 0.95rem;
+  color: #1a1c2e;
+  margin: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-handle {
+  font-size: 0.75rem;
+  color: #9aa0b8;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-stats-mini {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  color: #6b7280;
+  margin-top: 0.15rem;
+}
+
+.stat-mini strong {
+  font-weight: 700;
+  color: #1a1c2e;
+}
+
+.stat-dot {
+  color: #d0d4e3;
+  font-size: 0.6rem;
 }
 
 .header-inner {
@@ -303,13 +333,17 @@
 .user-summary {
   display: flex;
   align-items: center;
-  /* gap: 1.25rem; */
   flex-shrink: 0;
-  padding: 0.5rem 0.75rem 0.5rem 1.25rem;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.281) 0%, rgba(255, 95, 167, 0.308) 100%);
-  border-radius: 999px;
-  box-shadow: 0 10px 30px rgba(14, 23, 58, 0.08);
-  /* Similar shadow to generic cards */
+  padding: 0.65rem 1rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 250, 252, 0.95) 100%);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(14, 23, 58, 0.08), 0 0 0 1px rgba(255, 95, 166, 0.1);
+  min-width: 280px;
+  transition: all 0.3s ease;
+}
+
+.user-summary:hover {
+  box-shadow: 0 6px 20px rgba(14, 23, 58, 0.12), 0 0 0 1px rgba(255, 95, 166, 0.2);
 }
 
 /* Guest mode action buttons */
@@ -484,7 +518,25 @@
     position: absolute;
     top: calc(0.5rem + env(safe-area-inset-top, 0px));
     right: max(1rem, env(safe-area-inset-right, 0px));
-    padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+    padding: 0.5rem 0.75rem;
+    min-width: auto;
+    max-width: 200px;
+  }
+
+  .user-info-section {
+    max-width: 120px;
+  }
+
+  .user-name {
+    font-size: 0.85rem;
+  }
+
+  .user-handle {
+    font-size: 0.7rem;
+  }
+
+  .user-stats-mini {
+    font-size: 0.65rem;
   }
 
   .feed-top-header {
@@ -505,14 +557,23 @@
 
   .user-summary {
     gap: 0.5rem;
-    padding: 0.3rem 0.4rem 0.3rem 0.6rem;
+    padding: 0.4rem 0.6rem;
     top: calc(0.4rem + env(safe-area-inset-top, 0px));
     right: max(0.5rem, env(safe-area-inset-right, 0px));
   }
 
   .avatar {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .user-name {
+    font-size: 0.8rem;
+  }
+
+  .user-handle,
+  .user-stats-mini {
+    display: none;
   }
 }
 </style>

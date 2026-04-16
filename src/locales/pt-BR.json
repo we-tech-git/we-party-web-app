@@ -195,6 +195,144 @@
       "invalidToken": "Token inválido ou expirado. Solicite um novo email.",
       "generic": "Não foi possível alterar a senha. Tente novamente."
     }
+  },
+  "profile": {
+    "title": "Perfil",
+    "editProfile": "Editar Perfil",
+    "shareProfile": "Compartilhar perfil",
+    "yourName": "Seu Nome",
+    "username": "username",
+    "bioPlaceholder": "Adicione uma bio clicando em \"Editar Perfil\"",
+    "yourInterests": "Seus interesses",
+    "joinedIn": "Entrou em",
+    "followers": "Seguidores",
+    "following": "Seguindo",
+    "viewFollowers": "Ver lista de seguidores",
+    "viewFollowing": "Ver lista de quem você segue",
+    "tabs": {
+      "liked": "Curtidos",
+      "settings": "Preferências"
+    },
+    "likedEvents": {
+      "title": "Eventos curtidos",
+      "empty": "Nenhum evento curtido",
+      "emptyDescription": "Curta eventos para salvá-los aqui e acessá-los rapidamente depois",
+      "exploreEvents": "Explorar Eventos",
+      "showMore": "Mostrar mais eventos",
+      "locationUndefined": "Local a definir",
+      "dateUndefined": "Data a definir",
+      "eventTitle": "Evento",
+      "soon": "Em breve"
+    },
+    "settings": {
+      "general": "Geral",
+      "notifications": "Notificações",
+      "notificationsDesc": "Receba alertas sobre eventos e amigos",
+      "account": "Conta",
+      "editProfile": "Editar Perfil",
+      "editProfileDesc": "Altere nome, bio e foto",
+      "logout": "Sair da conta",
+      "logoutDesc": "Encerrar sessão atual"
+    },
+    "interests": {
+      "title": "Interesses",
+      "manage": "Gerenciar interesses",
+      "remove": "Remover interesse",
+      "empty": "Nenhum interesse adicionado ainda.",
+      "add": "Adicionar",
+      "myInterests": "Meus interesses",
+      "searchPlaceholder": "Buscar interesses...",
+      "searchResults": "Resultados da busca",
+      "suggestions": "Sugestões de interesses",
+      "loadingSuggestions": "Carregando sugestões...",
+      "noSuggestions": "Nenhuma sugestão disponível no momento.",
+      "noResults": "Nenhum interesse encontrado",
+      "requestNew": "Solicitar novo interesse",
+      "emptyMessage": "Você ainda não adicionou nenhum interesse."
+    },
+    "editModal": {
+      "title": "Editar Perfil",
+      "name": "Nome",
+      "namePlaceholder": "Seu nome completo",
+      "username": "Nome de usuário",
+      "usernamePlaceholder": "seunome",
+      "bio": "Bio",
+      "bioPlaceholder": "Conte um pouco sobre você...",
+      "location": "Localização",
+      "locationPlaceholder": "Sua cidade",
+      "cancel": "Cancelar",
+      "save": "Salvar",
+      "saving": "Salvando...",
+      "changeCover": "Alterar imagem de capa",
+      "changeAvatar": "Alterar foto de perfil",
+      "uploadingCover": "Enviando imagem de capa...",
+      "uploadingAvatar": "Enviando foto de perfil..."
+    },
+    "cropModal": {
+      "title": "Enquadrar foto",
+      "cancel": "Cancelar",
+      "apply": "Aplicar",
+      "uploading": "Enviando..."
+    },
+    "interestsModal": {
+      "title": "Gerenciar Interesses",
+      "done": "Concluído",
+      "cancel": "Cancelar",
+      "saving": "Salvando..."
+    },
+    "requestInterestModal": {
+      "title": "Solicitar Novo Interesse",
+      "description": "Não encontrou o interesse que procura? Solicite e nossa equipe irá avaliar.",
+      "label": "Nome do interesse",
+      "placeholder": "Ex: Rock Alternativo, Jazz",
+      "cancel": "Cancelar",
+      "submit": "Enviar Solicitação",
+      "submitting": "Enviando..."
+    },
+    "messages": {
+      "profileImageSuccess": "Foto de perfil atualizada com sucesso! 🎉",
+      "profileImageError": "Erro ao fazer upload da foto. Tente novamente.",
+      "coverImageSuccess": "Capa atualizada com sucesso! 🎉",
+      "coverImageError": "Erro ao fazer upload da capa. Tente novamente.",
+      "profileUpdateSuccess": "Perfil atualizado com sucesso! ✅",
+      "profileUpdateError": "Erro ao salvar perfil. Tente novamente.",
+      "interestsUpdateSuccess": "Interesses atualizados com sucesso! ✅",
+      "interestsUpdateError": "Erro ao salvar interesses. Tente novamente.",
+      "interestRemoveSuccess": "Interesse removido com sucesso!",
+      "interestRemoveError": "Erro ao remover interesse",
+      "addAtLeastOne": "Adicione pelo menos um interesse",
+      "requestSuccess": "Solicitação enviada com sucesso! Aguarde aprovação. ✅",
+      "requestError": "Erro ao enviar solicitação. Tente novamente.",
+      "fileSizeError": "A imagem deve ter no máximo 5MB",
+      "fileTypeError": "Por favor, selecione apenas arquivos de imagem",
+      "loadProfileError": "Erro ao carregar dados do perfil"
+    },
+    "months": {
+      "january": "Janeiro",
+      "february": "Fevereiro",
+      "march": "Março",
+      "april": "Abril",
+      "may": "Maio",
+      "june": "Junho",
+      "july": "Julho",
+      "august": "Agosto",
+      "september": "Setembro",
+      "october": "Outubro",
+      "november": "Novembro",
+      "december": "Dezembro"
+    },
+    "aria": {
+      "profileContent": "Conteúdo do perfil",
+      "navigation": "Navegação",
+      "backToFeed": "Voltar para o feed",
+      "coverImage": "Imagem de capa do perfil",
+      "defaultCover": "Capa padrão do perfil",
+      "profilePicture": "Foto de perfil de {name}",
+      "avatarInitials": "Avatar com iniciais: {initials}",
+      "onlineStatus": "Usuário online",
+      "profileStats": "Estatísticas do perfil",
+      "profileTabs": "Navegação do perfil"
+    }
   }
 }
 
