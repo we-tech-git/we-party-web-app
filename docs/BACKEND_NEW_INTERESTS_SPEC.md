@@ -186,9 +186,6 @@ async requestNewInterests(req, res) {
       }
     }
 
-    // Log para análise
-    console.log(`[INTEREST REQUEST] User ${userId} solicitou: ${validInterests.join(', ')}`);
-
     return res.status(200).json({
       success: true,
       message: 'Solicitações recebidas com sucesso',
