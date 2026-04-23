@@ -84,9 +84,47 @@ export async function searchPublicEvents (search: string, page = 1, limit = 10) 
   }
 }
 
+/**
+ * Busca TODOS os eventos (público - sem autenticação)
+ * Não aplica filtros de recomendação baseados em interesses
+ */
+export async function getAllPublicEvents (page = 1, limit = 10) {
+  try {
+    const response = await callApi(
+      'GET',
+      `/events?page=${page}&limit=${limit}`,
+      {},
+      false, // Sem autenticação
+    )
+    return response
+  } catch (error) {
+    logger.error('Erro ao buscar todos os eventos (público):', error)
+    throw error
+  }
+}
+
 // ============================================================
 // FUNÇÕES AUTENTICADAS - Para usuários logados
 // ============================================================
+
+/**
+ * Busca TODOS os eventos (autenticado)
+ * Não aplica filtros de recomendação baseados em interesses
+ */
+export async function getAllEvents (page = 1, limit = 10) {
+  try {
+    const response = await callApi(
+      'GET',
+      `/events?page=${page}&limit=${limit}`,
+      {},
+      true,
+    )
+    return response
+  } catch (error) {
+    logger.error('Erro ao buscar todos os eventos:', error)
+    throw error
+  }
+}
 
 export async function getEventRecomendations (page = 1, limit = 10) {
   try {

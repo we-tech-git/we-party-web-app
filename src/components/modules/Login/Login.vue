@@ -15,6 +15,7 @@
   import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
+  import { useRateLimit } from '@/composables/useRateLimit'
   import router from '@/router'
   import { AuthService } from '@/services/auth'
   import { SocialAuthService } from '@/services/socialAuth'
@@ -24,19 +25,33 @@
   const socialAuthService = new SocialAuthService()
 
   // ===============================
-  // GERADOR DE DADOS DE TESTE
+  // RATE LIMITING (Segurança)
+  // ===============================
+  // Previne brute force attacks limitando tentativas de login
+  const loginRateLimit = useRateLimit('login', {
+    maxAttempts: 5, // Máximo 5 tentativas
+    windowMs: 15 * 60 * 1000, // Em 15 minutos
+    blockDurationMs: 30 * 60 * 1000, // Bloqueia por 30 minutos
+  })
+
+  // ===============================
+  // GERADOR DE DADOS DE TESTE (APENAS DEV)
   // ===============================
   /**
    * Gera dados de login para teste.
-   * Retorna um objeto com email e senha pré-definidos.
+   * SEGURANÇA: Só funciona em ambiente de desenvolvimento.
+   * Usa dados fictícios, nunca credenciais reais.
    */
   function generateTestLoginData () {
-    // Gera email fixo com número randômico de 3 dígitos
-    // const randomNumber = Math.floor(Math.random() * 900) + 100
-    // Gera email fixo
-    // const emailGenerated = `teste776@gmail.com`
-    const emailGenerated = `jonathan.nwokolo@gmail.com`
-    const passwordGenerated = 'Teste12345@'
+    // Bloqueia em produção por segurança
+    if (!import.meta.env.DEV) {
+      console.warn('[SECURITY] Test data not available in production')
+      return { email: '', password: '' }
+    }
+
+    // Dados fictícios para testes - NUNCA usar credenciais reais
+    const emailGenerated = 'test@example.com'
+    const passwordGenerated = 'TestPassword123!'
 
     return {
       email: emailGenerated,
@@ -46,13 +61,19 @@
 
   /**
    * Preenche o formulário com dados de teste.
-   * Pode usar dados fixos ou gerar dados aleatórios se isRandom for true.
+   * SEGURANÇA: Só funciona em ambiente de desenvolvimento.
    */
   function fillFormWithTestData (isRandom = false) {
+    // Bloqueia em produção por segurança
+    if (!import.meta.env.DEV) {
+      console.warn('[SECURITY] Test fill not available in production')
+      return
+    }
+
     if (isRandom) {
       const randomNumber = Math.floor(Math.random() * 900) + 100
       email.value = `testuser${randomNumber}@example.com`
-      password.value = 'password123'
+      password.value = 'TestPassword123!'
     } else {
       const testData = generateTestLoginData()
 
@@ -157,6 +178,25 @@
       return
     }
 
+    // ===============================
+    // RATE LIMITING: Verifica se não está bloqueado
+    // ===============================
+    if (loginRateLimit.isBlocked.value) {
+      const timeRemaining = loginRateLimit.blockedTimeRemaining.value
+      const minutes = Math.ceil(timeRemaining / 60)
+      showSnackbar(
+        `🔒 Muitas tentativas falhas. Tente novamente em ${minutes} minuto${minutes > 1 ? 's' : ''}.`,
+        '#ef4444',
+      )
+      return
+    }
+
+    // Registra tentativa ANTES de fazer o login
+    if (!loginRateLimit.attempt()) {
+      showSnackbar('🔒 Limite de tentativas excedido. Aguarde antes de tentar novamente.', '#ef4444')
+      return
+    }
+
     const minLoadingMs = 2000
     const start = Date.now()
     isSubmitting.value = true
@@ -179,6 +219,11 @@
           token: data.data.token,
           user: data.data,
         })
+
+        // ===============================
+        // RATE LIMITING: Reseta após sucesso
+        // ===============================
+        loginRateLimit.reset()
 
         // Salva o e-mail se "Lembrar-me" estiver ativo
         if (rememberMe.value) {
@@ -212,7 +257,16 @@
           //   test4: response.response.data.message,
           // })
           // Trata outros erros lógicos que podem vir do backend
-          showSnackbar(errorMessage, '#ef4444')
+
+          // ===============================
+          // RATE LIMITING: Mostra tentativas restantes
+          // ===============================
+          const remaining = loginRateLimit.attemptsRemaining.value
+          if (remaining > 0 && remaining <= 2) {
+            showSnackbar(`${errorMessage} (${remaining} tentativa${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''})`, '#ef4444')
+          } else {
+            showSnackbar(errorMessage, '#ef4444')
+          }
         }
       }
     } catch (error: any) {
@@ -227,7 +281,15 @@
           router.push('/public/ConfirmEmail')
         }, 3000)
       } else {
-        showSnackbar(errorMessage, '#ef4444')
+        // ===============================
+        // RATE LIMITING: Mostra tentativas restantes em caso de erro
+        // ===============================
+        const remaining = loginRateLimit.attemptsRemaining.value
+        if (remaining > 0 && remaining <= 2) {
+          showSnackbar(`${errorMessage} (${remaining} tentativa${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''})`, '#ef4444')
+        } else {
+          showSnackbar(errorMessage, '#ef4444')
+        }
       }
     } finally {
       const elapsed = Date.now() - start

@@ -1,6 +1,8 @@
 <script setup lang="ts">
-  import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+  import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+  import { addEventComment, deleteEventComment, getEventComments, toggleLikeComment } from '@/api/comments'
   import { getEventById } from '@/api/event'
+  import { useAuth } from '@/composables/useAuth'
   import { useEventsStore } from '@/stores/events'
   import { useShareStore } from '@/stores/share'
 
@@ -161,7 +163,285 @@
   const loading = ref(false)
   const errorMessage = ref('')
   const showConfirmModal = ref(false)
-  const activeTab = ref<'info' | 'location' | 'lineup'>('info')
+  const activeTab = ref<'info' | 'location' | 'lineup' | 'comments'>('info')
+
+  // =====================
+  // COMMENTS STATE
+  // =====================
+  const { loggedUser } = useAuth()
+
+  interface Comment {
+    id: string
+    content: string
+    createdAt: string
+    likesCount: number
+    isLikedByMe: boolean
+    parentCommentId?: string | null
+    replies?: Comment[]
+    user: {
+      id: string
+      name: string
+      profileImage?: string
+      role?: string
+    }
+  }
+
+  const comments = ref<Comment[]>([])
+  const newComment = ref('')
+  const commentsLoading = ref(false)
+  const sendingComment = ref(false)
+  const deletingCommentId = ref<string | null>(null)
+  const likingCommentId = ref<string | null>(null)
+  const commentsContainer = ref<HTMLElement | null>(null)
+
+  // Reply state
+  const replyingTo = ref<Comment | null>(null)
+  const replyText = ref('')
+  const sendingReply = ref(false)
+
+  // Local liked state (optimistic)
+  const localLiked = ref<Record<string, boolean>>({})
+  const localLikeDelta = ref<Record<string, number>>({})
+
+  // Replies expandidas
+  const expandedReplies = ref<Record<string, boolean>>({})
+
+  function toggleReplies (commentId: string) {
+    expandedReplies.value[commentId] = !expandedReplies.value[commentId]
+  }
+
+  function formatCommentDate (dateStr: string): string {
+    const d = new Date(dateStr)
+    if (Number.isNaN(d.getTime())) return ''
+    const now = new Date()
+    const diffMs = now.getTime() - d.getTime()
+    const diffMin = Math.floor(diffMs / 60_000)
+    if (diffMin < 1) return 'agora'
+    if (diffMin < 60) return `${diffMin}min`
+    const diffH = Math.floor(diffMin / 60)
+    if (diffH < 24) return `${diffH}h`
+    const diffD = Math.floor(diffH / 24)
+    if (diffD < 7) return `${diffD}d`
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  }
+
+  function getCommentInitial (name: string): string {
+    return (name || 'U').charAt(0).toUpperCase()
+  }
+
+  const commentAvatarColors = [
+    '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
+    '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
+  ]
+
+  function getCommentAvatarColor (name: string): string {
+    if (!name) return commentAvatarColors[0] ?? '#F44336'
+    let hash = 0
+    for (let i = 0; i < name.length; i++) {
+      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
+    }
+    return commentAvatarColors[Math.abs(hash % commentAvatarColors.length)] ?? '#F44336'
+  }
+
+  function isMyComment (comment: Comment): boolean {
+    return loggedUser.value?.id === comment.user?.id
+  }
+
+  function isCommentLiked (comment: Comment): boolean {
+    if (comment.id in localLiked.value) return localLiked.value[comment.id] ?? false
+    return comment.isLikedByMe ?? false
+  }
+
+  function commentLikesCount (comment: Comment): number {
+    const base = comment.likesCount || 0
+    const delta = localLikeDelta.value[comment.id] || 0
+    return Math.max(0, base + delta)
+  }
+
+  async function fetchComments () {
+    const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
+    if (!id) return
+
+    commentsLoading.value = true
+    try {
+      const res = await getEventComments(id)
+      const raw = res?.data?.data || res?.data?.comments || res?.data?.content || res?.data || []
+      const dataArr: any[] = Array.isArray(raw) ? raw : []
+
+      function mapComment (c: any): Comment {
+        return {
+          id: c.id,
+          content: c.content,
+          createdAt: c.createdAt,
+          likesCount: c.likesCount ?? c._count?.likes ?? c.likes ?? 0,
+          isLikedByMe: c.isLikedByMe ?? c.likedByMe ?? false,
+          parentCommentId: c.parentCommentId ?? c.parentId ?? null,
+          replies: [],
+          user: {
+            ...(c.user ?? { id: '', name: 'Usuário' }),
+            role: c.user?.role ?? c.user?.userType ?? null,
+          },
+        }
+      }
+
+      const allComments: Comment[] = []
+      for (const c of dataArr) {
+        allComments.push(mapComment(c))
+        const nestedReplies = c.replies || c.children || []
+        if (Array.isArray(nestedReplies)) {
+          for (const r of nestedReplies) {
+            const mapped = mapComment(r)
+            if (!mapped.parentCommentId) mapped.parentCommentId = c.id
+            allComments.push(mapped)
+          }
+        }
+      }
+
+      const topLevel: Comment[] = []
+      const byId: Record<string, Comment> = {}
+      for (const cm of allComments) byId[cm.id] = cm
+      for (const cm of allComments) {
+        if (cm.parentCommentId && byId[cm.parentCommentId]) {
+          byId[cm.parentCommentId]!.replies!.push(cm)
+        } else {
+          topLevel.push(cm)
+        }
+      }
+      comments.value = topLevel
+      localLiked.value = {}
+      localLikeDelta.value = {}
+    } catch (error) {
+      console.error('Erro ao buscar comentários:', error)
+      comments.value = []
+    } finally {
+      commentsLoading.value = false
+    }
+  }
+
+  async function handleSendComment () {
+    const text = newComment.value.trim()
+    if (!text || sendingComment.value) return
+
+    const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
+    if (!id) return
+
+    sendingComment.value = true
+    try {
+      await addEventComment(id, text)
+      newComment.value = ''
+      await fetchComments()
+      await nextTick()
+      if (commentsContainer.value) {
+        commentsContainer.value.scrollTop = commentsContainer.value.scrollHeight
+      }
+    } catch (error) {
+      console.error('Erro ao enviar comentário:', error)
+    } finally {
+      sendingComment.value = false
+    }
+  }
+
+  function startReply (comment: Comment) {
+    replyingTo.value = comment
+    replyText.value = ''
+  }
+
+  function cancelReply () {
+    replyingTo.value = null
+    replyText.value = ''
+  }
+
+  async function handleSendReply () {
+    const text = replyText.value.trim()
+    if (!text || sendingReply.value || !replyingTo.value) return
+
+    const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
+    if (!id) return
+
+    const parentId = replyingTo.value.id
+    sendingReply.value = true
+    try {
+      const res = await addEventComment(id, text, parentId)
+
+      const replyData = res?.data?.data || res?.data
+      const newReplyObj: Comment = {
+        id: replyData?.id || `temp-${Date.now()}`,
+        content: text,
+        createdAt: new Date().toISOString(),
+        likesCount: 0,
+        isLikedByMe: false,
+        parentCommentId: parentId,
+        replies: [],
+        user: {
+          id: loggedUser.value?.id || '',
+          name: loggedUser.value?.name || 'Você',
+          profileImage: loggedUser.value?.profileImage,
+          role: undefined,
+        },
+      }
+
+      const parent = comments.value.find(c => c.id === parentId)
+      if (parent) {
+        if (!parent.replies) parent.replies = []
+        parent.replies.push(newReplyObj)
+        expandedReplies.value[parentId] = true
+      }
+
+      cancelReply()
+      fetchComments()
+    } catch (error) {
+      console.error('Erro ao enviar resposta:', error)
+    } finally {
+      sendingReply.value = false
+    }
+  }
+
+  async function handleDeleteComment (commentId: string) {
+    if (deletingCommentId.value) return
+
+    const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
+    if (!id) return
+
+    deletingCommentId.value = commentId
+    try {
+      await deleteEventComment(id, commentId)
+      comments.value = comments.value.filter(c => c.id !== commentId)
+    } catch (error) {
+      console.error('Erro ao excluir comentário:', error)
+    } finally {
+      deletingCommentId.value = null
+    }
+  }
+
+  async function handleToggleLikeComment (comment: Comment) {
+    if (likingCommentId.value === comment.id) return
+
+    const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
+    if (!id) return
+
+    likingCommentId.value = comment.id
+
+    const wasLiked = isCommentLiked(comment)
+    localLiked.value[comment.id] = !wasLiked
+    localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? -1 : 1)
+
+    try {
+      await toggleLikeComment(id, comment.id)
+    } catch (error) {
+      localLiked.value[comment.id] = wasLiked
+      localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? 1 : -1)
+      console.error('Erro ao curtir comentário:', error)
+    } finally {
+      likingCommentId.value = null
+    }
+  }
+
+  // Carrega comentários quando a aba é selecionada
+  watch(activeTab, tab => {
+    if (tab === 'comments' && comments.value.length === 0) {
+      fetchComments()
+    }
+  })
 
   // FAQs state
   const openFaqIndex = ref<number | null>(null)
@@ -440,6 +720,23 @@
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
+  function getMapEmbedUrl () {
+    const loc = event.value?.location
+    if (!loc) return ''
+
+    const encodedLocation = encodeURIComponent(loc)
+    const apiKey = import.meta.env.VITE__GOOGLE_MAPS_API_KEY
+
+    // Se tiver API key, usa o Embed API (melhor qualidade)
+    if (apiKey) {
+      return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodedLocation}&zoom=15`
+    }
+
+    // Fallback: usa iframe simples do Google Maps (funciona sem API key)
+    // Nota: pode ter limitações de estilo e funcionalidade
+    return `https://maps.google.com/maps?q=${encodedLocation}&t=&z=15&ie=UTF8&iwloc=&output=embed`
+  }
+
   function _openSourceUrl () {
     if (event.value?.sourceUrl) {
       window.open(event.value.sourceUrl, '_blank', 'noopener,noreferrer')
@@ -669,6 +966,11 @@
           <i class="mdi mdi-star-outline" />
           <span>Atrações</span>
         </button>
+        <button class="tab-btn" :class="{ active: activeTab === 'comments' }" @click="activeTab = 'comments'">
+          <i class="mdi mdi-comment-outline" />
+          <span>Comentários</span>
+          <span v-if="comments.length > 0" class="tab-badge">{{ comments.length }}</span>
+        </button>
       </div>
 
       <!-- Tab Content -->
@@ -762,6 +1064,18 @@
 
         <!-- Location Tab -->
         <div v-show="activeTab === 'location'" class="tab-panel location-panel">
+          <!-- Google Maps Embed -->
+          <div class="map-container">
+            <iframe
+              allowfullscreen
+              class="google-map-embed"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              :src="getMapEmbedUrl()"
+              title="Mapa do local do evento"
+            />
+          </div>
+
           <div class="location-card-modern">
             <div class="location-icon-wrapper">
               <i class="mdi mdi-map-marker" />
@@ -793,6 +1107,259 @@
             </div>
             <div class="lineup-icon">
               <i class="mdi mdi-microphone-variant" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Comments Tab -->
+        <div v-show="activeTab === 'comments'" class="tab-panel comments-panel">
+          <!-- Comments List -->
+          <div ref="commentsContainer" class="comments-list-container">
+            <!-- Loading -->
+            <div v-if="commentsLoading" class="comments-loading">
+              <v-progress-circular color="#ff5fa6" indeterminate size="36" />
+              <span>Carregando comentários...</span>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else-if="comments.length === 0" class="comments-empty">
+              <div class="empty-icon">
+                <i class="mdi mdi-comment-text-outline" />
+              </div>
+              <span class="empty-title">Nenhum comentário ainda</span>
+              <span class="empty-sub">Seja o primeiro a comentar neste evento!</span>
+            </div>
+
+            <!-- Comments -->
+            <div v-else class="comments-list">
+              <div v-for="comment in comments" :key="comment.id" class="comment-item">
+                <div class="comment-avatar-wrapper">
+                  <img
+                    v-if="comment.user?.profileImage"
+                    :alt="comment.user?.name"
+                    class="comment-avatar"
+                    :src="resolveAsset(comment.user?.profileImage)"
+                  >
+                  <div
+                    v-else
+                    class="comment-avatar placeholder"
+                    :style="{ backgroundColor: getCommentAvatarColor(comment.user?.name || '') }"
+                  >
+                    {{ getCommentInitial(comment.user?.name || '') }}
+                  </div>
+                </div>
+
+                <div class="comment-content">
+                  <div class="comment-bubble">
+                    <div class="comment-header">
+                      <span class="comment-author">{{ comment.user?.name || 'Usuário' }}</span>
+                      <span v-if="comment.user?.role === 'ADMIN'" class="comment-admin-badge">Admin</span>
+                      <span class="comment-time">{{ formatCommentDate(comment.createdAt) }}</span>
+                    </div>
+                    <p class="comment-text">{{ comment.content }}</p>
+                  </div>
+
+                  <!-- Actions -->
+                  <div class="comment-actions">
+                    <button
+                      class="comment-action-btn like-btn"
+                      :class="{ active: isCommentLiked(comment) }"
+                      type="button"
+                      @click="handleToggleLikeComment(comment)"
+                    >
+                      <svg
+                        :fill="isCommentLiked(comment) ? 'currentColor' : 'none'"
+                        height="14"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="14"
+                      >
+                        <path
+                          d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
+                        />
+                      </svg>
+                      <span v-if="commentLikesCount(comment) > 0">{{ commentLikesCount(comment) }}</span>
+                    </button>
+
+                    <button class="comment-action-btn reply-btn" type="button" @click="startReply(comment)">
+                      <i class="mdi mdi-reply" />
+                      <span>Responder</span>
+                    </button>
+
+                    <button
+                      v-if="isMyComment(comment)"
+                      class="comment-action-btn delete-btn"
+                      :disabled="deletingCommentId === comment.id"
+                      type="button"
+                      @click="handleDeleteComment(comment.id)"
+                    >
+                      <template v-if="deletingCommentId !== comment.id">
+                        <i class="mdi mdi-delete-outline" />
+                        <span>Excluir</span>
+                      </template>
+                      <v-progress-circular
+                        v-else
+                        color="#ff5fa6"
+                        indeterminate
+                        size="12"
+                        :width="2"
+                      />
+                    </button>
+                  </div>
+
+                  <!-- Replies Toggle -->
+                  <button
+                    v-if="comment.replies && comment.replies.length > 0"
+                    class="toggle-replies-btn"
+                    type="button"
+                    @click="toggleReplies(comment.id)"
+                  >
+                    <i class="mdi" :class="expandedReplies[comment.id] ? 'mdi-chevron-up' : 'mdi-chevron-down'" />
+                    <span v-if="!expandedReplies[comment.id]">
+                      Ver {{ comment.replies.length }} resposta{{ comment.replies.length > 1 ? 's' : '' }}
+                    </span>
+                    <span v-else>Ocultar respostas</span>
+                  </button>
+
+                  <!-- Reply Input -->
+                  <div v-if="replyingTo?.id === comment.id" class="reply-input-area">
+                    <input
+                      v-model="replyText"
+                      :disabled="sendingReply"
+                      maxlength="500"
+                      :placeholder="`Respondendo a ${comment.user?.name || 'Usuário'}...`"
+                      type="text"
+                      @keyup.enter="handleSendReply"
+                      @keyup.esc="cancelReply"
+                    >
+                    <button class="reply-cancel-btn" type="button" @click="cancelReply">
+                      <i class="mdi mdi-close" />
+                    </button>
+                    <button
+                      class="reply-send-btn"
+                      :disabled="!replyText.trim() || sendingReply"
+                      type="button"
+                      @click="handleSendReply"
+                    >
+                      <i v-if="!sendingReply" class="mdi mdi-send" />
+                      <v-progress-circular
+                        v-else
+                        color="#fff"
+                        indeterminate
+                        size="12"
+                        :width="2"
+                      />
+                    </button>
+                  </div>
+
+                  <!-- Nested Replies -->
+                  <div
+                    v-if="comment.replies && comment.replies.length > 0 && expandedReplies[comment.id]"
+                    class="replies-list"
+                  >
+                    <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
+                      <div class="comment-avatar-wrapper">
+                        <img
+                          v-if="reply.user?.profileImage"
+                          :alt="reply.user?.name"
+                          class="comment-avatar small"
+                          :src="resolveAsset(reply.user?.profileImage)"
+                        >
+                        <div
+                          v-else
+                          class="comment-avatar small placeholder"
+                          :style="{ backgroundColor: getCommentAvatarColor(reply.user?.name || '') }"
+                        >
+                          {{ getCommentInitial(reply.user?.name || '') }}
+                        </div>
+                      </div>
+                      <div class="comment-content">
+                        <div class="comment-bubble reply-bubble">
+                          <div class="comment-header">
+                            <span class="comment-author">{{ reply.user?.name || 'Usuário' }}</span>
+                            <span class="comment-time">{{ formatCommentDate(reply.createdAt) }}</span>
+                          </div>
+                          <p class="comment-text">{{ reply.content }}</p>
+                        </div>
+                        <div class="comment-actions">
+                          <button
+                            class="comment-action-btn like-btn"
+                            :class="{ active: isCommentLiked(reply) }"
+                            type="button"
+                            @click="handleToggleLikeComment(reply)"
+                          >
+                            <svg
+                              :fill="isCommentLiked(reply) ? 'currentColor' : 'none'"
+                              height="12"
+                              stroke="currentColor"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              viewBox="0 0 24 24"
+                              width="12"
+                            >
+                              <path
+                                d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
+                              />
+                            </svg>
+                            <span v-if="commentLikesCount(reply) > 0">{{ commentLikesCount(reply) }}</span>
+                          </button>
+                          <button
+                            v-if="isMyComment(reply)"
+                            class="comment-action-btn delete-btn"
+                            :disabled="deletingCommentId === reply.id"
+                            type="button"
+                            @click="handleDeleteComment(reply.id)"
+                          >
+                            <template v-if="deletingCommentId !== reply.id">
+                              <i class="mdi mdi-delete-outline" />
+                            </template>
+                            <v-progress-circular
+                              v-else
+                              color="#ff5fa6"
+                              indeterminate
+                              size="12"
+                              :width="2"
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Comment Input -->
+          <div class="comment-input-section">
+            <div class="comment-input-wrapper">
+              <input
+                v-model="newComment"
+                :disabled="sendingComment"
+                maxlength="500"
+                placeholder="Escreva um comentário..."
+                type="text"
+                @keyup.enter="handleSendComment"
+              >
+              <button
+                class="send-comment-btn"
+                :disabled="!newComment.trim() || sendingComment"
+                type="button"
+                @click="handleSendComment"
+              >
+                <i v-if="!sendingComment" class="mdi mdi-send" />
+                <v-progress-circular
+                  v-else
+                  color="#fff"
+                  indeterminate
+                  size="16"
+                  :width="2"
+                />
+              </button>
             </div>
           </div>
         </div>
@@ -1644,6 +2211,23 @@
   gap: 1rem;
 }
 
+.map-container {
+  width: 100%;
+  height: 300px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border: 2px solid rgba(255, 95, 166, 0.1);
+  position: relative;
+}
+
+.google-map-embed {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
 .location-card-modern {
   display: flex;
   align-items: flex-start;
@@ -2440,6 +3024,11 @@
     padding: 0 1rem;
   }
 
+  .map-container {
+    height: 250px;
+    border-radius: 16px;
+  }
+
   .cta-section {
     flex-direction: column;
     text-align: center;
@@ -2981,6 +3570,412 @@
 
   .source-url-arrow {
     font-size: 1.2rem;
+  }
+}
+
+/* ================================
+   COMMENTS TAB STYLES
+   ================================ */
+
+.tab-badge {
+  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 50px;
+  margin-left: 0.35rem;
+}
+
+.comments-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
+  max-height: 600px;
+}
+
+.comments-list-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  padding-bottom: 0;
+}
+
+.comments-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  gap: 1rem;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.comments-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.comments-empty .empty-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fff5f8 0%, #f8f9ff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.comments-empty .empty-icon i {
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.comments-empty .empty-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.comments-empty .empty-sub {
+  font-size: 0.9rem;
+  color: #888;
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.comment-item,
+.reply-item {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.comment-avatar-wrapper {
+  flex-shrink: 0;
+}
+
+.comment-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.comment-avatar.small {
+  width: 32px;
+  height: 32px;
+}
+
+.comment-avatar.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.comment-avatar.small.placeholder {
+  font-size: 0.85rem;
+}
+
+.comment-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-bubble {
+  background: #f5f5f5;
+  border-radius: 16px;
+  border-top-left-radius: 4px;
+  padding: 0.75rem 1rem;
+}
+
+.comment-bubble.reply-bubble {
+  background: #fafafa;
+  border-radius: 12px;
+  border-top-left-radius: 4px;
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.comment-author {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.comment-admin-badge {
+  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.comment-time {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.comment-text {
+  font-size: 0.9rem;
+  color: #444;
+  line-height: 1.5;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  padding-left: 0.25rem;
+}
+
+.comment-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.comment-action-btn:hover {
+  background: #f0f0f0;
+  color: #555;
+}
+
+.comment-action-btn.like-btn.active {
+  color: #ff5fa6;
+}
+
+.comment-action-btn.delete-btn:hover {
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.1);
+}
+
+.toggle-replies-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  color: #ff5fa6;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  margin-top: 0.25rem;
+  transition: all 0.2s ease;
+}
+
+.toggle-replies-btn:hover {
+  color: #e6408f;
+}
+
+.replies-list {
+  margin-top: 0.75rem;
+  padding-left: 1rem;
+  border-left: 2px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.reply-input-area {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  background: #fafafa;
+  border-radius: 12px;
+  padding: 0.5rem;
+}
+
+.reply-input-area input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  padding: 0.5rem;
+  outline: none;
+}
+
+.reply-cancel-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: #eee;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.reply-cancel-btn:hover {
+  background: #ddd;
+}
+
+.reply-send-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.reply-send-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.3);
+}
+
+.reply-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Comment Input Section */
+.comment-input-section {
+  padding: 1rem;
+  border-top: 1px solid #f0f0f0;
+  background: #fff;
+}
+
+.comment-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #f5f5f5;
+  border-radius: 25px;
+  padding: 0.5rem 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.comment-input-wrapper:focus-within {
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 95, 166, 0.2);
+}
+
+.comment-input-wrapper input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.95rem;
+  padding: 0.5rem;
+  outline: none;
+}
+
+.comment-input-wrapper input::placeholder {
+  color: #aaa;
+}
+
+.send-comment-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.send-comment-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(255, 95, 166, 0.4);
+}
+
+.send-comment-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.send-comment-btn i {
+  font-size: 1.2rem;
+}
+
+/* Responsive Comments */
+@media (max-width: 640px) {
+  .comments-panel {
+    max-height: 500px;
+  }
+
+  .comment-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .comment-avatar.small {
+    width: 28px;
+    height: 28px;
+  }
+
+  .comment-bubble {
+    padding: 0.6rem 0.8rem;
+  }
+
+  .comment-author {
+    font-size: 0.85rem;
+  }
+
+  .comment-text {
+    font-size: 0.85rem;
+  }
+
+  .comment-actions {
+    gap: 0.5rem;
+  }
+
+  .comment-action-btn {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.35rem;
+  }
+
+  .replies-list {
+    padding-left: 0.75rem;
   }
 }
 </style>

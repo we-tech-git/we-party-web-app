@@ -6,6 +6,8 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
+  getAllEvents,
+  getAllPublicEvents,
   getEventRecomendations,
   getEventsToday,
   getFavoriteEvents,
@@ -62,7 +64,7 @@ const userBio = ref('')
 const userStats = ref({ followers: 0, following: 0 })
 
 const activeNav = ref((route.query.tab as string) || 'home')
-const activeTab = ref('for-you')
+const activeTab = ref('all-events')
 const searchQuery = ref('')
 
 // Timeout para debounce da busca
@@ -108,6 +110,7 @@ const tabs = computed<TabItem[]>(() => {
   }
 
   return [
+    { id: 'all-events', label: 'Feed' },
     { id: 'for-you', label: t('feed.tabs.forYou') },
     { id: 'today', label: t('feed.tabs.today') },
   ]
@@ -444,6 +447,9 @@ async function fetchEvents(isLoadMore = false) {
         } else if (activeTab.value === 'today') {
           logger.info('→ Calling: getPublicEventsToday')
           return await getPublicEventsToday(page.value, limit)
+        } else if (activeTab.value === 'all-events') {
+          logger.info('→ Calling: getAllPublicEvents')
+          return await getAllPublicEvents(page.value, limit)
         } else {
           logger.info('→ Calling: getPublicEventRecomendations')
           return await getPublicEventRecomendations(page.value, limit)
@@ -457,6 +463,9 @@ async function fetchEvents(isLoadMore = false) {
       } else if (activeTab.value === 'today') {
         logger.info('→ Calling: getEventsToday (authenticated)')
         return await getEventsToday(page.value, limit)
+      } else if (activeTab.value === 'all-events') {
+        logger.info('→ Calling: getAllEvents (authenticated)')
+        return await getAllEvents(page.value, limit)
       } else {
         logger.info('→ Calling: getEventRecomendations (authenticated)')
         return await getEventRecomendations(page.value, limit)
@@ -824,10 +833,14 @@ watch(activeNav, val => {
     return
   }
 
-  // Reset active tab to 'for-you' when switching nav sections
-  // This ensures consistency since different sections might have different tabs
-  // and 'for-you' is common to all of them currently.
-  activeTab.value = 'for-you'
+  // Reset active tab when switching nav sections
+  // Home nav: default to 'all-events' (Feed)
+  // Top-events nav: default to 'for-you'
+  if (val === 'home') {
+    activeTab.value = 'all-events'
+  } else if (val === 'top-events') {
+    activeTab.value = 'for-you'
+  }
 
   if (searchQuery.value) {
     searchQuery.value = ''

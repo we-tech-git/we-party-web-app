@@ -418,12 +418,6 @@
   function goToFeed () {
     router.push('/public/explore')
   }
-  function goToFavorites () {
-    requireLogin('ver seus favoritos')
-  }
-  function goToProfile () {
-    requireLogin('acessar seu perfil')
-  }
 </script>
 
 <template>
@@ -465,8 +459,6 @@
           <nav class="nav-menu">
             <a class="nav-link" href="#como-funciona">Como funciona</a>
             <a class="nav-link" href="#contato">Entre em contato</a>
-            <a class="nav-link" href="#" @click.prevent="goToFavorites">Favoritos</a>
-            <a class="nav-link" href="#" @click.prevent="goToProfile">Perfil</a>
           </nav>
           <div class="auth-buttons">
             <button class="btn-ghost" type="button" @click="goToLogin">Entrar</button>
@@ -1716,10 +1708,14 @@ h2 .logo-text,
   pointer-events: none;
 }
 
+.features .container {
+  max-width: 1400px;
+}
+
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 2.5rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
   margin-top: 4rem;
 }
 
@@ -2869,6 +2865,13 @@ h2 .logo-text,
 /* ═══════════════════════════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1200px) {
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.75rem;
+  }
+}
+
 @media (max-width: 1024px) {
   .screenshots-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -2912,11 +2915,6 @@ h2 .logo-text,
 
   .section-description {
     font-size: 1rem;
-  }
-
-  .features-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
   }
 
   .feature-card {

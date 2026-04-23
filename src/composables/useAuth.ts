@@ -13,6 +13,87 @@ const loggedUser = ref(AuthService.getUser())
 
 // Guard para evitar múltiplos setInterval (memory leak)
 let watcherStarted = false
+let authIntervalId: ReturnType<typeof setInterval> | null = null
+
+// ===============================
+// TIMEOUT DE SESSÃO (Segurança)
+// ===============================
+// Configurações de timeout de inatividade
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutos
+const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart']
+let inactivityTimer: ReturnType<typeof setTimeout> | null = null
+let activityListenersAttached = false
+
+/**
+ * Reseta o timer de inatividade
+ * Chamado sempre que o usuário interage com a aplicação
+ */
+function resetInactivityTimer () {
+  // Limpa timer anterior
+  if (inactivityTimer) {
+    clearTimeout(inactivityTimer)
+  }
+
+  // Só inicia timer se usuário estiver autenticado
+  if (!isAuthenticated.value) {
+    return
+  }
+
+  // Inicia novo timer de 30 minutos
+  inactivityTimer = setTimeout(() => {
+    console.warn('[AUTH] Sessão expirada por inatividade (30 minutos)')
+
+    // Faz logout automático
+    AuthService.logout()
+    refreshAuthState()
+
+    // Opcional: Redirecionar para login
+    if (typeof window !== 'undefined') {
+      window.location.href = '/public/Login?reason=inactivity'
+    }
+  }, INACTIVITY_TIMEOUT_MS)
+}
+
+/**
+ * Anexa listeners de atividade do usuário
+ * Monitora movimentos, cliques, teclas, etc.
+ */
+function attachActivityListeners () {
+  if (activityListenersAttached || typeof window === 'undefined') {
+    return
+  }
+
+  for (const eventName of ACTIVITY_EVENTS) {
+    document.addEventListener(eventName, resetInactivityTimer, { passive: true })
+  }
+
+  activityListenersAttached = true
+
+  // Inicia o primeiro timer
+  resetInactivityTimer()
+}
+
+/**
+ * Remove listeners de atividade
+ * Chamado ao fazer logout ou limpar recursos
+ */
+function detachActivityListeners () {
+  if (!activityListenersAttached || typeof window === 'undefined') {
+    return
+  }
+
+  for (const eventName of ACTIVITY_EVENTS) {
+    document.removeEventListener(eventName, resetInactivityTimer)
+  }
+
+  // Limpa timer
+  if (inactivityTimer) {
+    clearTimeout(inactivityTimer)
+    inactivityTimer = null
+  }
+
+  activityListenersAttached = false
+}
 
 // Watcher para monitorar mudanças no localStorage
 function startAuthWatcher () {
@@ -29,7 +110,8 @@ function startAuthWatcher () {
   })
 
   // Monitora mudanças no próprio tab
-  setInterval(() => {
+  // SEGURANÇA: Salva referência para poder limpar depois
+  authIntervalId = setInterval(() => {
     const currentToken = AuthService.getToken()
     const currentUser = AuthService.getUser()
 
@@ -38,6 +120,27 @@ function startAuthWatcher () {
       refreshAuthState()
     }
   }, 2000) // Verifica a cada 2 segundos
+
+  // ===============================
+  // TIMEOUT DE SESSÃO: Inicia monitoramento de atividade
+  // ===============================
+  if (isAuthenticated.value) {
+    attachActivityListeners()
+  }
+}
+
+// SEGURANÇA: Função para limpar o interval quando não for mais necessário
+function stopAuthWatcher () {
+  if (authIntervalId) {
+    clearInterval(authIntervalId)
+    authIntervalId = null
+  }
+  watcherStarted = false
+
+  // ===============================
+  // TIMEOUT DE SESSÃO: Remove listeners ao parar watcher
+  // ===============================
+  detachActivityListeners()
 }
 
 // Atualiza o estado reativo com dados atuais do localStorage
@@ -70,11 +173,21 @@ export function useAuth () {
       user,
     })
     refreshAuthState()
+
+    // ===============================
+    // TIMEOUT DE SESSÃO: Inicia monitoramento ao fazer login
+    // ===============================
+    attachActivityListeners()
   }
 
   const logout = () => {
     AuthService.logout()
     refreshAuthState()
+
+    // ===============================
+    // TIMEOUT DE SESSÃO: Para monitoramento ao fazer logout
+    // ===============================
+    detachActivityListeners()
   }
 
   const hasRole = (role: string) => {
@@ -111,6 +224,9 @@ export function useAuth () {
     hasAnyRole,
     refreshAuthState,
     updateUser,
+
+    // Cleanup (SEGURANÇA: para evitar memory leaks)
+    stopAuthWatcher,
 
     // Utilitários
     debugAuth: AuthService.debugAuth,
