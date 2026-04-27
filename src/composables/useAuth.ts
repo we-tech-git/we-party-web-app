@@ -1,9 +1,10 @@
 /**
  * useAuth Composable
  * Gerencia estado reativo de autenticação e navegação
+ * SEGURANÇA: Implementa cleanup adequado para prevenir memory leaks
  */
 
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { AuthService, type LoggedUser } from '@/services/auth'
 
 // Estado global reativo da autenticação
@@ -11,9 +12,18 @@ const isAuthenticated = ref(AuthService.isAuthenticated())
 const accessToken = ref(AuthService.getToken())
 const loggedUser = ref(AuthService.getUser())
 
-// Guard para evitar múltiplos setInterval (memory leak)
+// ===========================================
+// SEGURANÇA: Dados seguros do usuário (sem email/roles)
+// ===========================================
+const safeUserData = ref(AuthService.getSafeUserData())
+const maskedEmail = ref(AuthService.getMaskedEmail())
+
+// ===========================================
+// SEGURANÇA: Guards para prevenir memory leaks
+// ===========================================
 let watcherStarted = false
 let authIntervalId: ReturnType<typeof setInterval> | null = null
+let storageHandler: ((e: StorageEvent) => void) | null = null
 
 // ===============================
 // TIMEOUT DE SESSÃO (Segurança)
@@ -102,12 +112,15 @@ function startAuthWatcher () {
   }
   watcherStarted = true
 
-  // Monitora mudanças no localStorage (outras abas)
-  window.addEventListener('storage', e => {
+  // Cria handler e guarda referência (SEGURANÇA: para poder remover depois)
+  storageHandler = (e: StorageEvent) => {
     if (e.key === 'ACCESS_TOKEN' || e.key === 'LOGGED_USER') {
       refreshAuthState()
     }
-  })
+  }
+
+  // Monitora mudanças no localStorage (outras abas)
+  window.addEventListener('storage', storageHandler)
 
   // Monitora mudanças no próprio tab
   // SEGURANÇA: Salva referência para poder limpar depois
@@ -129,12 +142,20 @@ function startAuthWatcher () {
   }
 }
 
-// SEGURANÇA: Função para limpar o interval quando não for mais necessário
+// SEGURANÇA: Função para limpar TODOS os recursos e prevenir memory leaks
 function stopAuthWatcher () {
+  // Remove listener de storage
+  if (storageHandler) {
+    window.removeEventListener('storage', storageHandler)
+    storageHandler = null
+  }
+
+  // Limpa interval de polling
   if (authIntervalId) {
     clearInterval(authIntervalId)
     authIntervalId = null
   }
+
   watcherStarted = false
 
   // ===============================
@@ -148,6 +169,9 @@ function refreshAuthState () {
   accessToken.value = AuthService.getToken()
   loggedUser.value = AuthService.getUser()
   isAuthenticated.value = AuthService.isAuthenticated()
+  // SEGURANÇA: Atualiza dados seguros também
+  safeUserData.value = AuthService.getSafeUserData()
+  maskedEmail.value = AuthService.getMaskedEmail()
 }
 
 export function useAuth () {
@@ -208,6 +232,14 @@ export function useAuth () {
     startAuthWatcher()
   }
 
+  // ===========================================
+  // SEGURANÇA: Cleanup automático para prevenir memory leaks
+  // ===========================================
+  // Limpa recursos quando o componente é desmontado
+  onBeforeUnmount(() => {
+    stopAuthWatcher()
+  })
+
   return {
     // Estados
     isAuthenticated,
@@ -216,6 +248,10 @@ export function useAuth () {
     loggedUser,
     userDisplayName,
     userRoles,
+
+    // SEGURANÇA: Dados seguros (sem email/roles sensíveis)
+    safeUserData,
+    maskedEmail,
 
     // Funções
     login,

@@ -1,6 +1,12 @@
 /**
  * AuthService
  * Serviço para gerenciar autenticação e dados no localStorage
+ *
+ * ⚠️ NOTA DE SEGURANÇA:
+ * - Tokens JWT são armazenados em localStorage (vulnerável a XSS)
+ * - Dados do usuário são armazenados em localStorage (visíveis no DevTools)
+ * - Mitigação: CSP headers implementado para prevenir scripts maliciosos
+ * - Melhoria futura: migrar para httpOnly cookies (requer mudanças no backend)
  */
 
 import { STORAGE_KEYS } from '@/common/storage'
@@ -22,9 +28,20 @@ export interface LoggedUser {
   profileImage?: string
 }
 
+// ===========================================
+// SEGURANÇA: Campos que são seguros para exibição
+// ===========================================
+export interface SafeUserData {
+  id: string
+  username: string
+  name: string
+  profileImage?: string
+}
+
 export const AuthService = {
   /**
    * Salva os dados de autenticação no localStorage
+   * ⚠️ SEGURANÇA: Dados são armazenados em texto plano
    */
   saveAuthData (response: LoginResponse): void {
     if (response.token) {
@@ -61,6 +78,52 @@ export const AuthService = {
       console.error('Erro ao parsear dados do usuário:', error)
       return null
     }
+  },
+
+  /**
+   * SEGURANÇA: Retorna apenas dados seguros do usuário (sem email/roles)
+   * Use esta função para exibição em componentes não-sensíveis
+   */
+  getSafeUserData (): SafeUserData | null {
+    const user = this.getUser()
+    if (!user) {
+      return null
+    }
+
+    return {
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      profileImage: user.profileImage,
+    }
+  },
+
+  /**
+   * SEGURANÇA: Retorna email mascarado para exibição
+   * Ex: "usuario@exemplo.com" → "u****o@e****o.com"
+   */
+  getMaskedEmail (): string | null {
+    const user = this.getUser()
+    if (!user?.email) {
+      return null
+    }
+
+    const [localPart, domain] = user.email.split('@')
+    if (!localPart || !domain) {
+      return user.email
+    }
+
+    const maskString = (str: string): string => {
+      if (str.length <= 2) {
+        return str
+      }
+      return str[0] + '*'.repeat(Math.min(4, str.length - 2)) + str.at(-1)
+    }
+
+    const [domainName, ...rest] = domain.split('.')
+    const maskedDomain = [maskString(domainName || ''), ...rest].join('.')
+
+    return `${maskString(localPart)}@${maskedDomain}`
   },
 
   /**
