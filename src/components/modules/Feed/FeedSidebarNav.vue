@@ -93,9 +93,10 @@
 .feed-sidebar {
   flex-direction: column;
   gap: 2rem;
-  padding: 0 20px 0 0;
+  padding: 0 25px 0 0;
   border-radius: 32px;
   min-height: 540px;
+  margin-top: 1.5rem;
 }
 
 ul {

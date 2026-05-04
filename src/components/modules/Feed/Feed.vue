@@ -61,10 +61,9 @@ const { requireLogin } = useGuestMode()
 
 // Dados adicionais do usuário para o header
 const userBio = ref('')
-const userStats = ref({ followers: 0, following: 0 })
 
 const activeNav = ref((route.query.tab as string) || 'home')
-const activeTab = ref('all-events')
+const activeTab = ref('for-you')
 const searchQuery = ref('')
 
 // Timeout para debounce da busca
@@ -102,15 +101,10 @@ function handleNavSelect(navId: string) {
 
 const tabs = computed<TabItem[]>(() => {
   if (activeNav.value === 'top-events') {
-    return [
-      { id: 'for-you', label: t('feed.tabs.forYou') },
-      { id: 'trends', label: t('feed.tabs.trends') },
-      { id: 'news', label: t('feed.tabs.news') },
-    ]
+    return [] // Removendo abas da seção Top Eventos
   }
 
   return [
-    { id: 'all-events', label: 'Feed' },
     { id: 'for-you', label: t('feed.tabs.forYou') },
     { id: 'today', label: t('feed.tabs.today') },
   ]
@@ -183,10 +177,6 @@ async function fetchUserProfileData() {
     const userData = response.data?.data ?? response.data
 
     userBio.value = userData.bio || ''
-    userStats.value = {
-      followers: userData.followersCount || userData.stats?.followers || 0,
-      following: userData.followingCount || userData.stats?.following || 0,
-    }
   } catch (error) {
     logger.error('Erro ao buscar dados do perfil:', error)
   }
@@ -447,9 +437,6 @@ async function fetchEvents(isLoadMore = false) {
         } else if (activeTab.value === 'today') {
           logger.info('→ Calling: getPublicEventsToday')
           return await getPublicEventsToday(page.value, limit)
-        } else if (activeTab.value === 'all-events') {
-          logger.info('→ Calling: getAllPublicEvents')
-          return await getAllPublicEvents(page.value, limit)
         } else {
           logger.info('→ Calling: getPublicEventRecomendations')
           return await getPublicEventRecomendations(page.value, limit)
@@ -463,9 +450,6 @@ async function fetchEvents(isLoadMore = false) {
       } else if (activeTab.value === 'today') {
         logger.info('→ Calling: getEventsToday (authenticated)')
         return await getEventsToday(page.value, limit)
-      } else if (activeTab.value === 'all-events') {
-        logger.info('→ Calling: getAllEvents (authenticated)')
-        return await getAllEvents(page.value, limit)
       } else {
         logger.info('→ Calling: getEventRecomendations (authenticated)')
         return await getEventRecomendations(page.value, limit)
@@ -671,10 +655,6 @@ const user = computed(() => ({
   avatar: loggedUser.value?.profileImage || '',
   username: loggedUser.value?.username ? `@${loggedUser.value.username}` : '',
   bio: userBio.value || '',
-  stats: {
-    followers: userStats.value.followers,
-    following: userStats.value.following,
-  },
 }))
 
 const isSearching = computed(() => searchQuery.value.trim().length > 0)
@@ -834,10 +814,10 @@ watch(activeNav, val => {
   }
 
   // Reset active tab when switching nav sections
-  // Home nav: default to 'all-events' (Feed)
+  // Home nav: default to 'for-you'
   // Top-events nav: default to 'for-you'
   if (val === 'home') {
-    activeTab.value = 'all-events'
+    activeTab.value = 'for-you'
   } else if (val === 'top-events') {
     activeTab.value = 'for-you'
   }
