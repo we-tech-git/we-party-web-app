@@ -232,7 +232,8 @@
 @media (max-width: 960px) {
   .sidebar {
     position: fixed;
-    inset: auto 0 0 0; /* top auto, right 0, bottom 0, left 0 */
+    inset: auto 0 0 0;
+    /* top auto, right 0, bottom 0, left 0 */
     width: 100%;
     height: auto;
     min-height: auto;
@@ -250,7 +251,8 @@
 
   nav {
     width: 100%;
-    max-width: 31.25rem; /* 500px */
+    max-width: 31.25rem;
+    /* 500px */
   }
 
   .nav-list {
@@ -274,7 +276,8 @@
     background: transparent;
     font-size: 0.65rem;
     width: auto;
-    min-width: 3.5rem; /* 56px */
+    min-width: 3.5rem;
+    /* 56px */
   }
 
   .nav-button:hover:not(.is-active) {
@@ -295,10 +298,12 @@
   }
 
   .nav-icon {
-    width: 1.75rem; /* 28px */
+    width: 1.75rem;
+    /* 28px */
     height: 1.75rem;
     background: transparent;
-    border-radius: 0.625rem; /* 10px */
+    border-radius: 0.625rem;
+    /* 10px */
   }
 
   .nav-label {

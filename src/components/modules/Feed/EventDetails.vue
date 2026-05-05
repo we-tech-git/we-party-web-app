@@ -596,7 +596,7 @@
         avatar: data?.organizer?.avatar || data?.hostAvatar || data?.creator?.profileImage || '',
       },
       sourceUrl: data?.sourceUrl || data?.source_url || data?.externalUrl || data?.external_url || undefined,
-      faq: Array.isArray(data?.faq) ? data.faq : Array.isArray(data?.faqs) ? data.faqs : [],
+      faq: Array.isArray(data?.faq) ? data.faq : (Array.isArray(data?.faqs) ? data.faqs : []),
       images: data?.images || undefined,
     }
   }
