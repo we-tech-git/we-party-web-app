@@ -100,8 +100,8 @@ function handleNavSelect(navId: string) {
 }
 
 const tabs = computed<TabItem[]>(() => {
-  if (activeNav.value === 'top-events') {
-    return [] // Removendo abas da seção Top Eventos
+  if (activeNav.value === 'top-events' || activeNav.value === 'favorites') {
+    return [] // Removendo abas das seções Top Eventos e Favoritos
   }
 
   return [

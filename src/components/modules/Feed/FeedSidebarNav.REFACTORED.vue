@@ -1,71 +1,71 @@
 <script setup lang="ts">
-  import { computed } from 'vue'
+import { computed } from 'vue'
 
-  // ============================================
-  // TYPES & INTERFACES
-  // ============================================
+// ============================================
+// TYPES & INTERFACES
+// ============================================
 
-  interface NavItem {
-    id: string
-    label: string
-    icon: NavIcon
-  }
+interface NavItem {
+  id: string
+  label: string
+  icon: NavIcon
+}
 
-  type NavIcon = 'home' | 'top' | 'bookmark' | 'bell' | 'profile'
+type NavIcon = 'home' | 'top' | 'bookmark' | 'bell' | 'profile'
 
-  // ============================================
-  // PROPS & EMITS
-  // ============================================
+// ============================================
+// PROPS & EMITS
+// ============================================
 
-  const props = defineProps<{
-    items: NavItem[]
-    active: string
-  }>()
+const props = defineProps<{
+  items: NavItem[]
+  active: string
+}>()
 
-  const emit = defineEmits<{
-    select: [id: string]
-  }>()
+const emit = defineEmits<{
+  select: [id: string]
+}>()
 
-  // ============================================
-  // COMPOSABLES & COMPUTED
-  // ============================================
+// ============================================
+// COMPOSABLES & COMPUTED
+// ============================================
 
-  /**
-   * Mapa de ícones SVG
-   * Centraliza todos os ícones para fácil manutenção
-   */
-  const iconPaths = computed<Record<NavIcon, string>>(() => ({
-    home: 'M4 9.5 12 4l8 5.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z',
-    top: 'm4 17 4.5-10 3.5 7 2.5-5 5 8z',
-    bookmark: 'M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1z',
-    bell: 'M18 15v-3a6 6 0 0 0-12 0v3l-1.5 1.5a1 1 0 0 0 .7 1.7H18.8a1 1 0 0 0 .7-1.7z',
-    profile: 'M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 10c-4.418 0-8 2.015-8 4.5V20h16v-1.5c0-2.485-3.582-4.5-8-4.5z',
-  }))
+/**
+ * Mapa de ícones SVG
+ * Centraliza todos os ícones para fácil manutenção
+ */
+const iconPaths = computed<Record<NavIcon, string>>(() => ({
+  home: 'M4 9.5 12 4l8 5.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z',
+  top: 'm4 17 4.5-10 3.5 7 2.5-5 5 8z',
+  bookmark: 'M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1z',
+  bell: 'M18 15v-3a6 6 0 0 0-12 0v3l-1.5 1.5a1 1 0 0 0 .7 1.7H18.8a1 1 0 0 0 .7-1.7z',
+  profile: 'M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 10c-4.418 0-8 2.015-8 4.5V20h16v-1.5c0-2.485-3.582-4.5-8-4.5z',
+}))
 
-  /**
-   * Verifica se o item está ativo
-   */
-  const isActive = (itemId: string): boolean => props.active === itemId
+/**
+ * Verifica se o item está ativo
+ */
+const isActive = (itemId: string): boolean => props.active === itemId
 
-  // ============================================
-  // METHODS
-  // ============================================
+// ============================================
+// METHODS
+// ============================================
 
-  /**
-   * Lida com a seleção de item de navegação
-   * Previne cliques redundantes no item já ativo
-   */
-  function handleSelect (id: string): void {
-    if (isActive(id)) return
-    emit('select', id)
-  }
+/**
+ * Lida com a seleção de item de navegação
+ * Previne cliques redundantes no item já ativo
+ */
+function handleSelect(id: string): void {
+  if (isActive(id)) return
+  emit('select', id)
+}
 
-  /**
-   * Retorna o caminho SVG do ícone
-   */
-  function getIconPath (icon: NavIcon): string {
-    return iconPaths.value[icon] || iconPaths.value.home
-  }
+/**
+ * Retorna o caminho SVG do ícone
+ */
+function getIconPath(icon: NavIcon): string {
+  return iconPaths.value[icon] || iconPaths.value.home
+}
 </script>
 
 <template>
@@ -75,8 +75,8 @@
         <li v-for="item in items" :key="item.id" class="nav-item">
           <button
             :aria-current="isActive(item.id) ? 'page' : undefined"
-            class="nav-button"
             :class="{ 'is-active': isActive(item.id) }"
+            class="nav-button"
             type="button"
             @click="handleSelect(item.id)"
           >
@@ -108,22 +108,22 @@
   --sidebar-gap: 2rem;
   --sidebar-border-radius: 2rem;
   --sidebar-min-height: 540px;
-
+  
   --nav-item-gap: 0.75rem;
   --nav-button-padding: 0.9rem 1rem;
   --nav-button-border-radius: 1.125rem;
   --nav-icon-size: 2.25rem;
   --nav-icon-border-radius: 0.875rem;
-
+  
   --color-bg: #ffffff;
   --color-bg-hover: #eef0ff;
   --color-text: #707799;
   --color-text-active: #ffffff;
   --gradient-primary: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
-
+  
   --transition-speed: 0.2s;
   --shadow-active: 0 1.125rem 2.125rem rgba(255, 95, 166, 0.32);
-
+  
   /* Mobile */
   --mobile-z-index: 200;
   --mobile-padding: 0.75rem 1rem;
@@ -153,6 +153,10 @@
   list-style: none;
 }
 
+.nav-item {
+  /* Permite flexbox do button preencher 100% */
+}
+
 /* ============================================
    NAVIGATION BUTTON
    ============================================ */
@@ -170,7 +174,7 @@
   font-size: 0.95rem;
   font-family: inherit;
   cursor: pointer;
-  transition:
+  transition: 
     background var(--transition-speed) ease,
     color var(--transition-speed) ease,
     transform var(--transition-speed) ease;
@@ -213,6 +217,10 @@
 
 .icon-svg {
   display: block;
+}
+
+.nav-label {
+  /* Texto flexível */
 }
 
 /* ============================================
@@ -322,7 +330,7 @@
   .nav-button {
     transition: none;
   }
-
+  
   .nav-button:hover:not(.is-active) {
     transform: none;
   }
