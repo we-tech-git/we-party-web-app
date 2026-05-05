@@ -64,7 +64,7 @@
   const userStats = ref({ followers: 0, following: 0 })
 
   const activeNav = ref((route.query.tab as string) || 'home')
-  const activeTab = ref('all-events')
+  const activeTab = ref('for-you')
   const searchQuery = ref('')
 
   // Timeout para debounce da busca
@@ -101,19 +101,26 @@
   }
 
   const tabs = computed<TabItem[]>(() => {
+    // Top eventos: sem abas
     if (activeNav.value === 'top-events') {
+      return []
+    }
+
+    // Eventos favoritos: sem abas
+    if (activeNav.value === 'favorites') {
+      return []
+    }
+
+    // Home: apenas "Para você" e "Hoje"
+    if (activeNav.value === 'home') {
       return [
         { id: 'for-you', label: t('feed.tabs.forYou') },
-        { id: 'trends', label: t('feed.tabs.trends') },
-        { id: 'news', label: t('feed.tabs.news') },
+        { id: 'today', label: t('feed.tabs.today') },
       ]
     }
 
-    return [
-      { id: 'all-events', label: 'Feed' },
-      { id: 'for-you', label: t('feed.tabs.forYou') },
-      { id: 'today', label: t('feed.tabs.today') },
-    ]
+    // Qualquer outra navegação: sem abas
+    return []
   })
 
   const filteredItems = ref<FeedItem[]>([
@@ -834,11 +841,8 @@
     }
 
     // Reset active tab when switching nav sections
-    // Home nav: default to 'all-events' (Feed)
-    // Top-events nav: default to 'for-you'
-    if (val === 'home') {
-      activeTab.value = 'all-events'
-    } else if (val === 'top-events') {
+    // Home e top-events não têm mais abas específicas, mas mantemos valor padrão
+    if (val === 'home' || val === 'top-events') {
       activeTab.value = 'for-you'
     }
 
