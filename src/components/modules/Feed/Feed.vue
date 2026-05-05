@@ -6,6 +6,8 @@
   import { useRoute, useRouter } from 'vue-router'
 
   import {
+    getAllEvents,
+    getAllPublicEvents,
     getEventRecomendations,
     getEventsToday,
     getFavoriteEvents,
@@ -59,9 +61,10 @@
 
   // Dados adicionais do usuário para o header
   const userBio = ref('')
+  const userStats = ref({ followers: 0, following: 0 })
 
   const activeNav = ref((route.query.tab as string) || 'home')
-  const activeTab = ref('for-you')
+  const activeTab = ref('all-events')
   const searchQuery = ref('')
 
   // Timeout para debounce da busca
@@ -98,11 +101,16 @@
   }
 
   const tabs = computed<TabItem[]>(() => {
-    if (activeNav.value === 'top-events' || activeNav.value === 'favorites') {
-      return [] // Removendo abas das seções Top Eventos e Favoritos
+    if (activeNav.value === 'top-events') {
+      return [
+        { id: 'for-you', label: t('feed.tabs.forYou') },
+        { id: 'trends', label: t('feed.tabs.trends') },
+        { id: 'news', label: t('feed.tabs.news') },
+      ]
     }
 
     return [
+      { id: 'all-events', label: 'Feed' },
       { id: 'for-you', label: t('feed.tabs.forYou') },
       { id: 'today', label: t('feed.tabs.today') },
     ]
@@ -175,6 +183,10 @@
       const userData = response.data?.data ?? response.data
 
       userBio.value = userData.bio || ''
+      userStats.value = {
+        followers: userData.followersCount || userData.stats?.followers || 0,
+        following: userData.followingCount || userData.stats?.following || 0,
+      }
     } catch (error) {
       logger.error('Erro ao buscar dados do perfil:', error)
     }
@@ -435,6 +447,9 @@
           } else if (activeTab.value === 'today') {
             logger.info('→ Calling: getPublicEventsToday')
             return await getPublicEventsToday(page.value, limit)
+          } else if (activeTab.value === 'all-events') {
+            logger.info('→ Calling: getAllPublicEvents')
+            return await getAllPublicEvents(page.value, limit)
           } else {
             logger.info('→ Calling: getPublicEventRecomendations')
             return await getPublicEventRecomendations(page.value, limit)
@@ -448,6 +463,9 @@
         } else if (activeTab.value === 'today') {
           logger.info('→ Calling: getEventsToday (authenticated)')
           return await getEventsToday(page.value, limit)
+        } else if (activeTab.value === 'all-events') {
+          logger.info('→ Calling: getAllEvents (authenticated)')
+          return await getAllEvents(page.value, limit)
         } else {
           logger.info('→ Calling: getEventRecomendations (authenticated)')
           return await getEventRecomendations(page.value, limit)
@@ -653,6 +671,10 @@
     avatar: loggedUser.value?.profileImage || '',
     username: loggedUser.value?.username ? `@${loggedUser.value.username}` : '',
     bio: userBio.value || '',
+    stats: {
+      followers: userStats.value.followers,
+      following: userStats.value.following,
+    },
   }))
 
   const isSearching = computed(() => searchQuery.value.trim().length > 0)
@@ -812,10 +834,10 @@
     }
 
     // Reset active tab when switching nav sections
-    // Home nav: default to 'for-you'
+    // Home nav: default to 'all-events' (Feed)
     // Top-events nav: default to 'for-you'
     if (val === 'home') {
-      activeTab.value = 'for-you'
+      activeTab.value = 'all-events'
     } else if (val === 'top-events') {
       activeTab.value = 'for-you'
     }
