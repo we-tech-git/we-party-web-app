@@ -6,9 +6,13 @@
   import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { createUser } from '@/api/users'
+  import { STORAGE_KEYS } from '@/common/storage'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
   import router from '@/router'
+  import { socialAuthService } from '@/services/socialAuth'
+  import { logger } from '@/utils/logger'
   import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
   const { t } = useI18n()
@@ -43,6 +47,7 @@
     const emailGenerated = `teste${randomNumber}@gmail.com`
 
     // Gera senha que atende aos critérios
+    // const emailGenerated = `contact@wepartyapp.com`
     const passwordGenerated = `Teste12345@`
 
     return {
@@ -66,7 +71,7 @@
     // Atualiza as regras de senha
     updatePasswordRules(testData.password)
 
-    console.log('📝 Dados de teste gerados:', {
+    logger.log('📝 Dados de teste gerados:', {
       nome: testData.fullName,
       email: testData.email,
       senha: testData.password,
@@ -84,6 +89,16 @@
   const password = ref('')
   const confirmPassword = ref('')
   const isSubmitting = ref(false)
+
+  // Aceite de termos
+  const acceptedTerms = ref(false)
+  const showTermsModal = ref(false)
+  const termsModalPdf = ref<'terms' | 'privacy'>('terms')
+
+  function openTermsModal (type: 'terms' | 'privacy') {
+    termsModalPdf.value = type
+    showTermsModal.value = true
+  }
   const snackbarVisible = ref(false)
   const snackbarMessage = ref('')
   const snackbarColor = ref('#ff9800')
@@ -111,6 +126,7 @@
       && password.value
       && password.value === confirmPassword.value
       && allPasswordRulesMet
+      && acceptedTerms.value
   })
 
   function showSnackbar (message: string, color = '#ff9800') {
@@ -189,6 +205,11 @@
       return
     }
 
+    if (!acceptedTerms.value) {
+      showSnackbar('Você precisa aceitar os Termos de Uso para continuar.', '#ef4444')
+      return
+    }
+
     await submitForm()
   }
 
@@ -220,20 +241,24 @@
         acceptedTerms: true,
         notificationActive: true,
       }
-      console.log('Envio de dados do usuário:', userData)
+      logger.log('Envio de dados do usuário:', userData)
 
       const response = await createUser(userData)
 
-      console.log('Resposta da API:', response.data)
+      if (response.status !== 201) {
+        throw new Error(`Erro inesperado ao registrar usuário. Status: ${response.status}`)
+      }
 
       triggerConfetti()
       showSnackbar(t('signup.snackbar.success'), '#22c55e')
 
+      localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
+
       setTimeout(() => {
-        router.push('/public/Login')
+        router.push('/public/ConfirmEmail')
       }, 1500)
     } catch (error: any) {
-      console.error('Erro ao registrar usuário:', error)
+      logger.error('Erro ao registrar usuário:', error)
 
       const errorMessage = error?.response?.data?.message || t('signup.snackbar.failure')
       showSnackbar(errorMessage, '#ef4444')
@@ -270,21 +295,63 @@
     password.value = testData.password
     confirmPassword.value = testData.password
 
-    // Atualiza as regras de senha
     updatePasswordRules(testData.password)
 
-    console.log('🚀 Página carregada com dados de teste:', {
+    logger.log('🚀 Página carregada com dados de teste:', {
       nome: testData.fullName,
       email: testData.email,
       senha: testData.password,
     })
   })
+
+  // ===============================
+  // AUTENTICAÇÃO SOCIAL
+  // ===============================
+  async function handleGoogleAuth () {
+    try {
+      showSnackbar('Cadastrando com Google...', '#4285F4')
+      const result = await socialAuthService.loginWithGoogle()
+
+      if (result.success) {
+        triggerConfetti()
+        showSnackbar('Cadastro com Google realizado com sucesso! 🎉', '#22c55e')
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
+      } else {
+        showSnackbar(result.message || 'Erro ao fazer cadastro com Google', '#ef4444')
+      }
+    } catch (error: any) {
+      logger.error('Erro na autenticação Google:', error)
+      showSnackbar(error.message || 'Erro ao fazer cadastro com Google', '#ef4444')
+    }
+  }
+
+  async function handleFacebookAuth () {
+    try {
+      showSnackbar('Cadastrando com Facebook...', '#1877F2')
+      const result = await socialAuthService.loginWithFacebook()
+
+      if (result.success) {
+        triggerConfetti()
+        showSnackbar('Cadastro com Facebook realizado com sucesso! 🎉', '#22c55e')
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
+      } else {
+        showSnackbar(result.message || 'Erro ao fazer cadastro com Facebook', '#ef4444')
+      }
+    } catch (error: any) {
+      logger.error('Erro na autenticação Facebook:', error)
+      showSnackbar(error.message || 'Erro ao fazer cadastro com Facebook', '#ef4444')
+    }
+  }
 </script>
 
 <template>
   <AuthLayout>
     <template #form-content>
-      <a class="back-link" href="#">
+      <a class="back-link" href="#" @click.prevent="router.push('/public/login')">
         <svg
           class="back-arrow"
           fill="none"
@@ -301,7 +368,7 @@
           />
         </svg>
       </a>
-      <h2 class="mobile-brand-title">WE PARTY</h2>
+      <h2 class="mobile-brand-title notranslate" translate="no">WE PARTY</h2>
       <div class="title-container">
         <h1 class="text-3xl font-bold">{{ $t('signup.title') }}</h1>
         <button
@@ -420,25 +487,107 @@
           />
           <span v-if="formErrors.confirmPassword" class="error-message">{{ formErrors.confirmPassword }}</span>
         </div>
+
+        <!-- Aceite de Termos -->
+        <div class="terms-acceptance">
+          <label class="terms-checkbox-label">
+            <input v-model="acceptedTerms" class="terms-checkbox" type="checkbox">
+            <span class="terms-checkbox-custom" :class="{ checked: acceptedTerms }">
+              <svg
+                v-if="acceptedTerms"
+                fill="none"
+                height="10"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+                width="10"
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </span>
+            <span class="terms-text">
+              Li e aceito os
+              <button class="terms-link" type="button" @click.prevent="openTermsModal('terms')">Termos de Uso</button>
+              e a
+              <button class="terms-link" type="button" @click.prevent="openTermsModal('privacy')">Política de
+                Privacidade</button>
+            </span>
+          </label>
+        </div>
+
         <p class="login-link-text">
           {{ $t('signup.hasAccount') }}
-          <a href="#">{{ $t('signup.loginLink') }}</a>
+          <a href="/public/login">{{ $t('signup.loginLink') }}</a>
         </p>
-        <button
-          :aria-busy="isSubmitting"
-          :class="['submit-button', { loading: isSubmitting }]"
-          :disabled="isSubmitting"
-          type="submit"
-        >
+        <button :aria-busy="isSubmitting" class="btn-primary" :disabled="!isFormValid || isSubmitting" type="submit">
           <span v-if="isSubmitting" aria-hidden="true" class="loader" />
           <span>{{ isSubmitting ? 'Enviando...' : $t('signup.button') }}</span>
         </button>
+
+        <!-- Botões de autenticação social -->
+        <SocialAuthButtons
+          mode="signup"
+          :show-email="false"
+          @facebook-auth="handleFacebookAuth"
+          @google-auth="handleGoogleAuth"
+        />
+
         <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />
       </form>
+
+      <!-- Modal de Termos / Política -->
+      <Teleport to="body">
+        <Transition name="modal-fade">
+          <div v-if="showTermsModal" class="terms-modal-overlay" @click.self="showTermsModal = false">
+            <div class="terms-modal">
+              <div class="terms-modal-header">
+                <h3 class="terms-modal-title">
+                  {{ termsModalPdf === 'terms' ? 'Termos de Uso' : 'Política de Privacidade' }}
+                </h3>
+                <button class="terms-modal-close" type="button" @click="showTermsModal = false">
+                  <svg
+                    fill="none"
+                    height="18"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="18"
+                  >
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div class="terms-modal-body">
+                <iframe
+                  class="terms-pdf-viewer"
+                  :src="termsModalPdf === 'terms' ? '/termos-de-uso.pdf' : '/politica-de-privacidade.pdf'"
+                  title="Documento legal"
+                />
+              </div>
+              <div class="terms-modal-footer">
+                <button
+                  class="terms-accept-btn"
+                  type="button"
+                  @click="() => { acceptedTerms = true; showTermsModal = false }"
+                >
+                  ✓ Aceitar e continuar
+                </button>
+                <button class="terms-close-btn" type="button" @click="showTermsModal = false">
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
     </template>
 
     <template #brand-content>
-      <h2 class="brand-title">WE PARTY</h2>
+      <h2 class="brand-title notranslate" translate="no">WE PARTY</h2>
       <i18n-t class="brand-subtitle" keypath="signup.brandSubtitle" tag="p">
         <template #default>
           <br>
@@ -458,8 +607,10 @@
 
 .page-container {
   display: flex;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  /* iOS Safari */
   background-color: #ffffffee;
   font-family: 'Poppins', sans-serif;
   overflow: hidden;
@@ -486,7 +637,7 @@
 
 .back-link {
   display: inline-flex;
-  color: #FFB37B;
+  color: #F978A3;
   margin-bottom: 48px;
 }
 
@@ -506,6 +657,10 @@ h1 {
   font-size: 1.875rem;
   font-weight: 700;
   color: #1f2937;
+  margin: 0;
+}
+
+.auth-title {
   margin: 0;
 }
 
@@ -570,27 +725,27 @@ h1 {
 }
 
 .input-field.filled {
-  border-color: #FFD3B5;
+  border-color: #FBC0D6;
   color: #212121;
   font-weight: 500;
 }
 
 .input-field.filled+label,
 .input-wrapper label.active {
-  color: #FFB37B;
+  color: #F978A3;
 }
 
 .input-field:focus {
   outline: none;
-  border-color: #f97316;
+  border-color: #F978A3;
   background-color: #fff;
-  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+  box-shadow: 0 0 0 2px rgba(249, 120, 163, 0.2);
 }
 
 .input-field:focus+label {
   top: 8px;
   font-size: 0.75rem;
-  color: #f97316;
+  color: #F978A3;
 }
 
 .eye-button {
@@ -612,54 +767,211 @@ h1 {
   height: 24px;
 }
 
+/* ---- Aceite de Termos ---- */
+.terms-acceptance {
+  margin-top: 16px;
+}
+
+.terms-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.terms-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.terms-checkbox-custom {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 2px solid #d1d5db;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  transition: all 0.2s ease;
+}
+
+.terms-checkbox-custom.checked {
+  background: linear-gradient(135deg, #F978A3 0%, #f97316 100%);
+  border-color: transparent;
+  color: #fff;
+}
+
+.terms-text {
+  font-size: 0.82rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.terms-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #f97316;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.2s;
+}
+
+.terms-link:hover {
+  text-decoration-color: #f97316;
+}
+
+/* ---- Modal de Termos ---- */
+.terms-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.terms-modal {
+  background: #fff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.terms-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.terms-modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.terms-modal-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.terms-modal-close:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.terms-modal-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+.terms-pdf-viewer {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: none;
+}
+
+.terms-modal-footer {
+  display: flex;
+  gap: 10px;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f3f4f6;
+  justify-content: flex-end;
+}
+
+.terms-accept-btn {
+  padding: 0.55rem 1.4rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #F978A3 0%, #f97316 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.terms-accept-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(249, 120, 163, 0.4);
+}
+
+.terms-close-btn {
+  padding: 0.55rem 1.2rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #F978A3 0%, #f97316 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(249, 120, 163, 0.3);
+}
+
+.terms-close-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(249, 120, 163, 0.4);
+}
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+
 .login-link-text {
   font-size: 0.875rem;
   color: #6b7280;
   margin-top: 24px;
+  margin-bottom: 24px;
+  /* Adicionado espaçamento abaixo */
+  text-align: center;
+  /* Centralizado para consistência */
 }
 
 .login-link-text a {
   font-weight: 600;
   color: #f97316;
+  /* Alterado para laranja */
   text-decoration: none;
 }
 
 .login-link-text a:hover {
   text-decoration: underline;
-}
-
-.submit-button {
-  width: 100%;
-  margin-top: 32px;
-  padding: 16px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: all 0.2s;
-  border: none;
-  color: white;
-  background: #FFB37B;
-  box-shadow: 0 4px 14px 0 rgba(255, 179, 123, 0.5);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-}
-
-.submit-button.disabled {
-  cursor: not-allowed;
-  border: none;
-  background-color: #e5e7eb;
-  color: #9ca3af;
-}
-
-.submit-button.loading {
-  cursor: wait;
-}
-
-.submit-button:disabled {
-  cursor: not-allowed;
 }
 
 .loader {

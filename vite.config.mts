@@ -1,4 +1,6 @@
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import tailwindcss from '@tailwindcss/vite'
 import Vue from '@vitejs/plugin-vue'
 // Plugins
@@ -48,6 +50,12 @@ export default defineConfig({
         configFile: 'src/styles/settings.scss',
       },
     }),
+    VueI18nPlugin({
+      include: [
+        resolve(dirname(fileURLToPath(import.meta.url)), './src/locales/**'),
+      ],
+      strictMessage: false,
+    }),
     Fonts({
       fontsource: {
         families: [
@@ -58,32 +66,48 @@ export default defineConfig({
           },
         ],
       },
+      google: {
+        families: [
+          {
+            name: 'Baloo Thambi 2',
+            styles: 'wght@400;500;600;700;800',
+          },
+          {
+            name: 'Poppins',
+            styles: 'wght@400;500;600;700',
+          },
+        ],
+      },
     }),
   ],
   optimizeDeps: {
+    include: ['vuetify'],
     exclude: [
-      'vuetify',
-      'vue-router',
       'unplugin-vue-router/runtime',
       'unplugin-vue-router/data-loaders',
       'unplugin-vue-router/data-loaders/basic',
     ],
   },
-  define: { 'process.env': {} },
+  define: { 'process.env': '{}' },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('src', import.meta.url)),
     },
 
-    extensions: [
-      '.js',
-      '.json',
-      '.jsx',
-      '.mjs',
-      '.ts',
-      '.tsx',
-      '.vue',
-    ],
+    extensions: ['.js', '.json', '.jsx', '.mjs', '.ts', '.tsx', '.vue'],
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        // Melhora o preload de assets
+        manualChunks: {
+          'vuetify': ['vuetify'],
+          'vue': ['vue', 'vue-router', 'pinia'],
+        },
+      },
+    },
+    // Remove avisos de chunks grandes
+    chunkSizeWarningLimit: 1500,
   },
   server: {
     port: 3000,

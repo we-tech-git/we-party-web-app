@@ -1,5 +1,7 @@
 <script setup lang="ts">
+  import { computed, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import router from '@/router'
 
   interface TrendItem {
     id: number
@@ -8,11 +10,25 @@
     engagement: string
   }
 
-  defineProps<{
+  const props = defineProps<{
     items: TrendItem[]
   }>()
 
   const { t } = useI18n()
+
+  const visibleCount = ref(5)
+
+  const visibleItems = computed(() => props.items.slice(0, visibleCount.value))
+  const hasMore = computed(() => props.items.length > visibleCount.value)
+
+  function showMore () {
+    visibleCount.value += 5
+  }
+
+  function goToMainEvent (eventItem: TrendItem) {
+    router.push(`/private/event/${eventItem.id}`)
+  }
+
 </script>
 
 <template>
@@ -23,31 +39,26 @@
     </header>
 
     <ul>
-      <li v-for="item in items" :key="item.id">
+      <li v-for="item in visibleItems" :key="item.id">
         <span class="label">{{ item.highlight }}</span>
-        <strong>{{ item.title }}</strong>
+        <button class="main-trending-button" @click="goToMainEvent(item)">{{ item.title }}</button>
         <span class="meta">{{ item.engagement }}</span>
       </li>
     </ul>
 
-    <button class="more" type="button">{{ t('feed.trending.more') }}</button>
+    <button v-if="hasMore" class="more" type="button" @click="showMore">Mostrar mais</button>
   </aside>
 </template>
 
 <style scoped>
 .feed-trends {
-  position: sticky;
-  top: var(--feed-sticky-offset, 120px);
-  display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  padding: 0;
+  padding: 0 0 0 20px;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   min-width: 280px;
-  margin-left: 9rem;
-
 }
 
 .head h2 {
@@ -100,6 +111,15 @@ strong {
   color: #9ca2ba;
 }
 
+.main-trending-button {
+  text-align: left;
+  font-weight: 700;
+}
+
+.main-trending-button:hover {
+  text-decoration: underline;
+}
+
 .more {
   align-self: flex-start;
   padding: 0.55rem 1.35rem;
@@ -120,6 +140,7 @@ strong {
   .feed-trends {
     position: static;
     min-width: auto;
+    margin-left: 0;
     order: 3;
   }
 }

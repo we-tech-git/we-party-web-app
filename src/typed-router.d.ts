@@ -19,14 +19,23 @@ declare module 'vue-router/auto-routes' {
    */
   export interface RouteNamedMap {
     '/home/': RouteRecordInfo<'/home/', '/home', Record<never, never>, Record<never, never>>,
+    '/landing': RouteRecordInfo<'/landing', '/landing', Record<never, never>, Record<never, never>>,
+    '/private/AddFriends': RouteRecordInfo<'/private/AddFriends', '/private/AddFriends', Record<never, never>, Record<never, never>>,
+    '/private/event/[id]': RouteRecordInfo<'/private/event/[id]', '/private/event/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     '/private/feed': RouteRecordInfo<'/private/feed', '/private/feed', Record<never, never>, Record<never, never>>,
+    '/private/profile': RouteRecordInfo<'/private/profile', '/private/profile', Record<never, never>, Record<never, never>>,
     '/private/test-auth': RouteRecordInfo<'/private/test-auth', '/private/test-auth', Record<never, never>, Record<never, never>>,
     '/public/AddFriends': RouteRecordInfo<'/public/AddFriends', '/public/AddFriends', Record<never, never>, Record<never, never>>,
     '/public/ConfirmEmail': RouteRecordInfo<'/public/ConfirmEmail', '/public/ConfirmEmail', Record<never, never>, Record<never, never>>,
     '/public/Congratulations': RouteRecordInfo<'/public/Congratulations', '/public/Congratulations', Record<never, never>, Record<never, never>>,
+    '/public/explore': RouteRecordInfo<'/public/explore', '/public/explore', Record<never, never>, Record<never, never>>,
     '/public/Interest': RouteRecordInfo<'/public/Interest', '/public/Interest', Record<never, never>, Record<never, never>>,
+    '/public/Landingpage': RouteRecordInfo<'/public/Landingpage', '/public/Landingpage', Record<never, never>, Record<never, never>>,
     '/public/Login': RouteRecordInfo<'/public/Login', '/public/Login', Record<never, never>, Record<never, never>>,
+    '/public/RequestPassword': RouteRecordInfo<'/public/RequestPassword', '/public/RequestPassword', Record<never, never>, Record<never, never>>,
+    '/public/ResetPassword': RouteRecordInfo<'/public/ResetPassword', '/public/ResetPassword', Record<never, never>, Record<never, never>>,
     '/public/Signup': RouteRecordInfo<'/public/Signup', '/public/Signup', Record<never, never>, Record<never, never>>,
+    '/public/VerifyPin': RouteRecordInfo<'/public/VerifyPin', '/public/VerifyPin', Record<never, never>, Record<never, never>>,
   }
 
   /**
@@ -44,8 +53,24 @@ declare module 'vue-router/auto-routes' {
       routes: '/home/'
       views: never
     }
+    'src/pages/landing.vue': {
+      routes: '/landing'
+      views: never
+    }
+    'src/pages/private/AddFriends.vue': {
+      routes: '/private/AddFriends'
+      views: never
+    }
+    'src/pages/private/event/[id].vue': {
+      routes: '/private/event/[id]'
+      views: never
+    }
     'src/pages/private/feed.vue': {
       routes: '/private/feed'
+      views: never
+    }
+    'src/pages/private/profile.vue': {
+      routes: '/private/profile'
       views: never
     }
     'src/pages/private/test-auth.vue': {
@@ -64,16 +89,36 @@ declare module 'vue-router/auto-routes' {
       routes: '/public/Congratulations'
       views: never
     }
+    'src/pages/public/explore.vue': {
+      routes: '/public/explore'
+      views: never
+    }
     'src/pages/public/Interest.vue': {
       routes: '/public/Interest'
+      views: never
+    }
+    'src/pages/public/Landingpage.vue': {
+      routes: '/public/Landingpage'
       views: never
     }
     'src/pages/public/Login.vue': {
       routes: '/public/Login'
       views: never
     }
+    'src/pages/public/RequestPassword.vue': {
+      routes: '/public/RequestPassword'
+      views: never
+    }
+    'src/pages/public/ResetPassword.vue': {
+      routes: '/public/ResetPassword'
+      views: never
+    }
     'src/pages/public/Signup.vue': {
       routes: '/public/Signup'
+      views: never
+    }
+    'src/pages/public/VerifyPin.vue': {
+      routes: '/public/VerifyPin'
       views: never
     }
   }

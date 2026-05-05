@@ -1,4 +1,4 @@
-                              {
+{
   "name": "we-party-web-app",
   "private": true,
   "type": "module",
@@ -14,15 +14,21 @@
   "dependencies": {
     "@fontsource/roboto": "5.2.7",
     "@mdi/font": "7.4.47",
+    "@types/three": "^0.183.1",
+    "@vueuse/core": "^14.2.1",
+    "@vueuse/motion": "^3.0.3",
     "axios": "^1.12.2",
     "canvas-confetti": "^1.9.3",
+    "gsap": "^3.14.2",
     "pinia": "^3.0.3",
+    "three": "^0.183.2",
     "vue": "^3.5.21",
-    "vue-i18n": "^12.0.0-alpha.3",
+    "vue-i18n": "11.2.8",
     "vue-router": "^4.5.1",
     "vuetify": "^3.10.1"
   },
   "devDependencies": {
+    "@intlify/unplugin-vue-i18n": "^11.0.1",
     "@tailwindcss/vite": "^4.1.14",
     "@tsconfig/node22": "^22.0.0",
     "@types/canvas-confetti": "^1.9.0",

@@ -1,3 +1,0 @@
-export const STORAGE_KEY_NAME = {
-  ACCESS_TOKEN: 'ACCESS_TOKEN',
-}

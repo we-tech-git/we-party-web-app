@@ -1,4 +1,10 @@
 {
+  "common": {
+    "back": "Back"
+  },
+  "global": {
+    "skipStepByNow": "Skip this step for now"
+  },
   "login": {
     "title": "Sign in",
     "subtitle": "The perfect {0} recommendation for your {1}",
@@ -57,6 +63,7 @@
       "tagline": "Plan your experiences",
       "home": "Home",
       "topEvents": "Top events",
+      "myEvents": "My Events",
       "favorites": "Saved events",
       "notifications": "Notifications",
       "profile": "Profile"
@@ -65,7 +72,9 @@
     "tabs": {
       "forYou": "For you",
       "today": "Happening today",
-      "friends": "With friends"
+      "friends": "With friends",
+      "trends": "Trends",
+      "news": "News"
     },
     "trending": {
       "title": "What's happening?",
@@ -73,7 +82,12 @@
       "cityHighlight": "Trending in your city",
       "more": "Show more"
     },
-    "empty": "No events found right now."
+    "empty": "No events found right now.",
+    "profileActions": {
+      "changePicture": "Change profile picture",
+      "profile": "My Profile",
+      "logout": "Logout"
+    }
   },
   "addFriends": {
     "title": "Friends",
@@ -100,6 +114,24 @@
       "title": "New Request",
       "line1": "Thanks for adding a new interest. We'll review this event type and add it to the public list within 24h.",
       "line2": "We'll also add it to your personal interests for personalization."
+    },
+    "searching": "Searching...",
+    "noResults": "No results found",
+    "loading": "Loading interests...",
+    "noResultsTitle": "No interests found",
+    "noResultsDescription": "We couldn't find any interests with that name. How about requesting WE Party to add it?",
+    "requestNewInterest": "Request new interest",
+    "requestModal": {
+      "title": "Request New Interest",
+      "description": "Enter the name of the interest you'd like us to add:",
+      "label": "Interest name",
+      "placeholder": "E.g: Electronic Party, Rock Concert...",
+      "cancel": "Cancel",
+      "submit": "Request",
+      "submitting": "Sending...",
+      "noInterests": "Add at least one interest",
+      "successMessage": "Request sent successfully! Awaiting approval.",
+      "errorMessage": "Error sending request. Please try again."
     }
   },
   "congratulations": {
@@ -121,5 +153,183 @@
     "verifyError": "Error verifying code. Please try again.",
     "pinResent": "Code resent successfully!",
     "resendError": "Error resending code. Please try again."
+  },
+  "form": {
+    "loading": "Loading...",
+    "email": "Email",
+    "pin": "PIN Code",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm New Password"
+  },
+  "forgotPassword": {
+    "title": "Recover Password",
+    "subtitle": "Enter your email and we'll send you a code to reset your password.",
+    "button": "Send Code",
+    "successMessage": "Code sent! Check your inbox.",
+    "errors": {
+      "emailRequired": "The email field is required.",
+      "generic": "Could not send code. Please try again."
+    }
+  },
+  "verifyPin": {
+    "title": "Verify Code",
+    "subtitle": "We sent a 6-digit code to {email}. Please enter it below.",
+    "button": "Verify",
+    "errors": {
+      "invalidPin": "The code must be 6 digits long.",
+      "generic": "Invalid or expired code. Please try again."
+    }
+  },
+  "resetPassword": {
+    "title": "Create New Password",
+    "subtitle": "Create a strong and secure password.",
+    "button": "Save New Password",
+    "tokenVerified": "Token verified successfully!",
+    "successMessage": "Password changed successfully! Redirecting to login...",
+    "errors": {
+      "passwordMismatch": "The passwords do not match.",
+      "passwordTooShort": "Password must be at least 6 characters long.",
+      "passwordRules": "Password must meet all the requirements.",
+      "invalidToken": "Invalid or expired token. Please request a new email.",
+      "generic": "Could not change password. Please try again."
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "editProfile": "Edit Profile",
+    "shareProfile": "Share profile",
+    "yourName": "Your Name",
+    "username": "username",
+    "bioPlaceholder": "Add a bio by clicking \"Edit Profile\"",
+    "yourInterests": "Your interests",
+    "joinedIn": "Joined in",
+    "followers": "Followers",
+    "following": "Following",
+    "viewFollowers": "View followers list",
+    "viewFollowing": "View following list",
+    "tabs": {
+      "liked": "Liked",
+      "settings": "Settings"
+    },
+    "likedEvents": {
+      "title": "Liked events",
+      "empty": "No liked events",
+      "emptyDescription": "Like events to save them here and access them quickly later",
+      "exploreEvents": "Explore Events",
+      "showMore": "Show more events",
+      "locationUndefined": "Location to be defined",
+      "dateUndefined": "Date to be defined",
+      "eventTitle": "Event",
+      "soon": "Coming soon"
+    },
+    "settings": {
+      "general": "General",
+      "notifications": "Notifications",
+      "notificationsDesc": "Receive alerts about events and friends",
+      "account": "Account",
+      "editProfile": "Edit Profile",
+      "editProfileDesc": "Change name, bio and photo",
+      "logout": "Logout",
+      "logoutDesc": "End current session"
+    },
+    "interests": {
+      "title": "Interests",
+      "manage": "Manage interests",
+      "remove": "Remove interest",
+      "empty": "No interests added yet.",
+      "add": "Add",
+      "myInterests": "My interests",
+      "searchPlaceholder": "Search interests...",
+      "searchResults": "Search results",
+      "suggestions": "Interest suggestions",
+      "loadingSuggestions": "Loading suggestions...",
+      "noSuggestions": "No suggestions available at the moment.",
+      "noResults": "No interests found",
+      "requestNew": "Request new interest",
+      "emptyMessage": "You haven't added any interests yet."
+    },
+    "editModal": {
+      "title": "Edit Profile",
+      "name": "Name",
+      "namePlaceholder": "Your full name",
+      "username": "Username",
+      "usernamePlaceholder": "yourname",
+      "bio": "Bio",
+      "bioPlaceholder": "Tell us a bit about yourself...",
+      "location": "Location",
+      "locationPlaceholder": "Your city",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving...",
+      "changeCover": "Change cover image",
+      "changeAvatar": "Change profile picture",
+      "uploadingCover": "Uploading cover image...",
+      "uploadingAvatar": "Uploading profile picture..."
+    },
+    "cropModal": {
+      "title": "Crop photo",
+      "cancel": "Cancel",
+      "apply": "Apply",
+      "uploading": "Uploading..."
+    },
+    "interestsModal": {
+      "title": "Manage Interests",
+      "done": "Done",
+      "cancel": "Cancel",
+      "saving": "Saving..."
+    },
+    "requestInterestModal": {
+      "title": "Request New Interest",
+      "description": "Didn't find the interest you're looking for? Request it and our team will evaluate.",
+      "label": "Interest name",
+      "placeholder": "E.g.: Alternative Rock, Jazz",
+      "cancel": "Cancel",
+      "submit": "Send Request",
+      "submitting": "Sending..."
+    },
+    "messages": {
+      "profileImageSuccess": "Profile picture updated successfully! 🎉",
+      "profileImageError": "Error uploading photo. Please try again.",
+      "coverImageSuccess": "Cover updated successfully! 🎉",
+      "coverImageError": "Error uploading cover. Please try again.",
+      "profileUpdateSuccess": "Profile updated successfully! ✅",
+      "profileUpdateError": "Error saving profile. Please try again.",
+      "interestsUpdateSuccess": "Interests updated successfully! ✅",
+      "interestsUpdateError": "Error saving interests. Please try again.",
+      "interestRemoveSuccess": "Interest removed successfully!",
+      "interestRemoveError": "Error removing interest",
+      "addAtLeastOne": "Add at least one interest",
+      "requestSuccess": "Request sent successfully! Awaiting approval. ✅",
+      "requestError": "Error sending request. Please try again.",
+      "fileSizeError": "Image must be at most 5MB",
+      "fileTypeError": "Please select image files only",
+      "loadProfileError": "Error loading profile data"
+    },
+    "months": {
+      "january": "January",
+      "february": "February",
+      "march": "March",
+      "april": "April",
+      "may": "May",
+      "june": "June",
+      "july": "July",
+      "august": "August",
+      "september": "September",
+      "october": "October",
+      "november": "November",
+      "december": "December"
+    },
+    "aria": {
+      "profileContent": "Profile content",
+      "navigation": "Navigation",
+      "backToFeed": "Back to feed",
+      "coverImage": "Profile cover image",
+      "defaultCover": "Default profile cover",
+      "profilePicture": "Profile picture of {name}",
+      "avatarInitials": "Avatar with initials: {initials}",
+      "onlineStatus": "User online",
+      "profileStats": "Profile stats",
+      "profileTabs": "Profile navigation"
+    }
   }
 }

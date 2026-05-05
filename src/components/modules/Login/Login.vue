@@ -7,197 +7,344 @@
 // ESTADO E LÓGICA DO FORMULÁRIO
 // ===============================
 // Tela de Login – usa AuthLayout e InputLabel
-  import { computed, onMounted, ref } from 'vue'
-  import { useI18n } from 'vue-i18n'
-  import { loginUser } from '@/api/users'
-  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-  import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
-  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-  import router from '@/router'
-  import { AuthService } from '@/services/auth'
+import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { loginUser } from '@/api/users'
+import { STORAGE_KEYS } from '@/common/storage'
+import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
+import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
+import { useRateLimit } from '@/composables/useRateLimit'
+import router from '@/router'
+import { AuthService } from '@/services/auth'
+import { SocialAuthService } from '@/services/socialAuth'
+import { logger } from '@/utils/logger'
 
-  const { t } = useI18n()
+const { t } = useI18n()
+const socialAuthService = new SocialAuthService()
 
-  // ===============================
-  // GERADOR DE DADOS DE TESTE
-  // ===============================
-  function generateTestLoginData () {
-    // Gera email fixo com número randômico de 3 dígitos
-    const randomNumber = Math.floor(Math.random() * 900) + 100
-    const emailGenerated = `teste776@gmail.com`
-    const passwordGenerated = 'Teste12345@'
+// ===============================
+// RATE LIMITING (Segurança)
+// ===============================
+// Previne brute force attacks limitando tentativas de login
+const loginRateLimit = useRateLimit('login', {
+  maxAttempts: 5, // Máximo 5 tentativas
+  windowMs: 15 * 60 * 1000, // Em 15 minutos
+  blockDurationMs: 30 * 60 * 1000, // Bloqueia por 30 minutos
+})
 
-    return {
-      email: emailGenerated,
-      password: passwordGenerated,
-    }
-  }
+// Estado do formulário de login
+const email = ref('')
+const password = ref('')
+const rememberMe = ref(false)
+const isSubmitting = ref(false)
+const snackbarVisible = ref(false)
+const snackbarMessage = ref('')
+const snackbarColor = ref('#ff9800')
 
-  function fillFormWithTestData (showFeedback = false) {
-    const testData = generateTestLoginData()
+const formErrors = ref({
+  email: '',
+  password: '',
+})
 
-    // Limpa os erros antes de preencher
-    resetErrors()
+// Validação: e-mail + senha preenchidos
+const isFormValid = computed(() => {
+  return email.value.trim() && password.value.trim() && email.value.includes('@')
+})
 
-    email.value = testData.email
-    password.value = testData.password
+/**
+ * Exibe o componente Snackbar com uma mensagem e cor específicas.
+ * Gerencia a visibilidade para garantir que a animação ocorra corretamente.
+ */
+function showSnackbar(message: string, color = '#ff9800') {
+  snackbarMessage.value = message
+  snackbarColor.value = color
 
-    console.log('📝 Dados de teste de login gerados:', {
-      email: testData.email,
-      senha: testData.password,
+  if (snackbarVisible.value) {
+    snackbarVisible.value = false
+    requestAnimationFrame(() => {
+      snackbarVisible.value = true
     })
-
-    // Feedback visual apenas quando solicitado (regeneração manual)
-    if (showFeedback) {
-      showSnackbar('✨ Novos dados de teste gerados!', '#22c55e')
-    }
+    return
   }
 
-  // Estado do formulário de login
-  const email = ref('')
-  const password = ref('')
-  const rememberMe = ref(false)
-  const isSubmitting = ref(false)
-  const snackbarVisible = ref(false)
-  const snackbarMessage = ref('')
-  const snackbarColor = ref('#ff9800')
+  snackbarVisible.value = true
+}
 
-  const formErrors = ref({
+/**
+ * Reseta os erros de validação do formulário.
+ */
+function resetErrors() {
+  formErrors.value = {
     email: '',
     password: '',
-  })
+  }
+}
 
-  // Validação: e-mail + senha preenchidos
-  const isFormValid = computed(() => {
-    return email.value.trim() && password.value.trim() && email.value.includes('@')
-  })
+/**
+ * Valida os campos do formulário antes do envio.
+ * Verifica se email e senha estão preenchidos e se o email é válido.
+ */
+async function validateForm() {
+  if (isSubmitting.value) return
 
-  function showSnackbar (message: string, color = '#ff9800') {
-    snackbarMessage.value = message
-    snackbarColor.value = color
+  resetErrors()
 
-    if (snackbarVisible.value) {
-      snackbarVisible.value = false
-      requestAnimationFrame(() => {
-        snackbarVisible.value = true
-      })
-      return
-    }
+  const missingFields: string[] = []
 
-    snackbarVisible.value = true
+  if (!email.value.trim()) {
+    formErrors.value.email = t('login.errors.required.email')
+    missingFields.push('Email')
+  } else if (!email.value.includes('@')) {
+    formErrors.value.email = t('login.errors.invalid.email')
+    showSnackbar('Por favor, insira um email válido')
+    return
   }
 
-  function resetErrors () {
-    formErrors.value = {
-      email: '',
-      password: '',
-    }
+  if (!password.value.trim()) {
+    formErrors.value.password = t('login.errors.required.password')
+    missingFields.push('Senha')
   }
 
-  async function validateForm () {
-    if (isSubmitting.value) return
-
-    resetErrors()
-
-    const missingFields: string[] = []
-
-    if (!email.value.trim()) {
-      formErrors.value.email = t('login.errors.required.email')
-      missingFields.push('Email')
-    } else if (!email.value.includes('@')) {
-      formErrors.value.email = t('login.errors.invalid.email')
-      showSnackbar('Por favor, insira um email válido')
-      return
-    }
-
-    if (!password.value.trim()) {
-      formErrors.value.password = t('login.errors.required.password')
-      missingFields.push('Senha')
-    }
-
-    if (missingFields.length > 0) {
-      showSnackbar(`Campos obrigatórios: ${missingFields.join(', ')}`)
-      return
-    }
-
-    await submitForm()
+  if (missingFields.length > 0) {
+    showSnackbar(`Campos obrigatórios: ${missingFields.join(', ')}`)
+    return
   }
 
-  async function submitForm () {
-    if (isSubmitting.value) return
+  await submitForm()
+}
 
-    if (!isFormValid.value) {
-      showSnackbar('Por favor, preencha todos os campos obrigatórios')
-      return
+/**
+ * Envia os dados do formulário para a API de login.
+ * Gerencia o estado de carregamento, sucesso e falha.
+ */
+async function submitForm() {
+  if (isSubmitting.value) return
+
+  if (!isFormValid.value) {
+    showSnackbar('Por favor, preencha todos os campos obrigatórios')
+    return
+  }
+
+  // ===============================
+  // RATE LIMITING: Verifica se não está bloqueado
+  // ===============================
+  if (loginRateLimit.isBlocked.value) {
+    const timeRemaining = loginRateLimit.blockedTimeRemaining.value
+    const minutes = Math.ceil(timeRemaining / 60)
+    showSnackbar(
+      `🔒 Muitas tentativas falhas. Tente novamente em ${minutes} minuto${minutes > 1 ? 's' : ''}.`,
+      '#ef4444',
+    )
+    return
+  }
+
+  // Registra tentativa ANTES de fazer o login
+  if (!loginRateLimit.attempt()) {
+    showSnackbar('🔒 Limite de tentativas excedido. Aguarde antes de tentar novamente.', '#ef4444')
+    return
+  }
+
+  const minLoadingMs = 2000
+  const start = Date.now()
+  isSubmitting.value = true
+
+  try {
+    const credentials = {
+      email: email.value.trim(),
+      password: password.value,
     }
 
-    const minLoadingMs = 2000
-    const start = Date.now()
-    isSubmitting.value = true
+    const response = await loginUser(credentials)
+    const data = response?.data
 
-    try {
-      const credentials = {
-        email: email.value.trim(),
-        password: password.value,
-      }
-
-      console.log('Tentativa de login:', { email: credentials.email })
-
-      const response = await loginUser(credentials)
-      const data = response.data
-
-      console.log('Resposta do login:', {
-        data,
-        test: data.success,
+    // PRIMEIRO, VERIFICAMOS SE O LOGIN FOI UM SUCESSO REAL
+    if (data?.success && !!data?.data?.token) {
+      // --- LÓGICA DE SUCESSO ---
+      AuthService.saveAuthData({
+        success: true,
+        message: 'Login realizado com sucesso',
         token: data.data.token,
-        boolean: (data.success && !!data.data.token),
+        user: data.data,
       })
-      // Salvar dados do usuário logado usando AuthService
-      if (data.success && !!data.data.token) {
-        console.log('Resposta do login 2', data.data)
-        AuthService.saveAuthData({
-          success: true,
-          message: 'Login realizado com sucesso',
-          token: data.data.token,
-          user: data.data,
-        })
+
+      // ===============================
+      // RATE LIMITING: Reseta após sucesso
+      // ===============================
+      loginRateLimit.reset()
+
+      // Salva o e-mail se "Lembrar-me" estiver ativo
+      if (rememberMe.value) {
+        localStorage.setItem('REMEMBERED_EMAIL', credentials.email)
+      } else {
+        localStorage.removeItem('REMEMBERED_EMAIL')
       }
 
       showSnackbar('Login realizado com sucesso! 🎉', '#22c55e')
 
       setTimeout(() => {
-        router.push('/private/feed') // ou rota do dashboard
+        router.push('/private/feed')
       }, 1500)
-    } catch (error: any) {
-      console.error('Erro ao fazer login:', error)
+    } else {
+      // Extrai a mensagem de erro da resposta, como "Email não verificado"
+      const errorMessage = response.response.data.message
 
-      const errorMessage = error?.response?.data?.message || 'Erro ao fazer login. Verifique suas credenciais.'
-      showSnackbar(errorMessage, '#ef4444')
-    } finally {
-      const elapsed = Date.now() - start
-      const remaining = minLoadingMs - elapsed
-      if (remaining > 0) {
-        await new Promise(resolve => setTimeout(resolve, remaining))
+      // Verifica se o erro é sobre e-mail não verificado
+      // Usamos uma verificação mais flexível para evitar problemas com espaços ou pontuação
+      if (errorMessage === 'Email não verificado. Por favor, verifique seu email antes de fazer login.') {
+        showSnackbar(errorMessage, '#ff9800')
+        localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
+        setTimeout(() => {
+          router.push('/public/ConfirmEmail')
+        }, 3000)
+      } else {
+        // console.error('error =======>', {
+        //   test1: response,
+        //   test2: response.response,
+        //   test3: response.response.data,
+        //   test4: response.response.data.message,
+        // })
+        // Trata outros erros lógicos que podem vir do backend
+
+        // ===============================
+        // RATE LIMITING: Mostra tentativas restantes
+        // ===============================
+        const remaining = loginRateLimit.attemptsRemaining.value
+        if (remaining > 0 && remaining <= 2) {
+          showSnackbar(`${errorMessage} (${remaining} tentativa${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''})`, '#ef4444')
+        } else {
+          showSnackbar(errorMessage, '#ef4444')
+        }
       }
-      isSubmitting.value = false
     }
+  } catch (error: any) {
+    // Este bloco agora só será ativado para erros de rede (4xx, 5xx)
+    const errorMessage = error?.response?.data?.message || 'Erro ao fazer login. Verifique suas credenciais.'
+
+    // Verifica se o erro é sobre e-mail não verificado (mesmo lógica do bloco else)
+    if (errorMessage.toLowerCase().includes('email não verificado')) {
+      showSnackbar(errorMessage, '#ff9800')
+      localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
+      setTimeout(() => {
+        router.push('/public/ConfirmEmail')
+      }, 3000)
+    } else {
+      // ===============================
+      // RATE LIMITING: Mostra tentativas restantes em caso de erro
+      // ===============================
+      const remaining = loginRateLimit.attemptsRemaining.value
+      if (remaining > 0 && remaining <= 2) {
+        showSnackbar(`${errorMessage} (${remaining} tentativa${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''})`, '#ef4444')
+      } else {
+        showSnackbar(errorMessage, '#ef4444')
+      }
+    }
+  } finally {
+    const elapsed = Date.now() - start
+    const remaining = minLoadingMs - elapsed
+    if (remaining > 0) {
+      await new Promise(resolve => setTimeout(resolve, remaining))
+    }
+    isSubmitting.value = false
   }
+}
 
-  // ===============================
-  // INICIALIZAÇÃO DO COMPONENTE
-  // ===============================
-  onMounted(() => {
-    // Preenche automaticamente com dados de teste ao carregar a página
-    const testData = generateTestLoginData()
+// ===============================
+// INICIALIZAÇÃO DO COMPONENTE
+// ===============================
+onMounted(() => {
+  // Verifica se há um e-mail salvo para "Lembrar-me"
+  const rememberedEmail = localStorage.getItem('REMEMBERED_EMAIL')
+  if (rememberedEmail) {
+    email.value = rememberedEmail
+    rememberMe.value = true // Marca a caixa para refletir o estado salvo
+  }
+})
 
-    email.value = testData.email
-    password.value = testData.password
-
-    console.log('🚀 Página de login carregada com dados de teste:', {
-      email: testData.email,
-      senha: testData.password,
+// ===============================
+// AUTENTICAÇÃO SOCIAL
+// ===============================
+/**
+ * 🔐 NOVO: Handler para sucesso do Google OAuth via SDK
+ * Chamado quando o SocialAuthButtons emite 'google-success' com os dados procesados
+ */
+async function handleGoogleSuccess(data: any) {
+  try {
+    logger.log('[GOOGLE AUTH] Dados recebidos:', {
+      data,
+      userId: data.user?.id,
+      email: data.user?.email,
+      isNewUser: data.isNewUser,
     })
-  })
+
+    // Salva dados de autenticação (já feito no socialAuthService, mas reforça aqui)
+    if (data.token && data.user) {
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token)
+      localStorage.setItem(STORAGE_KEYS.USER_ID, data.user.id)
+      AuthService.saveAuthData({
+        success: true,
+        message: data.message,
+        token: data.token,
+        user: data.user,
+      })
+    }
+
+    // Mostra sucesso e redireciona
+    showSnackbar('✅ Login com Google realizado! 🎉', '#22c55e')
+    logger.log('[GOOGLE AUTH] 🎉 Redirecionando para /private/feed')
+
+    setTimeout(() => {
+      router.push('/private/feed')
+    }, 1000)
+  } catch (error: any) {
+    logger.error('[GOOGLE AUTH] ❌ Erro ao processar sucesso:', error)
+    showSnackbar('Erro ao processar resposta do login', '#ef4444')
+  }
+}
+
+/**
+ * 🔐 NOVO: Handler para erro do Google OAuth
+ * Chamado quando ocorre erro no SocialAuthButtons
+ */
+async function handleGoogleError(error: any) {
+  logger.error('[GOOGLE AUTH] ❌ Erro recebido do SocialAuthButtons:', error)
+  const errorMessage = error?.message || error?.error || 'Erro ao fazer login com Google'
+  showSnackbar(errorMessage, '#ef4444')
+}
+
+/**
+ * 🔐 LEGADO: Handler ao clicar no botão do Google (compatibilidade)
+ * NOTA: Com o novo fluxo OAuth (authorization code), o SocialAuthButtons
+ * já cuida de tudo e emite @google-success ou @google-error.
+ * Este handler é mantido APENAS por compatibilidade, mas não deve ser usado.
+ * O novo fluxo vai direto para handleGoogleSuccess via evento.
+ */
+async function handleGoogleAuth() {
+  // Este handler não deve ser chamado com o novo fluxo OAuth
+  // O SocialAuthButtons.vue já emite @google-success/error
+  // Este é um handler legado mantido para compatibilidade
+  logger.log('[GOOGLE AUTH] ⚠️ handleGoogleAuth (legado) - não deveria ser chamado com novo fluxo')
+}
+
+async function handleFacebookAuth() {
+  try {
+    showSnackbar('Autenticando com Facebook...', '#1877F2')
+    const result = await socialAuthService.loginWithFacebook()
+
+    if (result.success) {
+      showSnackbar('Login com Facebook realizado com sucesso! 🎉', '#22c55e')
+      setTimeout(() => {
+        router.push('/private/feed')
+      }, 1500)
+    } else {
+      showSnackbar(result.message || 'Erro ao fazer login com Facebook', '#ef4444')
+    }
+  } catch (error: any) {
+    logger.error('Erro na autenticação Facebook:', error)
+    showSnackbar(error.message || 'Erro ao fazer login com Facebook', '#ef4444')
+  }
+}
 </script>
 
 <!--
@@ -208,7 +355,7 @@
 <template>
   <AuthLayout :brand-left="true">
     <template #brand-content>
-      <h2 class="brand-title">WE PARTY</h2>
+      <h2 class="brand-title notranslate" translate="no">WE PARTY</h2>
       <i18n-t class="brand-subtitle" keypath="signup.brandSubtitle" tag="p">
         <template #default>
           <br>
@@ -218,40 +365,17 @@
     </template>
 
     <template #form-content>
-      <h2 class="mobile-brand-title">WE PARTY</h2>
-      <div class="title-container">
-        <h1 class="text-3xl font-bold">{{ $t('login.title') }}</h1>
-        <button
-          class="regenerate-btn"
-          title="Gerar novos dados de teste"
-          type="button"
-          @click="() => fillFormWithTestData(true)"
-        >
-          🎲
-        </button>
-      </div>
+      <h2 class="mobile-brand-title notranslate" translate="no">WE PARTY</h2>
+      <h1 class="text-3xl font-bold">{{ $t('login.title') }}</h1>
 
       <form @submit.prevent="validateForm">
         <div class="inputs-container il-theme--pink">
-          <InputLabel
-            id="email"
-            v-model="email"
-            :error="!!formErrors.email"
-            :label="$t('login.emailPlaceholder')"
-            type="email"
-            @update:model-value="formErrors.email = ''"
-          />
+          <InputLabel id="email" v-model="email" :error="!!formErrors.email" :label="$t('login.emailPlaceholder')"
+            type="email" @update:model-value="formErrors.email = ''" />
           <span v-if="formErrors.email" class="error-message">{{ formErrors.email }}</span>
 
-          <InputLabel
-            id="password"
-            v-model="password"
-            :error="!!formErrors.password"
-            :input-password="true"
-            :label="$t('login.passwordPlaceholder')"
-            type="password"
-            @update:model-value="formErrors.password = ''"
-          />
+          <InputLabel id="password" v-model="password" :error="!!formErrors.password" :input-password="true"
+            :label="$t('login.passwordPlaceholder')" type="password" @update:model-value="formErrors.password = ''" />
           <span v-if="formErrors.password" class="error-message">{{ formErrors.password }}</span>
 
           <div class="login-options">
@@ -259,18 +383,17 @@
               <input v-model="rememberMe" type="checkbox">
               {{ $t('login.rememberMe') }}
             </label>
-            <a class="forgot-link" href="#">{{ $t('login.forgotPassword') }}</a>
+            <router-link class="forgot-link" to="/public/RequestPassword">{{ $t('login.forgotPassword') }}</router-link>
           </div>
 
-          <button
-            :aria-busy="isSubmitting"
-            :class="['submit-button', { active: isFormValid, loading: isSubmitting }]"
-            :disabled="!isFormValid || isSubmitting"
-            type="submit"
-          >
+          <button :aria-busy="isSubmitting" class="btn-primary" :disabled="!isFormValid || isSubmitting" type="submit">
             <span v-if="isSubmitting" aria-hidden="true" class="loader" />
             <span>{{ isSubmitting ? 'Entrando...' : $t('login.button') }}</span>
           </button>
+
+          <!-- Botões de autenticação social -->
+          <SocialAuthButtons mode="login" :show-email="false" @facebook-auth="handleFacebookAuth"
+            @google-error="handleGoogleError" @google-success="handleGoogleSuccess" />
         </div>
 
         <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />
@@ -278,7 +401,7 @@
 
       <div class="footer-row">
         <p class="login-link-text">
-          {{ $t('login.noAccount') }} <a href="/public/Signup">{{ $t('login.signupLink') }}</a>
+          {{ $t('login.noAccount') }} <router-link to="/public/Signup">{{ $t('login.signupLink') }}</router-link>
         </p>
         <p class="free-text">É de graça <span class="heart">❤</span></p>
       </div>
@@ -292,32 +415,17 @@
   display: none;
 }
 
-.title-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
+.text-3xl {
+  margin: 0 0 1.5rem 0;
 }
 
-.text-3xl {
+.auth-title {
   margin: 0;
 }
 
-.regenerate-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  opacity: 0.6;
-}
-
-.regenerate-btn:hover {
-  opacity: 1;
-  background-color: rgba(249, 120, 163, 0.1);
-  transform: scale(1.1);
+.btn-primary {
+  /* Estilos base já estão em shared-styles.css */
+  margin-top: 1.5rem;
 }
 
 .error-message {
@@ -435,44 +543,6 @@
   text-decoration: underline;
 }
 
-.submit-button {
-  width: 100%;
-  margin-top: 32px;
-  padding: 16px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: all 0.2s;
-  border: none;
-  background-color: #e5e7eb;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.submit-button.active {
-  color: white;
-  background: #F978A3;
-  /* Rosa principal conforme Figma */
-  box-shadow: 0 4px 14px 0 rgba(249, 120, 163, 0.35);
-  cursor: pointer;
-}
-
-.submit-button.active:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px 0 rgba(249, 120, 163, 0.5);
-}
-
-.submit-button.loading {
-  cursor: wait;
-}
-
-.submit-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-}
-
 .loader {
   width: 16px;
   height: 16px;
@@ -486,6 +556,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -525,8 +596,15 @@
 .footer-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 12px;
   margin-top: 32px;
+  flex-wrap: wrap;
+}
+
+.login-link-text,
+.free-text {
+  margin: 0;
 }
 
 .free-text {
@@ -553,10 +631,6 @@
     text-align: center;
   }
 
-  .title-container {
-    justify-content: center;
-  }
-
   .text-3xl {
     text-align: center;
     margin-bottom: 0;
@@ -568,11 +642,6 @@
 }
 
 @media (max-width: 768px) {
-  .title-container {
-    justify-content: center;
-    gap: 1rem;
-  }
-
   .text-3xl {
     text-align: center;
   }
@@ -625,7 +694,7 @@
 
 .brand-subtitle {
   font-family: 'Poppins', sans-serif;
-  font-weight: 600;
+  font-weight: 800;
   font-size: 65px;
   line-height: 80px;
   letter-spacing: 0.3px;

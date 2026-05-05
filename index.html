@@ -1,13 +1,26 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/favicon.ico">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Vuetify 3</title>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/logoweparty.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Políticas de segurança são configuradas via HTTP headers (vercel.json/netlify.toml) -->
+    <!-- Meta tags de segurança são mantidas apenas como fallback -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@400..800&display=swap"
+      rel="stylesheet"
+    />
+    <title>We Party</title>
   </head>
   <body>
     <div id="app"></div>
+    <!-- Google Sign-In SDK -->
+    <script async defer src="https://accounts.google.com/gsi/client"></script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

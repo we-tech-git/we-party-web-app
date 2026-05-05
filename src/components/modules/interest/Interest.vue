@@ -5,90 +5,176 @@
   Data: 13/10/2025
 -->
 <script setup lang="ts">
-  import { computed, onMounted, ref } from 'vue'
+  import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
-  import { callApi } from '@/api'
+  import { useRouter } from 'vue-router'
+  import { addUserInterest, getRecommendedInterests, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-  import { svgIcons } from '@/utils/svgSet'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
   const { t } = useI18n()
+  const router = useRouter()
+
+  const STORAGE_KEY = 'weparty_selected_interests'
+  const PENDING_STORAGE_KEY = 'weparty_pending_interests'
 
   interface IInterest {
     name: string
     createdBy: string
     id: string
+    hasInterest: boolean
   }
 
   const allChips = ref<IInterest[]>([])
   const selected = ref<Set<string>>(new Set())
   const isLoading = ref(false)
+  const hasError = ref(false)
+  const isFinishing = ref(false)
+  const isSearching = ref(false)
 
   const query = ref('')
-  const baseSuggestions = ref<string[]>(['Dance hall', 'Feira do Livro', 'Eventos de SP'])
+  const searchResults = ref<IInterest[]>([])
+  const debounceTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 
-  const showDropdown = computed(() => query.value.trim().length > 0)
-  const filteredSuggestions = computed(() => {
-    const q = query.value.trim().toLowerCase()
-    const inSelected = (s: string) => selected.value.has(s.toUpperCase())
-    const list = baseSuggestions.value.filter(s => s.toLowerCase().includes(q) && !inSelected(s))
-    if (q && !list.some(s => s.toLowerCase() === q) && !inSelected(query.value)) {
-      return [query.value, ...list]
+  // Máximo de interesses exibidos para não quebrar o layout
+  const MAX_DISPLAYED_INTERESTS = 9
+
+  // Computed para mostrar os chips no grid (máximo 9)
+  const displayedChips = computed(() => {
+    // Se não tem query, mostra os interesses (limitado a 9)
+    if (query.value.trim().length === 0) {
+      return allChips.value.slice(0, MAX_DISPLAYED_INTERESTS)
     }
-    return list
+
+    // Se tem query, mostra os resultados da busca (limitado a 9)
+    return searchResults.value.slice(0, MAX_DISPLAYED_INTERESTS)
   })
 
-  function toggleChip (label: string) {
-    const key = label.toUpperCase()
-    if (selected.value.has(key)) {
-      selected.value.delete(key)
-    } else {
-      selected.value.add(key)
-    }
-    selected.value = new Set(selected.value)
-  }
+  const showNoResults = computed(() => {
+    return !isSearching.value && query.value.trim().length > 0 && searchResults.value.length === 0
+  })
 
   async function fetchInterests () {
     try {
       isLoading.value = true
-      const response = await callApi('GET', '/interest', undefined, true)
-      const rawData = Array.isArray(response?.data?.data)
-        ? response.data.data
-        : response?.data
+      hasError.value = false
+      const response = await getRecommendedInterests(9)
 
-      const payload = Array.isArray(rawData) ? rawData : []
+      // Tenta extrair os interesses de diferentes estruturas de resposta
+      const responseData = response?.data
+      let interests: IInterest[] = []
 
-      if (payload.length > 0) {
-        allChips.value = payload.map((item: any) => ({
-          id: String(item.id ?? item.uuid ?? item.name ?? crypto.randomUUID()),
-          name: String(item.name ?? item.label ?? ''),
-          createdBy: item.createdBy ?? '',
-        })).filter(chip => chip.name.trim().length > 0)
+      if (responseData?.data?.interests) {
+        // Estrutura: { data: { interests: [...] } }
+        interests = responseData.data.interests
+      } else if (responseData?.interests) {
+        // Estrutura: { interests: [...] }
+        interests = responseData.interests
+      } else if (Array.isArray(responseData?.data)) {
+        // Estrutura: { data: [...] }
+        interests = responseData.data
+      } else if (Array.isArray(responseData)) {
+        // Estrutura: [...]
+        interests = responseData
+      }
+
+      allChips.value = interests
+
+      // Inicializa o Set de selecionados com base nos dados vindos da API
+      for (const chip of allChips.value) {
+        if (chip.hasInterest) {
+          selected.value.add(chip.name.toUpperCase())
+        }
       }
     } catch (error) {
       console.error('Erro ao buscar interesses:', error)
+      hasError.value = true
       allChips.value = []
     } finally {
       isLoading.value = false
     }
   }
 
-  async function addFromSuggestion (selectedInterest: IInterest) {
-    const alreadySelected = selected.value.has(selectedInterest.name.toUpperCase())
-
-    const body = {
-      interestId: selectedInterest.id,
-    }
-
-    if (alreadySelected) {
-      toggleChip(selectedInterest.name)
+  async function searchInterests (searchQuery: string) {
+    if (!searchQuery.trim()) {
+      searchResults.value = []
       return
     }
 
     try {
-      await callApi('POST', '/users/interest', body, true)
-      toggleChip(selectedInterest.name)
+      isSearching.value = true
+      const response = await searchInterestsByName(searchQuery.trim())
+
+      // Tenta extrair os interesses de diferentes estruturas de resposta
+      const responseData = response?.data
+      let interests: IInterest[] = []
+
+      if (responseData?.data?.interests) {
+        interests = responseData.data.interests
+      } else if (responseData?.interests) {
+        interests = responseData.interests
+      } else if (Array.isArray(responseData?.data)) {
+        interests = responseData.data
+      } else if (Array.isArray(responseData)) {
+        interests = responseData
+      }
+
+      // Limita a 9 resultados para não quebrar o layout
+      searchResults.value = interests.slice(0, MAX_DISPLAYED_INTERESTS)
     } catch (error) {
-      console.error('Erro ao adicionar interesse:', error)
+      console.error('Erro ao buscar interesses:', error)
+      searchResults.value = []
+    } finally {
+      isSearching.value = false
+      isLoading.value = false
+    }
+  }
+
+  function debouncedSearch (searchQuery: string) {
+    // Limpa o timeout anterior
+    if (debounceTimeout.value) {
+      clearTimeout(debounceTimeout.value)
+    }
+
+    // Se a query estiver vazia, limpa os resultados imediatamente
+    if (!searchQuery.trim()) {
+      searchResults.value = []
+      isLoading.value = false
+      isSearching.value = false
+      return
+    }
+
+    // Define um novo timeout de 500ms
+    debounceTimeout.value = setTimeout(() => {
+      searchInterests(searchQuery)
+    }, 500)
+  }
+
+  async function addFromSuggestion (selectedInterest: IInterest) {
+    // Atualização otimista na UI
+    const previousState = selectedInterest.hasInterest
+    selectedInterest.hasInterest = !previousState
+
+    try {
+      if (previousState) {
+        // Estava selecionado, então remove
+        selected.value.delete(selectedInterest.name.toUpperCase())
+        await removeUserInterest(selectedInterest.id)
+      } else {
+        // Não estava selecionado, então adiciona
+        selected.value.add(selectedInterest.name.toUpperCase())
+        await addUserInterest(selectedInterest.id)
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar interesse:', error)
+      // Reverte estado em caso de erro
+      selectedInterest.hasInterest = previousState
+      if (previousState) {
+        selected.value.add(selectedInterest.name.toUpperCase())
+      } else {
+        selected.value.delete(selectedInterest.name.toUpperCase())
+      }
     }
   }
 
@@ -96,18 +182,172 @@
     fetchInterests()
   })
 
+  // Watch para executar busca com debounce quando query mudar
+  watch(query, newQuery => {
+    // Só ativa loading se a query não estiver vazia
+    if (newQuery.trim().length > 0) {
+      isLoading.value = true
+    }
+    debouncedSearch(newQuery)
+  })
+
   const showModal = ref(false)
-  function finish () {
-  // Ação de concluir ficará disponível para integração futura
+  const showRequestModal = ref(false)
+  const newInterestName = ref('')
+  const pendingInterests = ref<string[]>([])
+  const isSubmittingRequest = ref(false)
+
+  // Snackbar para feedback de sucesso/erro
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
+
+  function showSnackbar (message: string, color = '#ff9800') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+    snackbarVisible.value = true
   }
+
+  // Persiste automaticamente pendingInterests no localStorage
+  watch(pendingInterests, val => {
+    try {
+      localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(val || []))
+    } catch (error) {
+      console.error('Erro ao salvar pendingInterests no localStorage:', error)
+    }
+  }, { deep: true })
+
+  function finish () {
+    isFinishing.value = true
+    const interestsToSave = Array.from(selected.value).map(name => {
+      const chip = allChips.value.find(c => c.name.toUpperCase() === name)
+      return chip ? { id: chip.id, name: chip.name } : null
+    }).filter(Boolean)
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(interestsToSave))
+      router.push('/public/AddFriends')
+    } catch (error) {
+      console.error('Erro ao salvar interesses:', error)
+    } finally {
+      isFinishing.value = false
+    }
+  }
+
+  function skipStep () {
+    router.push('/public/AddFriends')
+  }
+
   function closeModal () {
     showModal.value = false
   }
+
+  function openRequestModal () {
+    newInterestName.value = query.value.trim()
+    // Carrega pendentes previamente salvos (se houver)
+    try {
+      const stored = localStorage.getItem(PENDING_STORAGE_KEY)
+      pendingInterests.value = stored ? JSON.parse(stored) : []
+    } catch (error) {
+      pendingInterests.value = []
+      console.error('Erro ao ler pendingInterests do localStorage:', error)
+    }
+    showRequestModal.value = true
+  }
+
+  function closeRequestModal () {
+    showRequestModal.value = false
+    newInterestName.value = ''
+    // Não limpamos pendingInterests aqui para manter a persistência caso o usuário feche sem querer
+    // pendingInterests.value = []
+    isSubmittingRequest.value = false
+  }
+
+  function addToPending () {
+    const name = newInterestName.value.trim()
+    if (name && !pendingInterests.value.includes(name)) {
+      pendingInterests.value.push(name)
+      newInterestName.value = ''
+    }
+  }
+
+  function removePending (index: number) {
+    pendingInterests.value.splice(index, 1)
+  }
+
+  async function submitNewInterestRequest () {
+    // Adiciona o que estiver no input se o usuário esqueceu de clicar no +
+    addToPending()
+
+    if (pendingInterests.value.length === 0) {
+      showSnackbar(t('interest.requestModal.noInterests') || 'Adicione pelo menos um interesse', '#ef4444')
+      return
+    }
+
+    try {
+      isSubmittingRequest.value = true
+
+      // Cria uma cópia dos interesses antes de limpar
+      const interestsToSubmit = [...pendingInterests.value]
+
+      // Envia a solicitação para o backend via POST /interest/request
+      await requestNewInterests(interestsToSubmit)
+
+      // Limpa pendentes salvos após envio bem-sucedido
+      try {
+        localStorage.removeItem(PENDING_STORAGE_KEY)
+        pendingInterests.value = [] // Limpa a lista da memória também
+      } catch (error) {
+        console.error('Erro ao limpar pendingInterests do localStorage:', error)
+      }
+
+      // Fecha o modal e mostra mensagem de sucesso
+      closeRequestModal()
+      showSnackbar(
+        t('interest.requestModal.successMessage') || 'Solicitação enviada com sucesso! Aguarde aprovação.',
+        '#22c55e',
+      )
+
+      // Limpa a busca
+      query.value = ''
+    } catch (error: any) {
+      console.error('❌ Erro ao solicitar novo interesse:', error)
+
+      // Mostra mensagem de erro apropriada
+      const errorMessage = error?.response?.data?.message
+        || t('interest.requestModal.errorMessage')
+        || 'Erro ao enviar solicitação. Tente novamente.'
+
+      showSnackbar(errorMessage, '#ef4444')
+    } finally {
+      isSubmittingRequest.value = false
+    }
+  }
+
 </script>
 
 <template>
   <AuthLayout>
     <template #form-content>
+      <!-- Botão de Voltar -->
+      <a class="back-link" href="#" @click="router.back()">
+        <svg
+          class="back-arrow"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          :viewBox="svgIcons.backArrow ? svgIcons.backArrow.viewBox : '0 0 24 24'"
+        >
+          <path
+            v-for="(path, index) in (svgIcons.backArrow ? svgIcons.backArrow.paths : [{ d: 'M10 19l-7-7m0 0l7-7m-7 7h18', strokeLinecap: 'round', strokeLinejoin: 'round' }])"
+            :key="index"
+            :d="path.d"
+            :stroke-linecap="path.strokeLinecap as StrokeLinecap"
+            :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin"
+          />
+        </svg>
+      </a>
+      <h2 class="mobile-brand-title notranslate" translate="no">WE PARTY</h2>
       <h1 class="title">{{ t('interest.title') }}</h1>
       <p class="subtitle">{{ t('interest.subtitle') }}</p>
 
@@ -124,43 +364,49 @@
         </svg>
 
         <input v-model="query" class="search-input" :placeholder="t('interest.searchPlaceholder')" type="text">
-
-        <!-- Dropdown de sugestões -->
-        <div v-if="showDropdown" class="suggestions">
-          <div v-for="(s, idx) in filteredSuggestions" :key="idx" class="suggestion-item">
-            <span class="suggestion-label">{{ s }}</span>
-            <button class="add-suggestion" type="button">
-              <svg
-                v-if="svgIcons.plusIcon"
-                class="plus-icon"
-                fill="none"
-                stroke="currentColor"
-                :viewBox="svgIcons.plusIcon.viewBox"
-              >
-                <path
-                  v-for="(p, i) in svgIcons.plusIcon.paths"
-                  :key="i"
-                  :d="p.d"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
       </div>
 
       <!-- Grid de chips -->
-      <div v-if="isLoading" class="loading-state">
+      <div v-if="isLoading || isSearching" class="loading-state">
         <div class="loading-spinner" />
-        <p>{{ t('interest.loading') }}</p>
+        <p>{{ isSearching ? t('interest.searching') : t('interest.loading') }}</p>
+      </div>
+      <div v-else-if="hasError" class="error-state">
+        <div class="error-icon">⚠️</div>
+        <p>{{ t('interest.errorLoading') || 'Erro ao carregar interesses' }}</p>
+        <button class="retry-btn" type="button" @click="fetchInterests">
+          Tentar novamente
+        </button>
+      </div>
+      <div v-else-if="showNoResults" class="no-results-container">
+        <div class="no-results-icon">🔍</div>
+        <h3 class="no-results-title">{{ t('interest.noResultsTitle') }}</h3>
+        <p class="no-results-text">{{ t('interest.noResultsDescription') }}</p>
+        <button class="btn-request-interest" type="button" @click="openRequestModal">
+          <svg
+            v-if="svgIcons.plusIcon"
+            class="plus-icon-btn"
+            fill="none"
+            stroke="currentColor"
+            :viewBox="svgIcons.plusIcon.viewBox"
+          >
+            <path
+              v-for="(p, i) in svgIcons.plusIcon.paths"
+              :key="i"
+              :d="p.d"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+            />
+          </svg>
+          {{ t('interest.requestNewInterest') }}
+        </button>
       </div>
       <div v-else class="chips-grid">
         <button
-          v-for="chip in allChips"
+          v-for="chip in displayedChips"
           :key="chip.id"
-          :class="['chip', selected.has(chip.name.toUpperCase()) ? 'selected' : '']"
+          :class="['chip', chip.hasInterest ? 'selected' : '']"
           :title="chip.name"
           type="button"
           @click="addFromSuggestion(chip)"
@@ -169,11 +415,15 @@
         </button>
       </div>
 
-      <button class="finish-btn" type="button" @click="finish">
-        {{ t('interest.finishButton') }}
+      <button class="btn-primary" type="button" @click="finish">
+        <span v-if="isFinishing">Salvando...</span>
+        <span v-else>{{ t('interest.finishButton') }}</span>
       </button>
+      <div class="skip-container">
+        <a class="skip-link" href="#" @click.prevent="skipStep"><span>Pular esta etapa por enquanto</span></a>
+      </div>
 
-      <!-- Modal -->
+      <!-- Modal de Confirmação -->
       <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
         <div class="modal">
           <div class="modal-header">
@@ -193,6 +443,58 @@
           </div>
         </div>
       </div>
+
+      <!-- Modal de Solicitar Novo Interesse -->
+      <div v-if="showRequestModal" class="modal-overlay" @click.self="closeRequestModal">
+        <div class="modal">
+          <div class="modal-header">
+            <h3>{{ t('interest.requestModal.title') }}</h3>
+            <button class="modal-close" type="button" @click="closeRequestModal">
+              ×
+            </button>
+          </div>
+          <div class="modal-body">
+            <p class="modal-description">{{ t('interest.requestModal.description') }}</p>
+            <div class="input-wrapper">
+              <label class="input-label" for="newInterest">{{ t('interest.requestModal.label') }}</label>
+              <div class="input-group">
+                <input
+                  id="newInterest"
+                  v-model="newInterestName"
+                  class="modal-input"
+                  :placeholder="t('interest.requestModal.placeholder')"
+                  type="text"
+                  @keyup.enter="addToPending"
+                >
+                <button class="add-btn" type="button" @click="addToPending">
+                  +
+                </button>
+              </div>
+            </div>
+
+            <div v-if="pendingInterests.length > 0" class="pending-list">
+              <span v-for="(item, index) in pendingInterests" :key="index" class="pending-chip">
+                {{ item }}
+                <button class="remove-pending-btn" type="button" @click="removePending(index)">×</button>
+              </span>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" type="button" @click="closeRequestModal">
+              {{ t('interest.requestModal.cancel') }}
+            </button>
+            <button
+              class="finish-btn"
+              :disabled="(pendingInterests.length === 0 && !newInterestName.trim()) || isSubmittingRequest"
+              type="button"
+              @click="submitNewInterestRequest"
+            >
+              <span v-if="isSubmittingRequest">{{ t('interest.requestModal.submitting') }}</span>
+              <span v-else>{{ t('interest.requestModal.submit') }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </template>
 
     <template #brand-content>
@@ -208,10 +510,17 @@
       </div>
     </template>
   </AuthLayout>
+
+  <!-- Snackbar para feedback -->
+  <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />
 </template>
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&family=Poppins:wght@400;600;700&display=swap');
+
+.mobile-brand-title {
+  display: none;
+}
 
 /* ===============================
    TIPOGRAFIA E TÍTULOS
@@ -296,6 +605,28 @@
   margin-right: 8px;
 }
 
+.suggestion-item.searching,
+.suggestion-item.no-results {
+  justify-content: center;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.mini-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #E5E7EB;
+  border-top-color: #FF5FA6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .add-suggestion {
   width: 28px;
   height: 28px;
@@ -310,6 +641,83 @@
 .plus-icon {
   width: 16px;
   height: 16px;
+}
+
+/* ===============================
+   ESTADO DE LOADING
+================================ */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  gap: 1rem;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #E5E7EB;
+  border-top-color: #FF5FA6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ===============================
+   MENSAGEM SEM RESULTADOS
+================================ */
+.no-results-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.no-results-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.no-results-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1F2937;
+  margin-bottom: 0.5rem;
+}
+
+.no-results-text {
+  color: #6B7280;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  max-width: 400px;
+}
+
+.btn-request-interest {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 12px 24px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  box-shadow: 0 4px 12px rgba(255, 95, 166, .25);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-request-interest:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 95, 166, .35);
+}
+
+.plus-icon-btn {
+  width: 20px;
+  height: 20px;
 }
 
 /* ===============================
@@ -351,7 +759,7 @@
 /* ===============================
    BOTÃO CONCLUIR (GRADIENTE)
 ================================ */
-.finish-btn {
+.btn-primary {
   width: 100%;
   padding: 16px;
   border-radius: 10px;
@@ -362,9 +770,46 @@
   box-shadow: 0 10px 24px rgba(255, 95, 166, .25);
 }
 
-.finish-btn:hover {
+.btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 28px rgba(255, 95, 166, .3);
+}
+
+.skip-container {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.skip-link {
+  font-weight: 600;
+  color: #f97316;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.skip-link:hover {
+  text-decoration: underline;
+}
+
+.skip-link:hover span {
+  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ===============================
+   BOTÃO VOLTAR
+================================ */
+.back-link {
+  display: inline-flex;
+  color: #FFB37B;
+  margin-bottom: 48px;
+}
+
+.back-arrow {
+  width: 32px;
+  height: 32px;
 }
 
 /* ===============================
@@ -419,6 +864,138 @@
 
 .modal-footer {
   padding: 16px 20px 20px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.modal-description {
+  margin-bottom: 1rem;
+}
+
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-label {
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: #1F2937;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.modal-input:focus {
+  border-color: #FF5FA6;
+  box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
+}
+
+.input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.add-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  border: none;
+  background: #F3F4F6;
+  color: #4B5563;
+  font-size: 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.add-btn:hover {
+  background: #E5E7EB;
+  color: #1F2937;
+}
+
+.pending-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pending-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #FFF0F5;
+  color: #D61F69;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.remove-pending-btn {
+  border: none;
+  background: none;
+  color: #D61F69;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.remove-pending-btn:hover {
+  opacity: 1;
+}
+
+.finish-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.finish-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.3);
+}
+
+.finish-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid #E5E7EB;
+  font-weight: 600;
+  color: #6B7280;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #F9FAFB;
+  border-color: #D1D5DB;
 }
 
 /* ===============================
@@ -440,6 +1017,36 @@
   color: #3F3D56;
   text-align: left;
   letter-spacing: -.3px;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: #EF4444;
+  gap: 1rem;
+}
+
+.error-icon {
+  font-size: 2rem;
+}
+
+.retry-btn {
+  padding: 0.5rem 1rem;
+  background-color: #EF4444;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retry-btn:hover {
+  background-color: #DC2626;
 }
 
 .brand-title .line-1 {
@@ -472,6 +1079,21 @@
 }
 
 @media (max-width: 960px) {
+  .mobile-brand-title {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-family: 'Baloo Thambi 2', cursive;
+    font-weight: 800;
+    font-size: 2.75rem;
+    line-height: 1.1;
+    text-transform: uppercase;
+    background: linear-gradient(to right, #FFC947, #F978A3);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-align: center;
+  }
+
   .brand-wrap {
     padding: 0 16px;
     margin-top: 0;
@@ -512,7 +1134,7 @@
     font-size: 0.875rem;
   }
 
-  .finish-btn {
+  .btn-primary {
     padding: 14px;
   }
 }

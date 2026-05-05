@@ -2,23 +2,32 @@
  * router/index.ts
  *
  * Automatic routes for `./src/pages/*.vue`
+ * Com lazy loading implementado para melhor performance
  */
 
 // Composables
 import { setupLayouts } from 'virtual:generated-layouts'
 import { createRouter, createWebHistory } from 'vue-router'
-import { routes } from 'vue-router/auto-routes'
+import { routes as autoRoutes } from 'vue-router/auto-routes'
 import { privateRouteGuard, publicRouteGuard } from '@/composables/useAuth'
+import { logger } from '@/utils/logger'
+
+// Lazy loading aplicado automaticamente pelas auto-routes do unplugin-vue-router
+// As rotas são carregadas sob demanda, reduzindo o bundle inicial
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    // Redirect da rota raiz para o login
+    // Redirect da rota raiz para a landing page
+    {
+      path: '',
+      redirect: '/public/Landingpage',
+    },
     {
       path: '/',
-      redirect: '/public/Login'
+      redirect: '/public/Landingpage',
     },
-    ...setupLayouts(routes)
+    ...setupLayouts(autoRoutes),
   ],
 })
 
@@ -27,23 +36,20 @@ const router = createRouter({
 // ===============================
 
 router.beforeEach((to, from, next) => {
-  console.log('🚦 Navegando para:', to.path)
-
   // Verifica se é uma rota privada
   if (to.path.startsWith('/private')) {
-    const canAccess = privateRouteGuard()
+    const canAccess = privateRouteGuard(to.path)
     if (typeof canAccess === 'string') {
-      console.log('🔒 Redirecionando para login:', canAccess)
       next(canAccess)
       return
     }
   }
 
-  // Verifica se é uma rota pública e usuário já está logado
-  if (to.path.startsWith('/public') && (to.path.includes('Login') || to.path.includes('Signup'))) {
+  // Verifica se é uma rota pública de autenticação e usuário já está logado
+  const path = to.path.toLowerCase()
+  if (path.startsWith('/public') && (path.includes('login') || path.includes('signup'))) {
     const shouldRedirect = publicRouteGuard()
     if (typeof shouldRedirect === 'string') {
-      console.log('✅ Usuário já logado, redirecionando para área privada:', shouldRedirect)
       next(shouldRedirect)
       return
     }
@@ -57,14 +63,14 @@ router.beforeEach((to, from, next) => {
 router.onError((err, to) => {
   if (err?.message?.includes?.('Failed to fetch dynamically imported module')) {
     if (localStorage.getItem('vuetify:dynamic-reload')) {
-      console.error('Dynamic import error, reloading page did not fix it', err)
+      logger.error('Dynamic import error, reloading page did not fix it', err)
     } else {
-      console.log('Reloading page to fix dynamic import error')
+      logger.log('Reloading page to fix dynamic import error')
       localStorage.setItem('vuetify:dynamic-reload', 'true')
       location.assign(to.fullPath)
     }
   } else {
-    console.error(err)
+    logger.error(err)
   }
 })
 

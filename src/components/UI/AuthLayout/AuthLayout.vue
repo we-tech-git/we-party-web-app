@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+
   defineProps<{
     title?: string // Título opcional para personalizar cada página
     brandLeft?: boolean // Quando true, inverte a ordem para brand à esquerda
@@ -7,6 +9,9 @@
 
 <template>
   <div class="page-container" :class="{ reverse: !!$props.brandLeft }">
+    <div class="auth-language-switcher">
+      <LanguageSwitcher />
+    </div>
     <div class="form-section">
       <div class="form-content">
         <slot name="form-content" /> <!-- Slot nomeado para o conteúdo do formulário -->
@@ -39,7 +44,7 @@
 
       <div class="brand-content">
         <slot name="brand-content">
-          <h2 class="brand-title">WE PARTY</h2>
+          <h2 class="brand-title notranslate" translate="no">WE PARTY</h2>
           <i18n-t class="brand-subtitle" keypath="signup.brandSubtitle" tag="p">
             <template #default>
               <br>
@@ -57,10 +62,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@800&display=swap');
 
+.auth-language-switcher {
+  position: absolute;
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  right: calc(1rem + env(safe-area-inset-right, 0px));
+  z-index: 100;
+}
+
 .page-container {
   display: flex;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  /* iOS Safari */
   background-color: #ffffffee;
   font-family: 'Poppins', sans-serif;
   overflow: hidden;
@@ -84,11 +98,26 @@
 
   .form-section {
     width: 100%;
-    padding: 32px 24px 48px;
+    padding: 80px 24px 48px;
+    padding-top: calc(80px + env(safe-area-inset-top, 0px));
   }
 
   .brand-section {
     display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-section {
+    padding: 60px 16px 32px;
+    padding-top: calc(60px + env(safe-area-inset-top, 0px));
+  }
+}
+
+@media (max-width: 360px) {
+  .form-section {
+    padding: 52px 12px 24px;
+    padding-top: calc(52px + env(safe-area-inset-top, 0px));
   }
 }
 

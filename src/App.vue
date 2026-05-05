@@ -1,10 +1,18 @@
+<script lang="ts" setup>
+  import { watchEffect } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import ShareSheet from '@/components/modules/UI/ShareSheet/ShareSheet.vue'
+
+  const { locale } = useI18n()
+
+  watchEffect(() => {
+    document.documentElement.lang = locale.value
+  })
+</script>
+
 <template>
   <v-app>
-    <LanguageSwitcher />
     <router-view />
+    <ShareSheet />
   </v-app>
 </template>
-
-<script lang="ts" setup>
-import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
-</script>

@@ -1,9 +1,10 @@
 /**
  * useAuth Composable
  * Gerencia estado reativo de autenticação e navegação
+ * SEGURANÇA: Implementa cleanup adequado para prevenir memory leaks
  */
 
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { AuthService, type LoggedUser } from '@/services/auth'
 
 // Estado global reativo da autenticação
@@ -11,51 +12,180 @@ const isAuthenticated = ref(AuthService.isAuthenticated())
 const accessToken = ref(AuthService.getToken())
 const loggedUser = ref(AuthService.getUser())
 
+// ===========================================
+// SEGURANÇA: Dados seguros do usuário (sem email/roles)
+// ===========================================
+const safeUserData = ref(AuthService.getSafeUserData())
+const maskedEmail = ref(AuthService.getMaskedEmail())
+
+// ===========================================
+// SEGURANÇA: Guards para prevenir memory leaks
+// ===========================================
+let watcherStarted = false
+let authIntervalId: ReturnType<typeof setInterval> | null = null
+let storageHandler: ((e: StorageEvent) => void) | null = null
+
+// ===============================
+// TIMEOUT DE SESSÃO (Segurança)
+// ===============================
+// Configurações de timeout de inatividade
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutos
+const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart']
+let inactivityTimer: ReturnType<typeof setTimeout> | null = null
+let activityListenersAttached = false
+
+/**
+ * Reseta o timer de inatividade
+ * Chamado sempre que o usuário interage com a aplicação
+ */
+function resetInactivityTimer () {
+  // Limpa timer anterior
+  if (inactivityTimer) {
+    clearTimeout(inactivityTimer)
+  }
+
+  // Só inicia timer se usuário estiver autenticado
+  if (!isAuthenticated.value) {
+    return
+  }
+
+  // Inicia novo timer de 30 minutos
+  inactivityTimer = setTimeout(() => {
+    console.warn('[AUTH] Sessão expirada por inatividade (30 minutos)')
+
+    // Faz logout automático
+    AuthService.logout()
+    refreshAuthState()
+
+    // Opcional: Redirecionar para login
+    if (typeof window !== 'undefined') {
+      window.location.href = '/public/Login?reason=inactivity'
+    }
+  }, INACTIVITY_TIMEOUT_MS)
+}
+
+/**
+ * Anexa listeners de atividade do usuário
+ * Monitora movimentos, cliques, teclas, etc.
+ */
+function attachActivityListeners () {
+  if (activityListenersAttached || typeof window === 'undefined') {
+    return
+  }
+
+  for (const eventName of ACTIVITY_EVENTS) {
+    document.addEventListener(eventName, resetInactivityTimer, { passive: true })
+  }
+
+  activityListenersAttached = true
+
+  // Inicia o primeiro timer
+  resetInactivityTimer()
+}
+
+/**
+ * Remove listeners de atividade
+ * Chamado ao fazer logout ou limpar recursos
+ */
+function detachActivityListeners () {
+  if (!activityListenersAttached || typeof window === 'undefined') {
+    return
+  }
+
+  for (const eventName of ACTIVITY_EVENTS) {
+    document.removeEventListener(eventName, resetInactivityTimer)
+  }
+
+  // Limpa timer
+  if (inactivityTimer) {
+    clearTimeout(inactivityTimer)
+    inactivityTimer = null
+  }
+
+  activityListenersAttached = false
+}
+
 // Watcher para monitorar mudanças no localStorage
-const startAuthWatcher = () => {
-  // Monitora mudanças no localStorage
-  window.addEventListener('storage', (e) => {
+function startAuthWatcher () {
+  if (watcherStarted) {
+    return
+  }
+  watcherStarted = true
+
+  // Cria handler e guarda referência (SEGURANÇA: para poder remover depois)
+  storageHandler = (e: StorageEvent) => {
     if (e.key === 'ACCESS_TOKEN' || e.key === 'LOGGED_USER') {
       refreshAuthState()
     }
-  })
+  }
+
+  // Monitora mudanças no localStorage (outras abas)
+  window.addEventListener('storage', storageHandler)
 
   // Monitora mudanças no próprio tab
-  const checkInterval = setInterval(() => {
+  // SEGURANÇA: Salva referência para poder limpar depois
+  authIntervalId = setInterval(() => {
     const currentToken = AuthService.getToken()
     const currentUser = AuthService.getUser()
 
-    if (currentToken !== accessToken.value ||
-        JSON.stringify(currentUser) !== JSON.stringify(loggedUser.value)) {
+    if (currentToken !== accessToken.value
+      || JSON.stringify(currentUser) !== JSON.stringify(loggedUser.value)) {
       refreshAuthState()
     }
-  }, 1000) // Verifica a cada segundo
+  }, 2000) // Verifica a cada 2 segundos
 
-  // Retorna função para limpar o intervalo
-  return () => {
-    clearInterval(checkInterval)
+  // ===============================
+  // TIMEOUT DE SESSÃO: Inicia monitoramento de atividade
+  // ===============================
+  if (isAuthenticated.value) {
+    attachActivityListeners()
   }
 }
 
+// SEGURANÇA: Função para limpar TODOS os recursos e prevenir memory leaks
+function stopAuthWatcher () {
+  // Remove listener de storage
+  if (storageHandler) {
+    window.removeEventListener('storage', storageHandler)
+    storageHandler = null
+  }
+
+  // Limpa interval de polling
+  if (authIntervalId) {
+    clearInterval(authIntervalId)
+    authIntervalId = null
+  }
+
+  watcherStarted = false
+
+  // ===============================
+  // TIMEOUT DE SESSÃO: Remove listeners ao parar watcher
+  // ===============================
+  detachActivityListeners()
+}
+
 // Atualiza o estado reativo com dados atuais do localStorage
-const refreshAuthState = () => {
+function refreshAuthState () {
   accessToken.value = AuthService.getToken()
   loggedUser.value = AuthService.getUser()
   isAuthenticated.value = AuthService.isAuthenticated()
+  // SEGURANÇA: Atualiza dados seguros também
+  safeUserData.value = AuthService.getSafeUserData()
+  maskedEmail.value = AuthService.getMaskedEmail()
 }
 
 export function useAuth () {
   // Estados reativos
   const isFullyAuthenticated = computed(() =>
-    !!(accessToken.value && loggedUser.value)
+    !!(accessToken.value && loggedUser.value),
   )
 
   const userDisplayName = computed(() =>
-    loggedUser.value?.name || loggedUser.value?.username || 'Usuário'
+    loggedUser.value?.name || loggedUser.value?.username || 'Usuário',
   )
 
   const userRoles = computed(() =>
-    loggedUser.value?.roles || []
+    loggedUser.value?.roles || [],
   )
 
   // Funções de autenticação
@@ -67,12 +197,21 @@ export function useAuth () {
       user,
     })
     refreshAuthState()
+
+    // ===============================
+    // TIMEOUT DE SESSÃO: Inicia monitoramento ao fazer login
+    // ===============================
+    attachActivityListeners()
   }
 
   const logout = () => {
     AuthService.logout()
     refreshAuthState()
-    console.log('🚪 Logout realizado')
+
+    // ===============================
+    // TIMEOUT DE SESSÃO: Para monitoramento ao fazer logout
+    // ===============================
+    detachActivityListeners()
   }
 
   const hasRole = (role: string) => {
@@ -83,10 +222,23 @@ export function useAuth () {
     return AuthService.hasAnyRole(roles)
   }
 
+  const updateUser = (userData: Partial<typeof loggedUser.value>) => {
+    AuthService.updateUser(userData as any)
+    refreshAuthState()
+  }
+
   // Inicia o monitoramento quando o composable é usado
   if (typeof window !== 'undefined') {
     startAuthWatcher()
   }
+
+  // ===========================================
+  // SEGURANÇA: Cleanup automático para prevenir memory leaks
+  // ===========================================
+  // Limpa recursos quando o componente é desmontado
+  onBeforeUnmount(() => {
+    stopAuthWatcher()
+  })
 
   return {
     // Estados
@@ -97,12 +249,20 @@ export function useAuth () {
     userDisplayName,
     userRoles,
 
+    // SEGURANÇA: Dados seguros (sem email/roles sensíveis)
+    safeUserData,
+    maskedEmail,
+
     // Funções
     login,
     logout,
     hasRole,
     hasAnyRole,
     refreshAuthState,
+    updateUser,
+
+    // Cleanup (SEGURANÇA: para evitar memory leaks)
+    stopAuthWatcher,
 
     // Utilitários
     debugAuth: AuthService.debugAuth,
@@ -112,43 +272,46 @@ export function useAuth () {
 /**
  * Guards de navegação para uso no router
  */
-export const privateRouteGuard = () => {
+export function privateRouteGuard (path?: string) {
   const authenticated = AuthService.isAuthenticated()
+  const user = AuthService.getUser()
 
   if (!authenticated) {
-    console.log('🔒 Acesso negado - usuário não autenticado')
-    return '/public/Login' // Redireciona para login
+    // Se está tentando acessar o feed privado sem login, redireciona para explore público
+    if (path?.includes('/private/feed')) {
+      return '/public/explore'
+    }
+    return '/public/Login'
   }
 
-  console.log('✅ Acesso permitido - usuário autenticado')
-  return true // Permite acesso
+  if (user && user.isEmailVerified === false) {
+    return '/public/ConfirmEmail'
+  }
+
+  return true
 }
 
-export const publicRouteGuard = () => {
+export function publicRouteGuard () {
   const authenticated = AuthService.isAuthenticated()
 
   if (authenticated) {
-    console.log('✅ Usuário já autenticado, redirecionando para área privada')
-    return '/private/feed' // Redireciona para área privada
+    return '/private/feed'
   }
 
-  return true // Permite acesso às rotas públicas
+  return true
 }
 
 /**
  * Guard para roles específicas
  */
-export const roleGuard = (requiredRoles: string[]) => {
+export function roleGuard (requiredRoles: string[]) {
   if (!AuthService.isAuthenticated()) {
-    console.log('🔒 Acesso negado - usuário não autenticado')
     return '/public/Login'
   }
 
   if (!AuthService.hasAnyRole(requiredRoles)) {
-    console.log('🔒 Acesso negado - role insuficiente')
     return '/private/unauthorized'
   }
 
-  console.log('✅ Acesso permitido - role válida')
   return true
 }
