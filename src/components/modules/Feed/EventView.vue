@@ -22,8 +22,9 @@
 
   // Background image from event
   const eventBannerUrl = ref('')
-  const eventTitle = ref('')
+  const eventData = ref<any>(null)
   const isLoaded = ref(false)
+  const isLoadingEventData = ref(true)
 
   // Parallax effect
   const scrollY = ref(0)
@@ -35,7 +36,7 @@
 
   onMounted(() => {
     window.addEventListener('scroll', handleScroll)
-    fetchEventBanner()
+    fetchEventData()
     fetchTrends()
 
     // Trigger entrance animation
@@ -48,13 +49,17 @@
     window.removeEventListener('scroll', handleScroll)
   })
 
-  async function fetchEventBanner () {
+  async function fetchEventData () {
     try {
+      isLoadingEventData.value = true
       const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
       if (!id) return
 
       const response = await getEventById(id)
       const data = response?.data?.event || response?.data || response
+
+      // Armazena os dados completos do evento
+      eventData.value = data
 
       // Extract banner URL
       const photos = data?.photos
@@ -74,14 +79,15 @@
       }
 
       eventBannerUrl.value = data?.bannerUrl || data?.banner || photoUrl || ''
-      eventTitle.value = data?.name || data?.title || ''
     } catch (error) {
-      console.error('Error fetching event banner:', error)
+      console.error('Error fetching event data:', error)
+    } finally {
+      isLoadingEventData.value = false
     }
   }
 
   watch(() => props.eventId, () => {
-    fetchEventBanner()
+    fetchEventData()
   })
 
   // Navigation logic
@@ -182,12 +188,6 @@
       <div class="deco-circle deco-3" />
     </div>
 
-    <!-- Floating Event Title Badge -->
-    <div v-if="eventTitle" class="floating-title-badge">
-      <span class="badge-icon">🎉</span>
-      <span class="badge-text">{{ eventTitle }}</span>
-    </div>
-
     <!-- Header Global -->
     <FeedTopHeader :user="user">
       <template #center-content>
@@ -235,7 +235,19 @@
           </span>
         </div>
 
-        <EventDetails :event-id="eventId" />
+        <!-- Loading state -->
+        <div v-if="isLoadingEventData" class="event-loading">
+          <div class="loading-spinner" />
+          <p class="loading-text">Carregando evento...</p>
+        </div>
+
+        <!-- Event Details - só renderiza quando dados estiverem disponíveis -->
+        <EventDetails v-else-if="eventData" :event-data="eventData" :event-id="eventId" />
+
+        <!-- Error state -->
+        <div v-else class="event-error">
+          <p>Não foi possível carregar o evento.</p>
+        </div>
       </main>
 
       <!-- Trends Panel -->
@@ -399,66 +411,6 @@
   }
 }
 
-/* Floating Title Badge */
-.floating-title-badge {
-  position: fixed;
-  top: 100px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-20px);
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 248, 250, 0.95) 100%);
-  border-radius: 50px;
-  box-shadow: 0 10px 40px rgba(255, 95, 166, 0.2);
-  border: 1px solid rgba(255, 186, 75, 0.3);
-  z-index: 100;
-  opacity: 0;
-  animation: slideDownFadeIn 0.6s ease forwards;
-  animation-delay: 0.5s;
-  backdrop-filter: blur(10px);
-}
-
-.badge-icon {
-  font-size: 1.25rem;
-  animation: bounce 2s ease-in-out infinite;
-}
-
-.badge-text {
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: #2d2f55;
-  max-width: 300px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-@keyframes slideDownFadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-30px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-
-@keyframes bounce {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-5px);
-  }
-}
-
 /* Layout Shell */
 .layout-shell {
   box-sizing: border-box;
@@ -545,10 +497,6 @@
   }
 
   .layout-trends {
-    display: none;
-  }
-
-  .floating-title-badge {
     display: none;
   }
 }
@@ -678,6 +626,46 @@
     padding: 0.25rem 0.6rem;
     border-radius: 8px;
   }
+}
+
+/* ─── Loading & Error States ──────────────────────────────────────────────── */
+.event-loading,
+.event-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 95, 166, 0.1);
+  border-top-color: #ff5fa6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  margin-top: 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.02em;
+}
+
+.event-error {
+  color: rgba(255, 95, 166, 0.8);
+  font-weight: 600;
 }
 
 @media (max-width: 960px) {

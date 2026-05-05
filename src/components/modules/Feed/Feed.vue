@@ -64,7 +64,8 @@
   const userStats = ref({ followers: 0, following: 0 })
 
   const activeNav = ref((route.query.tab as string) || 'home')
-  const activeTab = ref('all-events')
+  // Inicia sempre com 'for-you'
+  const activeTab = ref('for-you')
   const searchQuery = ref('')
 
   // Timeout para debounce da busca
@@ -101,16 +102,13 @@
   }
 
   const tabs = computed<TabItem[]>(() => {
-    if (activeNav.value === 'top-events') {
-      return [
-        { id: 'for-you', label: t('feed.tabs.forYou') },
-        { id: 'trends', label: t('feed.tabs.trends') },
-        { id: 'news', label: t('feed.tabs.news') },
-      ]
+    // Na página de top eventos e favoritos, não mostrar abas
+    if (activeNav.value === 'top-events' || activeNav.value === 'favorites') {
+      return []
     }
 
+    // Na home (guest ou autenticado), mostrar apenas "Para Você" e "Hoje"
     return [
-      { id: 'all-events', label: 'Feed' },
       { id: 'for-you', label: t('feed.tabs.forYou') },
       { id: 'today', label: t('feed.tabs.today') },
     ]
@@ -625,8 +623,6 @@
       fetchEvents()
     } else if (activeNav.value === 'favorites') {
       fetchFavoriteEvents()
-      // Sincroniza favoritos com o servidor ao montar a página
-      eventsStore.syncFavoritesWithServer()
     } else {
       fetchEvents()
     }
@@ -834,11 +830,11 @@
     }
 
     // Reset active tab when switching nav sections
-    // Home nav: default to 'all-events' (Feed)
-    // Top-events nav: default to 'for-you'
     if (val === 'home') {
-      activeTab.value = 'all-events'
+      // Sempre inicia com 'for-you'
+      activeTab.value = 'for-you'
     } else if (val === 'top-events') {
+      // Top-events não tem abas, então usa 'for-you' como valor padrão
       activeTab.value = 'for-you'
     }
 
@@ -848,8 +844,6 @@
 
     if (val === 'favorites') {
       fetchFavoriteEvents()
-      // Sincroniza favoritos com o servidor para garantir dados atualizados
-      eventsStore.syncFavoritesWithServer()
     } else {
       fetchEvents()
     }
@@ -920,11 +914,6 @@
       // Remove o item da lista imediatamente para feedback visual rápido
       filteredItems.value = filteredItems.value.filter(e => e.id !== item.id)
       items.value = items.value.filter(e => e.id !== item.id)
-
-      // Sincroniza com o servidor após um pequeno delay
-      setTimeout(() => {
-        eventsStore.syncFavoritesWithServer()
-      }, 500)
     }
   }
 
@@ -1176,7 +1165,7 @@
           </span>
         </div>
 
-        <nav aria-label="Seções do feed" class="tabs">
+        <nav v-if="tabs.length > 0" aria-label="Seções do feed" class="tabs">
           <button
             v-for="tab in tabs"
             :key="tab.id"

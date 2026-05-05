@@ -141,7 +141,7 @@
   padding-right: var(--sidebar-padding-right);
   border-radius: var(--sidebar-border-radius);
   min-height: var(--sidebar-min-height);
-  margin-top: 1.5rem;
+
 }
 
 .nav-list {

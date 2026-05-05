@@ -3,10 +3,11 @@
   import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
-  import { callApi } from '@/api'
+  import { getLikedEvents } from '@/api/event'
   import { addUserInterest, getInterests, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
   import { getUserInterests, getUserProfile, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
   import AppFooter from '@/components/AppFooter.vue'
+  import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
   import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
   import FeedTopHeader from '@/components/modules/Feed/FeedTopHeader.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
@@ -19,7 +20,8 @@
     MAX_FILE_SIZE_MB: 5,
     AVATAR_OUTPUT_SIZE: 512,
     CROP_CONTAINER_SIZE: 300,
-    EVENTS_DISPLAY_INCREMENT: 5,
+    EVENTS_DISPLAY_INCREMENT: 6,
+    INITIAL_DISPLAY_LIMIT: 6,
     MAX_NAME_LENGTH: 50,
     MAX_USERNAME_LENGTH: 30,
     MAX_BIO_LENGTH: 160,
@@ -918,7 +920,7 @@
   }
   const likedEventsItems = ref<LikedEventItem[]>([])
   const loadingLiked = ref(false)
-  const displayLimit = ref(5)
+  const displayLimit = ref(CONFIG.INITIAL_DISPLAY_LIMIT)
 
   const displayedLikedEvents = computed(() => {
     return likedEventsItems.value.slice(0, displayLimit.value)
@@ -928,8 +930,16 @@
     return likedEventsItems.value.length > displayLimit.value
   })
 
+  const showCollapseButton = computed(() => {
+    return displayLimit.value > CONFIG.INITIAL_DISPLAY_LIMIT
+  })
+
   function showMoreEvents () {
-    displayLimit.value += 5
+    displayLimit.value += CONFIG.EVENTS_DISPLAY_INCREMENT
+  }
+
+  function collapseEvents () {
+    displayLimit.value = CONFIG.INITIAL_DISPLAY_LIMIT
   }
 
   // ── Helpers para eventos curtidos ──
@@ -967,19 +977,30 @@
   async function fetchLikedEvents () {
     loadingLiked.value = true
     try {
-      // Busca eventos curtidos salvos localmente
-      const likedIds = eventsStore.likedEvents
+      // Busca eventos curtidos diretamente da API
+      const response = await getLikedEvents(1, 100)
+      const data = response.data
 
-      const results = await Promise.allSettled(
-        likedIds.map(id => callApi('GET', `/events/${id}`, {}, true)),
-      )
+      // Extrai eventos de diferentes estruturas de resposta da API
+      let events: any[] = []
+      if (data?.data?.events) {
+        events = data.data.events
+      } else if (data?.events) {
+        events = data.events
+      } else if (Array.isArray(data?.data)) {
+        events = data.data
+      } else if (Array.isArray(data)) {
+        events = data
+      }
 
-      const events = results
-        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
-        .map(r => r.value?.data?.data ?? r.value?.data ?? r.value)
-        .filter(e => e && e.id)
+      // Mapeia para o formato de exibição
+      likedEventsItems.value = events
+        .filter((e: any) => e && e.id)
+        .map((evt: any) => mapLikedEvent(evt))
 
-      likedEventsItems.value = events.map(evt => mapLikedEvent(evt))
+      // Sincroniza os IDs com o store para manter consistência do optimistic update
+      const likedIds = events.map((evt: any) => String(evt.id))
+      eventsStore.likedEvents.splice(0, eventsStore.likedEvents.length, ...likedIds)
     } catch (error_) {
       console.error('Erro ao buscar eventos curtidos:', error_)
       likedEventsItems.value = []
@@ -1168,7 +1189,6 @@
                 </span>
               </div>
 
-
             </header>
           </div>
         </div>
@@ -1277,11 +1297,15 @@
                 </div>
               </TransitionGroup>
 
-              <!-- Botão Mostrar Mais -->
-              <div v-if="hasMoreEvents" class="show-more-container">
-                <button class="show-more-btn" @click="showMoreEvents">
+              <!-- Botões de Mostrar Mais / Recolher -->
+              <div v-if="hasMoreEvents || showCollapseButton" class="show-more-container">
+                <button v-if="hasMoreEvents" class="show-more-btn" @click="showMoreEvents">
                   <span>{{ t('profile.likedEvents.showMore') }}</span>
                   <i class="mdi mdi-chevron-down" />
+                </button>
+                <button v-if="showCollapseButton" class="collapse-btn" @click="collapseEvents">
+                  <span>{{ t('profile.likedEvents.showLess') }}</span>
+                  <i class="mdi mdi-chevron-up" />
                 </button>
               </div>
             </div>
@@ -1329,6 +1353,21 @@
                   </div>
                 </div>
                 <div class="toggle-switch" :class="{ checked: settingsNotifications }" />
+              </div>
+
+              <div class="setting-item language-setting">
+                <div class="setting-left">
+                  <div class="setting-icon-wrap">
+                    <i class="mdi mdi-web" />
+                  </div>
+                  <div>
+                    <span class="setting-name">{{ t('profile.settings.language') }}</span>
+                    <span class="setting-desc">{{ t('profile.settings.languageDesc') }}</span>
+                  </div>
+                </div>
+                <div class="language-selector">
+                  <LanguageSwitcher />
+                </div>
               </div>
 
             </div>
@@ -2221,7 +2260,7 @@
 .tab-panel {
   justify-content: center;
   align-items: center;
-  padding: 2rem;
+
 }
 
 .loading-liked {
@@ -2515,6 +2554,8 @@
 .show-more-container {
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 1rem;
   padding: 1rem 0;
   margin-top: 0.5rem;
 }
@@ -2551,6 +2592,43 @@
 
 .show-more-btn:hover i {
   transform: translateY(2px);
+}
+
+/* Botão Recolher */
+.collapse-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 2rem;
+  background: rgba(255, 95, 166, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255, 95, 166, 0.3);
+  border-radius: 99px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(255, 95, 166, 0.15);
+  transition: all 0.3s ease;
+}
+
+.collapse-btn:hover {
+  background: rgba(255, 95, 166, 0.2);
+  border-color: rgba(255, 95, 166, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(255, 95, 166, 0.25);
+}
+
+.collapse-btn:active {
+  transform: translateY(-1px);
+}
+
+.collapse-btn i {
+  font-size: 1.3rem;
+  transition: transform 0.3s ease;
+}
+
+.collapse-btn:hover i {
+  transform: translateY(-2px);
 }
 
 /* ── Badges ── */
@@ -2806,6 +2884,19 @@
 
 .toggle-switch.checked::after {
   transform: translateX(20px);
+}
+
+/* ── Language Setting ── */
+.setting-item.language-setting {
+  cursor: default;
+}
+
+.setting-item.language-setting:hover {
+  background: transparent;
+}
+
+.language-selector {
+  flex-shrink: 0;
 }
 
 /* ── Sidebar Cards ── */

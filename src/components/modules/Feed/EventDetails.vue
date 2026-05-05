@@ -8,6 +8,7 @@
 
   const props = defineProps<{
     eventId: string | string[]
+    eventData?: any | null
   }>()
 
   const eventsStore = useEventsStore()
@@ -685,6 +686,14 @@
   }
 
   async function fetchEventDetails (id: string | number) {
+    // Se eventData já foi fornecido via prop, usa ele ao invés de fazer nova requisição
+    if (props.eventData) {
+      event.value = mapEventPayload(props.eventData)
+      startCountdown()
+      return
+    }
+
+    // Fallback: busca da API se eventData não foi fornecido
     loading.value = true
     errorMessage.value = ''
     try {
@@ -710,6 +719,17 @@
     newId => {
       const id = Array.isArray(newId) ? newId[0] : newId
       if (id) fetchEventDetails(id)
+    },
+  )
+
+  // Watch eventData para atualizar quando os dados forem carregados ou atualizados
+  watch(
+    () => props.eventData,
+    newData => {
+      if (newData) {
+        event.value = mapEventPayload(newData)
+        startCountdown()
+      }
     },
   )
 
@@ -954,6 +974,11 @@
           <i class="mdi mdi-information-outline" />
           <span>Informações</span>
         </button>
+        <button class="tab-btn" :class="{ active: activeTab === 'comments' }" @click="activeTab = 'comments'">
+          <i class="mdi mdi-comment-outline" />
+          <span>Comentários</span>
+          <span v-if="comments.length > 0" class="tab-badge">{{ comments.length }}</span>
+        </button>
         <button class="tab-btn" :class="{ active: activeTab === 'location' }" @click="activeTab = 'location'">
           <i class="mdi mdi-map-marker-outline" />
           <span>Local</span>
@@ -966,11 +991,6 @@
         >
           <i class="mdi mdi-star-outline" />
           <span>Atrações</span>
-        </button>
-        <button class="tab-btn" :class="{ active: activeTab === 'comments' }" @click="activeTab = 'comments'">
-          <i class="mdi mdi-comment-outline" />
-          <span>Comentários</span>
-          <span v-if="comments.length > 0" class="tab-badge">{{ comments.length }}</span>
         </button>
       </div>
 
@@ -1048,14 +1068,6 @@
                         </div>
                       </div>
                     </Transition>
-                  </div>
-                </div>
-
-                <div class="faqs-footer">
-                  <div class="faqs-footer-content">
-                    <i class="mdi mdi-message-text-outline" />
-                    <p>Não encontrou sua resposta? <a class="faqs-contact-link" href="#">Entre em contato conosco</a>
-                    </p>
                   </div>
                 </div>
               </div>
@@ -2778,54 +2790,6 @@
   font-size: 0.95rem;
 }
 
-.faqs-footer {
-  padding: 1.5rem;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #f8f9ff 0%, #fff5f8 100%);
-  border: 2px dashed rgba(255, 95, 166, 0.2);
-}
-
-.faqs-footer-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  color: #666;
-  font-size: 0.95rem;
-}
-
-.faqs-footer-content i {
-  font-size: 1.5rem;
-  color: #ff5fa6;
-}
-
-.faqs-contact-link {
-  color: #ff5fa6;
-  font-weight: 600;
-  text-decoration: none;
-  position: relative;
-  transition: color 0.2s;
-}
-
-.faqs-contact-link::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #ff5fa6, #ffba4b);
-  transition: width 0.3s ease;
-}
-
-.faqs-contact-link:hover {
-  color: #ffba4b;
-}
-
-.faqs-contact-link:hover::after {
-  width: 100%;
-}
-
 /* FAQ Expand Transition */
 .faq-expand-enter-active,
 .faq-expand-leave-active {
@@ -3072,12 +3036,6 @@
     padding: 1rem;
     flex-direction: column;
     gap: 0.75rem;
-  }
-
-  .faqs-footer-content {
-    flex-direction: column;
-    text-align: center;
-    font-size: 0.85rem;
   }
 }
 

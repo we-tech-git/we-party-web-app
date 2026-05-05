@@ -74,10 +74,6 @@
       showSnackbar(error.message || 'Erro ao fazer login com Facebook', '#ef4444')
     }
   }
-
-  function handleEmailAuth () {
-    goToLogin()
-  }
 </script>
 
 <template>
@@ -119,22 +115,11 @@
             Escolha uma das opções abaixo para continuar:
           </p>
 
-          <!-- Botões de autenticação social -->
-          <SocialAuthButtons
-            mode="login"
-            :show-email="true"
-            @email-auth="handleEmailAuth"
-            @facebook-auth="handleFacebookAuth"
-            @google-auth="handleGoogleAuth"
-          />
-
-          <!-- Divisor -->
-          <div class="or-divider">
-            <span>ou</span>
-          </div>
-
           <!-- Botões de ação tradicionais -->
           <div class="dialog-actions">
+            <button class="btn-secondary" type="button" @click="goToLogin">
+              <span>Já tenho conta</span>
+            </button>
             <button class="btn-primary" type="button" @click="goToSignup">
               <svg
                 fill="none"
@@ -153,10 +138,15 @@
               </svg>
               <span>Criar Conta Grátis</span>
             </button>
-            <button class="btn-secondary" type="button" @click="goToLogin">
-              <span>Já tenho conta</span>
-            </button>
           </div>
+
+          <!-- Botões de autenticação social -->
+          <SocialAuthButtons
+            mode="login"
+            :show-email="false"
+            @facebook-auth="handleFacebookAuth"
+            @google-auth="handleGoogleAuth"
+          />
 
           <!-- Botão fechar -->
           <button aria-label="Fechar" class="dialog-close" type="button" @click="closeDialog">
@@ -312,7 +302,7 @@
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.05s ease-out, box-shadow 0.05s ease-out, background 0.05s ease-out, border-color 0.05s ease-out, color 0.05s ease-out;
   border: none;
 }
 
@@ -357,7 +347,7 @@
   border-radius: 10px;
   color: #6c757d;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.05s ease-out, color 0.05s ease-out, border-color 0.05s ease-out;
 }
 
 .dialog-close:hover {

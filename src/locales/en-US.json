@@ -66,9 +66,8 @@
       "myEvents": "My Events",
       "favorites": "Saved events",
       "notifications": "Notifications",
-      "profile": "Profile",
-      "helper": "Discover what is trending and enjoy the week.",
-      "newEvent": "Create event"
+      "profile": "Profile"
+      
     },
     "tabs": {
       "forYou": "For you",
@@ -218,6 +217,7 @@
       "emptyDescription": "Like events to save them here and access them quickly later",
       "exploreEvents": "Explore Events",
       "showMore": "Show more events",
+      "showLess": "Show less",
       "locationUndefined": "Location to be defined",
       "dateUndefined": "Date to be defined",
       "eventTitle": "Event",
@@ -227,6 +227,8 @@
       "general": "General",
       "notifications": "Notifications",
       "notificationsDesc": "Receive alerts about events and friends",
+      "language": "Language",
+      "languageDesc": "Choose your preferred language",
       "account": "Account",
       "editProfile": "Edit Profile",
       "editProfileDesc": "Change name, bio and photo",

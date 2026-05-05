@@ -48,6 +48,10 @@
     router.push('/public/Login')
   }
 
+  function navigateToHome () {
+    router.push('/home')
+  }
+
   function goToSignup () {
     router.push('/public/Signup')
   }
@@ -75,7 +79,7 @@
             <path v-for="(path, idx) in svgIcons.backArrow.paths" :key="idx" v-bind="path" />
           </svg>
         </button>
-        <div class="brand-logo-wrapper">
+        <div class="brand-logo-wrapper" @click="navigateToHome">
           <img alt="We Party Logo" class="brand-logo-img" src="/logoweparty.png">
           <span aria-hidden="true" class="brand notranslate" translate="no">WE PARTY</span>
         </div>
@@ -84,7 +88,8 @@
         <slot name="center-content" />
       </div>
       <div class="user-summary">
-        <div class="lang-switch-wrapper">
+        <!-- Seletor de idioma apenas no modo guest (explore) -->
+        <div v-if="guestMode" class="lang-switch-wrapper">
           <LanguageSwitcher />
         </div>
 
@@ -278,6 +283,12 @@
   align-items: center;
   gap: 0.6rem;
   margin: 0 auto;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.brand-logo-wrapper:hover {
+  opacity: 0.8;
 }
 
 .brand-logo-img {
@@ -337,18 +348,21 @@
 
 .user-summary {
   display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  padding: 0.3rem;
+  padding: 0.2rem;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 250, 252, 0.95) 100%);
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(14, 23, 58, 0.08), 0 0 0 1px rgba(255, 95, 166, 0.1);
-  min-width: 265px;
   transition: all 0.3s ease;
 }
 
 .user-summary:hover {
   box-shadow: 0 6px 20px rgba(14, 23, 58, 0.12), 0 0 0 1px rgba(255, 95, 166, 0.2);
+}
+
+.lang-switch-wrapper {
+  display: flex;
+  align-items: center;
+  margin-right: 0.5rem;
 }
 
 /* Guest mode action buttons */
@@ -511,10 +525,6 @@
   }
 
   .brand {
-    display: none;
-  }
-
-  .lang-switch-wrapper {
     display: none;
   }
 

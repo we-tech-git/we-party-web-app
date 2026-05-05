@@ -66,9 +66,7 @@
       "myEvents": "Meus Eventos",
       "favorites": "Eventos favoritos",
       "notifications": "Notificações",
-      "profile": "Perfil",
-      "helper": "Descubra novidades e aproveite as experiências da semana.",
-      "newEvent": "Criar evento"
+      "profile": "Perfil"
     },
     "tabs": {
       "forYou": "Para você",
@@ -219,6 +217,7 @@
       "emptyDescription": "Curta eventos para salvá-los aqui e acessá-los rapidamente depois",
       "exploreEvents": "Explorar Eventos",
       "showMore": "Mostrar mais eventos",
+      "showLess": "Mostrar menos",
       "locationUndefined": "Local a definir",
       "dateUndefined": "Data a definir",
       "eventTitle": "Evento",
@@ -228,6 +227,8 @@
       "general": "Geral",
       "notifications": "Notificações",
       "notificationsDesc": "Receba alertas sobre eventos e amigos",
+      "language": "Idioma",
+      "languageDesc": "Escolha seu idioma preferido",
       "account": "Conta",
       "editProfile": "Editar Perfil",
       "editProfileDesc": "Altere nome, bio e foto",

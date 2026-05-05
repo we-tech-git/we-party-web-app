@@ -6,6 +6,7 @@
 
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { AuthService, type LoggedUser } from '@/services/auth'
+import { useEventsStore } from '@/stores/events'
 
 // Estado global reativo da autenticação
 const isAuthenticated = ref(AuthService.isAuthenticated())
@@ -205,6 +206,14 @@ export function useAuth () {
   }
 
   const logout = () => {
+    // Limpa o estado de eventos antes do logout
+    try {
+      const eventsStore = useEventsStore()
+      eventsStore.clearAll()
+    } catch {
+      // Ignora se o store não estiver disponível
+    }
+
     AuthService.logout()
     refreshAuthState()
 
