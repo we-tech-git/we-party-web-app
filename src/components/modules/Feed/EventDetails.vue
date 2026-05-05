@@ -12,6 +12,13 @@
 
   const eventsStore = useEventsStore()
 
+  interface FaqItem {
+    icon: string
+    question: string
+    answer: string
+    gradient: string
+  }
+
   type EventDetail = {
     id: string | number
     title: string
@@ -27,6 +34,7 @@
     likes?: number
     organizer?: { name: string, avatar: string }
     sourceUrl?: string
+    faq?: FaqItem[]
     images?: {
       thumbnail?: string
       small?: string
@@ -157,6 +165,7 @@
     likes: 0,
     organizer: { name: '', avatar: '' },
     sourceUrl: undefined,
+    faq: [],
     images: undefined,
   })
 
@@ -456,44 +465,35 @@
     showTermsModal.value = true
   }
 
-  const faqs = ref([
-    {
-      icon: 'mdi-ticket-confirmation-outline',
-      question: 'Como faço para adquirir meu ingresso?',
-      answer: 'Os ingressos podem ser adquiridos diretamente nesta página. Após a confirmação, você receberá um e-mail com o QR Code para entrada no evento. Você também pode salvar o ingresso na sua carteira digital.',
-      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    },
-    {
-      icon: 'mdi-calendar-clock',
-      question: 'Qual o horário de abertura dos portões?',
-      answer: 'Os portões abrem 2 horas antes do horário oficial do evento. Recomendamos chegar com antecedência para evitar filas e aproveitar ao máximo a experiência.',
-      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    },
-    {
-      icon: 'mdi-food-fork-drink',
-      question: 'Posso levar comida e bebida?',
-      answer: 'Por questões de segurança, não é permitida a entrada com alimentos e bebidas. O evento contará com diversos food trucks e barracas com opções variadas de gastronomia. Garrafas de água lacradas são permitidas.',
-      gradient: 'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)',
-    },
-    {
-      icon: 'mdi-car-multiple',
-      question: 'O local oferece estacionamento?',
-      answer: 'Sim! Temos estacionamento próprio com mais de 500 vagas. O valor é de R$ 30,00 e pode ser pago no local (dinheiro ou cartão). Também recomendamos o uso de aplicativos de transporte para sua comodidade.',
-      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    },
-    {
-      icon: 'mdi-account-multiple-check',
-      question: 'Menores de idade podem participar?',
-      answer: 'Este evento é classificado para maiores de 18 anos. Menores entre 16-17 anos podem entrar acompanhados dos pais ou responsáveis legais com autorização autenticada. Crianças até 12 anos não pagam ingresso quando acompanhadas.',
-      gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-    },
-    {
-      icon: 'mdi-weather-partly-cloudy',
-      question: 'E se chover? O evento será cancelado?',
-      answer: 'O evento acontece com chuva ou sol! Possuímos áreas cobertas e toda estrutura preparada para qualquer condição climática. Em caso de condições extremas, informaremos através dos nossos canais oficiais e redes sociais.',
-      gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-    },
-  ])
+  // Gradientes padrão para FAQs
+  const defaultGradients = [
+    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)',
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+    'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+    'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+  ]
+
+  // Computed para verificar se há FAQs disponíveis e normalizar dados
+  const normalizedFaqs = computed(() => {
+    if (!Array.isArray(event.value.faq) || event.value.faq.length === 0) {
+      return []
+    }
+
+    return event.value.faq.map((faq, index) => ({
+      question: faq.question || 'Pergunta não informada',
+      answer: faq.answer || 'Resposta não disponível',
+      icon: faq.icon || 'mdi-help-circle-outline',
+      gradient: faq.gradient || defaultGradients[index % defaultGradients.length],
+    }))
+  })
+
+  const hasFaqs = computed(() => {
+    return normalizedFaqs.value.length > 0
+  })
 
   function toggleFaq (index: number) {
     openFaqIndex.value = openFaqIndex.value === index ? null : index
@@ -596,6 +596,7 @@
         avatar: data?.organizer?.avatar || data?.hostAvatar || data?.creator?.profileImage || '',
       },
       sourceUrl: data?.sourceUrl || data?.source_url || data?.externalUrl || data?.external_url || undefined,
+      faq: Array.isArray(data?.faq) ? data.faq : (Array.isArray(data?.faqs) ? data.faqs : []),
       images: data?.images || undefined,
     }
   }
@@ -1001,8 +1002,8 @@
             <p class="info-value">{{ event.contactInfo }}</p>
           </div>
 
-          <!-- FAQs Section (collapsible inside info tab) -->
-          <div class="faqs-section-inline">
+          <!-- FAQs Section (collapsible inside info tab) - Só aparece se houver FAQs da API -->
+          <div v-if="hasFaqs" class="faqs-section-inline">
             <button class="faqs-toggle-btn" :class="{ open: showFaqs }" @click="showFaqs = !showFaqs">
               <div class="faqs-toggle-left">
                 <div class="faqs-icon-wrapper-sm">
@@ -1022,7 +1023,7 @@
               <div v-if="showFaqs" class="faqs-content">
                 <div class="faqs-list">
                   <div
-                    v-for="(faq, index) in faqs"
+                    v-for="(faq, index) in normalizedFaqs"
                     :key="index"
                     class="faq-item"
                     :class="{ open: openFaqIndex === index }"
@@ -2691,6 +2692,8 @@
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  /* Gradiente padrão caso não venha da API */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .faq-question::before {
