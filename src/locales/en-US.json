@@ -66,9 +66,8 @@
       "myEvents": "My Events",
       "favorites": "Saved events",
       "notifications": "Notifications",
-      "profile": "Profile",
-      "helper": "Discover what is trending and enjoy the week.",
-      "newEvent": "Create event"
+      "profile": "Profile"
+      
     },
     "tabs": {
       "forYou": "For you",
