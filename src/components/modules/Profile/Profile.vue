@@ -100,10 +100,6 @@
     bio: '',
     location: '',
     joined: '',
-    stats: {
-      following: 0,
-      followers: 0,
-    },
   })
 
   // Watch loggedUser — só refaz o fetch se o ID do usuário mudou (evita loop infinito)
@@ -392,8 +388,6 @@
       user.bio = userData.bio || ''
       user.location = userData.location || ''
       user.joined = userData.createdAt ? formatJoinDate(userData.createdAt) : ''
-      user.stats.following = userData.followingCount || userData.stats?.following || 0
-      user.stats.followers = userData.followersCount || userData.stats?.followers || 0
 
       // Sincroniza com localStorage para manter consistência em todas as páginas
       updateUser({
@@ -1174,17 +1168,7 @@
                 </span>
               </div>
 
-              <div :aria-label="t('profile.aria.profileStats')" class="stats-row" role="group">
-                <button :aria-label="t('profile.viewFollowers')" class="stat-item" type="button">
-                  <span class="stat-value">{{ user.stats.followers }}</span>
-                  <span class="stat-label">{{ t('profile.followers') }}</span>
-                </button>
-                <div aria-hidden="true" class="stat-dot" />
-                <button :aria-label="t('profile.viewFollowing')" class="stat-item" type="button">
-                  <span class="stat-value">{{ user.stats.following }}</span>
-                  <span class="stat-label">{{ t('profile.following') }}</span>
-                </button>
-              </div>
+
             </header>
           </div>
         </div>
@@ -2163,47 +2147,6 @@
 
 .meta-item i {
   font-size: 1rem;
-}
-
-.stats-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.stat-item {
-  display: flex;
-  align-items: baseline;
-  gap: 0.3rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  font-family: inherit;
-  transition: color 0.2s;
-}
-
-.stat-item:hover .stat-value {
-  color: #ff5fa6;
-}
-
-.stat-value {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #1a1c2e;
-}
-
-.stat-label {
-  font-size: 0.85rem;
-  color: #9aa0b8;
-  font-weight: 500;
-}
-
-.stat-dot {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: #d0d4e3;
 }
 
 /* ── Tabs ── */
@@ -3869,10 +3812,6 @@
   display: none;
 }
 
-.stats-row {
-  flex-wrap: wrap;
-}
-
 /* ── SMALL PHONES (480px+) ── */
 @media (min-width: 480px) {
   .profile-content {
@@ -3968,10 +3907,6 @@
 
   .show-more-btn {
     width: auto;
-  }
-
-  .stats-row {
-    flex-wrap: nowrap;
   }
 }
 

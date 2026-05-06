@@ -96,6 +96,19 @@ export default defineConfig({
 
     extensions: ['.js', '.json', '.jsx', '.mjs', '.ts', '.tsx', '.vue'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Melhora o preload de assets
+        manualChunks: {
+          'vuetify': ['vuetify'],
+          'vue': ['vue', 'vue-router', 'pinia'],
+        },
+      },
+    },
+    // Remove avisos de chunks grandes
+    chunkSizeWarningLimit: 1500,
+  },
   server: {
     port: 3000,
     proxy: {

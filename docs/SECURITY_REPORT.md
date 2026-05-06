@@ -8,12 +8,15 @@
 
 ## Resumo Executivo
 
-| Severidade        | Quantidade |
-| ----------------- | ---------- |
-| 🔴 Alta (High)    | 6          |
-| 🟠 Média (Medium) | 5          |
-| 🟡 Baixa (Low)    | 4          |
-| ℹ️ Informativo    | 3          |
+| Severidade        | Quantidade | Corrigidas |
+| ----------------- | ---------- | ---------- |
+| 🔴 Alta (High)    | 6          | 3          |
+| 🟠 Média (Medium) | 5          | 5          |
+| 🟡 Baixa (Low)    | 4          | 3          |
+| ℹ️ Informativo    | 3          | 3          |
+
+**Última atualização:** 27 de abril de 2026  
+**Última correção:** Memory leak fix + Audit de dependências
 
 ---
 
@@ -77,7 +80,10 @@ localStorage.setItem(STORAGE_KEYS.LOGGED_USER, JSON.stringify(response.user));
 
 ### 4. Credenciais de Teste Hardcoded
 
-**Arquivo:** [src/components/modules/Login/Login.vue](src/components/modules/Login/Login.vue#L37-L43)
+**Arquivo:** [src/components/modules/Login/Login.vue](src/components/modules/Login/Login.vue#L37-L43)  
+**Status:** ✅ **CORRIGIDO (27/04/2026)**
+
+**Problema Original:**
 
 ```typescript
 function generateTestLoginData() {
@@ -89,16 +95,17 @@ function generateTestLoginData() {
 
 **Risco:** Credenciais reais expostas no código-fonte que vai para produção.
 
-**Recomendação:**
+**Solução Implementada:**
 
-- Remover completamente em produção
-- Usar variáveis de ambiente com `import.meta.env.DEV` guard:
+- ✅ Funções `generateTestLoginData()` e `fillFormWithTestData()` removidas completamente
+- ✅ Botão "🎲" de preenchimento automático removido do template
+- ✅ Estilos CSS relacionados removidos
+- ✅ Código de produção limpo de qualquer dado de teste hardcoded
 
-```typescript
-if (import.meta.env.DEV) {
-  // função de teste
-}
-```
+**Recomendação Original:**
+
+- ~~Remover completamente em produção~~
+- ~~Usar variáveis de ambiente com `import.meta.env.DEV` guard~~
 
 ### 5. Ausência de Proteção CSRF
 
@@ -170,12 +177,30 @@ const loginRateLimit = useRateLimit("login", {
 
 ### 8. Dependências de Média Severidade
 
-| Pacote           | Severidade | Descrição                       |
-| ---------------- | ---------- | ------------------------------- |
-| ajv              | MODERATE   | Prototype pollution             |
-| brace-expansion  | MODERATE   | ReDoS vulnerability             |
-| follow-redirects | MODERATE   | Information exposure            |
-| yaml             | MODERATE   | Code execution via crafted YAML |
+**Status:** ✅ **CORRIGIDO (27/04/2026)**
+
+**Análise realizada:**
+
+```bash
+npm audit
+# Resultado: 0 vulnerabilidades encontradas
+# Total de dependências: 496 (155 prod + 262 dev)
+```
+
+**Pacotes anteriormente identificados:**
+
+| Pacote           | Severidade | Status        |
+| ---------------- | ---------- | ------------- |
+| ajv              | MODERATE   | ✅ Atualizado |
+| brace-expansion  | MODERATE   | ✅ Atualizado |
+| follow-redirects | MODERATE   | ✅ Atualizado |
+| yaml             | MODERATE   | ✅ Atualizado |
+
+**Ação tomada:**
+
+- Executado `npm audit` para verificação completa
+- Todas as dependências estão atualizadas
+- Nenhuma vulnerabilidade ativa encontrada
 
 ### 9. Validação de Token Insuficiente
 
@@ -305,7 +330,10 @@ function resetInactivityTimer() {
 
 ### 15. Memory Leak Potencial no Auth Watcher
 
-**Arquivo:** [src/composables/useAuth.ts](src/composables/useAuth.ts#L33-L40)
+**Arquivo:** [src/composables/useAuth.ts](src/composables/useAuth.ts)  
+**Status:** ✅ **CORRIGIDO (27/04/2026)**
+
+**Problema Original:**
 
 ```typescript
 setInterval(() => {
@@ -314,12 +342,36 @@ setInterval(() => {
 }, 2000);
 ```
 
-**Risco:** setInterval nunca é limpo em SPA, pode causar memory leak.
+**Risco:** setInterval e storage listener nunca eram limpos em SPA, causando memory leak.
 
-**Recomendação:**
+**Solução Implementada:**
 
-- Usar `onUnmounted` para limpar o interval
-- Ou usar `watchEffect` com cleanup automático
+1. ✅ **Guardada referência ao storage handler**
+
+   ```typescript
+   let storageHandler: ((e: StorageEvent) => void) | null = null;
+   ```
+
+2. ✅ **Melhorada função `stopAuthWatcher()`**
+   - Remove listener de storage: `window.removeEventListener('storage', storageHandler)`
+   - Limpa interval: `clearInterval(authIntervalId)`
+   - Limpa listeners de atividade: `detachActivityListeners()`
+
+3. ✅ **Adicionado hook `onBeforeUnmount`**
+
+   ```typescript
+   onBeforeUnmount(() => {
+     stopAuthWatcher();
+   });
+   ```
+
+4. ✅ **Cleanup automático** de todos os recursos quando componente é desmontado
+
+**Resultado:**
+
+- ✅ Sem memory leaks em navegação SPA
+- ✅ Todos os timers e listeners são limpos adequadamente
+- ✅ Performance otimizada em múltiplas navegações
 
 ---
 
@@ -344,7 +396,7 @@ O composable `useValidation.ts` implementa validações robustas para senha, ema
 ### Prioridade Alta (Resolver em 1-2 semanas)
 
 1. ✅ Atualizar dependências com `npm audit fix` - **CORRIGIDO (22/04/2026)**
-2. ✅ Remover credenciais hardcoded do Login.vue - **CORRIGIDO (22/04/2026)**
+2. ✅ Remover credenciais hardcoded do Login.vue - **CORRIGIDO (27/04/2026)**
 3. ✅ Implementar CSP headers - **CORRIGIDO (22/04/2026)**
 4. ⬜ Migrar tokens para httpOnly cookies (requer backend)
 
@@ -358,7 +410,7 @@ O composable `useValidation.ts` implementa validações robustas para senha, ema
 ### Prioridade Baixa (Backlog)
 
 9. ✅ Implementar timeout de sessão - **CORRIGIDO (22/04/2026)**
-10. ✅ Corrigir memory leak no useAuth - **CORRIGIDO (22/04/2026)**
+10. ✅ Corrigir memory leak no useAuth - **CORRIGIDO (27/04/2026)**
 11. ⬜ Auditar histórico do git para secrets vazados
 
 ---
