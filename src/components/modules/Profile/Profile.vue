@@ -4,8 +4,9 @@
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import { getLikedEvents } from '@/api/event'
+  import { followUserById, getFollowStats, getMyFollowers, getMyFollowing, unfollowUserById } from '@/api/follows'
   import { addUserInterest, getInterests, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
-  import { getUserInterests, getUserProfile, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
+  import { getUserInterests, getUserProfile, getUserRecomendations, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
   import AppFooter from '@/components/AppFooter.vue'
   import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
   import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
@@ -46,6 +47,26 @@
   const error = ref<string | null>(null)
   const uploadingAvatar = ref(false)
   const uploadingBanner = ref(false)
+
+  // ── Followers/Following state ──
+  interface FollowUser {
+    id: string | number
+    name: string
+    username?: string
+    profileImage?: string
+    isFollowing?: boolean
+  }
+
+  const followStats = ref({ followers: 0, following: 0 })
+  const followersList = ref<FollowUser[]>([])
+  const followingList = ref<FollowUser[]>([])
+  const recommendedUsers = ref<FollowUser[]>([])
+  const loadingFollowStats = ref(false)
+  const loadingFollowers = ref(false)
+  const loadingFollowing = ref(false)
+  const loadingRecommendations = ref(false)
+  const showFollowersModal = ref(false)
+  const showFollowingModal = ref(false)
 
   // ── Timeout refs (declarados aqui para cleanup no onUnmounted) ──
   let interestsSearchTimeout: ReturnType<typeof setTimeout> | null = null
@@ -110,14 +131,19 @@
       user.name = loggedUser.value?.name || ''
       user.username = loggedUser.value?.username ? `@${loggedUser.value.username}` : ''
       user.avatar = loggedUser.value?.profileImage || ''
-      fetchUserProfile()
+    // fetchUserProfile removido - o onMounted já cuida do carregamento inicial
     }
   })
 
   onMounted(async () => {
     if (loggedUser.value?.id) {
       await fetchUserProfile()
-      await fetchLikedEvents()
+      // Carrega dados em paralelo para melhor performance
+      await Promise.all([
+        activeTab.value === 'liked' ? fetchLikedEvents() : Promise.resolve(),
+        fetchFollowStats(),
+        fetchRecommendedUsers(),
+      ])
     } else {
       error.value = 'Usuário não autenticado'
       loading.value = false
@@ -368,7 +394,14 @@
   }
 
   // ── Fetch user profile data ──
+  let isFetchingProfile = false // Flag para evitar chamadas duplicadas
+
   async function fetchUserProfile () {
+    // Evita chamadas duplicadas
+    if (isFetchingProfile) {
+      return
+    }
+
     if (!loggedUser.value?.id) {
       error.value = 'Usuário não autenticado'
       loading.value = false
@@ -376,6 +409,7 @@
     }
 
     try {
+      isFetchingProfile = true
       loading.value = true
       error.value = null
       const response = await getUserProfile(loggedUser.value.id)
@@ -404,6 +438,7 @@
       error.value = t('profile.messages.loadProfileError')
     } finally {
       loading.value = false
+      isFetchingProfile = false
     }
   }
 
@@ -428,6 +463,163 @@
     } catch {
       userInterests.value = []
     }
+  }
+
+  // ── Fetch Follow Stats ──
+  async function fetchFollowStats () {
+    if (!loggedUser.value?.id) return
+
+    try {
+      loadingFollowStats.value = true
+      const response = await getFollowStats(loggedUser.value.id)
+      const data = response.data?.data ?? response.data
+
+      followStats.value = {
+        followers: data?.followersCount ?? data?.followers ?? 0,
+        following: data?.followingCount ?? data?.following ?? 0,
+      }
+    } catch (error_) {
+      console.error('Erro ao buscar estatísticas de follow:', error_)
+      followStats.value = { followers: 0, following: 0 }
+    } finally {
+      loadingFollowStats.value = false
+    }
+  }
+
+  // ── Fetch Followers List ──
+  async function fetchFollowersList () {
+    try {
+      loadingFollowers.value = true
+      const response = await getMyFollowers()
+      const data = response.data?.data ?? response.data
+
+      let users: any[] = []
+      if (data?.followers) {
+        users = data.followers
+      } else if (data?.users) {
+        users = data.users
+      } else if (Array.isArray(data)) {
+        users = data
+      }
+
+      followersList.value = users.map((u: any) => ({
+        id: u.id || u._id,
+        name: u.name || u.username || 'Usuário',
+        username: u.username,
+        profileImage: u.profileImage || u.profilePhoto || u.avatar,
+        isFollowing: u.isFollowing ?? false,
+      }))
+    } catch (error_) {
+      console.error('Erro ao buscar seguidores:', error_)
+      followersList.value = []
+    } finally {
+      loadingFollowers.value = false
+    }
+  }
+
+  // ── Fetch Following List ──
+  async function fetchFollowingList () {
+    try {
+      loadingFollowing.value = true
+      const response = await getMyFollowing()
+      const data = response.data?.data ?? response.data
+
+      let users: any[] = []
+      if (data?.following) {
+        users = data.following
+      } else if (data?.users) {
+        users = data.users
+      } else if (Array.isArray(data)) {
+        users = data
+      }
+
+      followingList.value = users.map((u: any) => ({
+        id: u.id || u._id,
+        name: u.name || u.username || 'Usuário',
+        username: u.username,
+        profileImage: u.profileImage || u.profilePhoto || u.avatar,
+        isFollowing: true, // Se está na lista de following, já está seguindo
+      }))
+    } catch (error_) {
+      console.error('Erro ao buscar seguindo:', error_)
+      followingList.value = []
+    } finally {
+      loadingFollowing.value = false
+    }
+  }
+
+  // ── Fetch User Recommendations ──
+  async function fetchRecommendedUsers () {
+    try {
+      loadingRecommendations.value = true
+      const response = await getUserRecomendations()
+      const data = response.data?.data ?? response.data
+
+      let users: any[] = []
+      if (data?.users) {
+        users = data.users
+      } else if (Array.isArray(data)) {
+        users = data
+      }
+
+      // Limita a 5 recomendações para o sidebar
+      recommendedUsers.value = users.slice(0, 5).map((u: any) => ({
+        id: u.id || u._id,
+        name: u.name || u.username || 'Usuário',
+        username: u.username,
+        profileImage: u.profileImage || u.profilePhoto || u.avatar,
+        isFollowing: u.isFollowing ?? false,
+      }))
+    } catch (error_) {
+      console.error('Erro ao buscar recomendações de usuários:', error_)
+      recommendedUsers.value = []
+    } finally {
+      loadingRecommendations.value = false
+    }
+  }
+
+  // ── Toggle Follow User ──
+  async function toggleFollowUser (user: FollowUser) {
+    const previousState = user.isFollowing
+
+    // Atualização otimista
+    user.isFollowing = !user.isFollowing
+
+    try {
+      if (previousState) {
+        await unfollowUserById(user.id)
+        followStats.value.following = Math.max(0, followStats.value.following - 1)
+        showSnackbar(`Você deixou de seguir ${user.name}`, '#6b7280')
+      } else {
+        await followUserById(user.id)
+        followStats.value.following++
+        showSnackbar(`Você começou a seguir ${user.name}`, SNACKBAR_COLORS.success)
+      }
+    } catch (error_) {
+      // Reverte em caso de erro
+      user.isFollowing = previousState
+      console.error('Erro ao alterar follow:', error_)
+      showSnackbar('Erro ao atualizar. Tente novamente.', SNACKBAR_COLORS.error)
+    }
+  }
+
+  // ── Open/Close Followers/Following Modals ──
+  function openFollowersModal () {
+    showFollowersModal.value = true
+    fetchFollowersList()
+  }
+
+  function closeFollowersModal () {
+    showFollowersModal.value = false
+  }
+
+  function openFollowingModal () {
+    showFollowingModal.value = true
+    fetchFollowingList()
+  }
+
+  function closeFollowingModal () {
+    showFollowingModal.value = false
   }
 
   // ── Manage Interests Modal ──
@@ -566,10 +758,8 @@
       const toAdd = tempUserInterests.value.filter(i => !originalIds.has(i.id))
       const toRemove = userInterests.value.filter(i => !tempIds.has(i.id))
 
-      // Faz as requisições para adicionar
+      // Faz as requisições em paralelo
       const addPromises = toAdd.map(interest => addUserInterest(interest.id))
-
-      // Faz as requisições para remover
       const removePromises = toRemove.map(interest => removeUserInterest(interest.id))
 
       // Aguarda todas as requisições
@@ -812,14 +1002,7 @@
 
   // Refetch liked events quando entra na aba
   watch(activeTab, val => {
-    if (val === 'liked') {
-      fetchLikedEvents()
-    }
-  })
-
-  // Watch no store para atualizar quando curte/descurte no feed
-  watch(() => eventsStore.likedEvents.length, () => {
-    if (activeTab.value === 'liked') {
+    if (val === 'liked' && loggedUser.value?.id) {
       fetchLikedEvents()
     }
   })
@@ -1178,6 +1361,19 @@
                 </ul>
               </div>
 
+              <!-- Follow Stats -->
+              <div class="follow-stats-row">
+                <button class="follow-stat" type="button" @click="openFollowersModal">
+                  <span class="follow-stat-count">{{ followStats.followers }}</span>
+                  <span class="follow-stat-label">{{ t('profile.followers') }}</span>
+                </button>
+                <span class="follow-stat-divider" />
+                <button class="follow-stat" type="button" @click="openFollowingModal">
+                  <span class="follow-stat-count">{{ followStats.following }}</span>
+                  <span class="follow-stat-label">{{ t('profile.following') }}</span>
+                </button>
+              </div>
+
               <div class="meta-row">
                 <span v-if="user.location" class="meta-item">
                   <i aria-hidden="true" class="mdi mdi-map-marker-outline" />
@@ -1426,6 +1622,49 @@
             </span>
           </div>
           <p v-else class="interests-empty">{{ t('profile.interests.empty') }}</p>
+        </div>
+
+        <!-- Recomendações de Usuários -->
+        <div class="sidebar-card recommendations-card">
+          <div class="recommendations-header">
+            <h3>{{ t('profile.recommendations.title') }}</h3>
+          </div>
+          <div v-if="loadingRecommendations" class="recommendations-loading">
+            <i class="mdi mdi-loading mdi-spin" />
+            <span>{{ t('profile.recommendations.loading') }}</span>
+          </div>
+          <ul v-else-if="recommendedUsers.length > 0" class="recommendations-list">
+            <li v-for="recUser in recommendedUsers" :key="recUser.id" class="recommendation-item">
+              <div class="recommendation-avatar">
+                <img
+                  v-if="recUser.profileImage"
+                  :alt="recUser.name"
+                  :src="recUser.profileImage"
+                  @error="($event.target as HTMLImageElement).style.display = 'none'"
+                >
+                <div
+                  v-if="!recUser.profileImage"
+                  class="avatar-placeholder-small"
+                  :style="{ backgroundColor: getAvatarColor(recUser.name) }"
+                >
+                  {{ getInitials(recUser.name) }}
+                </div>
+              </div>
+              <div class="recommendation-info">
+                <span class="recommendation-name">{{ recUser.name }}</span>
+                <span v-if="recUser.username" class="recommendation-username">@{{ recUser.username }}</span>
+              </div>
+              <button
+                class="recommendation-follow-btn"
+                :class="{ following: recUser.isFollowing }"
+                type="button"
+                @click="toggleFollowUser(recUser)"
+              >
+                <i :class="recUser.isFollowing ? 'mdi mdi-check' : 'mdi mdi-plus'" />
+              </button>
+            </li>
+          </ul>
+          <p v-else class="recommendations-empty">{{ t('profile.recommendations.empty') }}</p>
         </div>
       </aside>
     </section>
@@ -1792,6 +2031,116 @@
       </Transition>
     </Teleport>
 
+    <!-- Modal de Seguidores -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showFollowersModal" class="modal-overlay" @click.self="closeFollowersModal">
+          <div class="modal-container follow-modal">
+            <div class="modal-header">
+              <h2>{{ t('profile.followersModal.title') }}</h2>
+              <button class="modal-close" type="button" @click="closeFollowersModal">
+                <i class="mdi mdi-close" />
+              </button>
+            </div>
+            <div class="modal-body follow-modal-body">
+              <div v-if="loadingFollowers" class="follow-modal-loading">
+                <i class="mdi mdi-loading mdi-spin" />
+                <span>{{ t('profile.followersModal.loading') }}</span>
+              </div>
+              <ul v-else-if="followersList.length > 0" class="follow-modal-list">
+                <li v-for="follower in followersList" :key="follower.id" class="follow-modal-item">
+                  <div class="follow-modal-avatar">
+                    <img
+                      v-if="follower.profileImage"
+                      :alt="follower.name"
+                      :src="follower.profileImage"
+                      @error="($event.target as HTMLImageElement).style.display = 'none'"
+                    >
+                    <div
+                      v-if="!follower.profileImage"
+                      class="avatar-placeholder-modal"
+                      :style="{ backgroundColor: getAvatarColor(follower.name) }"
+                    >
+                      {{ getInitials(follower.name) }}
+                    </div>
+                  </div>
+                  <div class="follow-modal-info">
+                    <span class="follow-modal-name">{{ follower.name }}</span>
+                    <span v-if="follower.username" class="follow-modal-username">@{{ follower.username }}</span>
+                  </div>
+                  <button
+                    class="follow-modal-btn"
+                    :class="{ following: follower.isFollowing }"
+                    type="button"
+                    @click="toggleFollowUser(follower)"
+                  >
+                    {{ follower.isFollowing ? t('profile.followersModal.following') : t('profile.followersModal.follow')
+                    }}
+                  </button>
+                </li>
+              </ul>
+              <div v-else class="follow-modal-empty">
+                <i class="mdi mdi-account-group-outline" />
+                <p>{{ t('profile.followersModal.empty') }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Modal de Seguindo -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showFollowingModal" class="modal-overlay" @click.self="closeFollowingModal">
+          <div class="modal-container follow-modal">
+            <div class="modal-header">
+              <h2>{{ t('profile.followingModal.title') }}</h2>
+              <button class="modal-close" type="button" @click="closeFollowingModal">
+                <i class="mdi mdi-close" />
+              </button>
+            </div>
+            <div class="modal-body follow-modal-body">
+              <div v-if="loadingFollowing" class="follow-modal-loading">
+                <i class="mdi mdi-loading mdi-spin" />
+                <span>{{ t('profile.followingModal.loading') }}</span>
+              </div>
+              <ul v-else-if="followingList.length > 0" class="follow-modal-list">
+                <li v-for="following in followingList" :key="following.id" class="follow-modal-item">
+                  <div class="follow-modal-avatar">
+                    <img
+                      v-if="following.profileImage"
+                      :alt="following.name"
+                      :src="following.profileImage"
+                      @error="($event.target as HTMLImageElement).style.display = 'none'"
+                    >
+                    <div
+                      v-if="!following.profileImage"
+                      class="avatar-placeholder-modal"
+                      :style="{ backgroundColor: getAvatarColor(following.name) }"
+                    >
+                      {{ getInitials(following.name) }}
+                    </div>
+                  </div>
+                  <div class="follow-modal-info">
+                    <span class="follow-modal-name">{{ following.name }}</span>
+                    <span v-if="following.username" class="follow-modal-username">@{{ following.username }}</span>
+                  </div>
+                  <button class="follow-modal-btn following" type="button" @click="toggleFollowUser(following)">
+                    {{ t('profile.followingModal.unfollow') }}
+                  </button>
+                </li>
+              </ul>
+              <div v-else class="follow-modal-empty">
+                <i class="mdi mdi-account-search-outline" />
+                <p>{{ t('profile.followingModal.empty') }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- Snackbar de notificações -->
     <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" />
   </div>
@@ -1866,17 +2215,25 @@
   width: min(100%, 1280px);
   margin: 0 auto 3.5rem;
   align-items: start;
+  margin-top: 2rem;
 }
 
 .layout-sidebar {
   grid-area: sidebar;
   position: sticky;
-  top: calc(1rem + env(safe-area-inset-top, 0px));
-  /* Fica grudado logo abaixo do header */
+  top: 100px;
+  /* Offset para ficar abaixo do header sticky */
   align-self: flex-start;
-  /* Garante que não estica verticalmente */
-  z-index: 100;
-  /* Abaixo do header (200) mas acima do conteúdo */
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  /* Firefox */
+  z-index: 10;
+}
+
+.layout-sidebar::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari */
 }
 
 .layout-main {
@@ -1884,19 +2241,29 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  padding-top: 1.5rem;
+  min-height: 100vh;
+  /* Garante que o conteúdo possa rolar */
 }
 
 .layout-extras {
   grid-area: extras;
-  padding-top: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   position: sticky;
-  top: calc(1rem + env(safe-area-inset-top, 0px));
+  top: 100px;
+  /* Offset para ficar abaixo do header sticky */
   align-self: flex-start;
-  z-index: 100;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  /* Firefox */
+  z-index: 10;
+}
+
+.layout-extras::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari */
 }
 
 /* ── Profile Card ── */
@@ -2167,6 +2534,47 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ── Follow Stats Row ── */
+.follow-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.follow-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.follow-stat:hover {
+  background: rgba(255, 95, 166, 0.08);
+}
+
+.follow-stat-count {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--color-text-primary);
+}
+
+.follow-stat-label {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.follow-stat-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border-strong);
 }
 
 .meta-row {
@@ -3075,6 +3483,290 @@
 .remove-interest-btn i {
   font-size: 0.9rem;
   pointer-events: none;
+}
+
+/* ── Recommendations Card ── */
+.recommendations-card {
+  margin-top: 0;
+}
+
+.recommendations-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.recommendations-header h3 {
+  margin: 0;
+}
+
+.recommendations-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.recommendations-loading i {
+  font-size: 1.2rem;
+  color: var(--color-primary);
+}
+
+.recommendations-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.recommendation-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.recommendation-item:hover {
+  background: rgba(255, 95, 166, 0.04);
+}
+
+.recommendation-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.recommendation-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder-small {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.recommendation-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.recommendation-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recommendation-username {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.recommendation-follow-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.recommendation-follow-btn:hover {
+  transform: scale(1.1);
+  box-shadow: var(--shadow-primary);
+}
+
+.recommendation-follow-btn.following {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.recommendation-follow-btn.following:hover {
+  background: #d1d5db;
+  box-shadow: none;
+}
+
+.recommendation-follow-btn i {
+  font-size: 1rem;
+}
+
+.recommendations-empty {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: 1rem;
+  margin: 0;
+}
+
+/* ── Follow Modal ── */
+.follow-modal {
+  width: min(480px, 90vw);
+  max-height: 70vh;
+}
+
+.follow-modal-body {
+  padding: 0 !important;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.follow-modal-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  color: var(--color-text-muted);
+}
+
+.follow-modal-loading i {
+  font-size: 2rem;
+  color: var(--color-primary);
+}
+
+.follow-modal-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.follow-modal-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+  transition: background var(--transition-fast);
+}
+
+.follow-modal-item:last-child {
+  border-bottom: none;
+}
+
+.follow-modal-item:hover {
+  background: rgba(255, 95, 166, 0.04);
+}
+
+.follow-modal-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.follow-modal-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder-modal {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.follow-modal-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.follow-modal-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-text-primary);
+}
+
+.follow-modal-username {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.follow-modal-btn {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  color: white;
+  border: none;
+}
+
+.follow-modal-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-primary);
+}
+
+.follow-modal-btn.following {
+  background: transparent;
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+
+.follow-modal-btn.following:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: #ef4444;
+  color: #ef4444;
+  box-shadow: none;
+}
+
+.follow-modal-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  color: var(--color-text-muted);
+}
+
+.follow-modal-empty i {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+
+.follow-modal-empty p {
+  margin: 0;
+  font-size: 0.95rem;
 }
 
 /* ── Manage Interests Modal ── */
@@ -4012,13 +4704,19 @@
 
   .layout-sidebar {
     position: sticky;
-    top: calc(1rem + env(safe-area-inset-top, 0px));
-    /* Consistente com o desktop */
+    top: 100px;
+    /* Offset para ficar abaixo do header sticky */
     bottom: auto;
     left: auto;
     right: auto;
     align-self: flex-start;
-    z-index: 100;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    z-index: 10;
+  }
+
+  .layout-sidebar::-webkit-scrollbar {
+    display: none;
   }
 
   .profile-content {
@@ -4067,6 +4765,16 @@
 
   .layout-extras {
     display: flex;
+    position: sticky;
+    top: 100px;
+    /* Offset para ficar abaixo do header sticky */
+    align-self: flex-start;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+
+  .layout-extras::-webkit-scrollbar {
+    display: none;
   }
 }
 

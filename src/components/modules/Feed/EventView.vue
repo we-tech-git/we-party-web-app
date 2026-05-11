@@ -431,11 +431,20 @@
   grid-area: sidebar;
   align-self: start;
   position: sticky;
-  top: 140px;
+  top: 100px;
+  /* Offset para ficar abaixo do header sticky */
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  z-index: 10;
   opacity: 0;
   transform: translateX(-20px);
   animation: slideInLeft 0.5s ease forwards;
   animation-delay: 0.3s;
+}
+
+.layout-sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 .layout-main {
@@ -444,6 +453,7 @@
   flex-direction: column;
   gap: 1.75rem;
   padding-top: 1.75rem;
+  min-height: 100vh;
   opacity: 0;
   transform: translateY(30px);
   animation: slideUp 0.6s ease forwards;
@@ -454,11 +464,20 @@
   grid-area: trends;
   align-self: start;
   position: sticky;
-  top: 140px;
+  top: 100px;
+  /* Offset para ficar abaixo do header sticky */
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  z-index: 10;
   opacity: 0;
   transform: translateX(20px);
   animation: slideInRight 0.5s ease forwards;
   animation-delay: 0.4s;
+}
+
+.layout-trends::-webkit-scrollbar {
+  display: none;
 }
 
 @keyframes slideInLeft {
@@ -682,10 +701,16 @@
     left: 0;
     right: 0;
     top: auto;
+    max-height: none;
+    overflow-y: visible;
     z-index: 1000;
     transform: none;
     opacity: 1;
     animation: none;
+  }
+
+  .layout-trends {
+    display: none;
   }
 
   .deco-1,

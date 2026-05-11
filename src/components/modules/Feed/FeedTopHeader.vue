@@ -204,12 +204,20 @@
   box-sizing: border-box;
   width: 100%;
   padding: 15px 0;
+  position: sticky;
   top: 0;
-  z-index: 200;
-  background: rgba(255, 245, 247, 0.85);
-  backdrop-filter: blur(12px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(255, 245, 247, 0.95);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  margin-bottom: 40px;
+  margin-bottom: 30px;
+  transition: all 0.3s ease;
+  will-change: transform;
+  /* Suporte para safe area em iOS */
+  padding-top: calc(15px + env(safe-area-inset-top, 0px));
 }
 
 .display-user-header {
@@ -552,7 +560,7 @@
 
   .feed-top-header {
     padding: calc(0.5rem + env(safe-area-inset-top, 0px)) 1rem 0.75rem;
-    position: relative;
+    /* Mantém sticky em todas as resoluções */
   }
 
   .center-container {

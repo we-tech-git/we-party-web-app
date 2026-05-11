@@ -333,6 +333,24 @@
       "onlineStatus": "Usuário online",
       "profileStats": "Estatísticas do perfil",
       "profileTabs": "Navegação do perfil"
+    },
+    "recommendations": {
+      "title": "Quem seguir",
+      "loading": "Carregando...",
+      "empty": "Nenhuma recomendação no momento"
+    },
+    "followersModal": {
+      "title": "Seguidores",
+      "loading": "Carregando seguidores...",
+      "empty": "Você ainda não tem seguidores",
+      "follow": "Seguir",
+      "following": "Seguindo"
+    },
+    "followingModal": {
+      "title": "Seguindo",
+      "loading": "Carregando...",
+      "empty": "Você ainda não segue ninguém",
+      "unfollow": "Deixar de seguir"
     }
   }
 }

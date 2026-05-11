@@ -1284,7 +1284,20 @@
 
 .feed-sidebar {
   grid-area: sidebar;
+  position: sticky;
+  top: 100px;
+  /* Offset para ficar abaixo do header sticky */
+  align-self: flex-start;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  /* Firefox */
   z-index: 10;
+}
+
+.feed-sidebar::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari */
 }
 
 .feed-main {
@@ -1292,11 +1305,26 @@
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
+  min-height: 100vh;
+  /* Garante que o conteúdo possa rolar */
 }
 
 .feed-trends {
   grid-area: trends;
-  align-self: start;
+  position: sticky;
+  top: 100px;
+  /* Offset para ficar abaixo do header sticky */
+  align-self: flex-start;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  /* Firefox */
+  z-index: 10;
+}
+
+.feed-trends::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari */
 }
 
 .feed-controls {
@@ -1685,6 +1713,16 @@
   .feed-sidebar {
     /* Sidebar is now fixed bottom nav, handled in FeedSidebarNav.vue */
     grid-area: auto;
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .feed-trends {
+    /* Esconde a coluna trends em mobile */
+    position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 
   .feed-controls {

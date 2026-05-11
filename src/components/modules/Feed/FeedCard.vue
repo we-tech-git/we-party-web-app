@@ -39,7 +39,7 @@
   const { requireLogin } = useGuestMode()
 
   /**
-   * Navega para detalhes do evento ou abre sourceUrl se disponível
+   * Navega para detalhes do evento
    * Em modo guest, mostra dialog de login
    */
   function handleDetailsClick () {
@@ -48,13 +48,7 @@
       return
     }
 
-    // Se tiver sourceUrl, abre o site original em nova aba
-    if (props.sourceUrl) {
-      window.open(props.sourceUrl, '_blank', 'noopener,noreferrer')
-      return
-    }
-
-    // Caso contrário, navega para a página interna de detalhes
+    // Sempre navega para a página interna de detalhes
     router.push(`/private/event/${props.id}`)
   }
 

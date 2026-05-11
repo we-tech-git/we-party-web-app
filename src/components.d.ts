@@ -23,7 +23,6 @@ declare module 'vue' {
     FeedCard: typeof import('./components/modules/Feed/FeedCard.vue')['default']
     FeedCardStandalone: typeof import('./components/FeedCardStandalone.vue')['default']
     FeedSidebarNav: typeof import('./components/modules/Feed/FeedSidebarNav.vue')['default']
-    'FeedSidebarNav.REFACTORED': typeof import('./components/modules/Feed/FeedSidebarNav.REFACTORED.vue')['default']
     FeedTopHeader: typeof import('./components/modules/Feed/FeedTopHeader.vue')['default']
     FeedTrendsPanel: typeof import('./components/modules/Feed/FeedTrendsPanel.vue')['default']
     InlineComments: typeof import('./components/modules/Feed/InlineComments.vue')['default']
