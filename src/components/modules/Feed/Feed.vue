@@ -917,6 +917,18 @@
     }
   }
 
+  /**
+   * Remove evento da lista de favoritos com feedback visual
+   */
+  async function handleRemoveFavorite (item: FeedItem) {
+    // Remove o item da lista imediatamente para feedback visual rápido
+    filteredItems.value = filteredItems.value.filter(e => e.id !== item.id)
+    items.value = items.value.filter(e => e.id !== item.id)
+
+    // Chama o toggleSave do store para desfavoritar
+    await eventsStore.toggleSave(item)
+  }
+
 </script>
 <template>
   <div class="feed-page">
@@ -1203,8 +1215,10 @@
             :matched-interests="item.matchedInterests"
             :rank="activeNav === 'top-events' ? index + 1 : undefined"
             :schedule="item.schedule"
+            :show-remove-button="activeNav === 'favorites'"
             :source-url="item.sourceUrl"
             :title="item.title"
+            @remove-favorite="handleRemoveFavorite(item)"
             @toggle-like="eventsStore.toggleLike(item.id)"
             @toggle-save="handleToggleSave(item)"
           />

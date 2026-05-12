@@ -29,10 +29,11 @@
     matchedInterests?: string[]
     guestMode?: boolean
     sourceUrl?: string
+    showRemoveButton?: boolean
   }>()
 
   const emit = defineEmits<{
-    (e: 'toggle-save' | 'toggle-like'): void
+    (e: 'toggle-save' | 'toggle-like' | 'remove-favorite'): void
   }>()
 
   const router = useRouter()
@@ -69,6 +70,11 @@
 
   function handleToggleSave () {
     handleProtectedAction(() => emit('toggle-save'), 'salvar eventos')
+  }
+
+  function handleRemoveFavorite (e: Event) {
+    e.stopPropagation()
+    emit('remove-favorite')
   }
 
   function handleCommentsToggle () {
@@ -262,6 +268,33 @@
         </svg>
         <v-tooltip activator="parent" content-class="feed-card-tooltip" location="start" offset="10">
           Favoritar
+        </v-tooltip>
+      </button>
+
+      <!-- Remove from Favorites Button -->
+      <button
+        v-if="showRemoveButton"
+        aria-label="Remover dos favoritos"
+        class="remove-favorite-btn"
+        type="button"
+        @click.stop="handleRemoveFavorite"
+      >
+        <svg
+          fill="none"
+          height="18"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="18"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="15" x2="9" y1="9" y2="15" />
+          <line x1="9" x2="15" y1="9" y2="15" />
+        </svg>
+        <v-tooltip activator="parent" content-class="feed-card-tooltip" location="start" offset="10">
+          Remover dos favoritos
         </v-tooltip>
       </button>
 
@@ -779,6 +812,45 @@
   background: linear-gradient(135deg, var(--accent-light), var(--accent));
   box-shadow: 0 6px 16px rgba(var(--accent-rgb), 0.4);
   border-color: transparent;
+}
+
+/* ─── Remove from Favorites Button ────────────────────────────────────────── */
+.remove-favorite-btn {
+  position: absolute;
+  top: 18px;
+  right: 72px;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(7, 10, 22, 0.55);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (max-width: 768px) {
+  .remove-favorite-btn {
+    backdrop-filter: blur(3px);
+  }
+}
+
+.remove-favorite-btn:hover {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45);
+  border-color: transparent;
+}
+
+.remove-favorite-btn:active {
+  transform: scale(0.95);
 }
 
 /* ─── Interests panel (slide-up) ─────────────────────────────────────────── */

@@ -337,7 +337,10 @@
     "recommendations": {
       "title": "Who to follow",
       "loading": "Loading...",
-      "empty": "No recommendations at the moment"
+      "searching": "Searching users...",
+      "empty": "No recommendations at the moment",
+      "searchPlaceholder": "Search users...",
+      "noResults": "No user found"
     },
     "followersModal": {
       "title": "Followers",

@@ -156,6 +156,10 @@
       clearTimeout(interestsSearchTimeout)
       interestsSearchTimeout = null
     }
+    if (userSearchTimeout) {
+      clearTimeout(userSearchTimeout)
+      userSearchTimeout = null
+    }
   })
 
   // ── User interests ──
@@ -548,6 +552,13 @@
     }
   }
 
+  // ── Search Users in Recommendations ──
+  const userSearchQuery = ref('')
+  const filteredRecommendedUsers = ref<FollowUser[]>([])
+  const allRecommendedUsers = ref<FollowUser[]>([])
+  const searchingUsers = ref(false)
+  let userSearchTimeout: ReturnType<typeof setTimeout> | null = null
+
   // ── Fetch User Recommendations ──
   async function fetchRecommendedUsers () {
     try {
@@ -562,21 +573,57 @@
         users = data
       }
 
-      // Limita a 5 recomendações para o sidebar
-      recommendedUsers.value = users.slice(0, 5).map((u: any) => ({
+      // Armazena todos os usuários recomendados
+      allRecommendedUsers.value = users.map((u: any) => ({
         id: u.id || u._id,
         name: u.name || u.username || 'Usuário',
         username: u.username,
         profileImage: u.profileImage || u.profilePhoto || u.avatar,
         isFollowing: u.isFollowing ?? false,
       }))
+
+      // Inicializa a lista filtrada com todos os usuários
+      filteredRecommendedUsers.value = [...allRecommendedUsers.value]
+      recommendedUsers.value = allRecommendedUsers.value.slice(0, 5)
     } catch (error_) {
       console.error('Erro ao buscar recomendações de usuários:', error_)
+      allRecommendedUsers.value = []
+      filteredRecommendedUsers.value = []
       recommendedUsers.value = []
     } finally {
       loadingRecommendations.value = false
     }
   }
+
+  // ── Filter users based on search query ──
+  function filterRecommendedUsers (query: string) {
+    if (userSearchTimeout) {
+      clearTimeout(userSearchTimeout)
+    }
+
+    // Ativa o loading apenas se houver uma busca ativa
+    if (query.trim()) {
+      searchingUsers.value = true
+    }
+
+    userSearchTimeout = setTimeout(() => {
+      if (query.trim()) {
+        const lowerQuery = query.toLowerCase()
+        filteredRecommendedUsers.value = allRecommendedUsers.value.filter(user =>
+          user.name.toLowerCase().includes(lowerQuery)
+          || (user.username && user.username.toLowerCase().includes(lowerQuery)),
+        )
+      } else {
+        filteredRecommendedUsers.value = [...allRecommendedUsers.value]
+      }
+      // Desativa o loading após a filtragem
+      searchingUsers.value = false
+    }, 300)
+  }
+
+  watch(userSearchQuery, newQuery => {
+    filterRecommendedUsers(newQuery)
+  })
 
   // ── Toggle Follow User ──
   async function toggleFollowUser (user: FollowUser) {
@@ -1354,11 +1401,13 @@
 
               <!-- User Interests -->
               <div v-if="userInterests.length > 0" :aria-label="t('profile.yourInterests')" class="interests-section">
-                <ul class="interests-chips" role="list">
-                  <li v-for="interest in userInterests" :key="interest.id" class="interest-chip">
-                    {{ interest.name }}
-                  </li>
-                </ul>
+                <div class="interests-chips-wrapper">
+                  <ul class="interests-chips" role="list">
+                    <li v-for="interest in userInterests" :key="interest.id" class="interest-chip">
+                      {{ interest.name }}
+                    </li>
+                  </ul>
+                </div>
               </div>
 
               <!-- Follow Stats -->
@@ -1608,18 +1657,20 @@
               <i class="mdi mdi-plus" />
             </button>
           </div>
-          <div v-if="userInterests.length > 0" class="interests-tags">
-            <span v-for="interest in userInterests" :key="interest.id" class="tag">
-              {{ interest.name }}
-              <button
-                class="remove-interest-btn"
-                :title="t('profile.interests.remove')"
-                type="button"
-                @click.stop="removeInterestDirectly(interest.id)"
-              >
-                <i class="mdi mdi-close" />
-              </button>
-            </span>
+          <div v-if="userInterests.length > 0" class="interests-tags-wrapper">
+            <div class="interests-tags">
+              <span v-for="interest in userInterests" :key="interest.id" class="tag">
+                {{ interest.name }}
+                <button
+                  class="remove-interest-btn"
+                  :title="t('profile.interests.remove')"
+                  type="button"
+                  @click.stop="removeInterestDirectly(interest.id)"
+                >
+                  <i class="mdi mdi-close" />
+                </button>
+              </span>
+            </div>
           </div>
           <p v-else class="interests-empty">{{ t('profile.interests.empty') }}</p>
         </div>
@@ -1629,41 +1680,65 @@
           <div class="recommendations-header">
             <h3>{{ t('profile.recommendations.title') }}</h3>
           </div>
+          <!-- Campo de busca de usuários -->
+          <div class="user-search-wrapper">
+            <div class="user-search-input-container">
+              <i class="mdi mdi-magnify user-search-icon" />
+              <input
+                v-model="userSearchQuery"
+                class="user-search-input"
+                :placeholder="t('profile.recommendations.searchPlaceholder') || 'Buscar usuários...'"
+                type="text"
+              >
+              <button v-if="userSearchQuery" class="user-search-clear" type="button" @click="userSearchQuery = ''">
+                <i class="mdi mdi-close" />
+              </button>
+            </div>
+          </div>
           <div v-if="loadingRecommendations" class="recommendations-loading">
             <i class="mdi mdi-loading mdi-spin" />
             <span>{{ t('profile.recommendations.loading') }}</span>
           </div>
-          <ul v-else-if="recommendedUsers.length > 0" class="recommendations-list">
-            <li v-for="recUser in recommendedUsers" :key="recUser.id" class="recommendation-item">
-              <div class="recommendation-avatar">
-                <img
-                  v-if="recUser.profileImage"
-                  :alt="recUser.name"
-                  :src="recUser.profileImage"
-                  @error="($event.target as HTMLImageElement).style.display = 'none'"
-                >
-                <div
-                  v-if="!recUser.profileImage"
-                  class="avatar-placeholder-small"
-                  :style="{ backgroundColor: getAvatarColor(recUser.name) }"
-                >
-                  {{ getInitials(recUser.name) }}
+          <div v-else-if="searchingUsers" class="recommendations-searching">
+            <i class="mdi mdi-loading mdi-spin" />
+            <span>{{ t('profile.recommendations.searching') || 'Buscando...' }}</span>
+          </div>
+          <div v-else-if="filteredRecommendedUsers.length > 0" class="recommendations-list-wrapper">
+            <ul class="recommendations-list">
+              <li v-for="recUser in filteredRecommendedUsers" :key="recUser.id" class="recommendation-item">
+                <div class="recommendation-avatar">
+                  <img
+                    v-if="recUser.profileImage"
+                    :alt="recUser.name"
+                    :src="recUser.profileImage"
+                    @error="($event.target as HTMLImageElement).style.display = 'none'"
+                  >
+                  <div
+                    v-if="!recUser.profileImage"
+                    class="avatar-placeholder-small"
+                    :style="{ backgroundColor: getAvatarColor(recUser.name) }"
+                  >
+                    {{ getInitials(recUser.name) }}
+                  </div>
                 </div>
-              </div>
-              <div class="recommendation-info">
-                <span class="recommendation-name">{{ recUser.name }}</span>
-                <span v-if="recUser.username" class="recommendation-username">@{{ recUser.username }}</span>
-              </div>
-              <button
-                class="recommendation-follow-btn"
-                :class="{ following: recUser.isFollowing }"
-                type="button"
-                @click="toggleFollowUser(recUser)"
-              >
-                <i :class="recUser.isFollowing ? 'mdi mdi-check' : 'mdi mdi-plus'" />
-              </button>
-            </li>
-          </ul>
+                <div class="recommendation-info">
+                  <span class="recommendation-name">{{ recUser.name }}</span>
+                  <span v-if="recUser.username" class="recommendation-username">@{{ recUser.username }}</span>
+                </div>
+                <button
+                  class="recommendation-follow-btn"
+                  :class="{ following: recUser.isFollowing }"
+                  type="button"
+                  @click="toggleFollowUser(recUser)"
+                >
+                  <i :class="recUser.isFollowing ? 'mdi mdi-check' : 'mdi mdi-plus'" />
+                </button>
+              </li>
+            </ul>
+          </div>
+          <p v-else-if="userSearchQuery && filteredRecommendedUsers.length === 0" class="recommendations-empty">
+            {{ t('profile.recommendations.noResults') || 'Nenhum usuário encontrado' }}
+          </p>
           <p v-else class="recommendations-empty">{{ t('profile.recommendations.empty') }}</p>
         </div>
       </aside>
@@ -3516,6 +3591,25 @@
   color: var(--color-primary);
 }
 
+/* Estado de busca ativa */
+.recommendations-searching {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  background: rgba(255, 95, 166, 0.03);
+  border-radius: var(--radius-md);
+  margin-bottom: 0.5rem;
+}
+
+.recommendations-searching i {
+  font-size: 1.2rem;
+  color: var(--color-primary);
+}
+
 .recommendations-list {
   list-style: none;
   padding: 0;
@@ -5244,5 +5338,174 @@ a:focus-visible {
 .btn-submit:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ═════════════════════════════════════════════════════
+   SCROLLABLE CARDS - Limita altura e adiciona scroll
+   ═════════════════════════════════════════════════════ */
+
+/* Wrapper para interesses no sidebar - altura máxima com scroll */
+.interests-tags-wrapper {
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 95, 166, 0.3) transparent;
+}
+
+.interests-tags-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.interests-tags-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.interests-tags-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 95, 166, 0.3);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.interests-tags-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 95, 166, 0.5);
+}
+
+/* Wrapper para lista de recomendações - altura máxima com scroll */
+.recommendations-list-wrapper {
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 95, 166, 0.3) transparent;
+}
+
+.recommendations-list-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.recommendations-list-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.recommendations-list-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 95, 166, 0.3);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.recommendations-list-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 95, 166, 0.5);
+}
+
+/* Campo de busca de usuários */
+.user-search-wrapper {
+  margin-bottom: 1rem;
+}
+
+.user-search-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.user-search-icon {
+  position: absolute;
+  left: 0.75rem;
+  font-size: 1.1rem;
+  color: #9aa0b8;
+  pointer-events: none;
+}
+
+.user-search-input {
+  width: 100%;
+  padding: 0.6rem 2.5rem 0.6rem 2.5rem;
+  border: 1.5px solid #e0e2ed;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-family: 'Baloo Thambi 2', sans-serif;
+  color: #1a1c2e;
+  background: #fafbfc;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.user-search-input:focus {
+  border-color: #ff5fa6;
+  box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
+  background: white;
+}
+
+.user-search-input::placeholder {
+  color: #b8bdd0;
+}
+
+.user-search-clear {
+  position: absolute;
+  right: 0.5rem;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9aa0b8;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.user-search-clear:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #555b77;
+}
+
+.user-search-clear i {
+  font-size: 0.9rem;
+}
+
+/* Wrapper para interesses no profile content - altura máxima com scroll */
+.interests-chips-wrapper {
+  max-height: 100px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 95, 166, 0.3) transparent;
+}
+
+.interests-chips-wrapper::-webkit-scrollbar {
+  width: 5px;
+}
+
+.interests-chips-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.interests-chips-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 95, 166, 0.3);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.interests-chips-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 95, 166, 0.5);
+}
+
+/* Fade gradient para indicar scroll */
+.interests-tags-wrapper,
+.recommendations-list-wrapper,
+.interests-chips-wrapper {
+  position: relative;
+}
+
+/* Ajuste nos cards sidebar para não crescer demais */
+.interests-card,
+.recommendations-card {
+  max-height: fit-content;
 }
 </style>
