@@ -64,6 +64,7 @@
   const userStats = ref({ followers: 0, following: 0 })
 
   const activeNav = ref((route.query.tab as string) || 'home')
+  // Inicia sempre com 'for-you'
   const activeTab = ref('for-you')
   const searchQuery = ref('')
 
@@ -101,26 +102,16 @@
   }
 
   const tabs = computed<TabItem[]>(() => {
-    // Top eventos: sem abas
-    if (activeNav.value === 'top-events') {
+    // Na página de top eventos e favoritos, não mostrar abas
+    if (activeNav.value === 'top-events' || activeNav.value === 'favorites') {
       return []
     }
 
-    // Eventos favoritos: sem abas
-    if (activeNav.value === 'favorites') {
-      return []
-    }
-
-    // Home: apenas "Para você" e "Hoje"
-    if (activeNav.value === 'home') {
-      return [
-        { id: 'for-you', label: t('feed.tabs.forYou') },
-        { id: 'today', label: t('feed.tabs.today') },
-      ]
-    }
-
-    // Qualquer outra navegação: sem abas
-    return []
+    // Na home (guest ou autenticado), mostrar apenas "Para Você" e "Hoje"
+    return [
+      { id: 'for-you', label: t('feed.tabs.forYou') },
+      { id: 'today', label: t('feed.tabs.today') },
+    ]
   })
 
   const filteredItems = ref<FeedItem[]>([
@@ -632,8 +623,6 @@
       fetchEvents()
     } else if (activeNav.value === 'favorites') {
       fetchFavoriteEvents()
-      // Sincroniza favoritos com o servidor ao montar a página
-      eventsStore.syncFavoritesWithServer()
     } else {
       fetchEvents()
     }
@@ -841,8 +830,11 @@
     }
 
     // Reset active tab when switching nav sections
-    // Home e top-events não têm mais abas específicas, mas mantemos valor padrão
-    if (val === 'home' || val === 'top-events') {
+    if (val === 'home') {
+      // Sempre inicia com 'for-you'
+      activeTab.value = 'for-you'
+    } else if (val === 'top-events') {
+      // Top-events não tem abas, então usa 'for-you' como valor padrão
       activeTab.value = 'for-you'
     }
 
@@ -852,8 +844,6 @@
 
     if (val === 'favorites') {
       fetchFavoriteEvents()
-      // Sincroniza favoritos com o servidor para garantir dados atualizados
-      eventsStore.syncFavoritesWithServer()
     } else {
       fetchEvents()
     }
@@ -924,12 +914,19 @@
       // Remove o item da lista imediatamente para feedback visual rápido
       filteredItems.value = filteredItems.value.filter(e => e.id !== item.id)
       items.value = items.value.filter(e => e.id !== item.id)
-
-      // Sincroniza com o servidor após um pequeno delay
-      setTimeout(() => {
-        eventsStore.syncFavoritesWithServer()
-      }, 500)
     }
+  }
+
+  /**
+   * Remove evento da lista de favoritos com feedback visual
+   */
+  async function handleRemoveFavorite (item: FeedItem) {
+    // Remove o item da lista imediatamente para feedback visual rápido
+    filteredItems.value = filteredItems.value.filter(e => e.id !== item.id)
+    items.value = items.value.filter(e => e.id !== item.id)
+
+    // Chama o toggleSave do store para desfavoritar
+    await eventsStore.toggleSave(item)
   }
 
 </script>
@@ -1180,7 +1177,7 @@
           </span>
         </div>
 
-        <nav aria-label="Seções do feed" class="tabs">
+        <nav v-if="tabs.length > 0" aria-label="Seções do feed" class="tabs">
           <button
             v-for="tab in tabs"
             :key="tab.id"
@@ -1218,8 +1215,10 @@
             :matched-interests="item.matchedInterests"
             :rank="activeNav === 'top-events' ? index + 1 : undefined"
             :schedule="item.schedule"
+            :show-remove-button="activeNav === 'favorites'"
             :source-url="item.sourceUrl"
             :title="item.title"
+            @remove-favorite="handleRemoveFavorite(item)"
             @toggle-like="eventsStore.toggleLike(item.id)"
             @toggle-save="handleToggleSave(item)"
           />
@@ -1299,7 +1298,20 @@
 
 .feed-sidebar {
   grid-area: sidebar;
+  position: sticky;
+  top: 100px;
+  /* Offset para ficar abaixo do header sticky */
+  align-self: flex-start;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  /* Firefox */
   z-index: 10;
+}
+
+.feed-sidebar::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari */
 }
 
 .feed-main {
@@ -1307,11 +1319,26 @@
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
+  min-height: 100vh;
+  /* Garante que o conteúdo possa rolar */
 }
 
 .feed-trends {
   grid-area: trends;
-  align-self: start;
+  position: sticky;
+  top: 100px;
+  /* Offset para ficar abaixo do header sticky */
+  align-self: flex-start;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  /* Firefox */
+  z-index: 10;
+}
+
+.feed-trends::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari */
 }
 
 .feed-controls {
@@ -1700,6 +1727,16 @@
   .feed-sidebar {
     /* Sidebar is now fixed bottom nav, handled in FeedSidebarNav.vue */
     grid-area: auto;
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .feed-trends {
+    /* Esconde a coluna trends em mobile */
+    position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 
   .feed-controls {

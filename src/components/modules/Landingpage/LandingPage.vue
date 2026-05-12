@@ -13,7 +13,7 @@
   gsap.registerPlugin(ScrollTrigger)
 
   const router = useRouter()
-  const { requireLogin } = useGuestMode()
+  const { requireLogin: _requireLogin } = useGuestMode()
 
   // Three.js refs
   const canvasContainer = ref<HTMLDivElement | null>(null)

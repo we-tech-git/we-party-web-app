@@ -8,6 +8,7 @@
 
   const props = defineProps<{
     eventId: string | string[]
+    eventData?: any | null
   }>()
 
   const eventsStore = useEventsStore()
@@ -685,6 +686,14 @@
   }
 
   async function fetchEventDetails (id: string | number) {
+    // Se eventData já foi fornecido via prop, usa ele ao invés de fazer nova requisição
+    if (props.eventData) {
+      event.value = mapEventPayload(props.eventData)
+      startCountdown()
+      return
+    }
+
+    // Fallback: busca da API se eventData não foi fornecido
     loading.value = true
     errorMessage.value = ''
     try {
@@ -710,6 +719,17 @@
     newId => {
       const id = Array.isArray(newId) ? newId[0] : newId
       if (id) fetchEventDetails(id)
+    },
+  )
+
+  // Watch eventData para atualizar quando os dados forem carregados ou atualizados
+  watch(
+    () => props.eventData,
+    newData => {
+      if (newData) {
+        event.value = mapEventPayload(newData)
+        startCountdown()
+      }
     },
   )
 
@@ -954,6 +974,11 @@
           <i class="mdi mdi-information-outline" />
           <span>Informações</span>
         </button>
+        <button class="tab-btn" :class="{ active: activeTab === 'comments' }" @click="activeTab = 'comments'">
+          <i class="mdi mdi-comment-outline" />
+          <span>Comentários</span>
+          <span v-if="comments.length > 0" class="tab-badge">{{ comments.length }}</span>
+        </button>
         <button class="tab-btn" :class="{ active: activeTab === 'location' }" @click="activeTab = 'location'">
           <i class="mdi mdi-map-marker-outline" />
           <span>Local</span>
@@ -966,11 +991,6 @@
         >
           <i class="mdi mdi-star-outline" />
           <span>Atrações</span>
-        </button>
-        <button class="tab-btn" :class="{ active: activeTab === 'comments' }" @click="activeTab = 'comments'">
-          <i class="mdi mdi-comment-outline" />
-          <span>Comentários</span>
-          <span v-if="comments.length > 0" class="tab-badge">{{ comments.length }}</span>
         </button>
       </div>
 
@@ -1000,6 +1020,23 @@
               <span>Dúvidas e Contato</span>
             </div>
             <p class="info-value">{{ event.contactInfo }}</p>
+          </div>
+
+          <!-- Botão Saiba Mais / Comprar Ingressos - Só aparece se tiver sourceUrl -->
+          <div v-if="event.sourceUrl" class="external-link-card">
+            <div class="external-link-content">
+              <div class="external-link-icon">
+                <i class="mdi mdi-ticket-confirmation-outline" />
+              </div>
+              <div class="external-link-info">
+                <span class="external-link-title">Ingressos e mais informações</span>
+                <span class="external-link-desc">Acesse o site oficial para comprar ingressos</span>
+              </div>
+            </div>
+            <button class="external-link-btn" @click="_openSourceUrl">
+              <span>Saiba mais</span>
+              <i class="mdi mdi-open-in-new" />
+            </button>
           </div>
 
           <!-- FAQs Section (collapsible inside info tab) - Só aparece se houver FAQs da API -->
@@ -1048,14 +1085,6 @@
                         </div>
                       </div>
                     </Transition>
-                  </div>
-                </div>
-
-                <div class="faqs-footer">
-                  <div class="faqs-footer-content">
-                    <i class="mdi mdi-message-text-outline" />
-                    <p>Não encontrou sua resposta? <a class="faqs-contact-link" href="#">Entre em contato conosco</a>
-                    </p>
                   </div>
                 </div>
               </div>
@@ -2205,6 +2234,92 @@
   white-space: pre-wrap;
 }
 
+/* External Link Card - Saiba Mais */
+.external-link-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #fff5f8 0%, #fff8f0 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 95, 166, 0.15);
+  transition: all 0.3s ease;
+}
+
+.external-link-card:hover {
+  border-color: rgba(255, 95, 166, 0.3);
+  box-shadow: 0 4px 20px rgba(255, 95, 166, 0.12);
+}
+
+.external-link-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.external-link-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ff5fa6, #ffba4b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.external-link-icon i {
+  font-size: 1.5rem;
+  color: white;
+}
+
+.external-link-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.external-link-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1a1c2e;
+}
+
+.external-link-desc {
+  font-size: 0.8rem;
+  color: #9aa0b8;
+}
+
+.external-link-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #ff5fa6, #ff7eb3);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.external-link-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(255, 95, 166, 0.35);
+}
+
+.external-link-btn i {
+  font-size: 1rem;
+}
+
 /* Location Panel */
 .location-panel {
   display: flex;
@@ -2778,54 +2893,6 @@
   font-size: 0.95rem;
 }
 
-.faqs-footer {
-  padding: 1.5rem;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #f8f9ff 0%, #fff5f8 100%);
-  border: 2px dashed rgba(255, 95, 166, 0.2);
-}
-
-.faqs-footer-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  color: #666;
-  font-size: 0.95rem;
-}
-
-.faqs-footer-content i {
-  font-size: 1.5rem;
-  color: #ff5fa6;
-}
-
-.faqs-contact-link {
-  color: #ff5fa6;
-  font-weight: 600;
-  text-decoration: none;
-  position: relative;
-  transition: color 0.2s;
-}
-
-.faqs-contact-link::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #ff5fa6, #ffba4b);
-  transition: width 0.3s ease;
-}
-
-.faqs-contact-link:hover {
-  color: #ffba4b;
-}
-
-.faqs-contact-link:hover::after {
-  width: 100%;
-}
-
 /* FAQ Expand Transition */
 .faq-expand-enter-active,
 .faq-expand-leave-active {
@@ -3072,12 +3139,6 @@
     padding: 1rem;
     flex-direction: column;
     gap: 0.75rem;
-  }
-
-  .faqs-footer-content {
-    flex-direction: column;
-    text-align: center;
-    font-size: 0.85rem;
   }
 }
 

@@ -217,6 +217,7 @@
       "emptyDescription": "Curta eventos para salvá-los aqui e acessá-los rapidamente depois",
       "exploreEvents": "Explorar Eventos",
       "showMore": "Mostrar mais eventos",
+      "showLess": "Mostrar menos",
       "locationUndefined": "Local a definir",
       "dateUndefined": "Data a definir",
       "eventTitle": "Evento",
@@ -226,6 +227,8 @@
       "general": "Geral",
       "notifications": "Notificações",
       "notificationsDesc": "Receba alertas sobre eventos e amigos",
+      "language": "Idioma",
+      "languageDesc": "Escolha seu idioma preferido",
       "account": "Conta",
       "editProfile": "Editar Perfil",
       "editProfileDesc": "Altere nome, bio e foto",
@@ -330,6 +333,27 @@
       "onlineStatus": "Usuário online",
       "profileStats": "Estatísticas do perfil",
       "profileTabs": "Navegação do perfil"
+    },
+    "recommendations": {
+      "title": "Quem seguir",
+      "loading": "Carregando...",
+      "searching": "Buscando usuários...",
+      "empty": "Nenhuma recomendação no momento",
+      "searchPlaceholder": "Buscar usuários...",
+      "noResults": "Nenhum usuário encontrado"
+    },
+    "followersModal": {
+      "title": "Seguidores",
+      "loading": "Carregando seguidores...",
+      "empty": "Você ainda não tem seguidores",
+      "follow": "Seguir",
+      "following": "Seguindo"
+    },
+    "followingModal": {
+      "title": "Seguindo",
+      "loading": "Carregando...",
+      "empty": "Você ainda não segue ninguém",
+      "unfollow": "Deixar de seguir"
     }
   }
 }

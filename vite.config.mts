@@ -101,8 +101,8 @@ export default defineConfig({
       output: {
         // Melhora o preload de assets
         manualChunks: {
-          'vuetify': ['vuetify'],
-          'vue': ['vue', 'vue-router', 'pinia'],
+          vuetify: ['vuetify'],
+          vue: ['vue', 'vue-router', 'pinia'],
         },
       },
     },

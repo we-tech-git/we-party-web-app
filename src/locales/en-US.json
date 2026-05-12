@@ -217,6 +217,7 @@
       "emptyDescription": "Like events to save them here and access them quickly later",
       "exploreEvents": "Explore Events",
       "showMore": "Show more events",
+      "showLess": "Show less",
       "locationUndefined": "Location to be defined",
       "dateUndefined": "Date to be defined",
       "eventTitle": "Event",
@@ -226,6 +227,8 @@
       "general": "General",
       "notifications": "Notifications",
       "notificationsDesc": "Receive alerts about events and friends",
+      "language": "Language",
+      "languageDesc": "Choose your preferred language",
       "account": "Account",
       "editProfile": "Edit Profile",
       "editProfileDesc": "Change name, bio and photo",
@@ -330,6 +333,27 @@
       "onlineStatus": "User online",
       "profileStats": "Profile stats",
       "profileTabs": "Profile navigation"
+    },
+    "recommendations": {
+      "title": "Who to follow",
+      "loading": "Loading...",
+      "searching": "Searching users...",
+      "empty": "No recommendations at the moment",
+      "searchPlaceholder": "Search users...",
+      "noResults": "No user found"
+    },
+    "followersModal": {
+      "title": "Followers",
+      "loading": "Loading followers...",
+      "empty": "You don't have any followers yet",
+      "follow": "Follow",
+      "following": "Following"
+    },
+    "followingModal": {
+      "title": "Following",
+      "loading": "Loading...",
+      "empty": "You're not following anyone yet",
+      "unfollow": "Unfollow"
     }
   }
 }

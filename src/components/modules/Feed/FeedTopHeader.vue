@@ -48,6 +48,10 @@
     router.push('/public/Login')
   }
 
+  function navigateToHome () {
+    router.push('/home')
+  }
+
   function goToSignup () {
     router.push('/public/Signup')
   }
@@ -75,7 +79,7 @@
             <path v-for="(path, idx) in svgIcons.backArrow.paths" :key="idx" v-bind="path" />
           </svg>
         </button>
-        <div class="brand-logo-wrapper">
+        <div class="brand-logo-wrapper" @click="navigateToHome">
           <img alt="We Party Logo" class="brand-logo-img" src="/logoweparty.png">
           <span aria-hidden="true" class="brand notranslate" translate="no">WE PARTY</span>
         </div>
@@ -84,7 +88,8 @@
         <slot name="center-content" />
       </div>
       <div class="user-summary">
-        <div class="lang-switch-wrapper">
+        <!-- Seletor de idioma apenas no modo guest (explore) -->
+        <div v-if="guestMode" class="lang-switch-wrapper">
           <LanguageSwitcher />
         </div>
 
@@ -199,12 +204,20 @@
   box-sizing: border-box;
   width: 100%;
   padding: 15px 0;
+  position: sticky;
   top: 0;
-  z-index: 200;
-  background: rgba(255, 245, 247, 0.85);
-  backdrop-filter: blur(12px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(255, 245, 247, 0.95);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  margin-bottom: 40px;
+  margin-bottom: 30px;
+  transition: all 0.3s ease;
+  will-change: transform;
+  /* Suporte para safe area em iOS */
+  padding-top: calc(15px + env(safe-area-inset-top, 0px));
 }
 
 .display-user-header {
@@ -278,6 +291,12 @@
   align-items: center;
   gap: 0.6rem;
   margin: 0 auto;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.brand-logo-wrapper:hover {
+  opacity: 0.8;
 }
 
 .brand-logo-img {
@@ -337,18 +356,21 @@
 
 .user-summary {
   display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  padding: 0.3rem;
+  padding: 0.2rem;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 250, 252, 0.95) 100%);
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(14, 23, 58, 0.08), 0 0 0 1px rgba(255, 95, 166, 0.1);
-  min-width: 265px;
   transition: all 0.3s ease;
 }
 
 .user-summary:hover {
   box-shadow: 0 6px 20px rgba(14, 23, 58, 0.12), 0 0 0 1px rgba(255, 95, 166, 0.2);
+}
+
+.lang-switch-wrapper {
+  display: flex;
+  align-items: center;
+  margin-right: 0.5rem;
 }
 
 /* Guest mode action buttons */
@@ -514,10 +536,6 @@
     display: none;
   }
 
-  .lang-switch-wrapper {
-    display: none;
-  }
-
   .user-summary {
     justify-self: center;
     position: absolute;
@@ -542,7 +560,7 @@
 
   .feed-top-header {
     padding: calc(0.5rem + env(safe-area-inset-top, 0px)) 1rem 0.75rem;
-    position: relative;
+    /* Mantém sticky em todas as resoluções */
   }
 
   .center-container {

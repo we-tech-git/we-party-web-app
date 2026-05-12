@@ -125,7 +125,7 @@
   --shadow-active: 0 1.125rem 2.125rem rgba(255, 95, 166, 0.32);
 
   /* Mobile */
-  --mobile-z-index: 200;
+  --mobile-z-index: 100;
   --mobile-padding: 0.75rem 1rem;
   --mobile-border-radius: 1.5rem 1.5rem 0 0;
   --mobile-shadow: 0 -0.625rem 2.5rem rgba(20, 27, 68, 0.15);
@@ -141,7 +141,7 @@
   padding-right: var(--sidebar-padding-right);
   border-radius: var(--sidebar-border-radius);
   min-height: var(--sidebar-min-height);
-  margin-top: 1.5rem;
+
 }
 
 .nav-list {

@@ -60,7 +60,7 @@
       // Timeout após 5s
       setTimeout(() => {
         clearInterval(googleScriptTimer)
-        // console.warn('⚠️ Google SDK não carregou no timeout')
+      // console.warn('⚠️ Google SDK não carregou no timeout')
       }, 5000)
     } catch (error) {
       console.error('❌ Erro ao inicializar Google SDK:', error)
@@ -210,7 +210,7 @@
     }
   }
 
-  async function handleFacebookAuth () {
+  async function _handleFacebookAuth () {
     if (isLoading.value.facebook) return
     isLoading.value.facebook = true
 
@@ -223,7 +223,7 @@
     }
   }
 
-  function handleEmailAuth () {
+  function _handleEmailAuth () {
     emit('email-auth')
   }
 </script>
@@ -234,7 +234,7 @@
     <div v-if="!compact" class="divider-container">
       <div class="divider-line" />
       <span class="divider-text">
-        {{ mode === 'login' ? 'Ou entre com' : 'Ou cadastre-se com' }}
+        {{ mode === 'login' ? 'Entre com' : 'Cadastre-se com' }}
       </span>
       <div class="divider-line" />
     </div>
@@ -272,200 +272,167 @@
         <span v-else class="spinner" />
         <span v-if="!compact" class="btn-text">Google</span>
       </button>
-
-      <!-- Email (opcional) -->
-      <button
-        v-if="showEmail"
-        class="social-btn email-btn"
-        :class="{ compact }"
-        type="button"
-        @click="handleEmailAuth"
-      >
-        <span class="btn-icon">
-          <svg fill="currentColor" height="20" viewBox="0 0 24 24" width="20">
-            <path
-              d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"
-            />
-          </svg>
-        </span>
-        <span v-if="!compact" class="btn-text">Email</span>
-      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
 .social-auth-container {
-    width: 100%;
-    margin: 1.5rem 0;
+  width: 100%;
+  margin: 1.5rem 0;
 }
 
 .social-auth-container.compact {
-    margin: 1rem 0;
+  margin: 1rem 0;
 }
 
 /* Separador */
 .divider-container {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .divider-line {
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(90deg,
-            rgba(255, 154, 181, 0.1) 0%,
-            rgba(255, 154, 181, 0.3) 50%,
-            rgba(255, 154, 181, 0.1) 100%);
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg,
+      rgba(255, 154, 181, 0.1) 0%,
+      rgba(255, 154, 181, 0.3) 50%,
+      rgba(255, 154, 181, 0.1) 100%);
 }
 
 .divider-text {
-    font-size: 0.875rem;
-    color: #6c757d;
-    font-weight: 500;
-    white-space: nowrap;
+  font-size: 0.875rem;
+  color: #6c757d;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 /* Container dos botões */
 .social-buttons {
-    display: flex;
-    width: 100%;
-    justify-content: center;
+  display: flex;
+  width: 100%;
+  justify-content: center;
 }
 
 .social-buttons.compact {
-    gap: 0.5rem;
-    justify-content: center;
+  gap: 0.5rem;
+  justify-content: center;
 }
 
 /* Botão social base */
 .social-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.625rem;
-    padding: 0.75rem 1rem;
-    border: 2px solid #e5e7eb;
-    border-radius: 12px;
-    background: #ffffff;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: #374151;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.social-btn.compact {
-    flex: 0 0 auto;
-    min-width: 48px;
-    padding: 0.75rem;
-    border-radius: 50%;
-}
-
-.social-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.social-btn:active {
-    transform: translateY(0);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: transform 0.05s ease-out, box-shadow 0.05s ease-out, border-color 0.05s ease-out, background 0.05s ease-out;
 }
 
 .social-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Ícone do botão */
 .btn-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .btn-text {
-    flex: 1;
-    text-align: left;
+  flex: 1;
+  text-align: left;
 }
 
 .social-btn.compact .btn-text {
-    display: none;
+  display: none;
 }
 
 /* Estilos específicos dos botões */
 .google-btn:hover {
-    border-color: #4285F4;
-    background: #f8f9ff;
-    max-width: ;
+  border-color: #4285F4;
+  background: #f8f9ff;
 }
 
 .facebook-btn:hover {
-    border-color: #1877F2;
-    background: #f0f7ff;
+  border-color: #1877F2;
+  background: #f0f7ff;
 }
 
 .email-btn {
-    color: #ff5fa6;
+  color: #ff5fa6;
 }
 
 .email-btn:hover {
-    border-color: #ff5fa6;
-    background: #fff5f9;
+  border-color: #ff5fa6;
+  background: #fff5f9;
 }
 
 /* Spinner de carregamento */
 .spinner {
-    width: 20px;
-    height: 20px;
-    border: 2px solid #e5e7eb;
-    border-top-color: #ff5fa6;
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #ff5fa6;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
 
 @keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsivo */
 @media (max-width: 640px) {
-    .social-buttons:not(.compact) {
-        flex-direction: column;
-    }
+  .social-buttons:not(.compact) {
+    flex-direction: column;
+  }
 
-    .social-btn:not(.compact) {
-        width: 100%;
-    }
+  .social-btn:not(.compact) {
+    width: 100%;
+  }
 
-    .btn-text {
-        text-align: center;
-    }
+  .btn-text {
+    text-align: center;
+  }
 }
 
 /* Efeito ripple */
 .social-btn::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 95, 166, 0.1);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 95, 166, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.1s ease-out, height 0.1s ease-out;
 }
 
 .social-btn:active::before {
-    width: 300px;
-    height: 300px;
+  width: 200px;
+  height: 200px;
 }
 </style>

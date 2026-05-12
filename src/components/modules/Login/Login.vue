@@ -7,344 +7,292 @@
 // ESTADO E LÓGICA DO FORMULÁRIO
 // ===============================
 // Tela de Login – usa AuthLayout e InputLabel
-import { computed, onMounted, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { loginUser } from '@/api/users'
-import { STORAGE_KEYS } from '@/common/storage'
-import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
-import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
-import { useRateLimit } from '@/composables/useRateLimit'
-import router from '@/router'
-import { AuthService } from '@/services/auth'
-import { SocialAuthService } from '@/services/socialAuth'
-import { logger } from '@/utils/logger'
+  import { computed, onMounted, ref } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import { loginUser } from '@/api/users'
+  import { STORAGE_KEYS } from '@/common/storage'
+  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
+  import router from '@/router'
+  import { AuthService } from '@/services/auth'
+  import { SocialAuthService } from '@/services/socialAuth'
+  import { logger } from '@/utils/logger'
 
-const { t } = useI18n()
-const socialAuthService = new SocialAuthService()
+  const { t } = useI18n()
+  const socialAuthService = new SocialAuthService()
 
-// ===============================
-// RATE LIMITING (Segurança)
-// ===============================
-// Previne brute force attacks limitando tentativas de login
-const loginRateLimit = useRateLimit('login', {
-  maxAttempts: 5, // Máximo 5 tentativas
-  windowMs: 15 * 60 * 1000, // Em 15 minutos
-  blockDurationMs: 30 * 60 * 1000, // Bloqueia por 30 minutos
-})
+  // Estado do formulário de login
+  const email = ref('')
+  const password = ref('')
+  const rememberMe = ref(false)
+  const isSubmitting = ref(false)
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
 
-// Estado do formulário de login
-const email = ref('')
-const password = ref('')
-const rememberMe = ref(false)
-const isSubmitting = ref(false)
-const snackbarVisible = ref(false)
-const snackbarMessage = ref('')
-const snackbarColor = ref('#ff9800')
-
-const formErrors = ref({
-  email: '',
-  password: '',
-})
-
-// Validação: e-mail + senha preenchidos
-const isFormValid = computed(() => {
-  return email.value.trim() && password.value.trim() && email.value.includes('@')
-})
-
-/**
- * Exibe o componente Snackbar com uma mensagem e cor específicas.
- * Gerencia a visibilidade para garantir que a animação ocorra corretamente.
- */
-function showSnackbar(message: string, color = '#ff9800') {
-  snackbarMessage.value = message
-  snackbarColor.value = color
-
-  if (snackbarVisible.value) {
-    snackbarVisible.value = false
-    requestAnimationFrame(() => {
-      snackbarVisible.value = true
-    })
-    return
-  }
-
-  snackbarVisible.value = true
-}
-
-/**
- * Reseta os erros de validação do formulário.
- */
-function resetErrors() {
-  formErrors.value = {
+  const formErrors = ref({
     email: '',
     password: '',
-  }
-}
+  })
 
-/**
- * Valida os campos do formulário antes do envio.
- * Verifica se email e senha estão preenchidos e se o email é válido.
- */
-async function validateForm() {
-  if (isSubmitting.value) return
+  // Validação: e-mail + senha preenchidos
+  const isFormValid = computed(() => {
+    return email.value.trim() && password.value.trim() && email.value.includes('@')
+  })
 
-  resetErrors()
+  /**
+   * Exibe o componente Snackbar com uma mensagem e cor específicas.
+   * Gerencia a visibilidade para garantir que a animação ocorra corretamente.
+   */
+  function showSnackbar (message: string, color = '#ff9800') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
 
-  const missingFields: string[] = []
-
-  if (!email.value.trim()) {
-    formErrors.value.email = t('login.errors.required.email')
-    missingFields.push('Email')
-  } else if (!email.value.includes('@')) {
-    formErrors.value.email = t('login.errors.invalid.email')
-    showSnackbar('Por favor, insira um email válido')
-    return
-  }
-
-  if (!password.value.trim()) {
-    formErrors.value.password = t('login.errors.required.password')
-    missingFields.push('Senha')
-  }
-
-  if (missingFields.length > 0) {
-    showSnackbar(`Campos obrigatórios: ${missingFields.join(', ')}`)
-    return
-  }
-
-  await submitForm()
-}
-
-/**
- * Envia os dados do formulário para a API de login.
- * Gerencia o estado de carregamento, sucesso e falha.
- */
-async function submitForm() {
-  if (isSubmitting.value) return
-
-  if (!isFormValid.value) {
-    showSnackbar('Por favor, preencha todos os campos obrigatórios')
-    return
-  }
-
-  // ===============================
-  // RATE LIMITING: Verifica se não está bloqueado
-  // ===============================
-  if (loginRateLimit.isBlocked.value) {
-    const timeRemaining = loginRateLimit.blockedTimeRemaining.value
-    const minutes = Math.ceil(timeRemaining / 60)
-    showSnackbar(
-      `🔒 Muitas tentativas falhas. Tente novamente em ${minutes} minuto${minutes > 1 ? 's' : ''}.`,
-      '#ef4444',
-    )
-    return
-  }
-
-  // Registra tentativa ANTES de fazer o login
-  if (!loginRateLimit.attempt()) {
-    showSnackbar('🔒 Limite de tentativas excedido. Aguarde antes de tentar novamente.', '#ef4444')
-    return
-  }
-
-  const minLoadingMs = 2000
-  const start = Date.now()
-  isSubmitting.value = true
-
-  try {
-    const credentials = {
-      email: email.value.trim(),
-      password: password.value,
+    if (snackbarVisible.value) {
+      snackbarVisible.value = false
+      requestAnimationFrame(() => {
+        snackbarVisible.value = true
+      })
+      return
     }
 
-    const response = await loginUser(credentials)
-    const data = response?.data
+    snackbarVisible.value = true
+  }
 
-    // PRIMEIRO, VERIFICAMOS SE O LOGIN FOI UM SUCESSO REAL
-    if (data?.success && !!data?.data?.token) {
-      // --- LÓGICA DE SUCESSO ---
-      AuthService.saveAuthData({
-        success: true,
-        message: 'Login realizado com sucesso',
-        token: data.data.token,
-        user: data.data,
-      })
+  /**
+   * Reseta os erros de validação do formulário.
+   */
+  function resetErrors () {
+    formErrors.value = {
+      email: '',
+      password: '',
+    }
+  }
 
-      // ===============================
-      // RATE LIMITING: Reseta após sucesso
-      // ===============================
-      loginRateLimit.reset()
+  /**
+   * Valida os campos do formulário antes do envio.
+   * Verifica se email e senha estão preenchidos e se o email é válido.
+   */
+  async function validateForm () {
+    if (isSubmitting.value) return
 
-      // Salva o e-mail se "Lembrar-me" estiver ativo
-      if (rememberMe.value) {
-        localStorage.setItem('REMEMBERED_EMAIL', credentials.email)
-      } else {
-        localStorage.removeItem('REMEMBERED_EMAIL')
+    resetErrors()
+
+    const missingFields: string[] = []
+
+    if (!email.value.trim()) {
+      formErrors.value.email = t('login.errors.required.email')
+      missingFields.push('Email')
+    } else if (!email.value.includes('@')) {
+      formErrors.value.email = t('login.errors.invalid.email')
+      showSnackbar('Por favor, insira um email válido')
+      return
+    }
+
+    if (!password.value.trim()) {
+      formErrors.value.password = t('login.errors.required.password')
+      missingFields.push('Senha')
+    }
+
+    if (missingFields.length > 0) {
+      showSnackbar(`Campos obrigatórios: ${missingFields.join(', ')}`)
+      return
+    }
+
+    await submitForm()
+  }
+
+  /**
+   * Envia os dados do formulário para a API de login.
+   * Gerencia o estado de carregamento, sucesso e falha.
+   */
+  async function submitForm () {
+    if (isSubmitting.value) return
+
+    if (!isFormValid.value) {
+      showSnackbar('Por favor, preencha todos os campos obrigatórios')
+      return
+    }
+
+    const minLoadingMs = 2000
+    const start = Date.now()
+    isSubmitting.value = true
+
+    try {
+      const credentials = {
+        email: email.value.trim(),
+        password: password.value,
       }
 
-      showSnackbar('Login realizado com sucesso! 🎉', '#22c55e')
+      const response = await loginUser(credentials)
+      const data = response?.data
 
-      setTimeout(() => {
-        router.push('/private/feed')
-      }, 1500)
-    } else {
-      // Extrai a mensagem de erro da resposta, como "Email não verificado"
-      const errorMessage = response.response.data.message
+      // PRIMEIRO, VERIFICAMOS SE O LOGIN FOI UM SUCESSO REAL
+      if (data?.success && !!data?.data?.token) {
+        // --- LÓGICA DE SUCESSO ---
+        AuthService.saveAuthData({
+          success: true,
+          message: 'Login realizado com sucesso',
+          token: data.data.token,
+          user: data.data,
+        })
 
-      // Verifica se o erro é sobre e-mail não verificado
-      // Usamos uma verificação mais flexível para evitar problemas com espaços ou pontuação
-      if (errorMessage === 'Email não verificado. Por favor, verifique seu email antes de fazer login.') {
+        // Salva o e-mail se "Lembrar-me" estiver ativo
+        if (rememberMe.value) {
+          localStorage.setItem('REMEMBERED_EMAIL', credentials.email)
+        } else {
+          localStorage.removeItem('REMEMBERED_EMAIL')
+        }
+
+        showSnackbar('Login realizado com sucesso! 🎉', '#22c55e')
+
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
+      } else {
+        // Extrai a mensagem de erro da resposta, como "Email não verificado"
+        const errorMessage = response.response.data.message
+
+        // Verifica se o erro é sobre e-mail não verificado
+        // Usamos uma verificação mais flexível para evitar problemas com espaços ou pontuação
+        if (errorMessage === 'Email não verificado. Por favor, verifique seu email antes de fazer login.') {
+          showSnackbar(errorMessage, '#ff9800')
+          localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
+          setTimeout(() => {
+            router.push('/public/ConfirmEmail')
+          }, 3000)
+        } else {
+          // console.error('error =======>', {
+          //   test1: response,
+          //   test2: response.response,
+          //   test3: response.response.data,
+          //   test4: response.response.data.message,
+          // })
+          // Trata outros erros lógicos que podem vir do backend
+          showSnackbar(errorMessage, '#ef4444')
+        }
+      }
+    } catch (error: any) {
+      // Este bloco agora só será ativado para erros de rede (4xx, 5xx)
+      const errorMessage = error?.response?.data?.message || 'Erro ao fazer login. Verifique suas credenciais.'
+
+      // Verifica se o erro é sobre e-mail não verificado (mesmo lógica do bloco else)
+      if (errorMessage.toLowerCase().includes('email não verificado')) {
         showSnackbar(errorMessage, '#ff9800')
         localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
         setTimeout(() => {
           router.push('/public/ConfirmEmail')
         }, 3000)
       } else {
-        // console.error('error =======>', {
-        //   test1: response,
-        //   test2: response.response,
-        //   test3: response.response.data,
-        //   test4: response.response.data.message,
-        // })
-        // Trata outros erros lógicos que podem vir do backend
-
-        // ===============================
-        // RATE LIMITING: Mostra tentativas restantes
-        // ===============================
-        const remaining = loginRateLimit.attemptsRemaining.value
-        if (remaining > 0 && remaining <= 2) {
-          showSnackbar(`${errorMessage} (${remaining} tentativa${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''})`, '#ef4444')
-        } else {
-          showSnackbar(errorMessage, '#ef4444')
-        }
-      }
-    }
-  } catch (error: any) {
-    // Este bloco agora só será ativado para erros de rede (4xx, 5xx)
-    const errorMessage = error?.response?.data?.message || 'Erro ao fazer login. Verifique suas credenciais.'
-
-    // Verifica se o erro é sobre e-mail não verificado (mesmo lógica do bloco else)
-    if (errorMessage.toLowerCase().includes('email não verificado')) {
-      showSnackbar(errorMessage, '#ff9800')
-      localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
-      setTimeout(() => {
-        router.push('/public/ConfirmEmail')
-      }, 3000)
-    } else {
-      // ===============================
-      // RATE LIMITING: Mostra tentativas restantes em caso de erro
-      // ===============================
-      const remaining = loginRateLimit.attemptsRemaining.value
-      if (remaining > 0 && remaining <= 2) {
-        showSnackbar(`${errorMessage} (${remaining} tentativa${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''})`, '#ef4444')
-      } else {
         showSnackbar(errorMessage, '#ef4444')
       }
+    } finally {
+      const elapsed = Date.now() - start
+      const remaining = minLoadingMs - elapsed
+      if (remaining > 0) {
+        await new Promise(resolve => setTimeout(resolve, remaining))
+      }
+      isSubmitting.value = false
     }
-  } finally {
-    const elapsed = Date.now() - start
-    const remaining = minLoadingMs - elapsed
-    if (remaining > 0) {
-      await new Promise(resolve => setTimeout(resolve, remaining))
+  }
+
+  // ===============================
+  // INICIALIZAÇÃO DO COMPONENTE
+  // ===============================
+  onMounted(() => {
+    // Verifica se há um e-mail salvo para "Lembrar-me"
+    const rememberedEmail = localStorage.getItem('REMEMBERED_EMAIL')
+    if (rememberedEmail) {
+      email.value = rememberedEmail
+      rememberMe.value = true // Marca a caixa para refletir o estado salvo
     }
-    isSubmitting.value = false
-  }
-}
+  })
 
-// ===============================
-// INICIALIZAÇÃO DO COMPONENTE
-// ===============================
-onMounted(() => {
-  // Verifica se há um e-mail salvo para "Lembrar-me"
-  const rememberedEmail = localStorage.getItem('REMEMBERED_EMAIL')
-  if (rememberedEmail) {
-    email.value = rememberedEmail
-    rememberMe.value = true // Marca a caixa para refletir o estado salvo
-  }
-})
-
-// ===============================
-// AUTENTICAÇÃO SOCIAL
-// ===============================
-/**
- * 🔐 NOVO: Handler para sucesso do Google OAuth via SDK
- * Chamado quando o SocialAuthButtons emite 'google-success' com os dados procesados
- */
-async function handleGoogleSuccess(data: any) {
-  try {
-    logger.log('[GOOGLE AUTH] Dados recebidos:', {
-      data,
-      userId: data.user?.id,
-      email: data.user?.email,
-      isNewUser: data.isNewUser,
-    })
-
-    // Salva dados de autenticação (já feito no socialAuthService, mas reforça aqui)
-    if (data.token && data.user) {
-      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token)
-      localStorage.setItem(STORAGE_KEYS.USER_ID, data.user.id)
-      AuthService.saveAuthData({
-        success: true,
-        message: data.message,
-        token: data.token,
-        user: data.user,
+  // ===============================
+  // AUTENTICAÇÃO SOCIAL
+  // ===============================
+  /**
+   * 🔐 NOVO: Handler para sucesso do Google OAuth via SDK
+   * Chamado quando o SocialAuthButtons emite 'google-success' com os dados procesados
+   */
+  async function handleGoogleSuccess (data: any) {
+    try {
+      logger.log('[GOOGLE AUTH] Dados recebidos:', {
+        data,
+        userId: data.user?.id,
+        email: data.user?.email,
+        isNewUser: data.isNewUser,
       })
-    }
 
-    // Mostra sucesso e redireciona
-    showSnackbar('✅ Login com Google realizado! 🎉', '#22c55e')
-    logger.log('[GOOGLE AUTH] 🎉 Redirecionando para /private/feed')
+      // Salva dados de autenticação (já feito no socialAuthService, mas reforça aqui)
+      if (data.token && data.user) {
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token)
+        localStorage.setItem(STORAGE_KEYS.USER_ID, data.user.id)
+        AuthService.saveAuthData({
+          success: true,
+          message: data.message,
+          token: data.token,
+          user: data.user,
+        })
+      }
 
-    setTimeout(() => {
-      router.push('/private/feed')
-    }, 1000)
-  } catch (error: any) {
-    logger.error('[GOOGLE AUTH] ❌ Erro ao processar sucesso:', error)
-    showSnackbar('Erro ao processar resposta do login', '#ef4444')
-  }
-}
+      // Mostra sucesso e redireciona
+      showSnackbar('✅ Login com Google realizado! 🎉', '#22c55e')
+      logger.log('[GOOGLE AUTH] 🎉 Redirecionando para /private/feed')
 
-/**
- * 🔐 NOVO: Handler para erro do Google OAuth
- * Chamado quando ocorre erro no SocialAuthButtons
- */
-async function handleGoogleError(error: any) {
-  logger.error('[GOOGLE AUTH] ❌ Erro recebido do SocialAuthButtons:', error)
-  const errorMessage = error?.message || error?.error || 'Erro ao fazer login com Google'
-  showSnackbar(errorMessage, '#ef4444')
-}
-
-/**
- * 🔐 LEGADO: Handler ao clicar no botão do Google (compatibilidade)
- * NOTA: Com o novo fluxo OAuth (authorization code), o SocialAuthButtons
- * já cuida de tudo e emite @google-success ou @google-error.
- * Este handler é mantido APENAS por compatibilidade, mas não deve ser usado.
- * O novo fluxo vai direto para handleGoogleSuccess via evento.
- */
-async function handleGoogleAuth() {
-  // Este handler não deve ser chamado com o novo fluxo OAuth
-  // O SocialAuthButtons.vue já emite @google-success/error
-  // Este é um handler legado mantido para compatibilidade
-  logger.log('[GOOGLE AUTH] ⚠️ handleGoogleAuth (legado) - não deveria ser chamado com novo fluxo')
-}
-
-async function handleFacebookAuth() {
-  try {
-    showSnackbar('Autenticando com Facebook...', '#1877F2')
-    const result = await socialAuthService.loginWithFacebook()
-
-    if (result.success) {
-      showSnackbar('Login com Facebook realizado com sucesso! 🎉', '#22c55e')
       setTimeout(() => {
         router.push('/private/feed')
-      }, 1500)
-    } else {
-      showSnackbar(result.message || 'Erro ao fazer login com Facebook', '#ef4444')
+      }, 1000)
+    } catch (error: any) {
+      logger.error('[GOOGLE AUTH] ❌ Erro ao processar sucesso:', error)
+      showSnackbar('Erro ao processar resposta do login', '#ef4444')
     }
-  } catch (error: any) {
-    logger.error('Erro na autenticação Facebook:', error)
-    showSnackbar(error.message || 'Erro ao fazer login com Facebook', '#ef4444')
   }
-}
+
+  /**
+   * 🔐 NOVO: Handler para erro do Google OAuth
+   * Chamado quando ocorre erro no SocialAuthButtons
+   */
+  async function handleGoogleError (error: any) {
+    logger.error('[GOOGLE AUTH] ❌ Erro recebido do SocialAuthButtons:', error)
+    const errorMessage = error?.message || error?.error || 'Erro ao fazer login com Google'
+    showSnackbar(errorMessage, '#ef4444')
+  }
+
+  /**
+   * 🔐 LEGADO: Handler ao clicar no botão do Google (compatibilidade)
+   * NOTA: Com o novo fluxo OAuth (authorization code), o SocialAuthButtons
+   * já cuida de tudo e emite @google-success ou @google-error.
+   * Este handler é mantido APENAS por compatibilidade, mas não deve ser usado.
+   * O novo fluxo vai direto para handleGoogleSuccess via evento.
+   */
+  async function _handleGoogleAuth () {
+    // Este handler não deve ser chamado com o novo fluxo OAuth
+    // O SocialAuthButtons.vue já emite @google-success/error
+    // Este é um handler legado mantido para compatibilidade
+    logger.log('[GOOGLE AUTH] ⚠️ handleGoogleAuth (legado) - não deveria ser chamado com novo fluxo')
+  }
+
+  async function handleFacebookAuth () {
+    try {
+      showSnackbar('Autenticando com Facebook...', '#1877F2')
+      const result = await socialAuthService.loginWithFacebook()
+
+      if (result.success) {
+        showSnackbar('Login com Facebook realizado com sucesso! 🎉', '#22c55e')
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
+      } else {
+        showSnackbar(result.message || 'Erro ao fazer login com Facebook', '#ef4444')
+      }
+    } catch (error: any) {
+      logger.error('Erro na autenticação Facebook:', error)
+      showSnackbar(error.message || 'Erro ao fazer login com Facebook', '#ef4444')
+    }
+  }
 </script>
 
 <!--
@@ -370,12 +318,25 @@ async function handleFacebookAuth() {
 
       <form @submit.prevent="validateForm">
         <div class="inputs-container il-theme--pink">
-          <InputLabel id="email" v-model="email" :error="!!formErrors.email" :label="$t('login.emailPlaceholder')"
-            type="email" @update:model-value="formErrors.email = ''" />
+          <InputLabel
+            id="email"
+            v-model="email"
+            :error="!!formErrors.email"
+            :label="$t('login.emailPlaceholder')"
+            type="email"
+            @update:model-value="formErrors.email = ''"
+          />
           <span v-if="formErrors.email" class="error-message">{{ formErrors.email }}</span>
 
-          <InputLabel id="password" v-model="password" :error="!!formErrors.password" :input-password="true"
-            :label="$t('login.passwordPlaceholder')" type="password" @update:model-value="formErrors.password = ''" />
+          <InputLabel
+            id="password"
+            v-model="password"
+            :error="!!formErrors.password"
+            :input-password="true"
+            :label="$t('login.passwordPlaceholder')"
+            type="password"
+            @update:model-value="formErrors.password = ''"
+          />
           <span v-if="formErrors.password" class="error-message">{{ formErrors.password }}</span>
 
           <div class="login-options">
@@ -392,8 +353,13 @@ async function handleFacebookAuth() {
           </button>
 
           <!-- Botões de autenticação social -->
-          <SocialAuthButtons mode="login" :show-email="false" @facebook-auth="handleFacebookAuth"
-            @google-error="handleGoogleError" @google-success="handleGoogleSuccess" />
+          <SocialAuthButtons
+            mode="login"
+            :show-email="false"
+            @facebook-auth="handleFacebookAuth"
+            @google-error="handleGoogleError"
+            @google-success="handleGoogleSuccess"
+          />
         </div>
 
         <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />

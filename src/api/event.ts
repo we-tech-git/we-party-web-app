@@ -328,7 +328,7 @@ export async function getLikedEvents (page = 1, limit = 10) {
   try {
     const response = await callApi(
       'GET',
-      `/users/liked-events?page=${page}&limit=${limit}`,
+      `/events/likes?page=${page}&limit=${limit}`,
       {},
       true,
     )

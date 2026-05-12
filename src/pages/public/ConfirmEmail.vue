@@ -194,7 +194,7 @@
 
     try {
       // Tenta enviar. Se o email não existir, o backend DEVE retornar erro (400 ou 404)
-      const response = await reqeustResendPin(userEmail.value)
+      const _response = await reqeustResendPin(userEmail.value)
       // console.log('Resend response:', response)
 
       // Se chegamos aqui, o email existe e o PIN foi enviado!
