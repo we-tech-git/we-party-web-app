@@ -160,6 +160,10 @@
       clearTimeout(userSearchTimeout)
       userSearchTimeout = null
     }
+    if (likedEventsTimeout) {
+      clearTimeout(likedEventsTimeout)
+      likedEventsTimeout = null
+    }
   })
 
   // ── User interests ──
@@ -1151,6 +1155,7 @@
   const likedEventsItems = ref<LikedEventItem[]>([])
   const loadingLiked = ref(false)
   const displayLimit = ref(CONFIG.INITIAL_DISPLAY_LIMIT)
+  let likedEventsTimeout: ReturnType<typeof setTimeout> | null = null
 
   const displayedLikedEvents = computed(() => {
     return likedEventsItems.value.slice(0, displayLimit.value)
@@ -1206,6 +1211,18 @@
 
   async function fetchLikedEvents () {
     loadingLiked.value = true
+
+    // Timeout de 3 segundos para o skeleton loading
+    if (likedEventsTimeout) {
+      clearTimeout(likedEventsTimeout)
+    }
+
+    likedEventsTimeout = setTimeout(() => {
+      if (loadingLiked.value) {
+        loadingLiked.value = false
+      }
+    }, 3000)
+
     try {
       // Busca eventos curtidos diretamente da API
       const response = await getLikedEvents(1, 100)
@@ -1231,11 +1248,44 @@
       // Sincroniza os IDs com o store para manter consistência do optimistic update
       const likedIds = events.map((evt: any) => String(evt.id))
       eventsStore.likedEvents.splice(0, eventsStore.likedEvents.length, ...likedIds)
+
+      // Se a lista está vazia, aguarda o timeout de 3 segundos antes de mostrar empty state
+      if (events.length === 0) {
+        // O timeout já foi configurado acima, apenas aguarda
+        return
+      }
+
+      // Se há eventos, cancela o timeout e remove o loading imediatamente
+      if (likedEventsTimeout) {
+        clearTimeout(likedEventsTimeout)
+        likedEventsTimeout = null
+      }
+      loadingLiked.value = false
     } catch (error_) {
       console.error('Erro ao buscar eventos curtidos:', error_)
       likedEventsItems.value = []
-    } finally {
-      loadingLiked.value = false
+      // Em caso de erro, o timeout de 3s já está configurado
+    }
+  }
+
+  async function handleUnlikeEvent (eventId: string | number, event: Event) {
+    // Previne a navegação para a página do evento
+    event.stopPropagation()
+
+    try {
+      // Toggle like no store (vai descurtir já que está curtido)
+      await eventsStore.toggleLike(eventId)
+
+      // Remove o item da lista de eventos curtidos
+      const index = likedEventsItems.value.findIndex(item => String(item.id) === String(eventId))
+      if (index !== -1) {
+        likedEventsItems.value.splice(index, 1)
+      }
+
+      showSnackbar(t('profile.likedEvents.unlikedSuccess'), SNACKBAR_COLORS.success)
+    } catch (error_) {
+      console.error('Erro ao descurtir evento:', error_)
+      showSnackbar(t('profile.likedEvents.unlikedError'), SNACKBAR_COLORS.error)
     }
   }
 
@@ -1519,7 +1569,11 @@
                         <i class="mdi mdi-account-multiple" />
                         {{ item.confirmed }}
                       </span>
-                      <span class="mini-stat">
+                      <button
+                        class="mini-stat mini-stat-btn"
+                        :title="t('profile.likedEvents.unlikeTooltip')"
+                        @click="handleUnlikeEvent(item.id, $event)"
+                      >
                         <svg
                           class="mini-stat-icon"
                           :fill="eventsStore.isLiked(item.id) ? 'currentColor' : 'none'"
@@ -1536,7 +1590,7 @@
                           />
                         </svg>
                         {{ (item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0) }}
-                      </span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -2953,6 +3007,26 @@
   font-size: 0.85rem;
   color: #555b77;
   font-weight: 600;
+}
+
+.mini-stat-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mini-stat-btn:hover {
+  transform: scale(1.1);
+}
+
+.mini-stat-btn:hover svg {
+  color: #ff4757;
+}
+
+.mini-stat-btn:active {
+  transform: scale(0.95);
 }
 
 .mini-stat i {

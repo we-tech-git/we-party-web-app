@@ -221,7 +221,10 @@
       "locationUndefined": "Local a definir",
       "dateUndefined": "Data a definir",
       "eventTitle": "Evento",
-      "soon": "Em breve"
+      "soon": "Em breve",
+      "unlikeTooltip": "Descurtir evento",
+      "unlikedSuccess": "Evento descurtido com sucesso",
+      "unlikedError": "Erro ao descurtir evento"
     },
     "settings": {
       "general": "Geral",

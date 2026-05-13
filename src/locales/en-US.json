@@ -221,7 +221,10 @@
       "locationUndefined": "Location to be defined",
       "dateUndefined": "Date to be defined",
       "eventTitle": "Event",
-      "soon": "Coming soon"
+      "soon": "Coming soon",
+      "unlikeTooltip": "Unlike event",
+      "unlikedSuccess": "Event unliked successfully",
+      "unlikedError": "Error unliking event"
     },
     "settings": {
       "general": "General",
