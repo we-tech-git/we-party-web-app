@@ -21,10 +21,38 @@
   const { loggedUser, userDisplayName } = useAuth()
 
   // Background image from event
-  const eventBannerUrl = ref('')
   const eventData = ref<any>(null)
   const isLoaded = ref(false)
   const isLoadingEventData = ref(true)
+
+  // Computed para processar imagens do evento (mesma lógica do FeedCard)
+  const eventImages = computed(() => {
+    if (!eventData.value?.images || !Array.isArray(eventData.value.images) || eventData.value.images.length === 0) {
+      return { desktop: '', mobile: '' }
+    }
+
+    const images = eventData.value.images
+
+    // Desktop: melhor imagem 16_9 (maior resolução)
+    const landscapeImages = images
+      .filter((img: any) => img.ratio === '16_9')
+      .toSorted((a: any, b: any) => b.width - a.width)
+
+    const desktopImage = landscapeImages[0]?.url || ''
+
+    // Mobile: preferir 3_2 (proporção mais vertical), senão usar a menor 16_9
+    const verticalImages = images.filter((img: any) => img.ratio === '3_2')
+    const mobileImages = verticalImages.length > 0
+      ? verticalImages.toSorted((a: any, b: any) => b.width - a.width)
+      : landscapeImages.toReversed()
+
+    const mobileImage = mobileImages[0]?.url || desktopImage
+
+    return {
+      desktop: desktopImage,
+      mobile: mobileImage,
+    }
+  })
 
   // Parallax effect
   const scrollY = ref(0)
@@ -60,25 +88,6 @@
 
       // Armazena os dados completos do evento
       eventData.value = data
-
-      // Extract banner URL
-      const photos = data?.photos
-      let photoUrl = ''
-      if (photos) {
-        if (Array.isArray(photos) && photos.length > 0) {
-          photoUrl = photos[0]
-        } else if (typeof photos === 'object' && photos !== null) {
-          const keys = Object.keys(photos)
-          if (keys.length > 0) {
-            const firstKey = keys[0]
-            if (firstKey) {
-              photoUrl = (photos as Record<string, string>)[firstKey] || ''
-            }
-          }
-        }
-      }
-
-      eventBannerUrl.value = data?.bannerUrl || data?.banner || photoUrl || ''
     } catch (error) {
       console.error('Error fetching event data:', error)
     } finally {
@@ -157,10 +166,10 @@
     <div class="immersive-bg">
       <!-- Blurred Background Image -->
       <div
-        v-if="eventBannerUrl"
+        v-if="eventImages.desktop"
         class="bg-image"
         :style="{
-          backgroundImage: `url(${eventBannerUrl})`,
+          backgroundImage: `url(${eventImages.desktop})`,
           transform: `translateY(${parallaxOffset}px) scale(1.1)`
         }"
       />
@@ -451,8 +460,6 @@
   grid-area: main;
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
-  padding-top: 1.75rem;
   min-height: 100vh;
   opacity: 0;
   transform: translateY(30px);

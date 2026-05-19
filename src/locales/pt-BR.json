@@ -14,7 +14,16 @@
     "forgotPassword": "Esqueci minha senha",
     "button": "Entrar",
     "noAccount": "Não tem conta?",
-    "signupLink": "Cadastre-se"
+    "signupLink": "Cadastre-se",
+    "errors": {
+      "required": {
+        "email": "E-mail é obrigatório",
+        "password": "Senha é obrigatória"
+      },
+      "invalid": {
+        "email": "E-mail inválido"
+      }
+    }
   },
   "signup": {
     "title": "Cadastro",

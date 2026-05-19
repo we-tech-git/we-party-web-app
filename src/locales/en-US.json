@@ -14,7 +14,16 @@
     "forgotPassword": "Forgot my password",
     "button": "Sign in",
     "noAccount": "Don't have an account?",
-    "signupLink": "Sign up"
+    "signupLink": "Sign up",
+    "errors": {
+      "required": {
+        "email": "Email is required",
+        "password": "Password is required"
+      },
+      "invalid": {
+        "email": "Invalid email"
+      }
+    }
   },
   "signup": {
     "title": "Sign Up",

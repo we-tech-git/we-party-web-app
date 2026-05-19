@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
+  cancelAttendance,
+  confirmAttendance,
   getFavoriteEvents,
   getLikedEvents,
-  toggleAttendance,
   toggleFavoriteEvent,
   toggleLikeEvent,
 } from '@/api/event'
@@ -58,6 +59,11 @@ export const useEventsStore = defineStore('events', () => {
   const savedEvents = ref<FeedItem[]>([])
   const likedEvents = ref<EventId[]>([])
   const confirmedEvents = ref<EventId[]>([])
+
+  // Limpa localStorage legado (se houver)
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('weparty_confirmed_events')
+  }
 
   // Flags para controlar se os dados já foram carregados da API
   const isInitialized = ref({
@@ -153,7 +159,8 @@ export const useEventsStore = defineStore('events', () => {
     }
 
     try {
-      await toggleAttendance(id)
+      // PUT para confirmar, DELETE para cancelar
+      await (isAdding ? confirmAttendance(id) : cancelAttendance(id))
     } catch (error) {
       console.error('Failed to toggle attendance on server', error)
       // Revert if API fails
@@ -165,6 +172,19 @@ export const useEventsStore = defineStore('events', () => {
       } else if (!isAdding && revertIndex === -1) {
         confirmedEvents.value.push(normalizedId)
       }
+    }
+  }
+
+  function setConfirmed (id: EventId, isConfirmed: boolean) {
+    const normalizedId = String(id)
+    const index = confirmedEvents.value.findIndex(
+      cId => String(cId) === normalizedId,
+    )
+
+    if (isConfirmed && index === -1) {
+      confirmedEvents.value.push(normalizedId)
+    } else if (!isConfirmed && index !== -1) {
+      confirmedEvents.value.splice(index, 1)
     }
   }
 
@@ -271,6 +291,8 @@ export const useEventsStore = defineStore('events', () => {
     savedEvents.value = []
     likedEvents.value = []
     confirmedEvents.value = []
+    // Limpa localStorage legado se existir
+    localStorage.removeItem('weparty_confirmed_events')
     isInitialized.value = {
       favorites: false,
       liked: false,
@@ -287,6 +309,7 @@ export const useEventsStore = defineStore('events', () => {
     isLiked,
     confirmedEvents,
     toggleConfirm,
+    setConfirmed,
     isConfirmed,
     syncFavoritesWithServer,
     syncLikedEventsWithServer,
