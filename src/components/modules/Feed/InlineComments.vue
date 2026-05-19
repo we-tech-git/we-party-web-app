@@ -42,14 +42,14 @@
   const likingId = ref<string | null>(null)
   const listEl = ref<HTMLElement | null>(null)
 
-  // Reply state
-  const replyingTo = ref<Comment | null>(null)
-  const replyText = ref('')
-  const sendingReply = ref(false)
+  // Reply state (unused - kept for potential future use)
+  const _replyingTo = ref<Comment | null>(null)
+  const _replyText = ref('')
+  const _sendingReply = ref(false)
 
-  // Optimistic like state
-  const localLiked = ref<Record<string, boolean>>({})
-  const localLikeDelta = ref<Record<string, number>>({})
+  // Optimistic like state (unused - kept for potential future use)
+  const _localLiked = ref<Record<string, boolean>>({})
+  const _localLikeDelta = ref<Record<string, number>>({})
 
   function formatDate (dateStr: string): string {
     const d = new Date(dateStr)
@@ -96,14 +96,14 @@
     return loggedUser.value?.id === comment.user?.id
   }
 
-  function isCommentLiked (comment: Comment): boolean {
-    if (comment.id in localLiked.value) return localLiked.value[comment.id] ?? false
+  function _isCommentLiked (comment: Comment): boolean {
+    if (comment.id in _localLiked.value) return _localLiked.value[comment.id] ?? false
     return comment.isLikedByMe ?? false
   }
 
-  function commentLikesCount (comment: Comment): number {
+  function _commentLikesCount (comment: Comment): number {
     const base = comment.likesCount || 0
-    const delta = localLikeDelta.value[comment.id] || 0
+    const delta = _localLikeDelta.value[comment.id] || 0
     return Math.max(0, base + delta)
   }
 
@@ -158,8 +158,8 @@
         }
       }
       comments.value = topLevel
-      localLiked.value = {}
-      localLikeDelta.value = {}
+      _localLiked.value = {}
+      _localLikeDelta.value = {}
       emit('update:count', topLevel.length)
     } catch (error) {
       console.error('Erro ao buscar comentários:', error)
@@ -188,21 +188,21 @@
     }
   }
 
-  function startReply (comment: Comment) {
-    replyingTo.value = comment
-    replyText.value = ''
+  function _startReply (comment: Comment) {
+    _replyingTo.value = comment
+    _replyText.value = ''
   }
 
-  function cancelReply () {
-    replyingTo.value = null
-    replyText.value = ''
+  function _cancelReply () {
+    _replyingTo.value = null
+    _replyText.value = ''
   }
 
-  async function handleSendReply () {
-    const text = replyText.value.trim()
-    if (!text || sendingReply.value || !replyingTo.value) return
-    const parentId = replyingTo.value.id
-    sendingReply.value = true
+  async function _handleSendReply () {
+    const text = _replyText.value.trim()
+    if (!text || _sendingReply.value || !_replyingTo.value) return
+    const parentId = _replyingTo.value.id
+    _sendingReply.value = true
     try {
       const res = await addEventComment(props.eventId, text, parentId)
 
@@ -231,14 +231,14 @@
         parent.replies.push(newReply)
       }
 
-      cancelReply()
+      _cancelReply()
 
       // Sincroniza com o servidor em background
       fetchComments()
     } catch (error) {
       console.error('Erro ao enviar resposta:', error)
     } finally {
-      sendingReply.value = false
+      _sendingReply.value = false
     }
   }
 
@@ -256,17 +256,17 @@
     }
   }
 
-  async function handleToggleLike (comment: Comment) {
+  async function _handleToggleLike (comment: Comment) {
     if (likingId.value === comment.id) return
     likingId.value = comment.id
-    const wasLiked = isCommentLiked(comment)
-    localLiked.value[comment.id] = !wasLiked
-    localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? -1 : 1)
+    const wasLiked = _isCommentLiked(comment)
+    _localLiked.value[comment.id] = !wasLiked
+    _localLikeDelta.value[comment.id] = (_localLikeDelta.value[comment.id] || 0) + (wasLiked ? -1 : 1)
     try {
       await toggleLikeComment(props.eventId, comment.id)
     } catch {
-      localLiked.value[comment.id] = wasLiked
-      localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? 1 : -1)
+      _localLiked.value[comment.id] = wasLiked
+      _localLikeDelta.value[comment.id] = (_localLikeDelta.value[comment.id] || 0) + (wasLiked ? 1 : -1)
     } finally {
       likingId.value = null
     }
@@ -332,46 +332,6 @@
 
               <div class="ic-actions">
                 <button
-                  class="ic-action-btn"
-                  :class="{ active: isCommentLiked(comment) }"
-                  type="button"
-                  @click.stop="handleToggleLike(comment)"
-                >
-                  <svg
-                    :fill="isCommentLiked(comment) ? 'currentColor' : 'none'"
-                    height="13"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    width="13"
-                  >
-                    <path
-                      d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
-                    />
-                  </svg>
-                  <span v-if="commentLikesCount(comment) > 0">{{ commentLikesCount(comment) }}</span>
-                </button>
-
-                <!-- Botão Responder -->
-                <button class="ic-action-btn reply" type="button" @click.stop="startReply(comment)">
-                  <svg
-                    fill="none"
-                    height="12"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    width="12"
-                  >
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                  </svg>
-                  Responder
-                </button>
-
-                <button
                   v-if="isMyComment(comment)"
                   class="ic-action-btn delete"
                   :disabled="deletingId === comment.id"
@@ -403,138 +363,6 @@
                     :width="2"
                   />
                 </button>
-              </div>
-
-              <!-- Input de resposta inline -->
-              <div v-if="replyingTo?.id === comment.id" class="ic-reply-input-area">
-                <div class="ic-reply-input-wrap">
-                  <input
-                    v-model="replyText"
-                    :disabled="sendingReply"
-                    maxlength="500"
-                    :placeholder="`Respondendo a ${comment.user?.name || 'Usuário'}...`"
-                    type="text"
-                    @keyup.enter="handleSendReply"
-                    @keyup.esc="cancelReply"
-                  >
-                  <button class="ic-reply-cancel" type="button" @click="cancelReply">✕</button>
-                  <button
-                    aria-label="Enviar resposta"
-                    class="ic-send-btn ic-send-btn--sm"
-                    :disabled="!replyText.trim() || sendingReply"
-                    type="button"
-                    @click="handleSendReply"
-                  >
-                    <svg
-                      v-if="!sendingReply"
-                      fill="none"
-                      height="13"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                      width="13"
-                    >
-                      <path d="m22 2-7 20-4-9-9-4z" />
-                      <path d="m22 2-11 11" />
-                    </svg>
-                    <v-progress-circular
-                      v-else
-                      color="#fff"
-                      indeterminate
-                      size="11"
-                      :width="2"
-                    />
-                  </button>
-                </div>
-              </div>
-
-              <!-- Replies aninhadas -->
-              <div v-if="comment.replies && comment.replies.length > 0" class="ic-replies">
-                <div v-for="reply in comment.replies" :key="reply.id" class="ic-reply-row">
-                  <div class="ic-avatar-wrap">
-                    <img
-                      v-if="resolveAsset(reply.user?.profileImage)"
-                      :alt="reply.user?.name"
-                      class="ic-avatar ic-avatar--sm"
-                      :src="resolveAsset(reply.user?.profileImage)"
-                    >
-                    <div
-                      v-else
-                      class="ic-avatar ic-avatar--sm placeholder"
-                      :style="{ backgroundColor: getAvatarColor(reply.user?.name || '') }"
-                    >
-                      {{ getInitial(reply.user?.name || '') }}
-                    </div>
-                  </div>
-                  <div class="ic-body">
-                    <div class="ic-bubble ic-bubble--reply">
-                      <div class="ic-header">
-                        <span class="ic-author">{{ reply.user?.name || 'Usuário' }}</span>
-                        <span v-if="reply.user?.role === 'ADMIN'" class="ic-admin-badge">Admin</span>
-                        <span class="ic-time">{{ formatDate(reply.createdAt) }}</span>
-                      </div>
-                      <p class="ic-text">{{ reply.content }}</p>
-                    </div>
-                    <div class="ic-actions">
-                      <button
-                        class="ic-action-btn"
-                        :class="{ active: isCommentLiked(reply) }"
-                        type="button"
-                        @click.stop="handleToggleLike(reply)"
-                      >
-                        <svg
-                          :fill="isCommentLiked(reply) ? 'currentColor' : 'none'"
-                          height="11"
-                          stroke="currentColor"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          viewBox="0 0 24 24"
-                          width="11"
-                        >
-                          <path
-                            d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
-                          />
-                        </svg>
-                        <span v-if="commentLikesCount(reply) > 0">{{ commentLikesCount(reply) }}</span>
-                      </button>
-                      <button
-                        v-if="isMyComment(reply)"
-                        class="ic-action-btn delete"
-                        :disabled="deletingId === reply.id"
-                        type="button"
-                        @click.stop="handleDelete(reply.id)"
-                      >
-                        <template v-if="deletingId !== reply.id">
-                          <svg
-                            fill="none"
-                            height="11"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                            width="11"
-                          >
-                            <path
-                              d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z"
-                            />
-                          </svg>
-                          Excluir
-                        </template>
-                        <v-progress-circular
-                          v-else
-                          color="#ff5fa6"
-                          indeterminate
-                          size="10"
-                          :width="2"
-                        />
-                      </button>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

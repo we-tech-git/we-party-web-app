@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { addEventComment, deleteEventComment, getEventComments, toggleLikeComment } from '@/api/comments'
-  import { getEventById } from '@/api/event'
+  import { getEventById, getMyAttendance } from '@/api/event'
   import { useAuth } from '@/composables/useAuth'
   import { useEventsStore } from '@/stores/events'
   import { useShareStore } from '@/stores/share'
@@ -28,7 +28,7 @@
     location: string
     image: string
     description: string
-    attractions: string[]
+    attractions: (string | { name: string, url?: string })[]
     contactInfo: string
     categories: string[]
     confirmedCount: number
@@ -48,8 +48,9 @@
   /**
    * Extrai a melhor imagem de alta qualidade para detalhes do evento
    * Prioriza: original > large > medium > small > thumbnail
+   * (Mantida para possível uso futuro)
    */
-  function extractBestQualityImage (images: any): string {
+  function _extractBestQualityImage (images: any): string {
     if (!images || typeof images !== 'object') return ''
 
     return images.original
@@ -173,6 +174,8 @@
   const loading = ref(false)
   const errorMessage = ref('')
   const showConfirmModal = ref(false)
+  const isModalCanceling = ref(false) // true = modal de cancelar, false = modal de confirmar
+  const confirmingAttendance = ref(false)
   const activeTab = ref<'info' | 'location' | 'lineup' | 'comments'>('info')
 
   // =====================
@@ -216,7 +219,7 @@
   // Replies expandidas
   const expandedReplies = ref<Record<string, boolean>>({})
 
-  function toggleReplies (commentId: string) {
+  function _toggleReplies (commentId: string) {
     expandedReplies.value[commentId] = !expandedReplies.value[commentId]
   }
 
@@ -262,7 +265,7 @@
     return comment.isLikedByMe ?? false
   }
 
-  function commentLikesCount (comment: Comment): number {
+  function _commentLikesCount (comment: Comment): number {
     const base = comment.likesCount || 0
     const delta = localLikeDelta.value[comment.id] || 0
     return Math.max(0, base + delta)
@@ -351,7 +354,7 @@
     }
   }
 
-  function startReply (comment: Comment) {
+  function _startReply (comment: Comment) {
     replyingTo.value = comment
     replyText.value = ''
   }
@@ -361,7 +364,7 @@
     replyText.value = ''
   }
 
-  async function handleSendReply () {
+  async function _handleSendReply () {
     const text = replyText.value.trim()
     if (!text || sendingReply.value || !replyingTo.value) return
 
@@ -423,7 +426,7 @@
     }
   }
 
-  async function handleToggleLikeComment (comment: Comment) {
+  async function _handleToggleLikeComment (comment: Comment) {
     if (likingCommentId.value === comment.id) return
 
     const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
@@ -457,11 +460,11 @@
   const openFaqIndex = ref<number | null>(null)
   const showFaqs = ref(false)
 
-  // Terms and Privacy Modal
+  // Terms and Privacy Modal (unused - kept for potential future use)
   const showTermsModal = ref(false)
   const termsModalPdf = ref<'terms' | 'privacy'>('terms')
 
-  function openTermsModal (type: 'terms' | 'privacy') {
+  function _openTermsModal (type: 'terms' | 'privacy') {
     termsModalPdf.value = type
     showTermsModal.value = true
   }
@@ -570,11 +573,35 @@
   function mapEventPayload (data: any): EventDetail {
     const rawDate = resolveEventDate(data)
 
-    // Extrai a melhor imagem de alta qualidade com múltiplos fallbacks
-    const bestImageFromImages = extractBestQualityImage(data?.images)
-    const bestPhotoUrl = extractPhotoUrl(data?.photos)
+    // Usa a mesma lógica do FeedCard para processar imagens por ratio
+    let finalImage = ''
+    if (data?.images && Array.isArray(data.images) && data.images.length > 0) {
+      const images = data.images
 
-    let finalImage = bestImageFromImages || bestPhotoUrl || data?.bannerUrl || data?.banner || ''
+      // Desktop: melhor imagem 16_9 (maior resolução)
+      const landscapeImages = images
+        .filter((img: any) => img.ratio === '16_9')
+        .toSorted((a: any, b: any) => b.width - a.width)
+
+      finalImage = landscapeImages[0]?.url || ''
+
+      // Fallback: se não houver 16_9, tenta 3_2
+      if (!finalImage) {
+        const verticalImage = images.find((img: any) => img.ratio === '3_2')
+        finalImage = verticalImage?.url || ''
+      }
+
+      // Fallback: usa a primeira imagem disponível
+      if (!finalImage && images.length > 0) {
+        finalImage = images[0]?.url || ''
+      }
+    }
+
+    // Fallback final para formatos antigos
+    if (!finalImage) {
+      const bestPhotoUrl = extractPhotoUrl(data?.photos)
+      finalImage = bestPhotoUrl || data?.bannerUrl || data?.banner || ''
+    }
 
     // Melhora a qualidade da URL de imagem
     finalImage = enhanceImageUrl(finalImage)
@@ -623,6 +650,13 @@
     return 'upcoming'
   })
 
+  const badgeStatus = computed(() => {
+    if (eventStatus.value === 'past') return { show: true, type: 'past', text: 'Evento encerrado', icon: 'mdi-check-circle' }
+    if (isConfirmed.value) return { show: true, type: 'confirmed', text: 'Presença confirmada', icon: 'mdi-check-all' }
+    if (eventStatus.value === 'soon') return { show: true, type: 'soon', text: 'Em breve!', icon: 'mdi-clock-fast' }
+    return { show: false, type: '', text: '', icon: '' }
+  })
+
   // Avatar color logic
   const avatarColors = [
     '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
@@ -669,20 +703,42 @@
     eventsStore.toggleSave(feedItem)
   }
 
-  function handleConfirmAttendance () {
-    if (isEventPast.value) return
-
-    if (isConfirmed.value) {
-      // Se já confirmou, desconfirma direto
-      eventsStore.toggleConfirm(event.value.id)
-    } else {
-      showConfirmModal.value = true
-    }
+  async function handleConfirmAttendance () {
+    if (isEventPast.value || confirmingAttendance.value) return
+    // Define a ação do modal baseado no estado atual (antes de abrir)
+    isModalCanceling.value = isConfirmed.value
+    showConfirmModal.value = true
   }
 
-  function confirmAttendance () {
-    eventsStore.toggleConfirm(event.value.id)
+  async function confirmAttendance () {
+    await toggleAttendanceApi()
     showConfirmModal.value = false
+  }
+
+  async function toggleAttendanceApi () {
+    if (!event.value.id || confirmingAttendance.value) return
+
+    confirmingAttendance.value = true
+    errorMessage.value = ''
+
+    try {
+      // Usa a store que já faz a chamada à API internamente
+      await eventsStore.toggleConfirm(event.value.id)
+
+      // Feedback visual ao usuário
+      const isNowConfirmed = eventsStore.isConfirmed(event.value.id)
+      console.log(isNowConfirmed ? '✅ Presença confirmada!' : '❌ Presença cancelada')
+    } catch (error: any) {
+      console.error('Erro ao confirmar presença:', error)
+      errorMessage.value = error?.message || 'Não foi possível confirmar presença. Tente novamente.'
+
+      // Limpa a mensagem de erro após 5 segundos
+      setTimeout(() => {
+        errorMessage.value = ''
+      }, 5000)
+    } finally {
+      confirmingAttendance.value = false
+    }
   }
 
   async function fetchEventDetails (id: string | number) {
@@ -690,6 +746,7 @@
     if (props.eventData) {
       event.value = mapEventPayload(props.eventData)
       startCountdown()
+      await syncAttendanceStatus(id)
       return
     }
 
@@ -701,11 +758,29 @@
       const payload = response?.data?.event || response?.data || response
       event.value = mapEventPayload(payload)
       startCountdown()
+      await syncAttendanceStatus(id)
     } catch (error) {
       console.error(error)
       errorMessage.value = 'Não foi possível carregar os detalhes do evento.'
     } finally {
       loading.value = false
+    }
+  }
+
+  /**
+   * Sincroniza o status de confirmação de presença com o backend
+   */
+  async function syncAttendanceStatus (eventId: string | number) {
+    try {
+      const response = await getMyAttendance(eventId)
+      const data = response?.data || response
+
+      // Verifica se há dados de presença retornados
+      // O endpoint retorna status: "INTERESTED" ou "CONFIRMED"
+      const isAttending = data?.status === 'CONFIRMED' || data?.status === 'INTERESTED' || data?.isAttending || false
+      eventsStore.setConfirmed(eventId, isAttending)
+    } catch (error) {
+      console.warn('Não foi possível sincronizar status de presença:', error)
     }
   }
 
@@ -770,7 +845,7 @@
     const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
     shareStore.open({
       title: event.value.title,
-      text: event.value.description,
+      text: 'Veja esse evento que encontrei que você também pode gostar',
       url: `${window.location.origin}/private/event/${id}`,
     })
   }
@@ -813,17 +888,9 @@
         </div>
 
         <!-- Status Badge -->
-        <div class="status-badge" :class="eventStatus">
-          <i
-            class="mdi"
-            :class="{
-              'mdi-clock-fast': eventStatus === 'soon',
-              'mdi-calendar-check': eventStatus === 'upcoming',
-              'mdi-check-circle': eventStatus === 'past'
-            }"
-          />
-          <span>{{ eventStatus === 'soon' ? 'Em breve!' : eventStatus === 'past' ? 'Evento encerrado' : 'Confirmado'
-          }}</span>
+        <div v-if="badgeStatus.show" class="status-badge" :class="badgeStatus.type">
+          <i class="mdi" :class="badgeStatus.icon" />
+          <span>{{ badgeStatus.text }}</span>
         </div>
 
         <!-- Floating Action Buttons -->
@@ -977,7 +1044,7 @@
         <button class="tab-btn" :class="{ active: activeTab === 'comments' }" @click="activeTab = 'comments'">
           <i class="mdi mdi-comment-outline" />
           <span>Comentários</span>
-          <span v-if="comments.length > 0" class="tab-badge">{{ comments.length }}</span>
+          <span v-if="activeTab === 'comments' && comments.length > 0" class="tab-badge">{{ comments.length }}</span>
         </button>
         <button class="tab-btn" :class="{ active: activeTab === 'location' }" @click="activeTab = 'location'">
           <i class="mdi mdi-map-marker-outline" />
@@ -1014,7 +1081,10 @@
             <p class="description-text">{{ event.description }}</p>
           </div>
 
-          <div class="info-card">
+          <div
+            v-if="event.contactInfo && event.contactInfo !== 'Informações de contato não disponíveis.'"
+            class="info-card"
+          >
             <div class="info-header">
               <i class="mdi mdi-help-circle-outline" />
               <span>Dúvidas e Contato</span>
@@ -1133,7 +1203,8 @@
           >
             <div class="lineup-number">{{ String(index + 1).padStart(2, '0') }}</div>
             <div class="lineup-info">
-              <span class="lineup-name">{{ attraction }}</span>
+              <span class="lineup-name">{{ typeof attraction === 'string' ? attraction : (attraction?.name || 'Atração')
+              }}</span>
             </div>
             <div class="lineup-icon">
               <i class="mdi mdi-microphone-variant" />
@@ -1192,34 +1263,6 @@
                   <!-- Actions -->
                   <div class="comment-actions">
                     <button
-                      class="comment-action-btn like-btn"
-                      :class="{ active: isCommentLiked(comment) }"
-                      type="button"
-                      @click="handleToggleLikeComment(comment)"
-                    >
-                      <svg
-                        :fill="isCommentLiked(comment) ? 'currentColor' : 'none'"
-                        height="14"
-                        stroke="currentColor"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        viewBox="0 0 24 24"
-                        width="14"
-                      >
-                        <path
-                          d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
-                        />
-                      </svg>
-                      <span v-if="commentLikesCount(comment) > 0">{{ commentLikesCount(comment) }}</span>
-                    </button>
-
-                    <button class="comment-action-btn reply-btn" type="button" @click="startReply(comment)">
-                      <i class="mdi mdi-reply" />
-                      <span>Responder</span>
-                    </button>
-
-                    <button
                       v-if="isMyComment(comment)"
                       class="comment-action-btn delete-btn"
                       :disabled="deletingCommentId === comment.id"
@@ -1238,126 +1281,6 @@
                         :width="2"
                       />
                     </button>
-                  </div>
-
-                  <!-- Replies Toggle -->
-                  <button
-                    v-if="comment.replies && comment.replies.length > 0"
-                    class="toggle-replies-btn"
-                    type="button"
-                    @click="toggleReplies(comment.id)"
-                  >
-                    <i class="mdi" :class="expandedReplies[comment.id] ? 'mdi-chevron-up' : 'mdi-chevron-down'" />
-                    <span v-if="!expandedReplies[comment.id]">
-                      Ver {{ comment.replies.length }} resposta{{ comment.replies.length > 1 ? 's' : '' }}
-                    </span>
-                    <span v-else>Ocultar respostas</span>
-                  </button>
-
-                  <!-- Reply Input -->
-                  <div v-if="replyingTo?.id === comment.id" class="reply-input-area">
-                    <input
-                      v-model="replyText"
-                      :disabled="sendingReply"
-                      maxlength="500"
-                      :placeholder="`Respondendo a ${comment.user?.name || 'Usuário'}...`"
-                      type="text"
-                      @keyup.enter="handleSendReply"
-                      @keyup.esc="cancelReply"
-                    >
-                    <button class="reply-cancel-btn" type="button" @click="cancelReply">
-                      <i class="mdi mdi-close" />
-                    </button>
-                    <button
-                      class="reply-send-btn"
-                      :disabled="!replyText.trim() || sendingReply"
-                      type="button"
-                      @click="handleSendReply"
-                    >
-                      <i v-if="!sendingReply" class="mdi mdi-send" />
-                      <v-progress-circular
-                        v-else
-                        color="#fff"
-                        indeterminate
-                        size="12"
-                        :width="2"
-                      />
-                    </button>
-                  </div>
-
-                  <!-- Nested Replies -->
-                  <div
-                    v-if="comment.replies && comment.replies.length > 0 && expandedReplies[comment.id]"
-                    class="replies-list"
-                  >
-                    <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
-                      <div class="comment-avatar-wrapper">
-                        <img
-                          v-if="reply.user?.profileImage"
-                          :alt="reply.user?.name"
-                          class="comment-avatar small"
-                          :src="resolveAsset(reply.user?.profileImage)"
-                        >
-                        <div
-                          v-else
-                          class="comment-avatar small placeholder"
-                          :style="{ backgroundColor: getCommentAvatarColor(reply.user?.name || '') }"
-                        >
-                          {{ getCommentInitial(reply.user?.name || '') }}
-                        </div>
-                      </div>
-                      <div class="comment-content">
-                        <div class="comment-bubble reply-bubble">
-                          <div class="comment-header">
-                            <span class="comment-author">{{ reply.user?.name || 'Usuário' }}</span>
-                            <span class="comment-time">{{ formatCommentDate(reply.createdAt) }}</span>
-                          </div>
-                          <p class="comment-text">{{ reply.content }}</p>
-                        </div>
-                        <div class="comment-actions">
-                          <button
-                            class="comment-action-btn like-btn"
-                            :class="{ active: isCommentLiked(reply) }"
-                            type="button"
-                            @click="handleToggleLikeComment(reply)"
-                          >
-                            <svg
-                              :fill="isCommentLiked(reply) ? 'currentColor' : 'none'"
-                              height="12"
-                              stroke="currentColor"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              viewBox="0 0 24 24"
-                              width="12"
-                            >
-                              <path
-                                d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
-                              />
-                            </svg>
-                            <span v-if="commentLikesCount(reply) > 0">{{ commentLikesCount(reply) }}</span>
-                          </button>
-                          <button
-                            v-if="isMyComment(reply)"
-                            class="comment-action-btn delete-btn"
-                            :disabled="deletingCommentId === reply.id"
-                            type="button"
-                            @click="handleDeleteComment(reply.id)"
-                          >
-                            <template v-if="deletingCommentId !== reply.id">
-                              <i class="mdi mdi-delete-outline" />
-                            </template>
-                            <v-progress-circular
-                              v-else
-                              color="#ff5fa6"
-                              indeterminate
-                              size="12"
-                              :width="2"
-                            />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1403,21 +1326,26 @@
         </div>
         <button
           class="cta-button"
-          :class="{ confirmed: isConfirmed, disabled: isEventPast }"
-          :disabled="isEventPast"
+          :class="{ 'not-going': isConfirmed, disabled: isEventPast || confirmingAttendance }"
+          :disabled="isEventPast || confirmingAttendance"
           @click="handleConfirmAttendance"
         >
-          <i class="mdi" :class="isConfirmed ? 'mdi-check-circle' : 'mdi-party-popper'" />
-          <span>{{ isEventPast ? 'EVENTO ENCERRADO' : (isConfirmed ? 'CONFIRMADO!' : 'EU VOU!') }}</span>
+          <i
+            v-if="!confirmingAttendance"
+            class="mdi"
+            :class="isConfirmed ? 'mdi-emoticon-sad-outline' : 'mdi-party-popper'"
+          />
+          <v-progress-circular
+            v-else
+            color="#fff"
+            indeterminate
+            size="20"
+            :width="2"
+          />
+          <span>{{ confirmingAttendance ? (isModalCanceling ? 'CANCELANDO...' : 'CONFIRMANDO...') : (isEventPast ? 'EVENTO ENCERRADO' : (isConfirmed ? 'NÃO VOU MAIS' : 'EU VOU!')) }}</span>
         </button>
       </div>
 
-      <!-- Legal Links -->
-      <div class="legal-section">
-        <button class="legal-link" type="button" @click="openTermsModal('terms')">Termos de uso</button>
-        <span class="legal-dot">•</span>
-        <button class="legal-link" type="button" @click="openTermsModal('privacy')">Política de privacidade</button>
-      </div>
     </template>
 
     <!-- Confirmation Modal -->
@@ -1425,15 +1353,25 @@
       <Transition name="modal">
         <div v-if="showConfirmModal" class="modal-overlay" @click.self="showConfirmModal = false">
           <div class="modal-content">
-            <div class="modal-icon">
-              <i class="mdi mdi-party-popper" />
+            <div class="modal-icon" :class="{ 'cancel-icon': isModalCanceling }">
+              <i class="mdi" :class="isModalCanceling ? 'mdi-calendar-remove' : 'mdi-party-popper'" />
             </div>
-            <h3 class="modal-title">Confirmar Presença</h3>
-            <p class="modal-text">Você está prestes a confirmar sua presença em <strong>{{ event.title }}</strong>!</p>
+            <h3 class="modal-title">{{ isModalCanceling ? 'Cancelar Presença' : 'Confirmar Presença' }}</h3>
+            <p class="modal-text">
+              {{ isModalCanceling
+                ? `Deseja cancelar sua presença em`
+                : `Você está prestes a confirmar sua presença em`
+              }} <strong>{{ event.title }}</strong>{{ isModalCanceling ? '?' : '!' }}
+            </p>
             <div class="modal-actions">
-              <button class="modal-btn cancel" @click="showConfirmModal = false">Cancelar</button>
-              <button class="modal-btn confirm" @click="confirmAttendance">
-                <i class="mdi mdi-check" /> Confirmar!
+              <button class="modal-btn cancel" @click="showConfirmModal = false">Voltar</button>
+              <button
+                class="modal-btn"
+                :class="isModalCanceling ? 'cancel-attendance' : 'confirm'"
+                @click="confirmAttendance"
+              >
+                <i class="mdi" :class="isModalCanceling ? 'mdi-close' : 'mdi-check'" />
+                {{ isModalCanceling ? 'Cancelar Presença' : 'Confirmar!' }}
               </button>
             </div>
           </div>
@@ -1702,6 +1640,12 @@
 .status-badge.past {
   background: rgba(158, 158, 158, 0.9);
   color: white;
+}
+
+.status-badge.confirmed {
+  background: rgba(76, 175, 80, 0.95);
+  color: white;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }
 
 @keyframes slideInLeft {
@@ -2551,6 +2495,16 @@
   box-shadow: 0 12px 35px rgba(76, 175, 80, 0.45);
 }
 
+.cta-button.not-going {
+  background: linear-gradient(135deg, #78909C 0%, #90A4AE 100%);
+  box-shadow: 0 8px 25px rgba(120, 144, 156, 0.35);
+}
+
+.cta-button.not-going:hover {
+  background: linear-gradient(135deg, #607D8B 0%, #78909C 100%);
+  box-shadow: 0 12px 35px rgba(96, 125, 139, 0.45);
+}
+
 .cta-button.disabled,
 .cta-button:disabled {
   opacity: 0.5;
@@ -3013,6 +2967,21 @@
 .modal-btn.confirm:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(255, 95, 166, 0.4);
+}
+
+.modal-btn.cancel-attendance {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5253 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(238, 82, 83, 0.3);
+}
+
+.modal-btn.cancel-attendance:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(238, 82, 83, 0.4);
+}
+
+.modal-icon.cancel-icon {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5253 100%);
 }
 
 /* Modal Transitions */
@@ -3642,13 +3611,20 @@
    ================================ */
 
 .tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
   background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
   color: white;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  padding: 0.15rem 0.45rem;
-  border-radius: 50px;
+  padding: 0 0.35rem;
+  border-radius: 50%;
   margin-left: 0.35rem;
+  box-sizing: border-box;
+  border: 1px solid white;
 }
 
 .comments-panel {

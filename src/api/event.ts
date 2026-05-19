@@ -282,10 +282,10 @@ export async function getFavoriteEvents (page = 1, limit = 10) {
 }
 
 /**
- * Confirma ou cancela presença em um evento.
+ * Confirma presença em um evento.
  * @param eventId - ID do evento.
  */
-export async function toggleAttendance (eventId: string | number) {
+export async function confirmAttendance (eventId: string | number) {
   try {
     const response = await callApi(
       'PUT',
@@ -298,6 +298,51 @@ export async function toggleAttendance (eventId: string | number) {
     logger.error('Erro ao confirmar presença:', error)
     throw error
   }
+}
+
+/**
+ * Cancela presença em um evento.
+ * @param eventId - ID do evento.
+ */
+export async function cancelAttendance (eventId: string | number) {
+  try {
+    const response = await callApi(
+      'DELETE',
+      `/events/${eventId}/attendance`,
+      {},
+      true,
+    )
+    return response
+  } catch (error) {
+    logger.error('Erro ao cancelar presença:', error)
+    throw error
+  }
+}
+
+/**
+ * Verifica se o usuário confirmou presença em um evento.
+ * @param eventId - ID do evento.
+ */
+export async function getMyAttendance (eventId: string | number) {
+  try {
+    const response = await callApi(
+      'GET',
+      `/events/${eventId}/my-attendance`,
+      {},
+      true,
+    )
+    return response
+  } catch (error) {
+    logger.warn('Erro ao verificar minha presença:', error)
+    return { data: { isAttending: false } }
+  }
+}
+
+/**
+ * @deprecated Use confirmAttendance ou cancelAttendance
+ */
+export async function toggleAttendance (eventId: string | number) {
+  return confirmAttendance(eventId)
 }
 
 /**
@@ -314,8 +359,9 @@ export async function getAttendanceStatus (eventId: string | number) {
     )
     return response
   } catch (error) {
-    logger.error('Erro ao verificar presença:', error)
-    throw error
+    // Erro silencioso - endpoint pode não existir para todos os eventos
+    logger.warn('Status de presença não disponível:', error)
+    return { data: { isAttending: false } }
   }
 }
 
@@ -335,6 +381,26 @@ export async function getLikedEvents (page = 1, limit = 10) {
     return response
   } catch (error) {
     logger.error('Erro ao buscar eventos curtidos:', error)
+    throw error
+  }
+}
+
+/**
+ * Busca eventos em que o usuário confirmou presença.
+ * @param page - Página de resultados.
+ * @param limit - Quantidade de eventos por página.
+ */
+export async function getMyConfirmedEvents (page = 1, limit = 10) {
+  try {
+    const response = await callApi(
+      'GET',
+      `/users/me/attendances?page=${page}&limit=${limit}`,
+      {},
+      true,
+    )
+    return response
+  } catch (error) {
+    logger.error('Erro ao buscar eventos confirmados:', error)
     throw error
   }
 }

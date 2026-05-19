@@ -33,13 +33,14 @@
   /**
    * Mapa de ícones SVG
    * Centraliza todos os ícones para fácil manutenção
+   * Todos usando stroke outline para consistência visual
    */
   const iconPaths = computed<Record<NavIcon, string>>(() => ({
-    home: 'M4 9.5 12 4l8 5.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z',
-    top: 'm4 17 4.5-10 3.5 7 2.5-5 5 8z',
-    bookmark: 'M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1z',
-    bell: 'M18 15v-3a6 6 0 0 0-12 0v3l-1.5 1.5a1 1 0 0 0 .7 1.7H18.8a1 1 0 0 0 .7-1.7z',
-    profile: 'M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 10c-4.418 0-8 2.015-8 4.5V20h16v-1.5c0-2.485-3.582-4.5-8-4.5z',
+    home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    top: 'M3 3h18M3 12h18M3 21h18',
+    bookmark: 'M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z',
+    bell: 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
+    profile: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   }))
 
   /**
@@ -85,10 +86,14 @@
                 class="icon-svg"
                 fill="none"
                 height="20"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
                 viewBox="0 0 24 24"
                 width="20"
               >
-                <path :d="getIconPath(item.icon)" fill="currentColor" />
+                <path :d="getIconPath(item.icon)" />
               </svg>
             </span>
             <span class="nav-label">{{ item.label }}</span>
@@ -106,12 +111,11 @@
 .sidebar {
   --sidebar-padding-right: 1.5rem;
   --sidebar-gap: 2rem;
-  --sidebar-border-radius: 2rem;
   --sidebar-min-height: 540px;
 
   --nav-item-gap: 0.75rem;
   --nav-button-padding: 0.9rem 1rem;
-  --nav-button-border-radius: 1.125rem;
+  --nav-button-border-radius: 1.445rem;
   --nav-icon-size: 2.25rem;
   --nav-icon-border-radius: 0.875rem;
 
@@ -122,7 +126,6 @@
   --gradient-primary: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
 
   --transition-speed: 0.2s;
-  --shadow-active: 0 1.125rem 2.125rem rgba(255, 95, 166, 0.32);
 
   /* Mobile */
   --mobile-z-index: 100;
@@ -162,7 +165,6 @@
   gap: 0.9rem;
   width: 100%;
   padding: var(--nav-button-padding);
-  border: 0;
   border-radius: var(--nav-button-border-radius);
   background: var(--color-bg);
   color: var(--color-text);
@@ -189,7 +191,6 @@
 .nav-button.is-active {
   background: var(--gradient-primary);
   color: var(--color-text-active);
-  box-shadow: var(--shadow-active);
 }
 
 /* ============================================

@@ -99,6 +99,11 @@
       return
     }
     activeNav.value = navId
+
+    // Atualiza a URL para manter o estado após reload
+    router.replace({
+      query: navId === 'home' ? {} : { tab: navId },
+    })
   }
 
   const tabs = computed<TabItem[]>(() => {
@@ -533,6 +538,25 @@
         }
       }
 
+      // Filtra eventos encerrados (com data no passado)
+      const now = new Date()
+      const beforeFilterCount = events.length
+      events = events.filter((event: any) => {
+        const rawDate = event.date || event.startDate || event.dateTime || event.startAt || event.eventDate || event.start_date
+        if (!rawDate) return true // Mantém eventos sem data definida
+        const eventDate = new Date(rawDate)
+        if (Number.isNaN(eventDate.getTime())) return true // Mantém se data inválida
+        return eventDate >= now // Remove eventos passados
+      })
+
+      if (events.length !== beforeFilterCount) {
+        logger.info('📅 Eventos encerrados removidos do feed:', {
+          total: beforeFilterCount,
+          ativos: events.length,
+          removidos: beforeFilterCount - events.length,
+        })
+      }
+
       logger.info('🎯 Final events after deduplication:', {
         count: events.length,
         titles: events.map((e: any) => e.title).slice(0, 5),
@@ -559,13 +583,26 @@
               }),
             )
 
-            // Filtra eventos públicos que não estão duplicados
+            // Filtra eventos públicos que não estão duplicados e não estão encerrados
             const newPublicEvents = publicEvents.filter((event: any) => {
               const title = (event.title || '').trim().toLowerCase()
               const date = event.startDate || ''
               const location = (event.location || '').trim().toLowerCase()
               const key = `${title}|${date}|${location}`
-              return !existingKeys.has(key)
+
+              // Verifica se está duplicado
+              if (existingKeys.has(key)) return false
+
+              // Verifica se está encerrado
+              const rawDate = event.date || event.startDate || event.dateTime || event.startAt || event.eventDate || event.start_date
+              if (rawDate) {
+                const eventDate = new Date(rawDate)
+                if (!Number.isNaN(eventDate.getTime()) && eventDate < now) {
+                  return false // Remove eventos passados
+                }
+              }
+
+              return true
             })
 
             // Adiciona eventos públicos ao final (priorizando personalizados no topo)
@@ -630,8 +667,10 @@
   })
 
   const trends = ref<TrendItem[]>([])
+  const loadingTrends = ref(true)
 
   async function fetchTrends () {
+    loadingTrends.value = true
     try {
       const response = await getTrendingEvents()
       const data = response.data.events || response.data || []
@@ -644,6 +683,8 @@
       }))
     } catch (error) {
       logger.error('Error fetching trends', error)
+    } finally {
+      loadingTrends.value = false
     }
   }
 
@@ -767,10 +808,13 @@
   function handleBackNavigation () {
     if (activeNav.value === 'favorites') {
       activeNav.value = 'top-events'
+      router.replace({ query: { tab: 'top-events' } })
     } else if (activeNav.value === 'top-events') {
       activeNav.value = 'home'
+      router.replace({ query: {} })
     } else {
       activeNav.value = 'home'
+      router.replace({ query: {} })
     }
   }
 
@@ -1266,7 +1310,7 @@
         </p>
       </main>
 
-      <FeedTrendsPanel class="feed-trends" :items="displayedTrends" />
+      <FeedTrendsPanel class="feed-trends" :items="displayedTrends" :loading="loadingTrends" />
     </section>
   </div>
 </template>
@@ -1607,17 +1651,17 @@
   border-radius: 20px;
   background: linear-gradient(135deg, rgba(255, 186, 75, 0.15), rgba(255, 95, 166, 0.15));
   color: #ff5fa6;
-  border: 2px solid rgba(255, 95, 166, 0.3);
+  border: none;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  box-shadow: 0 0 0 2px rgba(255, 95, 166, 0.3);
 }
 
 .scroll-to-top-btn:hover {
   background: linear-gradient(135deg, #ffba4b, #ff5fa6);
   color: white;
-  border-color: transparent;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(255, 95, 166, 0.4);
 }

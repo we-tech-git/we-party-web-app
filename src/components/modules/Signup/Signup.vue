@@ -3,7 +3,7 @@
 // ESTADO E LÓGICA DO FORMULÁRIO
 // ===============================
   import confetti from 'canvas-confetti'
-  import { computed, onMounted, ref, watch } from 'vue'
+  import { computed, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { createUser } from '@/api/users'
   import { STORAGE_KEYS } from '@/common/storage'
@@ -20,69 +20,6 @@
   const checkIconViewBox = computed(() => svgIcons.checkIcon?.viewBox || '0 0 12 12')
 
   const checkIconPaths = computed(() => svgIcons.checkIcon?.paths || [{ d: 'M10 3L4.5 8.5L2 6', strokeLinecap: 'round', strokeLinejoin: 'round' }])
-
-  // ===============================
-  // GERADOR DE DADOS DE TESTE
-  // ===============================
-  function generateRandomUserData () {
-    const firstNames = [
-      'Ana', 'Bruno', 'Carlos', 'Diana', 'Eduardo', 'Fernanda', 'Gabriel', 'Helena',
-      'Igor', 'Julia', 'Kleber', 'Larissa', 'Marcelo', 'Natália', 'Oscar', 'Patrícia',
-      'Rafael', 'Sofia', 'Thiago', 'Valentina', 'Wagner', 'Ximena', 'Yuri', 'Zara',
-    ]
-
-    const lastNames = [
-      'Silva', 'Santos', 'Oliveira', 'Souza', 'Rodrigues', 'Ferreira', 'Alves', 'Pereira',
-      'Lima', 'Gomes', 'Costa', 'Ribeiro', 'Martins', 'Carvalho', 'Barbosa', 'Rocha',
-      'Almeida', 'Nascimento', 'Araújo', 'Melo', 'Cardoso', 'Ramos', 'Nunes', 'Teixeira',
-    ]
-
-    // Gera nome aleatório
-    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)]!
-    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)]!
-    const fullNameGenerated = `${firstName} ${lastName}`
-
-    // Gera email fixo com número randômico de 3 dígitos
-    const randomNumber = Math.floor(Math.random() * 900) + 100 // Gera número entre 100-999
-    const emailGenerated = `teste${randomNumber}@gmail.com`
-
-    // Gera senha que atende aos critérios
-    // const emailGenerated = `contact@wepartyapp.com`
-    const passwordGenerated = `Teste12345@`
-
-    return {
-      fullName: fullNameGenerated,
-      email: emailGenerated,
-      password: passwordGenerated,
-    }
-  }
-
-  function fillFormWithTestData (showFeedback = false) {
-    const testData = generateRandomUserData()
-
-    // Limpa os erros antes de preencher
-    resetErrors()
-
-    fullName.value = testData.fullName
-    email.value = testData.email
-    password.value = testData.password
-    confirmPassword.value = testData.password
-
-    // Atualiza as regras de senha
-    updatePasswordRules(testData.password)
-
-    logger.log('📝 Dados de teste gerados:', {
-      nome: testData.fullName,
-      email: testData.email,
-      senha: testData.password,
-      senhaAtendeCriterios: Object.values(passwordRules.value).every(rule => rule === true),
-    })
-
-    // Feedback visual apenas quando solicitado (regeneração manual)
-    if (showFeedback) {
-      showSnackbar('✨ Novos dados de teste gerados!', '#22c55e')
-    }
-  }
 
   const fullName = ref('')
   const email = ref('')
@@ -284,27 +221,6 @@
   watch(password, updatePasswordRules)
 
   // ===============================
-  // INICIALIZAÇÃO DO COMPONENTE
-  // ===============================
-  onMounted(() => {
-    // Preenche automaticamente com dados de teste ao carregar a página
-    const testData = generateRandomUserData()
-
-    fullName.value = testData.fullName
-    email.value = testData.email
-    password.value = testData.password
-    confirmPassword.value = testData.password
-
-    updatePasswordRules(testData.password)
-
-    logger.log('🚀 Página carregada com dados de teste:', {
-      nome: testData.fullName,
-      email: testData.email,
-      senha: testData.password,
-    })
-  })
-
-  // ===============================
   // AUTENTICAÇÃO SOCIAL
   // ===============================
   async function handleGoogleAuth () {
@@ -369,17 +285,7 @@
         </svg>
       </a>
       <h2 class="mobile-brand-title notranslate" translate="no">WE PARTY</h2>
-      <div class="title-container">
-        <h1 class="text-3xl font-bold">{{ $t('signup.title') }}</h1>
-        <button
-          class="regenerate-btn"
-          title="Gerar novos dados de teste"
-          type="button"
-          @click="() => fillFormWithTestData(true)"
-        >
-          🎲
-        </button>
-      </div>
+      <h1 class="text-3xl font-bold">{{ $t('signup.title') }}</h1>
       <p class="subtitle">{{ $t('signup.subtitle') }}</p>
       <form @submit.prevent="validateForm">
         <div class="inputs-container">
@@ -521,7 +427,7 @@
           {{ $t('signup.hasAccount') }}
           <a href="/public/login">{{ $t('signup.loginLink') }}</a>
         </p>
-        <button :aria-busy="isSubmitting" class="btn-primary" :disabled="!isFormValid || isSubmitting" type="submit">
+        <button :aria-busy="isSubmitting" class="btn-primary" :disabled="isSubmitting" type="submit">
           <span v-if="isSubmitting" aria-hidden="true" class="loader" />
           <span>{{ isSubmitting ? 'Enviando...' : $t('signup.button') }}</span>
         </button>
@@ -646,13 +552,6 @@
   height: 32px;
 }
 
-.title-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
 h1 {
   font-size: 1.875rem;
   font-weight: 700;
@@ -662,23 +561,6 @@ h1 {
 
 .auth-title {
   margin: 0;
-}
-
-.regenerate-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  opacity: 0.6;
-}
-
-.regenerate-btn:hover {
-  opacity: 1;
-  background-color: rgba(249, 115, 22, 0.1);
-  transform: scale(1.1);
 }
 
 .subtitle {

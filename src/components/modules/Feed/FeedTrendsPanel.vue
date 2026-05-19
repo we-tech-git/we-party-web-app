@@ -12,17 +12,24 @@
 
   const props = defineProps<{
     items: TrendItem[]
+    loading?: boolean
   }>()
 
   const { t } = useI18n()
 
-  const visibleCount = ref(5)
+  const INITIAL_COUNT = 5
+  const visibleCount = ref(INITIAL_COUNT)
 
   const visibleItems = computed(() => props.items.slice(0, visibleCount.value))
   const hasMore = computed(() => props.items.length > visibleCount.value)
+  const isExpanded = computed(() => visibleCount.value > INITIAL_COUNT)
 
   function showMore () {
     visibleCount.value += 5
+  }
+
+  function showLess () {
+    visibleCount.value = INITIAL_COUNT
   }
 
   function goToMainEvent (eventItem: TrendItem) {
@@ -38,7 +45,17 @@
       <p>{{ t('feed.trending.subtitle') }}</p>
     </header>
 
-    <ul>
+    <!-- Skeleton Loading -->
+    <div v-if="loading" class="trends-skeleton">
+      <div v-for="n in 5" :key="n" class="skeleton-item">
+        <div class="skeleton-label" />
+        <div class="skeleton-title" />
+        <div class="skeleton-meta" />
+      </div>
+    </div>
+
+    <!-- Trends List -->
+    <ul v-else>
       <li v-for="item in visibleItems" :key="item.id">
         <span class="label">{{ item.highlight }}</span>
         <button class="main-trending-button" @click="goToMainEvent(item)">{{ item.title }}</button>
@@ -46,7 +63,16 @@
       </li>
     </ul>
 
-    <button v-if="hasMore" class="more" type="button" @click="showMore">Mostrar mais</button>
+    <div v-if="!loading" class="trends-actions">
+      <button v-if="hasMore" class="more" type="button" @click="showMore">
+        <i class="mdi mdi-chevron-down" />
+        Mostrar mais
+      </button>
+      <button v-if="isExpanded" class="less" type="button" @click="showLess">
+        <i class="mdi mdi-chevron-up" />
+        Mostrar menos
+      </button>
+    </div>
   </aside>
 </template>
 
@@ -120,8 +146,18 @@ strong {
   text-decoration: underline;
 }
 
-.more {
-  align-self: flex-start;
+.trends-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.more,
+.less {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   padding: 0.55rem 1.35rem;
   border-radius: 999px;
   border: none;
@@ -130,10 +166,73 @@ strong {
   font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.more:hover {
+.more i,
+.less i {
+  font-size: 1rem;
+}
+
+.more:hover,
+.less:hover {
   background: linear-gradient(135deg, rgba(255, 138, 91, 0.25), rgba(255, 95, 166, 0.25));
+}
+
+.less {
+  background: linear-gradient(135deg, rgba(158, 158, 158, 0.15), rgba(120, 120, 120, 0.15));
+  color: #666;
+}
+
+.less:hover {
+  background: linear-gradient(135deg, rgba(158, 158, 158, 0.25), rgba(120, 120, 120, 0.25));
+}
+
+/* Skeleton Loading */
+.trends-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.skeleton-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.65rem 0;
+}
+
+.skeleton-label,
+.skeleton-title,
+.skeleton-meta {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+.skeleton-label {
+  width: 40%;
+  height: 12px;
+}
+
+.skeleton-title {
+  width: 85%;
+  height: 18px;
+}
+
+.skeleton-meta {
+  width: 30%;
+  height: 12px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 @media (max-width: 1240px) {
