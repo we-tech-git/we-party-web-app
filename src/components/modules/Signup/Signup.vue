@@ -7,6 +7,7 @@
   import { useI18n } from 'vue-i18n'
   import { createUser } from '@/api/users'
   import { STORAGE_KEYS } from '@/common/storage'
+  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
@@ -427,9 +428,9 @@
           {{ $t('signup.hasAccount') }}
           <a href="/public/login">{{ $t('signup.loginLink') }}</a>
         </p>
-        <button :aria-busy="isSubmitting" class="btn-primary" :disabled="isSubmitting" type="submit">
-          <span v-if="isSubmitting" aria-hidden="true" class="loader" />
-          <span>{{ isSubmitting ? 'Enviando...' : $t('signup.button') }}</span>
+        <button :aria-busy="isSubmitting" class="btn-primary flex items-center justify-center gap-2" :disabled="isSubmitting" type="submit">
+          <AppLoader v-if="isSubmitting" size="sm" text="Enviando..." variant="text" />
+          <span v-else>{{ $t('signup.button') }}</span>
         </button>
 
         <!-- Botões de autenticação social -->
@@ -854,25 +855,6 @@ h1 {
 
 .login-link-text a:hover {
   text-decoration: underline;
-}
-
-.loader {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.45);
-  border-top-color: #ffffff;
-  border-radius: 50%;
-  animation: loader-spin 0.8s linear infinite;
-}
-
-@keyframes loader-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .submit-button.active:hover {

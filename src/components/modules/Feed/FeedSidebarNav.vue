@@ -128,7 +128,7 @@
   --transition-speed: 0.2s;
 
   /* Mobile */
-  --mobile-z-index: 100;
+  --mobile-z-index: 1000;
   --mobile-padding: 0.75rem 1rem;
   --mobile-border-radius: 1.5rem 1.5rem 0 0;
   --mobile-shadow: 0 -0.625rem 2.5rem rgba(20, 27, 68, 0.15);
@@ -228,12 +228,40 @@
 }
 
 /* ============================================
-   RESPONSIVE - MOBILE (Bottom Navigation)
+   RESPONSIVE - COMPACT SIDEBAR (1024px range)
+   Sidebar icon-only: labels hidden, icons centered
+   ============================================ */
+@media (max-width: 1100px) {
+  .sidebar {
+    padding-right: 0;
+    align-items: center;
+  }
+
+  .nav-button {
+    justify-content: center;
+    gap: 0;
+    padding: 0.75rem;
+    width: auto;
+    min-width: 2.75rem;
+  }
+
+  .nav-label {
+    display: none;
+  }
+
+  .nav-icon {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
+/* ============================================
+   RESPONSIVE - MOBILE (Bottom Navigation - Instagram Style)
    ============================================ */
 @media (max-width: 960px) {
   .sidebar {
-    position: fixed;
-    inset: auto 0 0 0;
+    position: fixed !important;
+    inset: auto 0 0 0 !important;
     /* top auto, right 0, bottom 0, left 0 */
     width: 100%;
     height: auto;
@@ -244,9 +272,13 @@
     z-index: var(--mobile-z-index);
     flex-direction: row;
     justify-content: center;
-    box-shadow: var(--mobile-shadow);
+    box-shadow: 0 -4px 30px rgba(20, 27, 68, 0.12);
     gap: 0;
-    background: var(--color-bg);
+    /* Glass effect */
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid rgba(255, 255, 255, 0.6);
     margin-top: 0;
   }
 
@@ -298,13 +330,18 @@
     box-shadow: 0 0.25rem 0.75rem rgba(255, 95, 166, 0.4);
   }
 
+  .nav-button:active {
+    transform: scale(0.92);
+  }
+
   .nav-icon {
-    width: 1.75rem;
-    /* 28px */
-    height: 1.75rem;
+    width: 2rem;
+    /* 32px - melhor área de toque */
+    height: 2rem;
     background: transparent;
     border-radius: 0.625rem;
     /* 10px */
+    transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
   }
 
   .nav-label {
@@ -318,6 +355,44 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border-width: 0;
+  }
+}
+
+/* Mobile Extra Small */
+@media (max-width: 400px) {
+  .sidebar {
+    padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .nav-button {
+    min-width: 3rem;
+    padding: 0.4rem;
+  }
+
+  .nav-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+}
+
+/* Fallback for browsers without backdrop-filter */
+@supports not (backdrop-filter: blur(20px)) {
+  @media (max-width: 960px) {
+    .sidebar {
+      background: rgba(255, 255, 255, 0.98);
+    }
+  }
+}
+
+/* Force fixed positioning - override any parent styles */
+@media (max-width: 960px) {
+  aside.sidebar {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    z-index: 1000 !important;
   }
 }
 

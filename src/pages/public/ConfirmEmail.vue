@@ -8,6 +8,7 @@
   // VOLTAMOS AO ORIGINAL: Apenas as rotas de PIN
   import { reqeustResendPin, reqeustSendPin } from '@/api/users'
   import { STORAGE_KEYS } from '@/common/storage'
+  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import router from '@/router'
@@ -337,7 +338,7 @@
 
         <!-- Verify Button -->
         <button
-          class="verify-button"
+          class="verify-button flex items-center justify-center gap-2"
           :class="{
             active: isPinComplete && !isVerifying,
             loading: isVerifying
@@ -346,8 +347,8 @@
           type="button"
           @click="verifyPin"
         >
-          <span v-if="isVerifying" aria-hidden="true" class="loader" />
-          <span>{{ isVerifying ? $t('confirmEmail.verifying') : $t('confirmEmail.verify') }}</span>
+          <AppLoader v-if="isVerifying" size="sm" variant="text" :text="$t('confirmEmail.verifying')" />
+          <span v-else>{{ $t('confirmEmail.verify') }}</span>
         </button>
       </div>
 
@@ -621,25 +622,6 @@
 
 .verify-button:disabled {
   cursor: not-allowed;
-}
-
-.loader {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.45);
-  border-top-color: #ffffff;
-  border-radius: 50%;
-  animation: loader-spin 0.8s linear infinite;
-}
-
-@keyframes loader-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .submit-button.active:hover {

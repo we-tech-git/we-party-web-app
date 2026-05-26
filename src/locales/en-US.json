@@ -101,7 +101,7 @@
   "addFriends": {
     "title": "Friends",
     "subtitle": "Add friends to invite to your event",
-    "searchPlaceholder": "Search...",
+    "searchPlaceholder": "Search friends by name or {'@'}username...",
     "send": "send",
     "sent": "sent",
     "finishButton": "FINISH",
@@ -114,7 +114,7 @@
   "interest": {
     "title": "Interests",
     "subtitle": "Add interests to your profile so we can show events that fit you best.",
-    "searchPlaceholder": "Search...",
+    "searchPlaceholder": "Search interests (e.g: Rock, Jazz, Yoga...)",
     "finishButton": "FINISH",
     "brandTitle": { "part1": "Why add", "part2": "interests" },
     "benefit1": "Events that match you better",
@@ -126,6 +126,7 @@
     },
     "searching": "Searching...",
     "noResults": "No results found",
+    "errorLoading": "Error loading interests",
     "loading": "Loading interests...",
     "noResultsTitle": "No interests found",
     "noResultsDescription": "We couldn't find any interests with that name. How about requesting WE Party to add it?",

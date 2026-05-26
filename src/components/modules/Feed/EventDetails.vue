@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import { addEventComment, deleteEventComment, getEventComments, toggleLikeComment } from '@/api/comments'
   import { getEventById, getMyAttendance } from '@/api/event'
   import { useAuth } from '@/composables/useAuth'
@@ -12,6 +13,33 @@
   }>()
 
   const eventsStore = useEventsStore()
+
+  // Mobile detection & responsive states
+  const isMobile = ref(false)
+  const showMobileActions = ref(true)
+  const lastScrollY = ref(0)
+  const scrollDirection = ref<'up' | 'down'>('up')
+
+  function checkMobile () {
+    isMobile.value = window.innerWidth <= 768
+  }
+
+  function handleMobileScroll () {
+    const currentScrollY = window.scrollY
+    const threshold = 50
+
+    if (Math.abs(currentScrollY - lastScrollY.value) < threshold) return
+
+    if (currentScrollY > lastScrollY.value && currentScrollY > 100) {
+      scrollDirection.value = 'down'
+      showMobileActions.value = false
+    } else {
+      scrollDirection.value = 'up'
+      showMobileActions.value = true
+    }
+
+    lastScrollY.value = currentScrollY
+  }
 
   interface FaqItem {
     icon: string
@@ -538,6 +566,8 @@
 
   onUnmounted(() => {
     if (countdownInterval) clearInterval(countdownInterval)
+    window.removeEventListener('resize', checkMobile)
+    window.removeEventListener('scroll', handleMobileScroll)
   })
 
   function resolveEventDate (data: any): Date | null {
@@ -787,6 +817,11 @@
   onMounted(() => {
     const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
     if (id) fetchEventDetails(id)
+
+    // Mobile responsive setup
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    window.addEventListener('scroll', handleMobileScroll, { passive: true })
   })
 
   watch(
@@ -855,11 +890,7 @@
   <div class="event-details-container">
     <!-- Loading State -->
     <div v-if="loading" class="loading-wrapper">
-      <div class="loading-pulse">
-        <div class="pulse-ring" />
-        <div class="pulse-core" />
-      </div>
-      <p class="loading-text">Carregando evento incrível...</p>
+      <AppLoader size="lg" text="Carregando evento incrível..." />
     </div>
 
     <!-- Error State -->
@@ -1218,8 +1249,7 @@
           <div ref="commentsContainer" class="comments-list-container">
             <!-- Loading -->
             <div v-if="commentsLoading" class="comments-loading">
-              <v-progress-circular color="#ff5fa6" indeterminate size="36" />
-              <span>Carregando comentários...</span>
+              <AppLoader size="sm" text="Carregando comentários..." />
             </div>
 
             <!-- Empty State -->
@@ -1419,6 +1449,75 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Mobile Floating Action Bar -->
+    <Teleport to="body">
+      <Transition name="mobile-actions">
+        <div
+          v-if="isMobile && !loading && !errorMessage"
+          class="mobile-action-bar"
+          :class="{ hidden: !showMobileActions }"
+        >
+          <div class="mobile-action-bar-content">
+            <!-- Quick Actions -->
+            <div class="mobile-quick-actions">
+              <button
+                class="mobile-action-btn"
+                :class="{ active: isLiked, disabled: isEventPast }"
+                :disabled="isEventPast"
+                type="button"
+                @click="toggleLike"
+              >
+                <svg
+                  :fill="isLiked ? 'currentColor' : 'none'"
+                  height="20"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="20"
+                >
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+                <span class="mobile-action-count">{{ displayLikes }}</span>
+              </button>
+
+              <button
+                class="mobile-action-btn"
+                :class="{ active: isSaved, disabled: isEventPast }"
+                :disabled="isEventPast"
+                type="button"
+                @click="toggleSave"
+              >
+                <i class="mdi" :class="isSaved ? 'mdi-bookmark' : 'mdi-bookmark-outline'" />
+              </button>
+
+              <button class="mobile-action-btn" type="button" @click="handleShare">
+                <i class="mdi mdi-share-variant" />
+              </button>
+            </div>
+
+            <!-- CTA Button -->
+            <button
+              class="mobile-cta-btn"
+              :class="{ 'not-going': isConfirmed, disabled: isEventPast || confirmingAttendance }"
+              :disabled="isEventPast || confirmingAttendance"
+              type="button"
+              @click="handleConfirmAttendance"
+            >
+              <template v-if="!confirmingAttendance">
+                <i class="mdi" :class="isConfirmed ? 'mdi-check-circle' : 'mdi-party-popper'" />
+                <span>{{ isEventPast ? 'ENCERRADO' : (isConfirmed ? 'CONFIRMADO' : 'EU VOU!') }}</span>
+              </template>
+              <template v-else>
+                <v-progress-circular color="#fff" indeterminate size="18" :width="2" />
+              </template>
+            </button>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -1444,69 +1543,6 @@
   justify-content: center;
   padding: 4rem 2rem;
   min-height: 400px;
-}
-
-.loading-pulse {
-  position: relative;
-  width: 80px;
-  height: 80px;
-}
-
-.pulse-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 3px solid transparent;
-  border-top-color: #ff5fa6;
-  border-right-color: #ffba4b;
-  animation: spin 1s linear infinite;
-}
-
-.pulse-core {
-  position: absolute;
-  inset: 15px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.loading-text {
-  margin-top: 1.5rem;
-  color: #666;
-  font-weight: 500;
-  animation: fadeInOut 1.5s ease-in-out infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes pulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-
-  50% {
-    transform: scale(0.8);
-    opacity: 0.7;
-  }
-}
-
-@keyframes fadeInOut {
-
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-
-  50% {
-    opacity: 1;
-  }
 }
 
 /* Error State */
@@ -4016,6 +4052,1450 @@
 
   .replies-list {
     padding-left: 0.75rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE FLOATING ACTION BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.mobile-action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9998;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 252, 254, 0.99) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 95, 166, 0.12);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.08);
+  padding: 0.75rem 1rem;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  transform: translateY(0);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+.mobile-action-bar.hidden {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+.mobile-action-bar-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.mobile-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mobile-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 14px;
+  background: rgba(245, 245, 247, 0.9);
+  color: #555;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.mobile-action-btn:active {
+  transform: scale(0.92);
+}
+
+.mobile-action-btn.active {
+  background: linear-gradient(135deg, rgba(255, 95, 166, 0.15) 0%, rgba(255, 186, 75, 0.15) 100%);
+  color: #ff5fa6;
+}
+
+.mobile-action-btn.disabled,
+.mobile-action-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.mobile-action-count {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(255, 95, 166, 0.3);
+}
+
+.mobile-cta-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  min-width: 140px;
+  max-width: 200px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(255, 95, 166, 0.35);
+}
+
+.mobile-cta-btn:active {
+  transform: scale(0.96);
+}
+
+.mobile-cta-btn.not-going {
+  background: linear-gradient(135deg, #4CAF50 0%, #81C784 100%);
+  box-shadow: 0 4px 20px rgba(76, 175, 80, 0.35);
+}
+
+.mobile-cta-btn.disabled,
+.mobile-cta-btn:disabled {
+  background: linear-gradient(135deg, #999 0%, #777 100%);
+  box-shadow: none;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.mobile-cta-btn i {
+  font-size: 1.1rem;
+}
+
+/* Mobile Actions Transition */
+.mobile-actions-enter-active,
+.mobile-actions-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-actions-enter-from {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+.mobile-actions-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ENHANCED RESPONSIVE STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Tablet & Small Desktop (max-width: 900px) */
+@media (max-width: 900px) {
+  .event-details-container {
+    border-radius: 20px;
+  }
+
+  .hero-section {
+    height: 340px;
+  }
+
+  .floating-actions {
+    gap: 0.6rem;
+  }
+
+  .fab-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 1.15rem;
+  }
+
+  .stats-bar {
+    padding: 1rem 0.75rem;
+  }
+
+  .countdown-item {
+    padding: 0.6rem 0.9rem;
+    min-width: 55px;
+  }
+
+  .countdown-value {
+    font-size: 1.5rem;
+  }
+}
+
+/* Mobile Large (max-width: 768px) */
+@media (max-width: 768px) {
+  .event-details-container {
+    border-radius: 16px;
+    margin-bottom: 80px;
+  }
+
+  .hero-section {
+    height: 300px;
+  }
+
+  .hero-title {
+    font-size: 1.6rem;
+    line-height: 1.25;
+  }
+
+  .hero-content {
+    bottom: 24px;
+    left: 20px;
+    right: 20px;
+  }
+
+  .floating-actions {
+    top: 16px;
+    right: 16px;
+    gap: 0.5rem;
+  }
+
+  .fab-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1.05rem;
+  }
+
+  .fab-count {
+    min-width: 20px;
+    height: 20px;
+    font-size: 0.65rem;
+    bottom: -6px;
+    right: -6px;
+  }
+
+  .status-badge {
+    top: 16px;
+    left: 16px;
+    font-size: 0.75rem;
+    padding: 0.4rem 0.85rem;
+  }
+
+  .category-pills {
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .category-pill {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.75rem;
+  }
+
+  .countdown-section {
+    padding: 1rem;
+  }
+
+  .countdown-grid {
+    gap: 0.35rem;
+  }
+
+  .countdown-item {
+    padding: 0.5rem 0.6rem;
+    min-width: 48px;
+    border-radius: 12px;
+  }
+
+  .countdown-value {
+    font-size: 1.35rem;
+  }
+
+  .countdown-unit {
+    font-size: 0.65rem;
+  }
+
+  .countdown-separator {
+    font-size: 1.1rem;
+  }
+
+  .stats-bar {
+    padding: 0.85rem 0.75rem;
+    gap: 0.4rem;
+  }
+
+  .stat-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    font-size: 1rem;
+  }
+
+  .stat-value {
+    font-size: 1.1rem;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+  }
+
+  .stat-divider {
+    height: 32px;
+  }
+
+  .organizer-card {
+    margin: 0.75rem;
+    padding: 1rem;
+    border-radius: 14px;
+  }
+
+  .organizer-avatar {
+    width: 44px;
+    height: 44px;
+  }
+
+  .organizer-name {
+    font-size: 0.95rem;
+  }
+
+  .content-tabs {
+    padding: 0 0.75rem;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .tab-btn {
+    padding: 0.65rem 1rem;
+    font-size: 0.85rem;
+    border-radius: 10px;
+    gap: 0.4rem;
+    min-height: 44px;
+  }
+
+  .tab-btn i {
+    font-size: 1.1rem;
+  }
+
+  .tab-content {
+    padding: 0 0.75rem;
+  }
+
+  .info-card {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+
+  .info-header {
+    font-size: 0.85rem;
+    gap: 0.5rem;
+  }
+
+  .info-header i {
+    font-size: 1.1rem;
+  }
+
+  .info-value {
+    font-size: 0.9rem;
+  }
+
+  .description-text {
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .map-container {
+    height: 220px;
+    border-radius: 14px;
+  }
+
+  .location-card-modern {
+    padding: 1.25rem;
+    border-radius: 16px;
+  }
+
+  .location-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    font-size: 1.3rem;
+  }
+
+  .location-address {
+    font-size: 0.95rem;
+  }
+
+  .map-button {
+    padding: 0.85rem;
+    font-size: 0.95rem;
+    border-radius: 14px;
+  }
+
+  .lineup-card {
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+  }
+
+  .lineup-number {
+    font-size: 1.3rem;
+    min-width: 35px;
+  }
+
+  .lineup-name {
+    font-size: 0.95rem;
+  }
+
+  .lineup-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  /* Hide desktop CTA on mobile */
+  .cta-section {
+    display: none;
+  }
+
+  .external-link-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .external-link-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+  }
+
+  .faqs-section-inline {
+    border-radius: 14px;
+  }
+
+  .faqs-toggle-btn {
+    padding: 1rem;
+  }
+
+  .faqs-icon-wrapper-sm {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 1.2rem;
+  }
+
+  .faqs-content {
+    padding: 1rem;
+  }
+
+  .faq-question {
+    padding: 1rem;
+    font-size: 0.9rem;
+    border-radius: 12px;
+  }
+
+  .faq-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 1.1rem;
+    border-radius: 8px;
+  }
+
+  .faq-answer-content {
+    padding: 1rem;
+    gap: 0.75rem;
+  }
+
+  /* Modal responsivo */
+  .modal-content {
+    padding: 1.75rem 1.5rem;
+    border-radius: 20px;
+    max-width: 90%;
+    margin: 1rem;
+  }
+
+  .modal-icon {
+    width: 70px;
+    height: 70px;
+    font-size: 2.2rem;
+  }
+
+  .modal-title {
+    font-size: 1.35rem;
+  }
+
+  .modal-text {
+    font-size: 0.9rem;
+  }
+
+  .modal-actions {
+    gap: 0.75rem;
+  }
+
+  .modal-btn {
+    padding: 0.85rem 1.25rem;
+    font-size: 0.9rem;
+    border-radius: 10px;
+  }
+}
+
+/* Mobile Standard (max-width: 640px) */
+@media (max-width: 640px) {
+  .event-details-container {
+    border-radius: 14px;
+  }
+
+  .hero-section {
+    height: 260px;
+  }
+
+  .hero-title {
+    font-size: 1.4rem;
+  }
+
+  .hero-content {
+    bottom: 20px;
+    left: 16px;
+    right: 16px;
+  }
+
+  .floating-actions {
+    top: 14px;
+    right: 14px;
+    flex-direction: row;
+    gap: 0.4rem;
+  }
+
+  .fab-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 1rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  }
+
+  .fab-count {
+    min-width: 18px;
+    height: 18px;
+    font-size: 0.6rem;
+    bottom: -5px;
+    right: -5px;
+  }
+
+  .status-badge {
+    top: 14px;
+    left: 14px;
+    font-size: 0.7rem;
+    padding: 0.35rem 0.7rem;
+  }
+
+  .category-pill {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.6rem;
+  }
+
+  .countdown-grid {
+    gap: 0.25rem;
+  }
+
+  .countdown-item {
+    padding: 0.4rem 0.5rem;
+    min-width: 42px;
+    border-radius: 10px;
+  }
+
+  .countdown-value {
+    font-size: 1.15rem;
+  }
+
+  .countdown-unit {
+    font-size: 0.6rem;
+  }
+
+  .countdown-separator {
+    font-size: 1rem;
+  }
+
+  .stats-bar {
+    padding: 0.75rem 0.6rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .stats-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stat-item {
+    flex-shrink: 0;
+  }
+
+  .stat-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 0.95rem;
+  }
+
+  .stat-value {
+    font-size: 1rem;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+  }
+
+  .organizer-card {
+    margin: 0.6rem;
+    padding: 0.85rem;
+    gap: 0.75rem;
+  }
+
+  .organizer-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .organizer-label {
+    font-size: 0.7rem;
+  }
+
+  .organizer-name {
+    font-size: 0.9rem;
+  }
+
+  .content-tabs {
+    padding: 0 0.6rem;
+    gap: 0.35rem;
+  }
+
+  .tab-btn {
+    padding: 0.55rem 0.85rem;
+    font-size: 0.8rem;
+    min-height: 42px;
+  }
+
+  .tab-btn span {
+    display: none;
+  }
+
+  .tab-btn i {
+    font-size: 1.2rem;
+  }
+
+  .tab-content {
+    padding: 0 0.6rem;
+  }
+
+  .info-panel {
+    gap: 0.75rem;
+  }
+
+  .info-card {
+    padding: 0.85rem;
+    border-radius: 12px;
+  }
+
+  .map-container {
+    height: 180px;
+    border-radius: 12px;
+  }
+
+  .location-card-modern {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+
+  .location-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    font-size: 1.2rem;
+  }
+
+  .comments-panel {
+    min-height: 350px;
+    max-height: 450px;
+  }
+
+  .comment-input-section {
+    padding: 0.85rem;
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .comment-input-wrapper {
+    border-radius: 22px;
+    padding: 0.4rem 0.65rem;
+  }
+
+  .comment-input-wrapper input {
+    font-size: 0.9rem;
+    padding: 0.4rem;
+  }
+
+  .send-comment-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .send-comment-btn i {
+    font-size: 1.1rem;
+  }
+}
+
+/* Mobile Small (max-width: 480px) */
+@media (max-width: 480px) {
+  .event-details-container {
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  }
+
+  .hero-section {
+    height: 220px;
+  }
+
+  .hero-title {
+    font-size: 1.2rem;
+    line-height: 1.3;
+  }
+
+  .hero-content {
+    bottom: 16px;
+    left: 14px;
+    right: 14px;
+  }
+
+  .floating-actions {
+    top: 12px;
+    right: 12px;
+  }
+
+  .fab-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 0.95rem;
+  }
+
+  .status-badge {
+    top: 12px;
+    left: 12px;
+    font-size: 0.65rem;
+    padding: 0.3rem 0.6rem;
+    gap: 0.35rem;
+  }
+
+  .status-badge i {
+    font-size: 0.8rem;
+  }
+
+  .category-pills {
+    gap: 0.3rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .category-pill {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  .countdown-section {
+    padding: 0.85rem;
+  }
+
+  .countdown-label {
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .countdown-item {
+    padding: 0.35rem 0.4rem;
+    min-width: 38px;
+    border-radius: 8px;
+  }
+
+  .countdown-value {
+    font-size: 1rem;
+  }
+
+  .countdown-unit {
+    font-size: 0.55rem;
+    margin-top: 0.15rem;
+  }
+
+  .countdown-separator {
+    font-size: 0.9rem;
+  }
+
+  .stat-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+
+  .stat-value {
+    font-size: 0.95rem;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+  }
+
+  .stat-divider {
+    height: 26px;
+  }
+
+  .organizer-card {
+    margin: 0.5rem;
+    padding: 0.75rem;
+    border-radius: 12px;
+    gap: 0.6rem;
+  }
+
+  .organizer-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .content-tabs {
+    padding: 0 0.5rem;
+    gap: 0.3rem;
+  }
+
+  .tab-btn {
+    padding: 0.5rem 0.7rem;
+    min-height: 40px;
+    border-radius: 8px;
+  }
+
+  .tab-btn i {
+    font-size: 1.15rem;
+  }
+
+  .tab-content {
+    padding: 0 0.5rem;
+  }
+
+  .info-card {
+    padding: 0.75rem;
+    border-radius: 10px;
+  }
+
+  .info-header {
+    font-size: 0.8rem;
+  }
+
+  .info-header i {
+    font-size: 1rem;
+  }
+
+  .info-value,
+  .description-text {
+    font-size: 0.85rem;
+  }
+
+  .map-container {
+    height: 160px;
+    border-radius: 10px;
+  }
+
+  .location-card-modern {
+    padding: 0.85rem;
+    border-radius: 12px;
+    gap: 0.75rem;
+  }
+
+  .location-icon-wrapper {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+  }
+
+  .location-label {
+    font-size: 0.7rem;
+  }
+
+  .location-address {
+    font-size: 0.85rem;
+  }
+
+  .map-button {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    border-radius: 10px;
+    gap: 0.5rem;
+  }
+
+  .lineup-card {
+    padding: 0.75rem;
+    border-radius: 12px;
+    gap: 0.75rem;
+  }
+
+  .lineup-number {
+    font-size: 1.1rem;
+    min-width: 30px;
+  }
+
+  .lineup-name {
+    font-size: 0.9rem;
+  }
+
+  .lineup-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
+
+  .external-link-card {
+    padding: 0.85rem;
+    border-radius: 12px;
+  }
+
+  .external-link-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 1.2rem;
+  }
+
+  .external-link-title {
+    font-size: 0.9rem;
+  }
+
+  .external-link-desc {
+    font-size: 0.75rem;
+  }
+
+  .external-link-btn {
+    padding: 0.75rem 0.85rem;
+    font-size: 0.85rem;
+    border-radius: 8px;
+  }
+
+  .faqs-toggle-btn {
+    padding: 0.85rem;
+  }
+
+  .faqs-icon-wrapper-sm {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+    border-radius: 8px;
+  }
+
+  .faqs-toggle-title {
+    font-size: 0.85rem;
+  }
+
+  .faqs-toggle-sub {
+    font-size: 0.7rem;
+  }
+
+  .faqs-chevron {
+    width: 30px;
+    height: 30px;
+    font-size: 1.1rem;
+  }
+
+  .faqs-content {
+    padding: 0.75rem;
+  }
+
+  .faq-item {
+    border-radius: 10px;
+  }
+
+  .faq-question {
+    padding: 0.8rem;
+    font-size: 0.82rem;
+    border-radius: 10px;
+  }
+
+  .faq-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+    border-radius: 6px;
+  }
+
+  .faq-toggle-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 1.1rem;
+  }
+
+  .faq-answer-content {
+    padding: 0.85rem;
+  }
+
+  .faq-answer-content p {
+    font-size: 0.85rem;
+  }
+
+  .faq-answer-icon {
+    font-size: 1.2rem;
+  }
+
+  /* Mobile action bar ajustes */
+  .mobile-action-bar {
+    padding: 0.65rem 0.85rem;
+  }
+
+  .mobile-action-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    font-size: 1.1rem;
+  }
+
+  .mobile-cta-btn {
+    height: 44px;
+    font-size: 0.9rem;
+    border-radius: 12px;
+    min-width: 120px;
+  }
+
+  /* Modal */
+  .modal-content {
+    padding: 1.5rem 1.25rem;
+    margin: 0.75rem;
+    border-radius: 18px;
+  }
+
+  .modal-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 1.8rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .modal-title {
+    font-size: 1.2rem;
+  }
+
+  .modal-text {
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .modal-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Very Small Mobile (max-width: 360px) */
+@media (max-width: 360px) {
+  .hero-section {
+    height: 180px;
+  }
+
+  .hero-title {
+    font-size: 1.05rem;
+  }
+
+  .hero-content {
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+  }
+
+  .floating-actions {
+    top: 10px;
+    right: 10px;
+    gap: 0.3rem;
+  }
+
+  .fab-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+  }
+
+  .fab-count {
+    min-width: 16px;
+    height: 16px;
+    font-size: 0.55rem;
+    bottom: -4px;
+    right: -4px;
+  }
+
+  .status-badge {
+    top: 10px;
+    left: 10px;
+    font-size: 0.6rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .category-pill {
+    font-size: 0.55rem;
+    padding: 0.15rem 0.4rem;
+  }
+
+  .countdown-section {
+    padding: 0.7rem;
+  }
+
+  .countdown-item {
+    min-width: 34px;
+    padding: 0.3rem;
+  }
+
+  .countdown-value {
+    font-size: 0.9rem;
+  }
+
+  .countdown-unit {
+    font-size: 0.5rem;
+  }
+
+  .stats-bar {
+    padding: 0.6rem 0.5rem;
+    gap: 0.3rem;
+  }
+
+  .stat-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+
+  .stat-value {
+    font-size: 0.85rem;
+  }
+
+  .stat-label {
+    font-size: 0.6rem;
+  }
+
+  .stat-item {
+    gap: 0.5rem;
+  }
+
+  .organizer-card {
+    margin: 0.4rem;
+    padding: 0.65rem;
+  }
+
+  .organizer-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+  }
+
+  .content-tabs {
+    padding: 0 0.4rem;
+  }
+
+  .tab-btn {
+    padding: 0.4rem 0.6rem;
+    min-height: 38px;
+  }
+
+  .tab-btn i {
+    font-size: 1.1rem;
+  }
+
+  .tab-content {
+    padding: 0 0.4rem;
+  }
+
+  .info-card {
+    padding: 0.65rem;
+  }
+
+  .map-container {
+    height: 140px;
+  }
+
+  .location-card-modern {
+    padding: 0.7rem;
+  }
+
+  .location-icon-wrapper {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  .map-button {
+    padding: 0.65rem;
+    font-size: 0.85rem;
+  }
+
+  /* Modal compacto */
+  .modal-content {
+    padding: 1.25rem 1rem;
+    margin: 0.5rem;
+    border-radius: 16px;
+  }
+
+  .modal-icon {
+    width: 54px;
+    height: 54px;
+    font-size: 1.6rem;
+  }
+
+  .modal-title {
+    font-size: 1.1rem;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .mobile-action-bar {
+    padding: 0.5rem 0.6rem;
+  }
+
+  .mobile-action-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 1rem;
+  }
+
+  .mobile-cta-btn {
+    height: 40px;
+    font-size: 0.85rem;
+    min-width: 100px;
+    border-radius: 10px;
+  }
+
+  .mobile-cta-btn i {
+    font-size: 1rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOUCH DEVICE OPTIMIZATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (hover: none) and (pointer: coarse) {
+  /* Aumenta áreas de toque */
+  .fab-btn,
+  .tab-btn,
+  .mobile-action-btn,
+  .mobile-cta-btn,
+  .map-button,
+  .external-link-btn,
+  .faq-question,
+  .modal-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Remove hover effects em touch devices */
+  .fab-btn:hover,
+  .tab-btn:hover,
+  .info-card:hover,
+  .lineup-card:hover,
+  .faq-item:hover {
+    transform: none;
+    box-shadow: inherit;
+  }
+
+  /* Active states para feedback visual */
+  .fab-btn:active {
+    transform: scale(0.92);
+    transition: transform 0.1s ease;
+  }
+
+  .tab-btn:active {
+    transform: scale(0.96);
+    background: rgba(255, 95, 166, 0.15);
+  }
+
+  .info-card:active,
+  .lineup-card:active {
+    transform: scale(0.98);
+  }
+
+  .faq-question:active {
+    opacity: 0.9;
+  }
+
+  .map-button:active,
+  .external-link-btn:active {
+    transform: scale(0.97);
+  }
+
+  /* Scroll momentum */
+  .content-tabs,
+  .stats-bar,
+  .comments-list-container {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Safe area insets */
+  .mobile-action-bar {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LANDSCAPE MOBILE OPTIMIZATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .hero-section {
+    height: 150px;
+  }
+
+  .hero-title {
+    font-size: 1rem;
+  }
+
+  .floating-actions {
+    flex-direction: row;
+    top: 8px;
+    right: 8px;
+    gap: 0.3rem;
+  }
+
+  .fab-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+  }
+
+  .countdown-section {
+    padding: 0.6rem;
+  }
+
+  .countdown-item {
+    padding: 0.3rem 0.4rem;
+    min-width: 36px;
+  }
+
+  .countdown-value {
+    font-size: 0.9rem;
+  }
+
+  .stats-bar {
+    padding: 0.5rem;
+  }
+
+  .organizer-card {
+    margin: 0.4rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .content-tabs {
+    margin-bottom: 0.5rem;
+  }
+
+  .mobile-action-bar {
+    padding: 0.35rem 0.6rem;
+    padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
+  }
+
+  .mobile-action-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .mobile-cta-btn {
+    height: 38px;
+    font-size: 0.8rem;
+  }
+
+  .modal-content {
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRINT STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media print {
+  .mobile-action-bar,
+  .floating-actions,
+  .cta-section,
+  .modal-overlay,
+  .terms-modal-overlay {
+    display: none !important;
+  }
+
+  .event-details-container {
+    box-shadow: none;
+    border-radius: 0;
+    margin-bottom: 0;
+  }
+
+  .hero-section {
+    height: auto;
+    page-break-inside: avoid;
+  }
+
+  .hero-image {
+    max-height: 300px;
+    object-fit: contain;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REDUCED MOTION PREFERENCES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .mobile-action-bar {
+    transition: none;
+  }
+
+  .fab-btn,
+  .tab-btn,
+  .info-card,
+  .lineup-card {
+    transition: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HIGH CONTRAST MODE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-contrast: high) {
+  .tab-btn.active {
+    outline: 2px solid #000;
+  }
+
+  .mobile-cta-btn {
+    outline: 2px solid #fff;
+    outline-offset: -2px;
+  }
+
+  .fab-btn:focus,
+  .tab-btn:focus,
+  .mobile-action-btn:focus,
+  .mobile-cta-btn:focus {
+    outline: 3px solid #000;
+    outline-offset: 2px;
   }
 }
 </style>

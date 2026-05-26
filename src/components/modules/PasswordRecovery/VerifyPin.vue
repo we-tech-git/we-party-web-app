@@ -4,6 +4,7 @@
 // ===============================
   import { onMounted, ref } from 'vue'
   import { STORAGE_KEYS } from '@/common/storage'
+  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import router from '@/router'
@@ -65,9 +66,9 @@
         <p class="confirm-subtitle">{{ $t('verifyPin.subtitle', { email: userEmail }) }}</p>
 
         <!-- Verify Button -->
-        <button class="verify-button active" type="button" @click="backToLogin">
-          <span v-if="isVerifying" aria-hidden="true" class="loader" />
-          <span>{{ $t('verifyPin.btn_back_to_login') }}</span>
+        <button class="verify-button active flex items-center justify-center gap-2" type="button" @click="backToLogin">
+          <AppLoader v-if="isVerifying" size="sm" variant="text" :text="$t('verifyPin.btn_back_to_login')" />
+          <span v-else>{{ $t('verifyPin.btn_back_to_login') }}</span>
         </button>
       </div>
 
@@ -345,25 +346,6 @@
 
 .verify-button:disabled {
   cursor: not-allowed;
-}
-
-.loader {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.45);
-  border-top-color: #ffffff;
-  border-radius: 50%;
-  animation: loader-spin 0.8s linear infinite;
-}
-
-@keyframes loader-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .submit-button.active:hover {

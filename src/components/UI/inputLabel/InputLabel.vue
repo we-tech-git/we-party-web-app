@@ -148,10 +148,11 @@
   width: 100%;
   padding: 24px 16px 8px 16px;
   /* espaço para o label flutuante */
-  background-color: #FFFFFF;
+  background-color: #FFFFFF !important;
   border: 1px solid var(--il-border-neutral, #F0F0F0);
   border-radius: 12px;
-  color: var(--il-text, #072961);
+  color: var(--il-text, #072961) !important;
+  -webkit-text-fill-color: var(--il-text, #072961) !important;
   transition: all 0.2s ease-in-out;
   font-size: 1rem;
   box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.04);
@@ -161,7 +162,8 @@
 /* CAMPO: quando preenchido */
 .input-field.filled {
   border-color: var(--il-border-filled, #FFD3B5);
-  color: #212121;
+  color: #212121 !important;
+  -webkit-text-fill-color: #212121 !important;
   font-weight: 500;
 }
 
@@ -171,16 +173,18 @@
 .input-field:focus {
   outline: none;
   border-color: var(--il-border-focus, #f97316);
-  background-color: #fff;
+  background-color: #fff !important;
   box-shadow: 0 0 0 2px var(--il-focus-halo, rgba(249, 115, 22, 0.2));
 }
 
 .input-field::placeholder {
-  color: transparent;
+  color: transparent !important;
+  opacity: 1 !important;
 }
 
 .input-field:focus::placeholder {
-  color: #9ca3af;
+  color: #9ca3af !important;
+  opacity: 1 !important;
 }
 
 .input-field:focus+label {

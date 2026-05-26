@@ -6,6 +6,7 @@
 <script setup lang="ts">
   import axios from 'axios'
   import { onMounted, ref } from 'vue'
+  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import { STORAGE_KEYS } from '@/common/storage'
   import { AuthService } from '@/services/auth'
   import { SocialAuthService } from '@/services/socialAuth'
@@ -244,7 +245,7 @@
       <!-- Google -->
       <button
         class="social-btn google-btn"
-        :class="{ loading: isLoading.google, compact }"
+        :class="{ compact }"
         :disabled="isLoading.google"
         type="button"
         @click="handleGoogleAuth"
@@ -269,7 +270,7 @@
             />
           </svg>
         </span>
-        <span v-else class="spinner" />
+        <AppLoader v-else size="sm" variant="spinner" />
         <span v-if="!compact" class="btn-text">Google</span>
       </button>
     </div>
@@ -386,21 +387,7 @@
   background: #fff5f9;
 }
 
-/* Spinner de carregamento */
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #e5e7eb;
-  border-top-color: #ff5fa6;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 /* Responsivo */
 @media (max-width: 640px) {

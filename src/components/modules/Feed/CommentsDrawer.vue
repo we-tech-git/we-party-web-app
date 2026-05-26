@@ -1001,9 +1001,9 @@
 
 .reply-input-wrapper input {
   flex: 1;
-  background: transparent;
+  background-color: transparent !important;
   border: none;
-  color: #fff;
+  color: #fff !important;
   font-size: 0.82rem;
   outline: none;
   min-width: 0;
@@ -1011,7 +1011,8 @@
 }
 
 .reply-input-wrapper input::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.3) !important;
+  opacity: 1 !important;
 }
 
 .reply-cancel-btn {
@@ -1148,15 +1149,16 @@
   flex: 1;
   padding: 0.45rem 0;
   border: none;
-  background: transparent;
-  color: #fff;
+  background-color: transparent !important;
+  color: #fff !important;
   font-size: 0.88rem;
   outline: none;
   min-width: 0;
 }
 
 .input-wrapper input::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.3) !important;
+  opacity: 1 !important;
 }
 
 .send-btn {

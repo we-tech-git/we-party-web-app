@@ -4,6 +4,7 @@
   import { useRouter } from 'vue-router'
   import { requestPasswordReset } from '@/api/password'
   import { STORAGE_KEYS } from '@/common/storage'
+  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
@@ -96,8 +97,8 @@
           {{ successMessage }}
         </div>
 
-        <button class="btn-primary" :disabled="isLoading" type="submit">
-          <span v-if="isLoading">{{ t('form.loading') }}</span>
+        <button class="btn-primary flex items-center justify-center gap-2" :disabled="isLoading" type="submit">
+          <AppLoader v-if="isLoading" size="sm" variant="text" :text="t('form.loading')" />
           <span v-else>{{ t('forgotPassword.button') }}</span>
         </button>
 

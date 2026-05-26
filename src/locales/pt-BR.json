@@ -100,7 +100,7 @@
   "addFriends": {
     "title": "Amigos",
     "subtitle": "Adicione amigos para convidar ao seu evento",
-    "searchPlaceholder": "Search...",
+    "searchPlaceholder": "Buscar amigos pelo nome ou {'@'}usuário...",
     "send": "enviar",
     "sent": "enviado",
     "finishButton": "CONCLUIR",
@@ -113,7 +113,7 @@
   "interest": {
     "title": "Interesses",
     "subtitle": "Adicione interesses ao seu perfil para te apresentar os eventos que você se identifica mais.",
-    "searchPlaceholder": "Search...",
+    "searchPlaceholder": "Buscar interesses (ex: Rock, Jazz, Yoga...)",
     "finishButton": "CONCLUIR",
     "brandTitle": { "part1": "Por que adicionar", "part2": "interesses" },
     "benefit1": "Eventos que tem mais a sua cara",
@@ -125,6 +125,7 @@
     },
     "searching": "Buscando...",
     "noResults": "Nenhum resultado encontrado",
+    "errorLoading": "Erro ao carregar interesses",
     "loading": "Carregando interesses...",
     "noResultsTitle": "Nenhum interesse encontrado",
     "noResultsDescription": "Não encontramos nenhum interesse com esse nome. Que tal solicitar ao WE Party para adicionar?",

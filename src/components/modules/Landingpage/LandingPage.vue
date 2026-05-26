@@ -820,13 +820,7 @@
 
               <button class="btn-submit" :disabled="sendingEmail" type="submit">
                 <v-icon v-if="!sendingEmail" icon="mdi-send" size="20" />
-                <v-progress-circular
-                  v-else
-                  color="white"
-                  indeterminate
-                  size="20"
-                  width="2"
-                />
+                <v-progress-circular v-else :size="20" :width="2" color="#fff" indeterminate />
                 <span>{{ sendingEmail ? 'Enviando...' : 'Enviar mensagem' }}</span>
               </button>
             </form>

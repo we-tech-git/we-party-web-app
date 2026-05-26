@@ -421,17 +421,34 @@ function isMatchedInterest(tag: string): boolean {
 
 <style scoped>
 .container-main-card-info {
-  grid-template-columns: 1fr 1fr;
-  grid-template-areas: 'sidebar main trends';
-  display: grid;
-  align-items: end;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  width: 100%;
 }
 
 .container-card-info {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin: 0 0 0 auto;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  width: 100%;
+}
+
+@media (min-width: 641px) {
+  .container-main-card-info {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  
+  .container-card-info {
+    flex-direction: column;
+    margin: 0 0 0 auto;
+    width: auto;
+    align-items: flex-end;
+  }
 }
 
 /* ─── CSS variable defaults ─────────────────────────────────────────────── */
@@ -454,9 +471,11 @@ function isMatchedInterest(tag: string): boolean {
     box-shadow 0.35s ease;
   padding: 0.35rem;
   width: 100%;
+  max-width: 100%;
   transform: translateZ(0);
   backface-visibility: hidden;
   will-change: transform;
+  z-index: 1;
 }
 
 .feed-card:hover {
@@ -645,8 +664,8 @@ function isMatchedInterest(tag: string): boolean {
   z-index: 10;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(7, 10, 22, 0.55);
@@ -657,6 +676,9 @@ function isMatchedInterest(tag: string): boolean {
     background 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
     box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
     border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Área de toque mínima para acessibilidade */
+  min-width: 44px;
+  min-height: 44px;
 }
 
 @media (max-width: 768px) {
@@ -670,6 +692,24 @@ function isMatchedInterest(tag: string): boolean {
   transform: scale(1.1);
   box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.45);
   border-color: transparent;
+}
+
+.bookmark:active {
+  transform: scale(0.92);
+}
+
+@media (hover: none) {
+  .bookmark:hover {
+    transform: none;
+    background: rgba(7, 10, 22, 0.55);
+    box-shadow: none;
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+  
+  .bookmark:active {
+    background: linear-gradient(135deg, var(--accent-light), var(--accent));
+    transform: scale(0.92);
+  }
 }
 
 .bookmark.saved {
@@ -847,7 +887,13 @@ function isMatchedInterest(tag: string): boolean {
   flex-wrap: wrap;
   gap: 0.3rem;
   margin-top: 0.35rem;
-  justify-content: end;
+  justify-content: flex-start;
+}
+
+@media (min-width: 641px) {
+  .interest-tags {
+    justify-content: flex-end;
+  }
 }
 
 .interest-tag {
@@ -945,6 +991,7 @@ function isMatchedInterest(tag: string): boolean {
   gap: 0.75rem;
   margin-top: 0.3rem;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .stats {
@@ -955,6 +1002,19 @@ function isMatchedInterest(tag: string): boolean {
   font-weight: 600;
   font-size: 0.88rem;
   color: rgba(255, 255, 255, 0.88);
+}
+
+/* Mobile: Footer sem efeito glass para melhor visualização do card */
+@media (max-width: 480px) {
+  .footer {
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    margin: 0.5rem 0 0;
+    padding: 0.5rem 0;
+    border-radius: 0;
+    gap: 0.5rem;
+  }
 }
 
 .stat {
@@ -969,11 +1029,37 @@ function isMatchedInterest(tag: string): boolean {
   color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
   transition: transform 0.15s ease, color 0.2s ease;
+  /* Área de toque mínima para acessibilidade mobile */
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.25rem;
+  border-radius: 12px;
 }
 
 .stat-action:hover {
   transform: translateY(-1px);
   color: var(--accent-light);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.stat-action:active {
+  transform: scale(0.95);
+}
+
+@media (hover: none) {
+  .stat-action:hover {
+    transform: none;
+    background: transparent;
+  }
+  
+  .stat-action:active {
+    background: rgba(255, 255, 255, 0.12);
+    transform: scale(0.95);
+  }
 }
 
 .stat-action.liked {
@@ -1049,8 +1135,8 @@ function isMatchedInterest(tag: string): boolean {
 .icon-button {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 13px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.08);
@@ -1062,6 +1148,9 @@ function isMatchedInterest(tag: string): boolean {
     box-shadow 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
     border-color 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
   transform: translateZ(0);
+  /* Garantir área de toque mínima em mobile */
+  min-width: 44px;
+  min-height: 44px;
 }
 
 @media (max-width: 768px) {
@@ -1077,9 +1166,21 @@ function isMatchedInterest(tag: string): boolean {
   border-color: transparent;
 }
 
+.icon-button:active {
+  transform: scale(0.95) translateZ(0);
+}
+
 @media (hover: none) {
   .icon-button:hover {
     transform: translateZ(0);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: none;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .icon-button:active {
+    background: linear-gradient(135deg, var(--accent-light), var(--accent));
+    transform: scale(0.95) translateZ(0);
   }
 }
 
@@ -1306,6 +1407,13 @@ function isMatchedInterest(tag: string): boolean {
 
   .media {
     min-height: 260px;
+  }
+
+  /* Garantir que o card não seja cortado */
+  .feed-card {
+    margin: 0;
+    max-width: 100%;
+    width: 100%;
   }
 }
 

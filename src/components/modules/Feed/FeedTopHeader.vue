@@ -206,14 +206,12 @@
   padding: 15px 0;
   position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
+  margin-bottom: 1rem;
+  z-index: 999;
   background: rgba(255, 245, 247, 0.95);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  margin-bottom: 30px;
   transition: all 0.3s ease;
   will-change: transform;
   /* Suporte para safe area em iOS */
@@ -527,9 +525,17 @@
 
 @media (max-width: 960px) {
   .header-inner {
-    flex-direction: column;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
+    padding: 0 0.75rem;
+  }
+
+  .brand-wrapper {
+    order: 1;
+    flex: 0 0 auto;
   }
 
   .brand {
@@ -537,25 +543,55 @@
   }
 
   .user-summary {
-    justify-self: center;
-    position: absolute;
-    top: calc(0.5rem + env(safe-area-inset-top, 0px));
-    right: max(1rem, env(safe-area-inset-right, 0px));
-    padding: 0.5rem 0.75rem;
+    order: 2;
+    position: relative;
+    top: auto;
+    right: auto;
+    padding: 0.2rem;
     min-width: auto;
-    max-width: 200px;
+    max-width: none;
+    /* Mobile: apenas o avatar circular visível */
+    background: transparent;
+    box-shadow: none;
+    border-radius: 50%;
+  }
+
+  .user-summary:hover {
+    box-shadow: none;
+  }
+
+  /* Mobile: Ocultar informações do usuário, mostrar só avatar */
+  .display-user-header {
+    padding: 0;
+    gap: 0;
+    border-radius: 50%;
+  }
+
+  .display-user-header:hover {
+    background: transparent;
   }
 
   .user-info-section {
-    max-width: 120px;
+    display: none;
   }
 
-  .user-name {
-    font-size: 0.85rem;
+  .user-avatar-section .avatar {
+    width: 42px;
+    height: 42px;
+    border: 2px solid rgba(255, 95, 166, 0.3);
+    box-shadow: 0 4px 16px rgba(255, 95, 166, 0.2);
   }
 
-  .user-handle {
-    font-size: 0.7rem;
+  .user-avatar-section .avatar:hover {
+    border-color: rgba(255, 95, 166, 0.5);
+    box-shadow: 0 6px 20px rgba(255, 95, 166, 0.3);
+  }
+
+  .center-container {
+    order: 3;
+    flex: 1 1 100%;
+    width: 100%;
+    padding-top: 0.25rem;
   }
 
   .feed-top-header {
@@ -575,23 +611,12 @@
   }
 
   .user-summary {
-    gap: 0.5rem;
-    padding: 0.4rem 0.6rem;
-    top: calc(0.4rem + env(safe-area-inset-top, 0px));
-    right: max(0.5rem, env(safe-area-inset-right, 0px));
+    padding: 0.15rem;
   }
 
-  .avatar {
-    width: 36px;
-    height: 36px;
-  }
-
-  .user-name {
-    font-size: 0.8rem;
-  }
-
-  .user-handle {
-    display: none;
+  .user-avatar-section .avatar {
+    width: 38px;
+    height: 38px;
   }
 }
 </style>

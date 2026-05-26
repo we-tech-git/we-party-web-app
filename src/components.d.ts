@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AddFriends: typeof import('./components/modules/AddFriends/AddFriends.vue')['default']
     AppFooter: typeof import('./components/AppFooter.vue')['default']
+    AppLoader: typeof import('./components/UI/AppLoader/AppLoader.vue')['default']
     AuthLayout: typeof import('./components/UI/AuthLayout/AuthLayout.vue')['default']
     CommentsDrawer: typeof import('./components/modules/Feed/CommentsDrawer.vue')['default']
     Congratulations: typeof import('./components/modules/Congratulations/Congratulations.vue')['default']
@@ -37,6 +38,7 @@ declare module 'vue' {
     ResetPassword: typeof import('./components/modules/PasswordRecovery/ResetPassword.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SearchInput: typeof import('./components/UI/SearchInput/SearchInput.vue')['default']
     SelectableChip: typeof import('./components/UI/SelectableChip/SelectableChip.vue')['default']
     ShareSheet: typeof import('./components/modules/UI/ShareSheet/ShareSheet.vue')['default']
     Signup: typeof import('./components/modules/Signup/Signup.vue')['default']

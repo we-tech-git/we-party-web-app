@@ -21,8 +21,11 @@
   import { getUserInterests, getUserProfile } from '@/api/users'
 
   import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
+  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useGuestMode } from '@/composables/useGuestMode'
+  import { useLoading } from '@/composables/useLoading'
   import { useEventsStore } from '@/stores/events'
   import { logger } from '@/utils/logger'
   import FeedCard from './FeedCard.vue'
@@ -63,13 +66,26 @@
   const userBio = ref('')
   const userStats = ref({ followers: 0, following: 0 })
 
+  // Mobile trending drawer
+  const showTrendingMobile = ref(false)
+  const isMobile = ref(false)
+
+  // Detecta se é mobile
+  function checkMobile () {
+    isMobile.value = window.innerWidth <= 960
+  }
+
+  // Lifecycle para detectar resize
+  onMounted(() => {
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+  })
+
   const activeNav = ref((route.query.tab as string) || 'home')
   // Inicia sempre com 'for-you'
   const activeTab = ref('for-you')
   const searchQuery = ref('')
-
-  // Timeout para debounce da busca
-  let searchTimeout: ReturnType<typeof setTimeout> | null = null
+  const isSearching = ref(false)
 
   const rawEventDates = ref<Record<string, Date>>({})
 
@@ -475,13 +491,7 @@
         }
       })()
 
-      // Only delay on initial load to avoid flickering, not on load more
-      const waitPromise = isLoadMore ? Promise.resolve() : new Promise(resolve => setTimeout(resolve, 1000))
-
-      const [response] = await Promise.all([
-        fetchPromise,
-        waitPromise,
-      ])
+      const response = await fetchPromise
 
       logger.info('✅ API Response received:', {
         status: response.status,
@@ -666,11 +676,13 @@
     fetchTrends()
   })
 
+  const { startLoading, stopLoading, isLoading: checkLoading } = useLoading()
+
   const trends = ref<TrendItem[]>([])
-  const loadingTrends = ref(true)
+  startLoading('feed:trends') // equivalente ao antigo ref(true)
 
   async function fetchTrends () {
-    loadingTrends.value = true
+    startLoading('feed:trends')
     try {
       const response = await getTrendingEvents()
       const data = response.data.events || response.data || []
@@ -684,7 +696,7 @@
     } catch (error) {
       logger.error('Error fetching trends', error)
     } finally {
-      loadingTrends.value = false
+      stopLoading('feed:trends')
     }
   }
 
@@ -713,8 +725,6 @@
       following: userStats.value.following,
     },
   }))
-
-  const isSearching = computed(() => searchQuery.value.trim().length > 0)
 
   // Filter panel state
   const filterOpen = ref(false)
@@ -818,12 +828,14 @@
     }
   }
 
-  function scrollToTop () {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  const feedMainRef = ref<HTMLElement | null>(null)
 
-  function clearSearch () {
-    searchQuery.value = ''
+  function scrollToTop () {
+    if (feedMainRef.value) {
+      feedMainRef.value.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   async function requestSearchEvents (normalizedSearch: string) {
@@ -834,32 +846,42 @@
     return resp.data.events || resp.data || []
   }
 
-  watch(searchQuery, (newQuerySearch: string) => {
-    if (searchTimeout !== null) {
-      clearTimeout(searchTimeout)
-    }
-
-    const normalized = newQuerySearch.trim()
+  // Handler para o evento search do SearchInput (já com debounce)
+  async function handleSearch (query: string) {
+    const normalized = query.trim()
 
     if (!normalized) {
-      loading.value = false
+      isSearching.value = false
       filteredItems.value = items.value
       return
     }
 
-    loading.value = true
+    isSearching.value = true
 
-    searchTimeout = setTimeout(async () => {
-      try {
-        const events = await requestSearchEvents(normalized)
-        filteredItems.value = (events || []).map((event: any) => mapEventToFeedItem(event))
-      } catch (error) {
-        logger.error(error)
-        filteredItems.value = []
-      } finally {
-        loading.value = false
-      }
-    }, 500)
+    try {
+      const events = await requestSearchEvents(normalized)
+      filteredItems.value = (events || []).map((event: any) => mapEventToFeedItem(event))
+    } catch (error) {
+      logger.error(error)
+      filteredItems.value = []
+    } finally {
+      isSearching.value = false
+    }
+  }
+
+  // Handler para limpar a busca
+  function handleClearSearch () {
+    filteredItems.value = items.value
+    isSearching.value = false
+  }
+
+  // Mantém activeNav em sincronia quando o query param muda externamente
+  // (back/forward do browser, navegação direta pela URL, links externos)
+  watch(() => route.query.tab as string | undefined, (newTab = 'home') => {
+    const navId = newTab
+    if (activeNav.value !== navId) {
+      activeNav.value = navId
+    }
   })
 
   watch(activeTab, () => {
@@ -875,15 +897,19 @@
 
     // Reset active tab when switching nav sections
     if (val === 'home') {
-      // Sempre inicia com 'for-you'
       activeTab.value = 'for-you'
     } else if (val === 'top-events') {
-      // Top-events não tem abas, então usa 'for-you' como valor padrão
       activeTab.value = 'for-you'
     }
 
     if (searchQuery.value) {
       searchQuery.value = ''
+    }
+
+    if (feedMainRef.value) {
+      feedMainRef.value.scrollTo({ top: 0, behavior: 'instant' })
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' })
     }
 
     if (val === 'favorites') {
@@ -979,34 +1005,17 @@
     <FeedTopHeader :guest-mode="props.guestMode" :user="user">
       <template #center-content>
         <section class="feed-controls">
-          <label class="search" role="search">
-            <span aria-hidden="true" class="search-icon">
-              <svg fill="none" height="18" viewBox="0 0 24 24" width="18">
-                <path
-                  d="M21 21l-4.35-4.35m0 0A6.75 6.75 0 1 0 7.96 7.96a6.75 6.75 0 0 0 8.69 8.69z"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.8"
-                />
-              </svg>
-            </span>
-            <input
+          <div class="search-wrapper">
+            <SearchInput
               v-model="searchQuery"
               :aria-label="t('feed.searchAria')"
+              :loading="isSearching"
               :placeholder="t('feed.searchPlaceholder')"
-              type="search"
-            >
-            <button
-              v-if="isSearching"
-              :aria-label="t('feed.actions.clearSearch')"
-              class="clear"
-              type="button"
-              @click="clearSearch"
-            >
-              ✕
-            </button>
-          </label>
+              size="large"
+              @clear="handleClearSearch"
+              @search="handleSearch"
+            />
+          </div>
 
           <Transition name="filter-expand">
             <div v-if="filterOpen" class="filter-panel">
@@ -1038,48 +1047,11 @@
                 </div>
 
                 <div v-if="showCategorySearch" class="category-search-box">
-                  <span class="search-box-icon">
-                    <svg
-                      fill="none"
-                      height="14"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                      width="14"
-                    >
-                      <circle cx="11" cy="11" r="8" />
-                      <path d="m21 21-4.35-4.35" />
-                    </svg>
-                  </span>
-                  <input
-                    ref="categorySearchInput"
+                  <SearchInput
                     v-model="categorySearchQuery"
-                    autocomplete="off"
-                    class="category-search-input"
-                    placeholder="Ex: Rock, Yoga, Cinema..."
-                    type="text"
-                  >
-                  <button
-                    v-if="categorySearchQuery"
-                    class="search-clear-btn"
-                    type="button"
-                    @click="categorySearchQuery = ''"
-                  >
-                    <svg
-                      fill="none"
-                      height="14"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2.5"
-                      viewBox="0 0 24 24"
-                      width="14"
-                    >
-                      <path d="M18 6 6 18M6 6l12 12" />
-                    </svg>
-                  </button>
+                    placeholder="Buscar categorias..."
+                    size="small"
+                  />
                 </div>
 
                 <!-- Contador de resultados -->
@@ -1184,7 +1156,7 @@
         @select="handleNavSelect"
       />
 
-      <main class="feed-main">
+      <main ref="feedMainRef" class="feed-main">
         <!-- Breadcrumb Navigation -->
         <div v-if="activeNav !== 'home'" class="breadcrumb-nav">
           <button class="breadcrumb-back" type="button" @click="handleBackNavigation">
@@ -1234,7 +1206,7 @@
         </nav>
 
         <div v-if="loading" class="loading-state">
-          <v-progress-circular color="#ff5fa6" indeterminate size="64" />
+          <AppLoader size="lg" text="Carregando feed..." variant="spinner" />
         </div>
         <section v-else-if="displayedItems.length > 0" class="cards-stack">
           <FeedCard
@@ -1275,8 +1247,8 @@
             type="button"
             @click="activeNav === 'favorites' ? fetchFavoriteEvents(true) : fetchEvents(true)"
           >
-            <span v-if="loadingMore" class="spinner" />
-            {{ loadingMore ? 'Carregando' : 'Carregar mais eventos' }}
+            <AppLoader v-if="loadingMore" size="sm" text="Carregando mais..." variant="text" />
+            <span v-else>Carregar mais eventos</span>
           </button>
           <button class="scroll-to-top-btn" type="button" @click="scrollToTop">
             <svg
@@ -1310,17 +1282,88 @@
         </p>
       </main>
 
-      <FeedTrendsPanel class="feed-trends" :items="displayedTrends" :loading="loadingTrends" />
+      <FeedTrendsPanel class="feed-trends" :items="displayedTrends" :loading="checkLoading('feed:trends')" />
     </section>
+
+    <!-- Mobile Trending FAB Button -->
+    <Transition name="fab-fade">
+      <button
+        v-if="isMobile && !showTrendingMobile && displayedTrends.length > 0"
+        aria-label="Ver tendências"
+        class="trending-fab"
+        type="button"
+        @click="showTrendingMobile = true"
+      >
+        <svg
+          fill="none"
+          height="22"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="22"
+        >
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+          <polyline points="17 6 23 6 23 12" />
+        </svg>
+        <span class="fab-badge">{{ displayedTrends.length }}</span>
+      </button>
+    </Transition>
+
+    <!-- Mobile Trending Bottom Sheet -->
+    <Transition name="bottom-sheet">
+      <div v-if="showTrendingMobile" class="trending-overlay" @click.self="showTrendingMobile = false">
+        <div class="trending-sheet">
+          <div class="sheet-header">
+            <div class="sheet-handle" />
+            <h3 class="sheet-title">🔥 {{ t('feed.trending.title') }}</h3>
+            <button aria-label="Fechar" class="sheet-close" type="button" @click="showTrendingMobile = false">
+              <svg
+                fill="none"
+                height="20"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+                width="20"
+              >
+                <line x1="18" x2="6" y1="6" y2="18" />
+                <line x1="6" x2="18" y1="6" y2="18" />
+              </svg>
+            </button>
+          </div>
+          <div class="sheet-content">
+            <ul class="trending-list-mobile">
+              <li
+                v-for="(item, index) in displayedTrends"
+                :key="item.id"
+                class="trending-item-mobile"
+                @click="router.push(`/private/event/${item.id}`); showTrendingMobile = false"
+              >
+                <span class="trend-rank">{{ index + 1 }}</span>
+                <div class="trend-info">
+                  <span class="trend-highlight">{{ item.highlight }}</span>
+                  <span class="trend-title">{{ item.title }}</span>
+                  <span class="trend-engagement">{{ item.engagement }}</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <style scoped>
 .feed-page {
-  min-height: 100vh;
+  height: 100vh;
   background: linear-gradient(142.35deg, rgba(252, 162, 89, 0.07) -1.66%, rgba(255, 98, 159, 0.11) 100.44%);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .feed-shell {
@@ -1331,31 +1374,26 @@
   column-gap: 1rem;
   row-gap: 0;
   width: min(100%, 1280px);
-  margin: 0 auto 3.5rem;
+  margin: 0 auto;
   background: transparent;
   border-radius: 0;
   box-shadow: none;
-  align-items: start;
+  align-items: stretch;
   padding: 0 1rem;
-  --feed-sticky-offset: clamp(96px, 12vw, 140px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .feed-sidebar {
   grid-area: sidebar;
-  position: sticky;
-  top: 100px;
-  /* Offset para ficar abaixo do header sticky */
-  align-self: flex-start;
-  max-height: calc(100vh - 120px);
   overflow-y: auto;
   scrollbar-width: none;
-  /* Firefox */
   z-index: 10;
 }
 
 .feed-sidebar::-webkit-scrollbar {
   display: none;
-  /* Chrome, Safari */
 }
 
 .feed-main {
@@ -1363,26 +1401,27 @@
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
-  min-height: 100vh;
-  /* Garante que o conteúdo possa rolar */
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: none;
+  position: relative;
+  z-index: 1;
+  padding-bottom: 3rem;
+}
+
+.feed-main::-webkit-scrollbar {
+  display: none;
 }
 
 .feed-trends {
   grid-area: trends;
-  position: sticky;
-  top: 100px;
-  /* Offset para ficar abaixo do header sticky */
-  align-self: flex-start;
-  max-height: calc(100vh - 120px);
   overflow-y: auto;
   scrollbar-width: none;
-  /* Firefox */
   z-index: 10;
 }
 
 .feed-trends::-webkit-scrollbar {
   display: none;
-  /* Chrome, Safari */
 }
 
 .feed-controls {
@@ -1405,46 +1444,24 @@
   }
 }
 
-.search {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.85rem 1rem 0.85rem 3.25rem;
+.search-wrapper {
+  width: 100%;
+}
+
+/* Estilo personalizado para o SearchInput no Feed (tamanho large com sombra) */
+.search-wrapper :deep(.search-input-container) {
+  box-shadow: 0 20px 45px rgba(14, 23, 58, 0.12);
+  border-radius: 20px;
+}
+
+.search-wrapper :deep(.search-input-field) {
   border-radius: 20px;
   background: #ffffff;
-  box-shadow: 0 20px 45px rgba(14, 23, 58, 0.12);
-  font-size: 0.95rem;
+  border-color: transparent;
 }
 
-.search input {
-  width: 100%;
-  border: none;
-  font-size: 0.95rem;
-  color: #2f3557;
-}
-
-.search input:focus {
-  outline: none;
-}
-
-.search-icon {
-  position: absolute;
-  left: 1.3rem;
-  color: #a4aac6;
-}
-
-.clear {
-  position: absolute;
-  right: 1rem;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  border: none;
-  background: rgba(255, 95, 166, 0.15);
-  color: #ff5fa6;
-  font-size: 0.9rem;
-  cursor: pointer;
+.search-wrapper :deep(.search-input-field:focus) {
+  border-color: #ff5fa6;
 }
 
 .tabs {
@@ -1585,6 +1602,17 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Mobile: ajustar para evitar corte dos cards */
+@media (max-width: 960px) {
+  .cards-stack {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+  }
 }
 
 .empty {
@@ -1674,21 +1702,6 @@
   transform: translateY(-2px);
 }
 
-.spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top-color: white;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .end-of-results {
   display: flex;
   flex-direction: column;
@@ -1732,8 +1745,8 @@
     grid-template-columns: 220px 1fr;
     grid-template-areas: 'sidebar main';
     width: min(100%, 960px);
-    padding: 2.75rem 2.25rem 2.5rem;
-    margin: 0 auto 3rem;
+    padding: 0 2.25rem;
+    margin: 0 auto;
     border-radius: 0;
   }
 
@@ -1746,7 +1759,14 @@
   .feed-shell {
     /* Increase sticky offset because header is taller (stacked) in this range */
     --feed-sticky-offset: 180px;
-    padding-top: 1rem;
+    grid-template-columns: 72px 1fr 200px;
+    grid-template-areas: 'sidebar main trends';
+  }
+
+  .feed-trends {
+    display: block;
+    max-width: 200px;
+    min-width: 0;
   }
 
   .feed-controls {
@@ -1757,30 +1777,48 @@
 }
 
 @media (max-width: 960px) {
+  .feed-page {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: visible;
+  }
+
   .feed-shell {
     grid-template-columns: 1fr;
     grid-template-areas: 'main';
     width: 100%;
-    padding: 1rem 1.25rem calc(5rem + env(safe-area-inset-bottom, 0px));
+    padding: 1rem 1.25rem calc(6rem + env(safe-area-inset-bottom, 0px));
     margin: 0;
     border-radius: 0;
     box-shadow: none;
     background: transparent;
+    position: relative;
+    transform: none;
+    overflow: visible;
+    flex: unset;
+    min-height: auto;
   }
 
   .feed-sidebar {
-    /* Sidebar is now fixed bottom nav, handled in FeedSidebarNav.vue */
-    grid-area: auto;
-    position: static;
-    max-height: none;
+    grid-area: unset !important;
+    position: static !important;
+    top: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+    z-index: auto !important;
+    align-self: auto !important;
+  }
+
+  .feed-main {
+    z-index: 1;
+    padding-bottom: 2rem;
+    min-height: unset;
     overflow-y: visible;
+    scrollbar-width: auto;
   }
 
   .feed-trends {
-    /* Esconde a coluna trends em mobile */
-    position: static;
-    max-height: none;
-    overflow-y: visible;
+    display: none;
   }
 
   .feed-controls {
@@ -1813,7 +1851,11 @@
 
 @media (max-width: 640px) {
   .feed-shell {
-    padding: 0.5rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px));
+    padding: 0.5rem 0.5rem calc(6rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .cards-stack {
+    padding: 0 0.25rem;
   }
 
   .feed-controls {
@@ -2105,62 +2147,6 @@
   align-items: center;
 }
 
-.search-box-icon {
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: rgba(0, 0, 0, 0.35);
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-}
-
-.category-search-input {
-  width: 100%;
-  padding: 0.6rem 2.2rem 0.6rem 2.2rem;
-  border: 1.5px solid rgba(0, 0, 0, 0.12);
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-family: inherit;
-  transition: all 0.2s ease;
-  background: white;
-}
-
-.category-search-input:focus {
-  outline: none;
-  border-color: #e91e63;
-  box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.1);
-}
-
-.category-search-input::placeholder {
-  color: rgba(0, 0, 0, 0.35);
-}
-
-.search-clear-btn {
-  position: absolute;
-  right: 0.5rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.08);
-  border: none;
-  border-radius: 50%;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: rgba(0, 0, 0, 0.5);
-  transition: all 0.15s ease;
-  padding: 0;
-}
-
-.search-clear-btn:hover {
-  background: rgba(0, 0, 0, 0.15);
-  color: rgba(0, 0, 0, 0.7);
-}
-
 .search-results-count {
   font-size: 0.72rem;
   color: rgba(0, 0, 0, 0.45);
@@ -2360,6 +2346,264 @@
   .filter-chip {
     font-size: 0.75rem;
     padding: 0.28rem 0.7rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE TRENDING FAB & BOTTOM SHEET
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* FAB Button - Positioned above bottom navigation */
+.trending-fab {
+  position: fixed;
+  /* Posicionar bem acima da bottom navigation (que tem ~70px de altura) */
+  bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  right: 1rem;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  border: none;
+  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  color: white;
+  box-shadow: 0 8px 24px rgba(255, 95, 166, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Mobile: Elevar FAB mais acima para não sobrepor a bottom nav */
+@media (max-width: 960px) {
+  .trending-fab {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.trending-fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 12px 32px rgba(255, 95, 166, 0.5),
+    0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.trending-fab:active {
+  transform: scale(0.95);
+}
+
+.fab-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #fff;
+  color: #ff5fa6;
+  font-size: 0.7rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* FAB Transition */
+.fab-fade-enter-active,
+.fab-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.fab-fade-enter-from,
+.fab-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.5) translateY(20px);
+}
+
+/* Bottom Sheet Overlay */
+.trending-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* Bottom Sheet */
+.trending-sheet {
+  width: 100%;
+  max-width: 500px;
+  max-height: 70vh;
+  background: linear-gradient(180deg, #fff 0%, #fef9fa 100%);
+  border-radius: 24px 24px 0 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.15);
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  position: relative;
+}
+
+.sheet-handle {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.sheet-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a1c2e;
+}
+
+.sheet-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sheet-close:hover {
+  background: rgba(255, 95, 166, 0.1);
+  color: #ff5fa6;
+}
+
+.sheet-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Trending List Mobile */
+.trending-list-mobile {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.trending-item-mobile {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.trending-item-mobile:hover {
+  background: rgba(255, 95, 166, 0.04);
+  border-color: rgba(255, 95, 166, 0.15);
+  transform: translateX(4px);
+}
+
+.trending-item-mobile:active {
+  transform: scale(0.98);
+}
+
+.trend-rank {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.15) 0%, rgba(255, 95, 166, 0.15) 100%);
+  color: #ff5fa6;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.trend-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.trend-highlight {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #ff5fa6;
+  font-weight: 600;
+}
+
+.trend-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a1c2e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trend-engagement {
+  font-size: 0.78rem;
+  color: #9aa0b8;
+}
+
+/* Bottom Sheet Transition */
+.bottom-sheet-enter-active,
+.bottom-sheet-leave-active {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bottom-sheet-enter-active .trending-sheet,
+.bottom-sheet-leave-active .trending-sheet {
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bottom-sheet-enter-from,
+.bottom-sheet-leave-to {
+  background: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0);
+}
+
+.bottom-sheet-enter-from .trending-sheet,
+.bottom-sheet-leave-to .trending-sheet {
+  transform: translateY(100%);
+}
+
+/* Mobile: Garantir que não haja overflow horizontal */
+@media (max-width: 960px) {
+  .feed-page {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 }
 </style>

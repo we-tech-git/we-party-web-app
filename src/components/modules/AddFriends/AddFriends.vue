@@ -1,273 +1,274 @@
 <script setup lang="ts">
-  import { computed, onMounted, ref, watch } from 'vue'
-  import { useI18n } from 'vue-i18n'
-  import { useRouter } from 'vue-router'
-  import { requestFollowUser, requestUnFollowUser } from '@/api/follows'
-  import { getUserRecomendations, searchUsers } from '@/api/users'
-  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-  import { svgIcons } from '@/utils/svgSet'
+import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { requestFollowUser, requestUnFollowUser } from '@/api/follows'
+import { getUserRecomendations, searchUsers } from '@/api/users'
+import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
+import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+import { svgIcons } from '@/utils/svgSet'
 
-  // i18n
-  const { t } = useI18n()
-  const router = useRouter()
+// i18n
+const { t } = useI18n()
+const router = useRouter()
 
-  // Modelo de dados do usuário listado para convite
-  export interface User {
-    id: number | string
-    name: string
-    username?: string
-    profileImage?: string
-    isFollowing: boolean
-    currentStatus?: string
-  }
+// Modelo de dados do usuário listado para convite
+export interface User {
+  id: number | string
+  name: string
+  username?: string
+  profileImage?: string
+  isFollowing: boolean
+  currentStatus?: string
+}
 
-  // Estado reativo
-  const searchQuery = ref('')
-  const users = ref<User[]>([])
-  const recommendedUsers = ref<User[]>([]) // Cache das recomendações iniciais
-  const isLoading = ref(false)
-  const isSearching = ref(false)
-  const hasError = ref(false)
-  const errorMessage = ref('')
+// Estado reativo
+const searchQuery = ref('')
+const users = ref<User[]>([])
+const recommendedUsers = ref<User[]>([]) // Cache das recomendações iniciais
+const isLoading = ref(false)
+const isSearching = ref(false)
+const hasError = ref(false)
+const errorMessage = ref('')
 
-  // Snackbar
-  const snackbarVisible = ref(false)
-  const snackbarMessage = ref('')
-  const snackbarColor = ref('#ff9800')
+// Snackbar
+const snackbarVisible = ref(false)
+const snackbarMessage = ref('')
+const snackbarColor = ref('#ff9800')
 
-  // Debounce para busca
-  let searchTimeout: ReturnType<typeof setTimeout> | null = null
+function showSnackbar(message: string, color = '#ff9800') {
+  snackbarMessage.value = message
+  snackbarColor.value = color
+  snackbarVisible.value = true
+}
 
-  function showSnackbar (message: string, color = '#ff9800') {
-    snackbarMessage.value = message
-    snackbarColor.value = color
-    snackbarVisible.value = true
-  }
-
-  // Gera avatar placeholder com iniciais
-  function getAvatarUrl (user: User): string {
-    if (user.profileImage) {
-      // Se começa com http ou https, usa direto
-      if (user.profileImage.startsWith('http')) {
-        return user.profileImage
-      }
-      // Se não, assume que é relativo ao baseURL da API
-      const baseUrl = import.meta.env.VITE__BASE_URL || ''
-      return `${baseUrl}${user.profileImage}`
+// Gera avatar placeholder com iniciais
+function getAvatarUrl(user: User): string {
+  if (user.profileImage) {
+    // Se começa com http ou https, usa direto
+    if (user.profileImage.startsWith('http')) {
+      return user.profileImage
     }
-    // Retorna URL vazia para usar o placeholder CSS
-    return ''
+    // Se não, assume que é relativo ao baseURL da API
+    const baseUrl = import.meta.env.VITE__BASE_URL || ''
+    return `${baseUrl}${user.profileImage}`
   }
+  // Retorna URL vazia para usar o placeholder CSS
+  return ''
+}
 
-  // Pega as iniciais do nome do usuário
-  function getUserInitials (user: User): string {
-    const name = user.name || user.username || '?'
-    const parts = name.trim().split(' ')
-    if (parts.length >= 2 && parts[0] && parts.at(-1)) {
-      const first = parts[0][0] || ''
-      const last = parts.at(-1)?.[0] || ''
-      return (first + last).toUpperCase()
-    }
-    return name.slice(0, 2).toUpperCase()
+// Pega as iniciais do nome do usuário
+function getUserInitials(user: User): string {
+  const name = user.name || user.username || '?'
+  const parts = name.trim().split(' ')
+  if (parts.length >= 2 && parts[0] && parts.at(-1)) {
+    const first = parts[0][0] || ''
+    const last = parts.at(-1)?.[0] || ''
+    return (first + last).toUpperCase()
   }
+  return name.slice(0, 2).toUpperCase()
+}
 
-  // Cor do avatar baseado no ID
-  function getAvatarColor (user: User): string {
-    const colors = [
-      '#FF5FA6', '#FFC25B', '#A78BFA', '#60A5FA', '#34D399',
-      '#F87171', '#FBBF24', '#A3E635', '#2DD4BF', '#818CF8',
-    ]
-    const id = typeof user.id === 'string' ? Number.parseInt(user.id) : user.id
-    return colors[id % colors.length] ?? '#FF5FA6'
+// Cor do avatar baseado no ID
+function getAvatarColor(user: User): string {
+  const colors = [
+    '#FF5FA6', '#FFC25B', '#A78BFA', '#60A5FA', '#34D399',
+    '#F87171', '#FBBF24', '#A3E635', '#2DD4BF', '#818CF8',
+  ]
+  const id = typeof user.id === 'string' ? Number.parseInt(user.id) : user.id
+  return colors[id % colors.length] ?? '#FF5FA6'
+}
+
+async function followUser(user: User) {
+  try {
+    await requestFollowUser(user)
+    showSnackbar(`Você começou a seguir ${user.name}`, '#22c55e')
+  } catch (error: any) {
+    console.error('Erro ao seguir usuário:', error)
+    showSnackbar(error?.response?.data?.message || 'Erro ao seguir usuário', '#ef4444')
+    // Reverte o estado em caso de erro
+    user.isFollowing = false
   }
+}
 
-  async function followUser (user: User) {
-    try {
-      await requestFollowUser(user)
-      showSnackbar(`Você começou a seguir ${user.name}`, '#22c55e')
-    } catch (error: any) {
-      console.error('Erro ao seguir usuário:', error)
-      showSnackbar(error?.response?.data?.message || 'Erro ao seguir usuário', '#ef4444')
-      // Reverte o estado em caso de erro
-      user.isFollowing = false
-    }
+async function unFollowUser(user: User) {
+  try {
+    await requestUnFollowUser(user)
+    showSnackbar(`Você deixou de seguir ${user.name}`, '#6b7280')
+  } catch (error: any) {
+    console.error('Erro ao deixar de seguir usuário:', error)
+    showSnackbar(error?.response?.data?.message || 'Erro ao deixar de seguir', '#ef4444')
+    // Reverte o estado em caso de erro
+    user.isFollowing = true
   }
+}
 
-  async function unFollowUser (user: User) {
-    try {
-      await requestUnFollowUser(user)
-      showSnackbar(`Você deixou de seguir ${user.name}`, '#6b7280')
-    } catch (error: any) {
-      console.error('Erro ao deixar de seguir usuário:', error)
-      showSnackbar(error?.response?.data?.message || 'Erro ao deixar de seguir', '#ef4444')
-      // Reverte o estado em caso de erro
-      user.isFollowing = true
-    }
-  }
+async function requestUserRecomendations() {
+  try {
+    isLoading.value = true
+    hasError.value = false
+    errorMessage.value = ''
 
-  async function requestUserRecomendations () {
-    try {
-      isLoading.value = true
-      hasError.value = false
-      errorMessage.value = ''
+    const response = await getUserRecomendations()
 
-      const response = await getUserRecomendations()
-
-      // Tenta extrair os usuários de diferentes estruturas de resposta
-      let userData: any[] = []
-      if (response?.data?.data?.users) {
-        userData = response.data.data.users
-      } else if (response?.data?.users) {
-        userData = response.data.users
-      } else if (Array.isArray(response?.data?.data)) {
-        userData = response.data.data
-      } else if (Array.isArray(response?.data)) {
-        userData = response.data
-      }
-
-      // Mapeia para o formato esperado
-      users.value = userData.map((u: any) => ({
-        id: u.id || u._id,
-        name: u.name || u.username || 'Usuário',
-        username: u.username,
-        profileImage: u.profileImage || u.profilePhoto || u.avatar || u.photo,
-        isFollowing: u.isFollowing || u.following || false,
-        currentStatus: u.currentStatus || u.status,
-      }))
-
-      // Salva as recomendações para restaurar quando limpar a busca
-      recommendedUsers.value = [...users.value]
-
-      if (users.value.length === 0) {
-        errorMessage.value = 'Nenhum usuário encontrado no momento'
-      }
-    } catch (error: any) {
-      console.error('❌ Erro ao buscar recomendações de usuários:', error)
-      hasError.value = true
-      errorMessage.value = error?.response?.data?.message || 'Erro ao carregar usuários'
-      showSnackbar(errorMessage.value, '#ef4444')
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  async function performSearch (query: string) {
-    if (!query.trim()) {
-      // Quando limpar a busca, restaura as recomendações iniciais (sem nova requisição)
-      users.value = [...recommendedUsers.value]
-      isSearching.value = false
-      hasError.value = false
-      errorMessage.value = ''
-      return
+    // Tenta extrair os usuários de diferentes estruturas de resposta
+    let userData: any[] = []
+    if (response?.data?.data?.users) {
+      userData = response.data.data.users
+    } else if (response?.data?.users) {
+      userData = response.data.users
+    } else if (Array.isArray(response?.data?.data)) {
+      userData = response.data.data
+    } else if (Array.isArray(response?.data)) {
+      userData = response.data
     }
 
-    try {
-      isSearching.value = true
-      hasError.value = false
-      errorMessage.value = ''
+    // Mapeia para o formato esperado
+    users.value = userData.map((u: any) => ({
+      id: u.id || u._id,
+      name: u.name || u.username || 'Usuário',
+      username: u.username,
+      profileImage: u.profileImage || u.profilePhoto || u.avatar || u.photo,
+      isFollowing: u.isFollowing || u.following || false,
+      currentStatus: u.currentStatus || u.status,
+    }))
 
-      const response = await searchUsers(query.trim())
+    // Salva as recomendações para restaurar quando limpar a busca
+    recommendedUsers.value = [...users.value]
 
-      // Tenta extrair os usuários
-      let userData: any[] = []
-      if (response?.data?.data?.users) {
-        userData = response.data.data.users
-      } else if (response?.data?.users) {
-        userData = response.data.users
-      } else if (Array.isArray(response?.data?.data)) {
-        userData = response.data.data
-      } else if (Array.isArray(response?.data)) {
-        userData = response.data
-      }
-
-      users.value = userData.map((u: any) => ({
-        id: u.id || u._id,
-        name: u.name || u.username || 'Usuário',
-        username: u.username,
-        profileImage: u.profileImage || u.profilePhoto || u.avatar || u.photo,
-        isFollowing: u.isFollowing || u.following || false,
-        currentStatus: u.currentStatus || u.status,
-      }))
-
-      if (users.value.length === 0) {
-        errorMessage.value = `Nenhum usuário encontrado para "${query}"`
-      }
-    } catch (error: any) {
-      console.error('❌ Erro ao buscar usuários:', error)
-      hasError.value = true
-      users.value = []
-
-      // Mensagem de erro sem fallback
-      errorMessage.value = error?.response?.status === 404 || error?.message?.includes('404')
-        ? 'Endpoint de busca não disponível. Aguarde implementação no backend.'
-        : error?.response?.data?.message || 'Erro ao buscar usuários'
-      showSnackbar(errorMessage.value, '#ef4444')
-    } finally {
-      isSearching.value = false
+    if (users.value.length === 0) {
+      errorMessage.value = 'Nenhum usuário encontrado no momento'
     }
+  } catch (error: any) {
+    console.error('❌ Erro ao buscar recomendações de usuários:', error)
+    hasError.value = true
+    errorMessage.value = error?.response?.data?.message || 'Erro ao carregar usuários'
+    showSnackbar(errorMessage.value, '#ef4444')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function performSearch(query: string) {
+  if (!query.trim()) {
+    // Quando limpar a busca, restaura as recomendações iniciais (sem nova requisição)
+    users.value = [...recommendedUsers.value]
+    isSearching.value = false
+    hasError.value = false
+    errorMessage.value = ''
+    return
   }
 
-  // Watch com debounce para busca
-  watch(searchQuery, newQuery => {
-    if (searchTimeout) {
-      clearTimeout(searchTimeout)
-    }
-
-    if (!newQuery.trim()) {
-      // Quando limpar a busca, restaura recomendações iniciais sem nova requisição
-      isSearching.value = false
-      users.value = [...recommendedUsers.value]
-      hasError.value = false
-      errorMessage.value = ''
-      return
-    }
-
+  try {
     isSearching.value = true
-    searchTimeout = setTimeout(() => {
-      performSearch(newQuery)
-    }, 500) // 500ms de debounce
-  })
+    hasError.value = false
+    errorMessage.value = ''
 
-  // Filtro de usuários por nome (case-insensitive) - Local apenas
-  const filteredUsers = computed(() => {
-    return users.value
-  })
+    const response = await searchUsers(query.trim())
 
-  // Alterna status do convite (atualização otimista)
-  function toggleInvite (user: User) {
-    const previousState = user.isFollowing
-
-    // Atualização otimista
-    user.isFollowing = !user.isFollowing
-
-    if (previousState) {
-      unFollowUser(user)
-    } else {
-      followUser(user)
+    // Tenta extrair os usuários
+    let userData: any[] = []
+    if (response?.data?.data?.users) {
+      userData = response.data.data.users
+    } else if (response?.data?.users) {
+      userData = response.data.users
+    } else if (Array.isArray(response?.data?.data)) {
+      userData = response.data.data
+    } else if (Array.isArray(response?.data)) {
+      userData = response.data
     }
-  }
 
-  function finishSelection () {
-    router.push('/public/Congratulations')
-  }
+    users.value = userData.map((u: any) => ({
+      id: u.id || u._id,
+      name: u.name || u.username || 'Usuário',
+      username: u.username,
+      profileImage: u.profileImage || u.profilePhoto || u.avatar || u.photo,
+      isFollowing: u.isFollowing || u.following || false,
+      currentStatus: u.currentStatus || u.status,
+    }))
 
-  function skipStep () {
-    router.push('/public/Congratulations')
-  }
-
-  // Refaz a última ação (busca ou recomendações)
-  function retryLastAction () {
-    if (searchQuery.value.trim()) {
-      performSearch(searchQuery.value)
-    } else {
-      requestUserRecomendations()
+    if (users.value.length === 0) {
+      errorMessage.value = `Nenhum usuário encontrado para "${query}"`
     }
+  } catch (error: any) {
+    console.error('❌ Erro ao buscar usuários:', error)
+    hasError.value = true
+    users.value = []
+
+    // Mensagem de erro sem fallback
+    errorMessage.value = error?.response?.status === 404 || error?.message?.includes('404')
+      ? 'Endpoint de busca não disponível. Aguarde implementação no backend.'
+      : error?.response?.data?.message || 'Erro ao buscar usuários'
+    showSnackbar(errorMessage.value, '#ef4444')
+  } finally {
+    isSearching.value = false
+  }
+}
+
+// Handler para o evento search do SearchInput (já com debounce)
+function handleSearch(query: string) {
+  if (!query.trim()) {
+    // Quando limpar a busca, restaura recomendações iniciais sem nova requisição
+    isSearching.value = false
+    users.value = [...recommendedUsers.value]
+    hasError.value = false
+    errorMessage.value = ''
+    return
   }
 
-  onMounted(() => {
+  isSearching.value = true
+  performSearch(query)
+}
+
+// Handler para limpar a busca
+function handleClearSearch() {
+  users.value = [...recommendedUsers.value]
+  isSearching.value = false
+  hasError.value = false
+  errorMessage.value = ''
+}
+
+// Filtro de usuários por nome (case-insensitive) - Local apenas
+const filteredUsers = computed(() => {
+  return users.value
+})
+
+// Alterna status do convite (atualização otimista)
+function toggleInvite(user: User) {
+  const previousState = user.isFollowing
+
+  // Atualização otimista
+  user.isFollowing = !user.isFollowing
+
+  if (previousState) {
+    unFollowUser(user)
+  } else {
+    followUser(user)
+  }
+}
+
+function finishSelection() {
+  router.push('/public/Congratulations')
+}
+
+function skipStep() {
+  router.push('/public/Congratulations')
+}
+
+// Refaz a última ação (busca ou recomendações)
+function retryLastAction() {
+  if (searchQuery.value.trim()) {
+    performSearch(searchQuery.value)
+  } else {
     requestUserRecomendations()
-  })
+  }
+}
+
+onMounted(() => {
+  requestUserRecomendations()
+})
 
 </script>
 
@@ -282,28 +283,14 @@
       <p class="auth-subtitle">
         {{ t('addFriends.subtitle') }}
       </p>
-      <div class="search-input-wrapper il-theme--pink">
-        <svg
-          v-if="svgIcons.searchIcon"
-          class="search-input-icon"
-          fill="currentColor"
-          :viewBox="svgIcons.searchIcon.viewBox"
-        >
-          <path
-            v-for="(path, index) in svgIcons.searchIcon.paths"
-            :key="index"
-            :clip-rule="path.clipRule"
-            :d="path.d"
-            :fill-rule="path.fillRule"
-          />
-        </svg>
-        <input v-model="searchQuery" class="search-input" :placeholder="t('addFriends.searchPlaceholder')" type="text">
+      <div class="search-input-wrapper">
+        <SearchInput v-model="searchQuery" :loading="isSearching" :placeholder="t('addFriends.searchPlaceholder')"
+          @clear="handleClearSearch" @search="handleSearch" />
       </div>
 
       <!-- Estado de loading -->
-      <div v-if="isLoading || isSearching" class="loading-state">
-        <div class="loading-spinner" />
-        <p>{{ isSearching ? 'Buscando usuários...' : 'Carregando...' }}</p>
+      <div v-if="isLoading" class="loading-state">
+        <AppLoader size="md" text="Carregando..." />
       </div>
 
       <!-- Estado de erro -->
@@ -326,18 +313,10 @@
       <ul v-else class="user-list">
         <li v-for="user in filteredUsers" :key="user.id" class="user-item">
           <div class="avatar-wrapper">
-            <img
-              v-if="getAvatarUrl(user)"
-              :alt="user.name"
-              class="avatar"
-              :src="getAvatarUrl(user)"
-              @error="($event.target as HTMLImageElement).style.display = 'none'"
-            >
-            <div
-              v-if="!getAvatarUrl(user)"
-              class="avatar-placeholder"
-              :style="{ backgroundColor: getAvatarColor(user) }"
-            >
+            <img v-if="getAvatarUrl(user)" :alt="user.name" class="avatar" :src="getAvatarUrl(user)"
+              @error="($event.target as HTMLImageElement).style.display = 'none'">
+            <div v-if="!getAvatarUrl(user)" class="avatar-placeholder"
+              :style="{ backgroundColor: getAvatarColor(user) }">
               {{ getUserInitials(user) }}
             </div>
           </div>
@@ -421,34 +400,7 @@
 }
 
 .search-input-wrapper {
-  position: relative;
   margin-bottom: 2rem;
-}
-
-.search-input-icon {
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 1.25rem;
-  height: 1.25rem;
-  color: #9CA3AF;
-}
-
-.search-input {
-  width: 100%;
-  padding: 0.75rem 1rem 0.75rem 3rem;
-  border: 1px solid #E5E7EB;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  color: #1F2937;
-  outline: none;
-  transition: border-color 0.2s;
-  font-family: 'Poppins', sans-serif;
-}
-
-.search-input:focus {
-  border-color: #F978A3;
 }
 
 /* Estados de loading, erro e vazio */
@@ -462,21 +414,6 @@
   padding: 3rem 1rem;
   text-align: center;
   gap: 1rem;
-}
-
-.loading-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid #E5E7EB;
-  border-top-color: #FF5FA6;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .loading-state p,

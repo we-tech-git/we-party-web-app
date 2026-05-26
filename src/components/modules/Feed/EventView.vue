@@ -6,6 +6,7 @@
   import { getEventById, getTrendingEvents } from '@/api/event'
   import { useAuth } from '@/composables/useAuth'
   import { useEventsStore } from '@/stores/events'
+  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import EventDetails from './EventDetails.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
   import FeedTopHeader from './FeedTopHeader.vue'
@@ -246,8 +247,7 @@
 
         <!-- Loading state -->
         <div v-if="isLoadingEventData" class="event-loading">
-          <div class="loading-spinner" />
-          <p class="loading-text">Carregando evento...</p>
+          <AppLoader size="lg" text="Carregando evento..." />
         </div>
 
         <!-- Event Details - só renderiza quando dados estiverem disponíveis -->
@@ -666,40 +666,19 @@
   text-align: center;
 }
 
-.loading-spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid rgba(255, 95, 166, 0.1);
-  border-top-color: #ff5fa6;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.loading-text {
-  margin-top: 1.5rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
-  letter-spacing: 0.02em;
-}
-
 .event-error {
   color: rgba(255, 95, 166, 0.8);
   font-weight: 600;
 }
 
+/* ─── RESPONSIVE: Tablet (960px) ──────────────────────────────────────────── */
 @media (max-width: 960px) {
   .layout-shell {
     grid-template-columns: 1fr;
     grid-template-areas: 'main';
     width: 100%;
-    padding: 1rem 1rem 6rem;
+    padding: 1rem 1rem 5.5rem;
+    margin-top: 0;
   }
 
   .layout-sidebar {
@@ -714,6 +693,12 @@
     transform: none;
     opacity: 1;
     animation: none;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 95, 166, 0.1);
+    box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.08);
+    padding: 0.5rem 0 env(safe-area-inset-bottom, 0.5rem);
   }
 
   .layout-trends {
@@ -729,11 +714,147 @@
   .particles {
     display: none;
   }
+
+  .breadcrumb-nav {
+    margin-bottom: 1rem;
+  }
+
+  .layout-main {
+    min-height: auto;
+    padding-bottom: 1rem;
+  }
 }
 
+/* ─── RESPONSIVE: Mobile Large (768px) ────────────────────────────────────── */
+@media (max-width: 768px) {
+  .layout-shell {
+    padding: 0.75rem 0.75rem 5.5rem;
+  }
+
+  .breadcrumb-nav {
+    margin-bottom: 0.75rem;
+    background: rgba(255, 255, 255, 0.95);
+    position: sticky;
+    top: 60px;
+    z-index: 50;
+  }
+
+  .immersive-bg {
+    opacity: 0.7;
+  }
+
+  .bg-image {
+    filter: blur(40px) saturate(1.3);
+  }
+}
+
+/* ─── RESPONSIVE: Mobile (640px) ──────────────────────────────────────────── */
 @media (max-width: 640px) {
   .layout-shell {
-    padding: 0.5rem 0.75rem 6rem;
+    padding: 0.5rem 0.5rem 5.5rem;
+  }
+
+  .breadcrumb-nav {
+    padding: 0.5rem 0.75rem;
+    border-radius: 12px;
+    gap: 0.4rem;
+  }
+
+  .breadcrumb-back {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
+    border-radius: 10px;
+  }
+
+  .back-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+  }
+
+  .back-icon svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .back-text {
+    display: none;
+  }
+
+  .breadcrumb-current {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  .breadcrumb-separator {
+    display: none;
+  }
+
+  .event-loading,
+  .event-error {
+    min-height: 300px;
+    padding: 2rem 1rem;
+  }
+
+}
+
+
+/* ─── RESPONSIVE: Mobile Small (480px) ────────────────────────────────────── */
+@media (max-width: 480px) {
+  .layout-shell {
+    padding: 0.35rem 0.35rem 5rem;
+  }
+
+  .breadcrumb-nav {
+    padding: 0.4rem 0.6rem;
+    border-radius: 10px;
+  }
+}
+
+/* ─── RESPONSIVE: Very Small (360px) ──────────────────────────────────────── */
+@media (max-width: 360px) {
+  .layout-shell {
+    padding: 0.25rem 0.25rem 4.5rem;
+  }
+
+  .breadcrumb-nav {
+    padding: 0.35rem 0.5rem;
+  }
+
+  .breadcrumb-current {
+    font-size: 0.7rem;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ─── Touch Device Optimizations ──────────────────────────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+  .breadcrumb-back:active {
+    transform: scale(0.95);
+    background: rgba(255, 95, 166, 0.25);
+  }
+
+  .layout-sidebar {
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
+}
+
+/* ─── Landscape Mobile ────────────────────────────────────────────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+  .layout-shell {
+    padding-bottom: 4rem;
+  }
+
+  .layout-sidebar {
+    padding: 0.35rem 0;
+  }
+
+  .breadcrumb-nav {
+    position: relative;
+    top: 0;
   }
 }
 </style>

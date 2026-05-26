@@ -11,6 +11,7 @@
   import { useI18n } from 'vue-i18n'
   import { loginUser } from '@/api/users'
   import { STORAGE_KEYS } from '@/common/storage'
+  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
@@ -347,9 +348,9 @@
             <router-link class="forgot-link" to="/public/RequestPassword">{{ $t('login.forgotPassword') }}</router-link>
           </div>
 
-          <button :aria-busy="isSubmitting" class="btn-primary" :disabled="isSubmitting" type="submit">
-            <span v-if="isSubmitting" aria-hidden="true" class="loader" />
-            <span>{{ isSubmitting ? 'Entrando...' : $t('login.button') }}</span>
+          <button :aria-busy="isSubmitting" class="btn-primary flex items-center justify-center gap-2" :disabled="isSubmitting" type="submit">
+            <AppLoader v-if="isSubmitting" size="sm" text="Entrando..." variant="text" />
+            <span v-else>{{ $t('login.button') }}</span>
           </button>
 
           <!-- Botões de autenticação social -->
@@ -507,25 +508,6 @@
 
 .login-link-text a:hover {
   text-decoration: underline;
-}
-
-.loader {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.45);
-  border-top-color: #ffffff;
-  border-radius: 50%;
-  animation: loader-spin 0.8s linear infinite;
-}
-
-@keyframes loader-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 /* Checkbox rosa (suporte nativo com accent-color) */

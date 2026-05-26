@@ -11,8 +11,11 @@ import AppFooter from '@/components/AppFooter.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
 import FeedTopHeader from '@/components/modules/Feed/FeedTopHeader.vue'
+import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
 import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
 import { useAuth } from '@/composables/useAuth'
+import { useLoading } from '@/composables/useLoading'
+import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
 import { AuthService } from '@/services/auth'
 import { useEventsStore } from '@/stores/events'
 import { useShareStore } from '@/stores/share'
@@ -69,9 +72,6 @@ const loadingFollowing = ref(false)
 const loadingRecommendations = ref(false)
 const showFollowersModal = ref(false)
 const showFollowingModal = ref(false)
-
-// ── Timeout refs (declarados aqui para cleanup no onUnmounted) ──
-let interestsSearchTimeout: ReturnType<typeof setTimeout> | null = null
 
 // ── Snackbar ──
 const snackbarVisible = ref(false)
@@ -577,7 +577,6 @@ const userSearchQuery = ref('')
 const filteredRecommendedUsers = ref<FollowUser[]>([])
 const allRecommendedUsers = ref<FollowUser[]>([])
 const searchingUsers = ref(false)
-let userSearchTimeout: ReturnType<typeof setTimeout> | null = null
 
 // ── Fetch User Recommendations ──
 async function fetchRecommendedUsers() {
@@ -615,35 +614,27 @@ async function fetchRecommendedUsers() {
   }
 }
 
-// ── Filter users based on search query ──
-function filterRecommendedUsers(query: string) {
-  if (userSearchTimeout) {
-    clearTimeout(userSearchTimeout)
-  }
-
-  // Ativa o loading apenas se houver uma busca ativa
+// ── Handler para busca de usuários (chamado pelo SearchInput com debounce) ──
+function handleUserSearch(query: string) {
   if (query.trim()) {
     searchingUsers.value = true
-  }
-
-  userSearchTimeout = setTimeout(() => {
-    if (query.trim()) {
-      const lowerQuery = query.toLowerCase()
-      filteredRecommendedUsers.value = allRecommendedUsers.value.filter(user =>
-        user.name.toLowerCase().includes(lowerQuery)
-        || (user.username && user.username.toLowerCase().includes(lowerQuery)),
-      )
-    } else {
-      filteredRecommendedUsers.value = [...allRecommendedUsers.value]
-    }
-    // Desativa o loading após a filtragem
+    const lowerQuery = query.toLowerCase()
+    filteredRecommendedUsers.value = allRecommendedUsers.value.filter(user =>
+      user.name.toLowerCase().includes(lowerQuery)
+      || (user.username && user.username.toLowerCase().includes(lowerQuery)),
+    )
     searchingUsers.value = false
-  }, 300)
+  } else {
+    filteredRecommendedUsers.value = [...allRecommendedUsers.value]
+    searchingUsers.value = false
+  }
 }
 
-watch(userSearchQuery, newQuery => {
-  filterRecommendedUsers(newQuery)
-})
+// ── Handler para limpar busca de usuários ──
+function handleClearUserSearch() {
+  filteredRecommendedUsers.value = [...allRecommendedUsers.value]
+  searchingUsers.value = false
+}
 
 // ── Toggle Follow User ──
 async function toggleFollowUser(user: FollowUser) {
@@ -753,11 +744,8 @@ function closeInterestsModal() {
   suggestedInterests.value = []
 }
 
-async function searchInterestsDebounced(query: string) {
-  if (interestsSearchTimeout) {
-    clearTimeout(interestsSearchTimeout)
-  }
-
+// ── Handler para busca de interesses (chamado pelo SearchInput com debounce) ──
+async function handleInterestsSearch(query: string) {
   if (!query.trim()) {
     searchedInterests.value = []
     isSearchingInterests.value = false
@@ -766,32 +754,36 @@ async function searchInterestsDebounced(query: string) {
 
   isSearchingInterests.value = true
 
-  interestsSearchTimeout = setTimeout(async () => {
-    try {
-      const response = await searchInterestsByName(query.trim())
-      const data = response?.data
+  try {
+    const response = await searchInterestsByName(query.trim())
+    const data = response?.data
 
-      let interests: UserInterest[] = []
-      if (data?.data?.interests) {
-        interests = data.data.interests
-      } else if (data?.interests) {
-        interests = data.interests
-      } else if (Array.isArray(data?.data)) {
-        interests = data.data
-      } else if (Array.isArray(data)) {
-        interests = data
-      }
-
-      // Filtra interesses que o usuário já possui (usa tempUserInterests)
-      const userInterestIds = new Set(tempUserInterests.value.map(i => i.id))
-      searchedInterests.value = interests.filter(i => !userInterestIds.has(i.id)).slice(0, 10)
-    } catch (error) {
-      console.error('Erro ao buscar interesses:', error)
-      searchedInterests.value = []
-    } finally {
-      isSearchingInterests.value = false
+    let interests: UserInterest[] = []
+    if (data?.data?.interests) {
+      interests = data.data.interests
+    } else if (data?.interests) {
+      interests = data.interests
+    } else if (Array.isArray(data?.data)) {
+      interests = data.data
+    } else if (Array.isArray(data)) {
+      interests = data
     }
-  }, 500)
+
+    // Filtra interesses que o usuário já possui (usa tempUserInterests)
+    const userInterestIds = new Set(tempUserInterests.value.map(i => i.id))
+    searchedInterests.value = interests.filter(i => !userInterestIds.has(i.id)).slice(0, 10)
+  } catch (error) {
+    console.error('Erro ao buscar interesses:', error)
+    searchedInterests.value = []
+  } finally {
+    isSearchingInterests.value = false
+  }
+}
+
+// ── Handler para limpar busca de interesses ──
+function handleClearInterestsSearch() {
+  searchedInterests.value = []
+  isSearchingInterests.value = false
 }
 
 function addInterestToUser(interest: UserInterest) {
@@ -844,10 +836,6 @@ async function saveInterestsChanges() {
     isSavingInterests.value = false
   }
 }
-
-watch(interestsSearchQuery, newQuery => {
-  searchInterestsDebounced(newQuery)
-})
 
 // ── Remove interesse diretamente (usado no botão X da sidebar) ──
 async function removeInterestDirectly(interestId: string) {
@@ -1174,14 +1162,16 @@ interface LikedEventItem {
   interests?: string[]
   commentsCount?: number
 }
+const { startLoading, stopLoading, isLoading: checkLoading } = useLoading()
+
 const likedEventsItems = ref<LikedEventItem[]>([])
-const loadingLiked = ref(false)
 const displayLimit = ref(CONFIG.INITIAL_DISPLAY_LIMIT)
 let likedEventsTimeout: ReturnType<typeof setTimeout> | null = null
+let interestsSearchTimeout: ReturnType<typeof setTimeout> | null = null
+let userSearchTimeout: ReturnType<typeof setTimeout> | null = null
 
 // ── Estados para eventos confirmados ──
 const confirmedEventsItems = ref<LikedEventItem[]>([])
-const loadingConfirmed = ref(false)
 const confirmedDisplayLimit = ref(CONFIG.INITIAL_DISPLAY_LIMIT)
 let confirmedEventsTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -1260,7 +1250,7 @@ function mapLikedEvent(evt: any): LikedEventItem {
 async function fetchLikedEvents() {
   if (!loggedUser.value?.id) return
 
-  loadingLiked.value = true
+  startLoading('profile:liked')
 
   // Timeout de 3 segundos para o skeleton loading
   if (likedEventsTimeout) {
@@ -1268,8 +1258,8 @@ async function fetchLikedEvents() {
   }
 
   likedEventsTimeout = setTimeout(() => {
-    if (loadingLiked.value) {
-      loadingLiked.value = false
+    if (checkLoading('profile:liked')) {
+      stopLoading('profile:liked')
     }
   }, 3000)
 
@@ -1313,7 +1303,7 @@ async function fetchLikedEvents() {
       clearTimeout(likedEventsTimeout)
       likedEventsTimeout = null
     }
-    loadingLiked.value = false
+    stopLoading('profile:liked')
   } catch (error_) {
     console.error('Erro ao buscar eventos curtidos do perfil do usuário:', error_)
     likedEventsItems.value = []
@@ -1346,7 +1336,7 @@ async function handleUnlikeEvent(eventId: string | number, event: Event) {
 async function fetchConfirmedEvents() {
   if (!loggedUser.value?.id) return
 
-  loadingConfirmed.value = true
+  startLoading('profile:confirmed')
 
   // Timeout de 3 segundos para o skeleton loading
   if (confirmedEventsTimeout) {
@@ -1354,8 +1344,8 @@ async function fetchConfirmedEvents() {
   }
 
   confirmedEventsTimeout = setTimeout(() => {
-    if (loadingConfirmed.value) {
-      loadingConfirmed.value = false
+    if (checkLoading('profile:confirmed')) {
+      stopLoading('profile:confirmed')
     }
   }, 3000)
 
@@ -1388,7 +1378,7 @@ async function fetchConfirmedEvents() {
       clearTimeout(confirmedEventsTimeout)
       confirmedEventsTimeout = null
     }
-    loadingConfirmed.value = false
+    stopLoading('profile:confirmed')
   } catch (error_) {
     console.error('Erro ao buscar eventos confirmados:', error_)
     confirmedEventsItems.value = []
@@ -1610,7 +1600,7 @@ function handleShareProfile() {
 
           <!-- Liked -->
           <div v-if="activeTab === 'liked'" class="liked-events-panel">
-            <div v-if="loadingLiked" class="loading-liked">
+            <div v-if="checkLoading('profile:liked')" class="loading-liked">
               <div class="skeleton-grid-mini">
                 <div v-for="n in 5" :key="n" class="skeleton-mini-card">
                   <div class="skeleton-mini-banner" />
@@ -1689,7 +1679,7 @@ function handleShareProfile() {
 
           <!-- Confirmed Events -->
           <div v-if="activeTab === 'confirmed'" class="confirmed-events-panel">
-            <div v-if="loadingConfirmed" class="loading-liked">
+            <div v-if="checkLoading('profile:confirmed')" class="loading-liked">
               <div class="skeleton-grid-mini">
                 <div v-for="n in 5" :key="n" class="skeleton-mini-card">
                   <div class="skeleton-mini-banner" />
@@ -1856,22 +1846,12 @@ function handleShareProfile() {
           </div>
           <!-- Campo de busca de usuários -->
           <div class="user-search-wrapper">
-            <div class="user-search-input-container">
-              <i class="mdi mdi-magnify user-search-icon" />
-              <input v-model="userSearchQuery" class="user-search-input"
-                :placeholder="t('profile.recommendations.searchPlaceholder') || 'Buscar usuários...'" type="text">
-              <button v-if="userSearchQuery" class="user-search-clear" type="button" @click="userSearchQuery = ''">
-                <i class="mdi mdi-close" />
-              </button>
-            </div>
+            <SearchInput v-model="userSearchQuery" :loading="searchingUsers"
+              :placeholder="t('profile.recommendations.searchPlaceholder') || 'Buscar usuários...'" size="small"
+              @clear="handleClearUserSearch" @search="handleUserSearch" />
           </div>
           <div v-if="loadingRecommendations" class="recommendations-loading">
-            <i class="mdi mdi-loading mdi-spin" />
-            <span>{{ t('profile.recommendations.loading') }}</span>
-          </div>
-          <div v-else-if="searchingUsers" class="recommendations-searching">
-            <i class="mdi mdi-loading mdi-spin" />
-            <span>{{ t('profile.recommendations.searching') || 'Buscando...' }}</span>
+            <AppLoader size="sm" :text="t('profile.recommendations.loading')" />
           </div>
           <div v-else-if="filteredRecommendedUsers.length > 0" class="recommendations-list-wrapper">
             <ul class="recommendations-list">
@@ -2048,12 +2028,9 @@ function handleShareProfile() {
             <div class="interests-modal-body">
               <!-- Busca de interesses -->
               <div class="interests-search-section">
-                <div class="search-input-wrapper">
-                  <i class="mdi mdi-magnify search-icon" />
-                  <input v-model="interestsSearchQuery" class="interests-search-input"
-                    :placeholder="t('profile.interests.searchPlaceholder')" type="text">
-                  <i v-if="isSearchingInterests" class="mdi mdi-loading mdi-spin search-loading" />
-                </div>
+                <SearchInput v-model="interestsSearchQuery" :loading="isSearchingInterests"
+                  :placeholder="t('profile.interests.searchPlaceholder')" @clear="handleClearInterestsSearch"
+                  @search="handleInterestsSearch" />
               </div>
 
               <!-- Resultados da busca -->
@@ -2085,8 +2062,7 @@ function handleShareProfile() {
               <div v-if="!interestsSearchQuery.trim()" class="suggestions-section">
                 <h4>{{ t('profile.interests.suggestions') }}</h4>
                 <div v-if="isLoadingSuggestions" class="loading-suggestions">
-                  <i class="mdi mdi-loading mdi-spin" />
-                  <p>{{ t('profile.interests.loadingSuggestions') }}</p>
+                  <AppLoader size="md" :text="t('profile.interests.loadingSuggestions')" />
                 </div>
                 <div v-else-if="suggestedInterests.length > 0" class="interests-list">
                   <div v-for="interest in suggestedInterests" :key="interest.id" class="interest-item">
@@ -2203,8 +2179,7 @@ function handleShareProfile() {
             </div>
             <div class="modal-body follow-modal-body">
               <div v-if="loadingFollowers" class="follow-modal-loading">
-                <i class="mdi mdi-loading mdi-spin" />
-                <span>{{ t('profile.followersModal.loading') }}</span>
+                <AppLoader size="sm" :text="t('profile.followersModal.loading')" />
               </div>
               <ul v-else-if="followersList.length > 0" class="follow-modal-list">
                 <li v-for="follower in followersList" :key="follower.id" class="follow-modal-item">
@@ -2250,8 +2225,7 @@ function handleShareProfile() {
             </div>
             <div class="modal-body follow-modal-body">
               <div v-if="loadingFollowing" class="follow-modal-loading">
-                <i class="mdi mdi-loading mdi-spin" />
-                <span>{{ t('profile.followingModal.loading') }}</span>
+                <AppLoader size="sm" :text="t('profile.followingModal.loading')" />
               </div>
               <ul v-else-if="followingList.length > 0" class="follow-modal-list">
                 <li v-for="following in followingList" :key="following.id" class="follow-modal-item">
@@ -4052,43 +4026,6 @@ function handleShareProfile() {
   margin-bottom: 1.5rem;
 }
 
-.search-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-icon {
-  position: absolute;
-  left: 1rem;
-  font-size: 1.2rem;
-  color: #9aa0b8;
-  pointer-events: none;
-}
-
-.search-loading {
-  position: absolute;
-  right: 1rem;
-  font-size: 1.2rem;
-  color: #ff5fa6;
-}
-
-.interests-search-input {
-  width: 100%;
-  padding: 0.875rem 3rem 0.875rem 3rem;
-  border: 2px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  font-size: 1rem;
-  font-family: 'Baloo Thambi 2', sans-serif;
-  transition: all 0.2s;
-  outline: none;
-}
-
-.interests-search-input:focus {
-  border-color: #ff5fa6;
-  box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
-}
-
 .search-results-section {
   margin-bottom: 2rem;
 }
@@ -4235,16 +4172,6 @@ function handleShareProfile() {
   padding: 3rem 1rem;
   gap: 0.75rem;
   color: #9aa0b8;
-}
-
-.loading-suggestions i {
-  font-size: 2rem;
-  color: #FF629F;
-}
-
-.loading-suggestions p {
-  margin: 0;
-  font-size: 0.9rem;
 }
 
 .empty-suggestions {
@@ -4505,18 +4432,18 @@ function handleShareProfile() {
   border: 1.5px solid #e0e2ed;
   border-radius: 12px;
   font-size: 0.92rem;
-  color: #1a1c2e;
+  color: #1a1c2e !important;
   font-family: inherit;
   transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
   box-sizing: border-box;
-  background: #fafbfc;
+  background-color: #fafbfc !important;
 }
 
 .form-input:focus {
   border-color: #ff5fa6;
   box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
-  background: white;
+  background-color: white !important;
 }
 
 .form-textarea {
@@ -4525,20 +4452,20 @@ function handleShareProfile() {
   border: 1.5px solid #e0e2ed;
   border-radius: 12px;
   font-size: 0.92rem;
-  color: #1a1c2e;
+  color: #1a1c2e !important;
   font-family: inherit;
   resize: vertical;
   outline: none;
   min-height: 80px;
   box-sizing: border-box;
-  background: #fafbfc;
+  background-color: #fafbfc !important;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .form-textarea:focus {
   border-color: #ff5fa6;
   box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
-  background: white;
+  background-color: white !important;
 }
 
 .char-count {
@@ -4554,14 +4481,14 @@ function handleShareProfile() {
   align-items: center;
   border: 1.5px solid #e0e2ed;
   border-radius: 12px;
-  background: #fafbfc;
+  background-color: #fafbfc !important;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .input-with-prefix:focus-within {
   border-color: #ff5fa6;
   box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
-  background: white;
+  background-color: white !important;
 }
 
 .input-prefix {
@@ -4573,7 +4500,7 @@ function handleShareProfile() {
 
 .form-input.with-prefix {
   border: none;
-  background: transparent;
+  background-color: transparent !important;
   padding-left: 0.25rem;
   box-shadow: none;
 }
@@ -4995,6 +4922,31 @@ function handleShareProfile() {
   .skeleton-grid-mini {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1rem;
+  }
+}
+
+/* ── MEDIUM DESKTOP (960px – 1099px): sidebar icon-only + 3 columns ── */
+@media (min-width: 960px) and (max-width: 1099px) {
+  .layout-shell {
+    grid-template-columns: 72px minmax(0, 1fr) 240px;
+    grid-template-areas: 'sidebar main extras';
+    width: min(100%, 1080px);
+  }
+
+  .layout-extras {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    position: sticky;
+    top: 100px;
+    align-self: flex-start;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .layout-extras::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -5556,67 +5508,9 @@ a:focus-visible {
   margin-bottom: 1rem;
 }
 
-.user-search-input-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.user-search-icon {
-  position: absolute;
-  left: 0.75rem;
-  font-size: 1.1rem;
-  color: #9aa0b8;
-  pointer-events: none;
-}
-
-.user-search-input {
-  width: 100%;
-  padding: 0.6rem 2.5rem 0.6rem 2.5rem;
-  border: 1.5px solid #e0e2ed;
-  border-radius: 10px;
-  font-size: 0.85rem;
-  font-family: 'Baloo Thambi 2', sans-serif;
-  color: #1a1c2e;
-  background: #fafbfc;
-  transition: all 0.2s;
-  outline: none;
-}
-
-.user-search-input:focus {
-  border-color: #ff5fa6;
-  box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
-  background: white;
-}
-
-.user-search-input::placeholder {
-  color: #b8bdd0;
-}
-
-.user-search-clear {
-  position: absolute;
-  right: 0.5rem;
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9aa0b8;
-  transition: all 0.2s;
-  padding: 0;
-}
-
-.user-search-clear:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: #555b77;
-}
-
-.user-search-clear i {
-  font-size: 0.9rem;
+/* Campo de busca de usuários - wrapper */
+.user-search-wrapper {
+  margin-bottom: 1rem;
 }
 
 /* Wrapper para interesses no profile content - altura máxima com scroll */
