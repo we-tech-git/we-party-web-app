@@ -199,8 +199,11 @@
     stroke-width: 2.5;
 }
 
-/* Input field */
-.search-input-field {
+/* Input field
+   Usa "input.search-input-field" para atingir especificidade (0,2,1) e garantir
+   que supere o seletor do dark-mode em shared-styles.css, que também é (0,2,1).
+   Como o CSS scoped do componente é injetado depois do CSS global, ganha no empate. */
+input.search-input-field {
     width: 100%;
     padding: 0.75rem 2.75rem 0.75rem 2.75rem;
     border: 2px solid #d1d5e0;
@@ -208,14 +211,17 @@
     font-size: 0.9rem;
     font-family: inherit;
     color: #1a1c2e !important;
+    -webkit-text-fill-color: #1a1c2e !important;
     background-color: #ffffff !important;
+    opacity: 1;
     outline: none;
     transition: all 0.2s ease;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.search-input-field::placeholder {
+input.search-input-field::placeholder {
     color: #6b7280 !important;
+    -webkit-text-fill-color: #6b7280 !important;
     font-weight: 400;
     opacity: 1 !important;
 }
@@ -371,41 +377,21 @@
 
 /* ================================
    DARK MODE SUPPORT
+   O app não possui tema escuro. Mantemos a aparência light mesmo
+   quando o SO está em modo escuro, para evitar texto claro em fundo claro.
 ================================ */
 @media (prefers-color-scheme: dark) {
-    .search-input-field {
-        background-color: rgba(255, 255, 255, 0.08) !important;
-        border-color: rgba(255, 255, 255, 0.25);
-        color: #e5e7eb !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    input.search-input-field {
+        background-color: #ffffff !important;
+        color: #1a1c2e !important;
+        -webkit-text-fill-color: #1a1c2e !important;
+        border-color: #d1d5e0;
     }
 
-    .search-input-field::placeholder {
-        color: rgba(255, 255, 255, 0.5) !important;
+    input.search-input-field::placeholder {
+        color: #6b7280 !important;
+        -webkit-text-fill-color: #6b7280 !important;
         opacity: 1 !important;
-    }
-
-    .search-input-field:hover:not(:disabled) {
-        background-color: rgba(255, 255, 255, 0.12) !important;
-        border-color: rgba(255, 255, 255, 0.35);
-    }
-
-    .search-input-field:focus {
-        background-color: rgba(255, 255, 255, 0.15) !important;
-        border-color: #ff5fa6;
-    }
-
-    .search-input-icon {
-        color: rgba(255, 255, 255, 0.6);
-    }
-
-    .search-input-container:focus-within .search-input-icon {
-        color: #ff5fa6;
-    }
-
-    .search-input-clear {
-        background: rgba(255, 255, 255, 0.15);
-        color: rgba(255, 255, 255, 0.6);
     }
 
     .search-input-clear:hover {

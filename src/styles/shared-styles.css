@@ -19,20 +19,22 @@ textarea::placeholder {
   opacity: 1 !important;
 }
 
-/* Dark mode support */
+/* O app não possui tema escuro implementado.
+   Mantemos texto escuro e fundo branco independente do modo do SO. */
 @media (prefers-color-scheme: dark) {
   input:not([type="checkbox"]):not([type="radio"]),
   textarea,
   select {
-    background-color: rgba(255, 255, 255, 0.08) !important;
-    color: #e5e7eb !important;
-    -webkit-text-fill-color: #e5e7eb !important;
+    background-color: #ffffff !important;
+    color: #1a1c2e !important;
+    -webkit-text-fill-color: #1a1c2e !important;
   }
 
   input::placeholder,
   textarea::placeholder {
-    color: rgba(255, 255, 255, 0.5) !important;
-    -webkit-text-fill-color: rgba(255, 255, 255, 0.5) !important;
+    color: #9ca3af !important;
+    -webkit-text-fill-color: #9ca3af !important;
+    opacity: 1 !important;
   }
 }
 

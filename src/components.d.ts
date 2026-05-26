@@ -19,6 +19,7 @@ declare module 'vue' {
     Congratulations: typeof import('./components/modules/Congratulations/Congratulations.vue')['default']
     ErrorBoundary: typeof import('./components/UI/ErrorBoundary/ErrorBoundary.vue')['default']
     EventDetails: typeof import('./components/modules/Feed/EventDetails.vue')['default']
+    EventSearchAutocomplete: typeof import('./components/modules/Feed/EventSearchAutocomplete.vue')['default']
     EventView: typeof import('./components/modules/Feed/EventView.vue')['default']
     Feed: typeof import('./components/modules/Feed/Feed.vue')['default']
     FeedCard: typeof import('./components/modules/Feed/FeedCard.vue')['default']

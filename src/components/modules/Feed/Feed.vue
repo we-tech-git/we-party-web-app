@@ -20,9 +20,9 @@
   } from '@/api/event'
   import { getUserInterests, getUserProfile } from '@/api/users'
 
+  import EventSearchAutocomplete from '@/components/modules/Feed/EventSearchAutocomplete.vue'
   import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
-  import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useGuestMode } from '@/composables/useGuestMode'
   import { useLoading } from '@/composables/useLoading'
@@ -1006,12 +1006,10 @@
       <template #center-content>
         <section class="feed-controls">
           <div class="search-wrapper">
-            <SearchInput
+            <EventSearchAutocomplete
               v-model="searchQuery"
-              :aria-label="t('feed.searchAria')"
-              :loading="isSearching"
+              :guest-mode="props.guestMode"
               :placeholder="t('feed.searchPlaceholder')"
-              size="large"
               @clear="handleClearSearch"
               @search="handleSearch"
             />

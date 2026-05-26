@@ -458,6 +458,20 @@ async function fetchUserProfile() {
 
     // Busca os interesses do usuário
     await fetchUserInterests()
+
+    // ── Extrai eventos confirmados (eventAttendances) que já vem no getUserProfile ──
+    // A API retorna eventAttendances no GET /users/:id, evitando chamada adicional
+    if (userData.eventAttendances && Array.isArray(userData.eventAttendances)) {
+      confirmedEventsItems.value = userData.eventAttendances
+        .filter((e: any) => e && (e.id || e.eventId))
+        .map((evt: any) => {
+          // Se eventAttendances contém o objeto do evento completo ou apenas referência
+          const eventData = evt.event || evt
+          return mapLikedEvent(eventData)
+        })
+    } else {
+      confirmedEventsItems.value = []
+    }
   } catch {
     error.value = t('profile.messages.loadProfileError')
   } finally {
@@ -1061,7 +1075,8 @@ watch(activeTab, val => {
     fetchLikedEvents()
   }
   if (val === 'confirmed' && loggedUser.value?.id) {
-    fetchConfirmedEvents()
+    // Eventos confirmados já vem do getUserProfile, mas pode recarregar se necessário
+    // fetchConfirmedEvents()
   }
 })
 
@@ -1333,6 +1348,8 @@ async function handleUnlikeEvent(eventId: string | number, event: Event) {
 }
 
 // ── Fetch eventos confirmados ──
+// NOTA: Os eventos confirmados agora vem direto do getUserProfile (eventAttendances)
+// Esta função fica disponível caso seja necessário fazer um refresh manual
 async function fetchConfirmedEvents() {
   if (!loggedUser.value?.id) return
 

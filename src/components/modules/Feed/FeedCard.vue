@@ -512,8 +512,8 @@ function isMatchedInterest(tag: string): boolean {
 /* Rank badge */
 .rank-badge {
   position: absolute;
-  top: -12px;
-  left: -12px;
+  top: 12px;
+  left: 12px;
   z-index: 50;
   width: 52px;
   height: 52px;
@@ -542,6 +542,11 @@ function isMatchedInterest(tag: string): boolean {
 
 .feed-card.highlight-card:hover .rank-badge {
   transform: rotate(0deg) scale(1.1);
+}
+
+/* Push host-tag right so it doesn't overlap the rank badge (52px wide + 12px left + 8px gap) */
+.feed-card.highlight-card .host-tag {
+  left: 72px;
 }
 
 /* ─── Media ──────────────────────────────────────────────────────────────── */
@@ -1309,12 +1314,17 @@ function isMatchedInterest(tag: string): boolean {
     height: 42px;
     font-size: 1.3rem;
     border-radius: 13px;
-    top: -8px;
-    left: -8px;
+    top: 8px;
+    left: 8px;
   }
 
   .rank-badge span {
     font-size: 0.76rem;
+  }
+
+  /* Mobile: badge 42px wide at left 8px → ends at 50px → host-tag at 58px */
+  .feed-card.highlight-card .host-tag {
+    left: 58px;
   }
 
   .meta-wrapper {

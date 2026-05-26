@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path 'c:\\\\Users\\\\Home\\\\Desktop\\\\WORKS\\\\we-party-web-app' -Recurse -Filter '*interest*' -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -ExpandProperty FullName)"
+    ]
+  }
+}
