@@ -282,41 +282,47 @@ export async function getFavoriteEvents (page = 1, limit = 10) {
 }
 
 /**
- * Confirma presença em um evento.
+ * Atualiza presença em um evento.
  * @param eventId - ID do evento.
+ * @param status - Status da presença: "GOING", "INTERESTED" ou "NOT_GOING"
  */
-export async function confirmAttendance (eventId: string | number) {
+export async function updateAttendance (eventId: string | number, status: 'GOING' | 'INTERESTED' | 'NOT_GOING') {
   try {
     const response = await callApi(
       'PUT',
       `/events/${eventId}/attendance`,
-      {},
+      { status },
       true,
     )
     return response
   } catch (error) {
-    logger.error('Erro ao confirmar presença:', error)
+    logger.error('Erro ao atualizar presença:', error)
     throw error
   }
 }
 
 /**
- * Cancela presença em um evento.
+ * Confirma presença em um evento (wrapper de updateAttendance).
+ * @param eventId - ID do evento.
+ */
+export async function confirmAttendance (eventId: string | number) {
+  return updateAttendance(eventId, 'GOING')
+}
+
+/**
+ * Marca interesse em um evento.
+ * @param eventId - ID do evento.
+ */
+export async function markAsInterested (eventId: string | number) {
+  return updateAttendance(eventId, 'INTERESTED')
+}
+
+/**
+ * Cancela presença em um evento (wrapper de updateAttendance).
  * @param eventId - ID do evento.
  */
 export async function cancelAttendance (eventId: string | number) {
-  try {
-    const response = await callApi(
-      'DELETE',
-      `/events/${eventId}/attendance`,
-      {},
-      true,
-    )
-    return response
-  } catch (error) {
-    logger.error('Erro ao cancelar presença:', error)
-    throw error
-  }
+  return updateAttendance(eventId, 'NOT_GOING')
 }
 
 /**
