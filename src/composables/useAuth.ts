@@ -7,6 +7,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { AuthService, type LoggedUser } from '@/services/auth'
 import { useEventsStore } from '@/stores/events'
+import { logger } from '@/utils/logger'
 
 // Estado global reativo da autenticação
 const isAuthenticated = ref(AuthService.isAuthenticated())
@@ -23,8 +24,9 @@ const maskedEmail = ref(AuthService.getMaskedEmail())
 // SEGURANÇA: Guards para prevenir memory leaks
 // ===========================================
 let watcherStarted = false
-let authIntervalId: ReturnType<typeof setInterval> | null = null
+let watcherRefCount = 0
 let storageHandler: ((e: StorageEvent) => void) | null = null
+let authChangedHandler: (() => void) | null = null
 
 // ===============================
 // TIMEOUT DE SESSÃO (Segurança)
@@ -52,7 +54,7 @@ function resetInactivityTimer () {
 
   // Inicia novo timer de 30 minutos
   inactivityTimer = setTimeout(() => {
-    console.warn('[AUTH] Sessão expirada por inatividade (30 minutos)')
+    logger.warn('[AUTH] Sessão expirada por inatividade (30 minutos)')
 
     // Faz logout automático
     AuthService.logout()
@@ -123,17 +125,9 @@ function startAuthWatcher () {
   // Monitora mudanças no localStorage (outras abas)
   window.addEventListener('storage', storageHandler)
 
-  // Monitora mudanças no próprio tab
-  // SEGURANÇA: Salva referência para poder limpar depois
-  authIntervalId = setInterval(() => {
-    const currentToken = AuthService.getToken()
-    const currentUser = AuthService.getUser()
-
-    if (currentToken !== accessToken.value
-      || JSON.stringify(currentUser) !== JSON.stringify(loggedUser.value)) {
-      refreshAuthState()
-    }
-  }, 2000) // Verifica a cada 2 segundos
+  // Monitora mudanças na mesma aba via CustomEvent (disparado no login/logout)
+  authChangedHandler = () => refreshAuthState()
+  window.addEventListener('weparty:auth-changed', authChangedHandler)
 
   // ===============================
   // TIMEOUT DE SESSÃO: Inicia monitoramento de atividade
@@ -151,10 +145,10 @@ function stopAuthWatcher () {
     storageHandler = null
   }
 
-  // Limpa interval de polling
-  if (authIntervalId) {
-    clearInterval(authIntervalId)
-    authIntervalId = null
+  // Remove listener de mudanças na mesma aba
+  if (authChangedHandler) {
+    window.removeEventListener('weparty:auth-changed', authChangedHandler)
+    authChangedHandler = null
   }
 
   watcherStarted = false
@@ -198,6 +192,7 @@ export function useAuth () {
       user,
     })
     refreshAuthState()
+    window.dispatchEvent(new CustomEvent('weparty:auth-changed'))
 
     // ===============================
     // TIMEOUT DE SESSÃO: Inicia monitoramento ao fazer login
@@ -216,6 +211,7 @@ export function useAuth () {
 
     AuthService.logout()
     refreshAuthState()
+    window.dispatchEvent(new CustomEvent('weparty:auth-changed'))
 
     // ===============================
     // TIMEOUT DE SESSÃO: Para monitoramento ao fazer logout
@@ -236,17 +232,23 @@ export function useAuth () {
     refreshAuthState()
   }
 
-  // Inicia o monitoramento quando o composable é usado
+  // Inicia o monitoramento quando o composable é usado pela primeira vez
+  // e incrementa o contador de componentes ativos
   if (typeof window !== 'undefined') {
+    watcherRefCount++
     startAuthWatcher()
   }
 
   // ===========================================
-  // SEGURANÇA: Cleanup automático para prevenir memory leaks
+  // SEGURANÇA: Cleanup via contador de referências
+  // O watcher global só para quando o ÚLTIMO componente que o usa é desmontado
   // ===========================================
-  // Limpa recursos quando o componente é desmontado
   onBeforeUnmount(() => {
-    stopAuthWatcher()
+    watcherRefCount--
+    if (watcherRefCount <= 0) {
+      watcherRefCount = 0
+      stopAuthWatcher()
+    }
   })
 
   return {
@@ -272,9 +274,6 @@ export function useAuth () {
 
     // Cleanup (SEGURANÇA: para evitar memory leaks)
     stopAuthWatcher,
-
-    // Utilitários
-    debugAuth: AuthService.debugAuth,
   }
 }
 

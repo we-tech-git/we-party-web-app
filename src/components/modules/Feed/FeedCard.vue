@@ -1,210 +1,185 @@
 ﻿<script setup lang="ts">
-import type { FeedItem } from '@/stores/events'
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { useGuestMode } from '@/composables/useGuestMode'
-import { useShareStore } from '@/stores/share'
-import { svgIcons } from '@/utils/svgSet'
-import InlineComments from './InlineComments.vue'
+  import type { FeedItem } from '@/stores/events'
+  import { computed, ref, watch } from 'vue'
+  import { useRouter } from 'vue-router'
+  import { useEventImages } from '@/composables/useEventImages'
+  import { useGuestMode } from '@/composables/useGuestMode'
+  import { useShareStore } from '@/stores/share'
+  import { svgIcons } from '@/utils/svgSet'
+  import InlineComments from './InlineComments.vue'
 
-const props = defineProps<{
-  id: string | number
-  banner: string
-  hostName: string
-  hostAvatar: string
-  title: string
-  description: string
-  schedule: string
-  eventData: FeedItem
-  location?: string
-  confirmed: number
-  interested: number
-  isSaved?: boolean
-  likes?: number
-  liked?: boolean
-  highlight?: boolean
-  rank?: number
-  interests?: string[]
-  commentsCount?: number
-  matchedInterests?: string[]
-  guestMode?: boolean
-  sourceUrl?: string
-  showRemoveButton?: boolean
-}>()
+  const props = defineProps<{
+    id: string | number
+    banner: string
+    hostName: string
+    hostAvatar: string
+    title: string
+    description: string
+    schedule: string
+    eventData: FeedItem
+    location?: string
+    confirmed: number
+    interested: number
+    isSaved?: boolean
+    likes?: number
+    liked?: boolean
+    highlight?: boolean
+    rank?: number
+    interests?: string[]
+    commentsCount?: number
+    matchedInterests?: string[]
+    guestMode?: boolean
+    sourceUrl?: string
+    showRemoveButton?: boolean
+  }>()
 
-const emit = defineEmits<{
-  (e: 'toggle-save' | 'toggle-like' | 'remove-favorite'): void
-}>()
+  const emit = defineEmits<{
+    (e: 'toggle-save' | 'toggle-like' | 'remove-favorite'): void
+  }>()
 
-const router = useRouter()
-const { requireLogin } = useGuestMode()
+  const router = useRouter()
+  const { requireLogin } = useGuestMode()
 
-/**
- * Navega para detalhes do evento
- * Em modo guest, mostra dialog de login
- */
-function handleDetailsClick() {
-  if (props.guestMode) {
-    requireLogin('ver detalhes do evento')
-    return
+  /**
+   * Navega para detalhes do evento
+   * Em modo guest, mostra dialog de login
+   */
+  function handleDetailsClick () {
+    if (props.guestMode) {
+      requireLogin('ver detalhes do evento')
+      return
+    }
+
+    // Sempre navega para a página interna de detalhes
+    router.push(`/private/event/${props.id}`)
   }
 
-  // Sempre navega para a página interna de detalhes
-  router.push(`/private/event/${props.id}`)
-}
-
-/**
- * Intercepta ações que precisam de autenticação no modo guest
- */
-function handleProtectedAction(action: () => void, actionName: string) {
-  if (props.guestMode) {
-    requireLogin(actionName)
-    return
-  }
-  action()
-}
-
-function handleToggleLike() {
-  handleProtectedAction(() => emit('toggle-like'), 'curtir eventos')
-}
-
-function handleToggleSave() {
-  handleProtectedAction(() => emit('toggle-save'), 'salvar eventos')
-}
-
-function handleRemoveFavorite(e: Event) {
-  e.stopPropagation()
-  emit('remove-favorite')
-}
-
-function handleCommentsToggle() {
-  if (props.guestMode) {
-    requireLogin('ver e publicar comentários')
-    return
-  }
-  showComments.value = !showComments.value
-  showInterests.value = false
-}
-
-function formatCount(value: number | undefined | null): string {
-  const num = Number(value) || 0
-  if (num < 1000) return num.toString()
-  const rounded = num / 1000
-  const formatted = rounded % 1 === 0 ? Math.trunc(rounded).toString() : rounded.toFixed(1)
-  return `${formatted}k`
-}
-
-function resolveAsset(val?: string) {
-  if (!val) return ''
-  if (/^https?:\/\//i.test(val)) return val
-  const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
-  const path = val.startsWith('/') ? val : `/${val}`
-  return `${base}${path}`
-}
-
-const bannerSrc = computed(() => {
-  return resolveAsset(props.banner)
-})
-
-const hostAvatarSrc = computed(() => resolveAsset(props.hostAvatar))
-
-const hostInitial = computed(() => (props.hostName || 'U').charAt(0).toUpperCase())
-
-const avatarColors = [
-  '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
-  '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
-  '#8BC34A', '#CDDC39', '#FFC107', '#FF9800', '#FF5722',
-]
-
-const avatarColor = computed(() => {
-  if (!props.hostName) return avatarColors[0]
-  let hash = 0
-  for (let i = 0; i < props.hostName.length; i++) {
-    hash = (props.hostName.codePointAt(i) || 0) + ((hash << 5) - hash)
-  }
-  return avatarColors[Math.abs(hash % avatarColors.length)]
-})
-
-const eventImages = computed(() => {
-  if (!Array.isArray(props.eventData?.images) || props.eventData.images.length === 0) {
-    return { desktop: '', mobile: '' }
+  /**
+   * Intercepta ações que precisam de autenticação no modo guest
+   */
+  function handleProtectedAction (action: () => void, actionName: string) {
+    if (props.guestMode) {
+      requireLogin(actionName)
+      return
+    }
+    action()
   }
 
-  const images = props.eventData.images
-
-  // Desktop: melhor imagem 16_9 (maior resolução)
-  const landscapeImages = images
-    .filter(img => img.ratio === '16_9')
-    .toSorted((a, b) => b.width - a.width)
-
-  const desktopImage = landscapeImages[0]?.url || ''
-
-  // Mobile: preferir 3_2 (proporção mais vertical), senão usar a menor 16_9
-  const verticalImages = images.filter(img => img.ratio === '3_2')
-  const mobileImages = verticalImages.length > 0
-    ? verticalImages.toSorted((a, b) => b.width - a.width)
-    : landscapeImages.toReversed()
-
-  const mobileImage = mobileImages[0]?.url || desktopImage
-
-  return {
-    desktop: desktopImage,
-    mobile: mobileImage,
+  function handleToggleLike () {
+    handleProtectedAction(() => emit('toggle-like'), 'curtir eventos')
   }
-})
 
-const shareStore = useShareStore()
+  function handleToggleSave () {
+    handleProtectedAction(() => emit('toggle-save'), 'salvar eventos')
+  }
 
-const showComments = ref(false)
-const showInterests = ref(false)
-const localCommentsCount = ref(props.commentsCount ?? 0)
+  function handleRemoveFavorite (e: Event) {
+    e.stopPropagation()
+    emit('remove-favorite')
+  }
 
-watch(() => props.commentsCount, val => {
-  if (val !== undefined) localCommentsCount.value = val
-})
+  function handleCommentsToggle () {
+    if (props.guestMode) {
+      requireLogin('ver e publicar comentários')
+      return
+    }
+    showComments.value = !showComments.value
+    showInterests.value = false
+  }
 
-function handleUpdateCommentsCount(count: number) {
-  localCommentsCount.value = count
-}
+  function formatCount (value: number | undefined | null): string {
+    const num = Number(value) || 0
+    if (num < 1000) return num.toString()
+    const rounded = num / 1000
+    const formatted = rounded % 1 === 0 ? Math.trunc(rounded).toString() : rounded.toFixed(1)
+    return `${formatted}k`
+  }
 
-function handleShare() {
-  shareStore.open({
-    title: props.title,
-    text: 'Veja esse evento que encontrei que você também pode gostar',
-    url: `${window.location.origin}/private/event/${props.id}`,
+  function resolveAsset (val?: string) {
+    if (!val) return ''
+    if (/^https?:\/\//i.test(val)) return val
+    const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
+    const path = val.startsWith('/') ? val : `/${val}`
+    return `${base}${path}`
+  }
+
+  const bannerSrc = computed(() => {
+    return resolveAsset(props.banner)
   })
-}
 
-function toggleInterests(e: Event) {
-  e.stopPropagation()
-  showInterests.value = !showInterests.value
-  if (showInterests.value) showComments.value = false
-}
+  const hostAvatarSrc = computed(() => resolveAsset(props.hostAvatar))
 
-// Tags de interesses visíveis no card (max 3 + overflow)
-const visibleInterestTags = computed(() => {
-  if (!props.interests || props.interests.length === 0) return []
-  const matched = props.matchedInterests || []
-  // Prioriza os matched no topo
-  const sorted = [...props.interests].toSorted((a, b) => {
-    const aMatch = matched.some(m => m.toLowerCase() === a.toLowerCase())
-    const bMatch = matched.some(m => m.toLowerCase() === b.toLowerCase())
-    if (aMatch && !bMatch) return -1
-    if (!aMatch && bMatch) return 1
-    return 0
+  const hostInitial = computed(() => (props.hostName || 'U').charAt(0).toUpperCase())
+
+  const avatarColors = [
+    '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
+    '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
+    '#8BC34A', '#CDDC39', '#FFC107', '#FF9800', '#FF5722',
+  ]
+
+  const avatarColor = computed(() => {
+    if (!props.hostName) return avatarColors[0]
+    let hash = 0
+    for (let i = 0; i < props.hostName.length; i++) {
+      hash = (props.hostName.codePointAt(i) || 0) + ((hash << 5) - hash)
+    }
+    return avatarColors[Math.abs(hash % avatarColors.length)]
   })
-  return sorted.slice(0, 3)
-})
 
-const overflowCount = computed(() => {
-  if (!props.interests) return 0
-  return Math.max(0, props.interests.length - 3)
-})
+  const eventImages = useEventImages(() => props.eventData?.images)
 
-function isMatchedInterest(tag: string): boolean {
-  if (!props.matchedInterests || props.matchedInterests.length === 0) return false
-  return props.matchedInterests.some(m => m.toLowerCase() === tag.toLowerCase())
-}
+  const shareStore = useShareStore()
+
+  const showComments = ref(false)
+  const showInterests = ref(false)
+  const localCommentsCount = ref(props.commentsCount ?? 0)
+
+  watch(() => props.commentsCount, val => {
+    if (val !== undefined) localCommentsCount.value = val
+  })
+
+  function handleUpdateCommentsCount (count: number) {
+    localCommentsCount.value = count
+  }
+
+  function handleShare () {
+    shareStore.open({
+      title: props.title,
+      text: 'Veja esse evento que encontrei que você também pode gostar',
+      url: `${window.location.origin}/private/event/${props.id}`,
+    })
+  }
+
+  function toggleInterests (e: Event) {
+    e.stopPropagation()
+    showInterests.value = !showInterests.value
+    if (showInterests.value) showComments.value = false
+  }
+
+  // Tags de interesses visíveis no card (max 3 + overflow)
+  const visibleInterestTags = computed(() => {
+    if (!props.interests || props.interests.length === 0) return []
+    const matched = props.matchedInterests || []
+    // Prioriza os matched no topo
+    const sorted = [...props.interests].toSorted((a, b) => {
+      const aMatch = matched.some(m => m.toLowerCase() === a.toLowerCase())
+      const bMatch = matched.some(m => m.toLowerCase() === b.toLowerCase())
+      if (aMatch && !bMatch) return -1
+      if (!aMatch && bMatch) return 1
+      return 0
+    })
+    return sorted.slice(0, 3)
+  })
+
+  const overflowCount = computed(() => {
+    if (!props.interests) return 0
+    return Math.max(0, props.interests.length - 3)
+  })
+
+  function isMatchedInterest (tag: string): boolean {
+    if (!props.matchedInterests || props.matchedInterests.length === 0) return false
+    return props.matchedInterests.some(m => m.toLowerCase() === tag.toLowerCase())
+  }
 </script>
 
 <template>
@@ -213,10 +188,15 @@ function isMatchedInterest(tag: string): boolean {
       <span>#</span>{{ rank }}
     </div>
 
-    <figure class="media">
+    <figure class="media" :class="{ 'comments-open': showComments }">
       <!-- Banner Image -->
-      <img v-if="eventImages.desktop || bannerSrc" :alt="title" class="banner" loading="lazy"
-        :src="eventImages.desktop || bannerSrc">
+      <img
+        v-if="eventImages.desktop || bannerSrc"
+        :alt="title"
+        class="banner"
+        loading="lazy"
+        :src="eventImages.desktop || bannerSrc"
+      >
       <div v-else class="banner-placeholder">
         <i class="mdi mdi-image-off-outline" />
         <span>Imagem indisponível</span>
@@ -240,11 +220,25 @@ function isMatchedInterest(tag: string): boolean {
       </div>
 
       <!-- Bookmark -->
-      <button aria-label="Salvar evento" class="bookmark" :class="{ saved: isSaved }" type="button"
-        @click.stop="handleToggleSave">
-        <svg aria-hidden="true" :fill="isSaved ? 'currentColor' : 'none'" height="20" role="presentation"
-          stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"
-          width="20">
+      <button
+        aria-label="Salvar evento"
+        class="bookmark"
+        :class="{ saved: isSaved }"
+        type="button"
+        @click.stop="handleToggleSave"
+      >
+        <svg
+          aria-hidden="true"
+          :fill="isSaved ? 'currentColor' : 'none'"
+          height="20"
+          role="presentation"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="20"
+        >
           <path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z" />
         </svg>
         <v-tooltip activator="parent" content-class="feed-card-tooltip" location="start" offset="10">
@@ -253,10 +247,23 @@ function isMatchedInterest(tag: string): boolean {
       </button>
 
       <!-- Remove from Favorites Button -->
-      <button v-if="showRemoveButton" aria-label="Remover dos favoritos" class="remove-favorite-btn" type="button"
-        @click.stop="handleRemoveFavorite">
-        <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-          stroke-width="2" viewBox="0 0 24 24" width="18">
+      <button
+        v-if="showRemoveButton"
+        aria-label="Remover dos favoritos"
+        class="remove-favorite-btn"
+        type="button"
+        @click.stop="handleRemoveFavorite"
+      >
+        <svg
+          fill="none"
+          height="18"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="18"
+        >
           <circle cx="12" cy="12" r="10" />
           <line x1="15" x2="9" y1="9" y2="15" />
           <line x1="9" x2="15" y1="9" y2="15" />
@@ -271,9 +278,24 @@ function isMatchedInterest(tag: string): boolean {
         <div v-if="showInterests && interests && interests.length > 0" class="interests-panel" @click.stop>
           <div class="interests-panel-header">
             <span class="interests-panel-title">Interesses do evento</span>
-            <button class="interests-close" type="button" @click.stop="showInterests = false">
-              <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                stroke-width="2.5" viewBox="0 0 24 24" width="14">
+            <button
+              aria-label="Fechar painel de interesses"
+              class="interests-close"
+              type="button"
+              @click.stop="showInterests = false"
+            >
+              <svg
+                aria-hidden="true"
+                fill="none"
+                focusable="false"
+                height="14"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+                width="14"
+              >
                 <line x1="18" x2="6" y1="6" y2="18" />
                 <line x1="6" x2="18" y1="6" y2="18" />
               </svg>
@@ -297,17 +319,38 @@ function isMatchedInterest(tag: string): boolean {
           <div class="container-card-info">
             <!-- Interest tags -->
             <div v-if="visibleInterestTags.length > 0" class="interest-tags">
-              <span v-for="tag in visibleInterestTags" :key="tag" class="interest-tag"
-                :class="{ matched: isMatchedInterest(tag) }">{{ tag }}</span>
+              <span
+                v-for="tag in visibleInterestTags"
+                :key="tag"
+                class="interest-tag"
+                :class="{ matched: isMatchedInterest(tag) }"
+              >{{ tag }}</span>
               <span v-if="overflowCount > 0" class="interest-tag more">+{{ overflowCount }}</span>
             </div>
 
             <!-- Date + Location pill -->
             <div class="meta-wrapper">
-              <!-- Calendar icon -->
-              <svg fill="none" height="13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                stroke-width="2" viewBox="0 0 24 24" width="13">
-                <rect height="18" rx="2" ry="2" width="18" x="3" y="4" />
+              <!-- Ícone decorativo: informação já transmitida pelo texto ao lado -->
+              <svg
+                aria-hidden="true"
+                fill="none"
+                focusable="false"
+                height="13"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="13"
+              >
+                <rect
+                  height="18"
+                  rx="2"
+                  ry="2"
+                  width="18"
+                  x="3"
+                  y="4"
+                />
                 <line x1="16" x2="16" y1="2" y2="6" />
                 <line x1="8" x2="8" y1="2" y2="6" />
                 <line x1="3" x2="21" y1="10" y2="10" />
@@ -317,9 +360,19 @@ function isMatchedInterest(tag: string): boolean {
 
             <div class="meta-wrapper">
               <template v-if="location">
-                <!-- Location pin icon -->
-                <svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                  stroke-width="2" viewBox="0 0 24 24" width="12">
+                <!-- Ícone decorativo: informação já transmitida pelo texto ao lado -->
+                <svg
+                  aria-hidden="true"
+                  fill="none"
+                  focusable="false"
+                  height="12"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="12"
+                >
                   <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z" />
                   <circle cx="12" cy="10" r="3" />
                 </svg>
@@ -332,29 +385,72 @@ function isMatchedInterest(tag: string): boolean {
         <!-- Footer: stats + actions -->
         <footer class="footer">
           <div aria-label="Indicadores do evento" class="stats">
-            <button class="stat stat-action" :class="{ liked }" type="button" @click.stop="handleToggleLike">
-              <svg :fill="liked ? 'currentColor' : 'none'" height="17" stroke="currentColor" stroke-linecap="round"
-                stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="17">
+            <button
+              :aria-label="`${liked ? 'Descurtir' : 'Curtir'} evento — ${formatCount(likes)} curtidas`"
+              :aria-pressed="liked"
+              class="stat stat-action"
+              :class="{ liked }"
+              type="button"
+              @click.stop="handleToggleLike"
+            >
+              <svg
+                aria-hidden="true"
+                :fill="liked ? 'currentColor' : 'none'"
+                height="17"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="17"
+              >
                 <path
-                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                />
               </svg>
-              {{ formatCount(likes) }}
+              <span aria-hidden="true">{{ formatCount(likes) }}</span>
             </button>
-            <button aria-label="Comentários" class="stat stat-action comments-action" :class="{ active: showComments }"
-              type="button" @click.stop="handleCommentsToggle">
-              <svg fill="none" height="17" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                stroke-width="2" viewBox="0 0 24 24" width="17">
+            <button
+              aria-label="Comentários"
+              class="stat stat-action comments-action"
+              :class="{ active: showComments }"
+              type="button"
+              @click.stop="handleCommentsToggle"
+            >
+              <svg
+                fill="none"
+                height="17"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="17"
+              >
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
               {{ formatCount(localCommentsCount) }}
             </button>
 
             <!-- Interests toggle button -->
-            <button v-if="interests && interests.length > 0" aria-label="Ver interesses"
-              class="stat stat-action interests-action" :class="{ active: showInterests }" type="button"
-              @click="toggleInterests">
-              <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                stroke-width="2" viewBox="0 0 24 24" width="16">
+            <button
+              v-if="interests && interests.length > 0"
+              aria-label="Ver interesses"
+              class="stat stat-action interests-action"
+              :class="{ active: showInterests }"
+              type="button"
+              @click="toggleInterests"
+            >
+              <svg
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="16"
+              >
                 <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
                 <line x1="7" x2="7.01" y1="7" y2="7" />
               </svg>
@@ -364,20 +460,54 @@ function isMatchedInterest(tag: string): boolean {
 
           <div class="actions">
             <button aria-label="Ver detalhes" class="icon-button" type="button" @click.stop="handleDetailsClick">
-              <svg v-if="svgIcons.infoIcon" fill="none" height="18" viewBox="0 0 256 256" width="18">
-                <path v-for="(path, index) in svgIcons.infoIcon.paths" :key="index" :d="path.d" fill="#ffffff"
-                  stroke-linecap="round" stroke-linejoin="round" stroke-width="16" />
+              <svg
+                v-if="svgIcons.infoIcon"
+                fill="none"
+                height="18"
+                viewBox="0 0 256 256"
+                width="18"
+              >
+                <path
+                  v-for="(path, index) in svgIcons.infoIcon.paths"
+                  :key="index"
+                  :d="path.d"
+                  fill="#ffffff"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="16"
+                />
               </svg>
-              <v-tooltip activator="parent" content-class="feed-card-tooltip" location="top"
-                offset="10">Detalhes</v-tooltip>
+              <v-tooltip
+                activator="parent"
+                content-class="feed-card-tooltip"
+                location="top"
+                offset="10"
+              >Detalhes</v-tooltip>
             </button>
             <button aria-label="Compartilhar" class="icon-button" type="button" @click.prevent="handleShare">
-              <svg v-if="svgIcons.shareIcon" fill="none" height="18" viewBox="0 0 256 256" width="18">
-                <path v-for="(path, index) in svgIcons.shareIcon.paths" :key="index" :d="path.d" fill="#ffffff"
-                  stroke-linecap="round" stroke-linejoin="round" stroke-width="16" />
+              <svg
+                v-if="svgIcons.shareIcon"
+                fill="none"
+                height="18"
+                viewBox="0 0 256 256"
+                width="18"
+              >
+                <path
+                  v-for="(path, index) in svgIcons.shareIcon.paths"
+                  :key="index"
+                  :d="path.d"
+                  fill="#ffffff"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="16"
+                />
               </svg>
-              <v-tooltip activator="parent" content-class="feed-card-tooltip" location="top"
-                offset="10">Compartilhar</v-tooltip>
+              <v-tooltip
+                activator="parent"
+                content-class="feed-card-tooltip"
+                location="top"
+                offset="10"
+              >Compartilhar</v-tooltip>
             </button>
           </div>
         </footer>
@@ -388,9 +518,10 @@ function isMatchedInterest(tag: string): boolean {
   </article>
 </template>
 
-<style>
-/* Global â€” strict to feed-card tooltips via content-class */
-.feed-card .v-overlay__content.feed-card-tooltip {
+<style scoped>
+/* Tooltips do Vuetify via :deep() — permanece escopado ao feed-card,
+   sem poluir o namespace CSS global do projeto */
+:deep(.v-overlay__content.feed-card-tooltip) {
   background: rgba(14, 20, 38, 0.92);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.13);
@@ -405,14 +536,14 @@ function isMatchedInterest(tag: string): boolean {
 }
 
 @media (max-width: 768px) {
-  .feed-card .v-overlay__content.feed-card-tooltip {
+  :deep(.v-overlay__content.feed-card-tooltip) {
     backdrop-filter: blur(4px);
     background: rgba(14, 20, 38, 0.95);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .feed-card .v-overlay__content.feed-card-tooltip {
+  :deep(.v-overlay__content.feed-card-tooltip) {
     backdrop-filter: none;
     background: rgba(14, 20, 38, 0.98);
   }
@@ -442,7 +573,7 @@ function isMatchedInterest(tag: string): boolean {
     justify-content: space-between;
     align-items: flex-end;
   }
-  
+
   .container-card-info {
     flex-direction: column;
     margin: 0 0 0 auto;
@@ -464,11 +595,9 @@ function isMatchedInterest(tag: string): boolean {
   position: relative;
   border-radius: 28px;
   overflow: visible;
-  background: #07091a;
-  box-shadow: 0 24px 52px rgba(0, 0, 0, 0.4);
+  background: #fff5f76e;
   isolation: isolate;
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.35s ease;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   padding: 0.35rem;
   width: 100%;
   max-width: 100%;
@@ -478,10 +607,13 @@ function isMatchedInterest(tag: string): boolean {
   z-index: 1;
 }
 
+/* Highlight cards mantêm fundo escuro — coberto pelo glow gradiente do ::before */
+.feed-card.highlight-card {
+  background: #07091a;
+}
+
 .feed-card:hover {
   transform: translateY(-6px) translateZ(0);
-  box-shadow: 0 36px 70px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(var(--accent-rgb), 0.18);
 }
 
 .feed-card:not(:hover) {
@@ -490,8 +622,6 @@ function isMatchedInterest(tag: string): boolean {
 
 /* Highlight card */
 .feed-card.highlight-card {
-  box-shadow: 0 28px 56px rgba(var(--accent-rgb), 0.2),
-    0 0 0 1px rgba(var(--accent-light-rgb), 0.25);
 }
 
 .feed-card.highlight-card::before {
@@ -525,7 +655,6 @@ function isMatchedInterest(tag: string): boolean {
   font-weight: 800;
   font-size: 1.65rem;
   border-radius: 18px;
-  box-shadow: 0 6px 18px rgba(var(--accent-rgb), 0.55);
   transform: rotate(-10deg);
   border: 2px solid rgba(255, 255, 255, 0.25);
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
@@ -555,10 +684,19 @@ function isMatchedInterest(tag: string): boolean {
   margin: 0;
   /* Garante altura mínima para evitar colapso */
   min-height: 380px;
-  height: 100%;
+  /* Sem height: 100% — senão a figure estica para preencher o card quando os
+     comentários expandem abaixo dela, escondendo o painel de comentários */
   border-radius: 22px;
   overflow: hidden;
   transform: translateZ(0);
+  background: #07091a;
+  transition: border-radius 0.3s ease;
+}
+
+/* Quando os comentários estão abertos, os cantos de baixo ficam retos
+   para emendar com o painel de comentários e parecer um card único */
+.media.comments-open {
+  border-radius: 22px 22px 0 0;
 }
 
 .banner {
@@ -633,12 +771,6 @@ function isMatchedInterest(tag: string): boolean {
   transition: transform 0.2s ease;
 }
 
-@media (max-width: 768px) {
-  .host-tag {
-    backdrop-filter: blur(4px);
-  }
-}
-
 .host-tag:hover {
   transform: scale(1.03);
 }
@@ -686,12 +818,6 @@ function isMatchedInterest(tag: string): boolean {
   min-height: 44px;
 }
 
-@media (max-width: 768px) {
-  .bookmark {
-    backdrop-filter: blur(3px);
-  }
-}
-
 .bookmark:hover {
   background: linear-gradient(135deg, var(--accent-light), var(--accent));
   transform: scale(1.1);
@@ -710,7 +836,7 @@ function isMatchedInterest(tag: string): boolean {
     box-shadow: none;
     border-color: rgba(255, 255, 255, 0.12);
   }
-  
+
   .bookmark:active {
     background: linear-gradient(135deg, var(--accent-light), var(--accent));
     transform: scale(0.92);
@@ -745,12 +871,6 @@ function isMatchedInterest(tag: string): boolean {
     border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@media (max-width: 768px) {
-  .remove-favorite-btn {
-    backdrop-filter: blur(3px);
-  }
-}
-
 .remove-favorite-btn:hover {
   background: linear-gradient(135deg, #ef4444, #dc2626);
   transform: scale(1.1);
@@ -773,13 +893,6 @@ function isMatchedInterest(tag: string): boolean {
   background: rgba(6, 7, 20, 0.88);
   backdrop-filter: blur(12px);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-@media (max-width: 768px) {
-  .interests-panel {
-    backdrop-filter: blur(6px);
-    background: rgba(6, 7, 20, 0.92);
-  }
 }
 
 .interests-panel-header {
@@ -918,12 +1031,6 @@ function isMatchedInterest(tag: string): boolean {
   transform: translateZ(0);
 }
 
-@media (max-width: 768px) {
-  .interest-tag {
-    backdrop-filter: blur(3px);
-  }
-}
-
 .interest-tag.matched {
   background: linear-gradient(135deg, rgba(233, 30, 99, 0.85), rgba(255, 95, 166, 0.85));
   border-color: rgba(255, 255, 255, 0.25);
@@ -952,12 +1059,6 @@ function isMatchedInterest(tag: string): boolean {
   align-content: flex-end;
 }
 
-@media (max-width: 768px) {
-  .meta-wrapper {
-    backdrop-filter: blur(3px);
-  }
-}
-
 .meta-wrapper svg {
   flex-shrink: 0;
   opacity: 0.8;
@@ -971,11 +1072,6 @@ function isMatchedInterest(tag: string): boolean {
   text-transform: uppercase;
   white-space: nowrap;
   transition: color 0.4s ease;
-}
-
-.meta-sep {
-  opacity: 0.35;
-  font-size: 0.7rem;
 }
 
 .location {
@@ -1060,7 +1156,7 @@ function isMatchedInterest(tag: string): boolean {
     transform: none;
     background: transparent;
   }
-  
+
   .stat-action:active {
     background: rgba(255, 255, 255, 0.12);
     transform: scale(0.95);
@@ -1158,12 +1254,6 @@ function isMatchedInterest(tag: string): boolean {
   min-height: 44px;
 }
 
-@media (max-width: 768px) {
-  .icon-button {
-    backdrop-filter: blur(3px);
-  }
-}
-
 .icon-button:hover {
   background: linear-gradient(135deg, var(--accent-light), var(--accent));
   transform: translateY(-3px) scale(1.05) translateZ(0);
@@ -1182,10 +1272,24 @@ function isMatchedInterest(tag: string): boolean {
     box-shadow: none;
     border-color: rgba(255, 255, 255, 0.1);
   }
-  
+
   .icon-button:active {
     background: linear-gradient(135deg, var(--accent-light), var(--accent));
     transform: scale(0.95) translateZ(0);
+  }
+}
+
+/* ─── Backdrop-filter: reduzido em mobile para performance ───────────────── */
+/* Todos os elementos com backdrop-filter consolidados num único media query  */
+@media (max-width: 768px) {
+  .host-tag,
+  .bookmark,
+  .remove-favorite-btn,
+  .interests-panel,
+  .interest-tag,
+  .meta-wrapper,
+  .icon-button {
+    backdrop-filter: blur(4px);
   }
 }
 
@@ -1427,39 +1531,4 @@ function isMatchedInterest(tag: string): boolean {
   }
 }
 
-/* ─── Source URL Container ───────────────────────────────────────────────── */
-.source-url-container {
-  padding: 0 1.2rem 0.5rem;
-}
-
-.source-url-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px);
-  color: white;
-  font-weight: 600;
-  font-size: 0.85rem;
-  letter-spacing: 0.01em;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.source-url-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.source-url-btn i {
-  font-size: 1.1rem;
-}
 </style>

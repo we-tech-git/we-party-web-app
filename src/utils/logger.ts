@@ -16,8 +16,9 @@ export const logger = {
   },
 
   error: (...args: any[]) => {
-    // Erros sempre são logados, mesmo em produção
-    console.error(...args)
+    if (import.meta.env.DEV) {
+      console.error(...args)
+    }
   },
 
   info: (...args: any[]) => {

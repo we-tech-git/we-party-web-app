@@ -436,9 +436,9 @@
 .inline-comments-wrapper.expanded .inner {
   opacity: 1;
   background: #ffffff;
-  border-radius: 0 0 24px 24px;
+  border-radius: 0 0 22px 22px;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-top: 2px solid rgba(255, 186, 75, 0.3);
+  border-top: none;
 }
 
 /* ─── Comments list ─── */

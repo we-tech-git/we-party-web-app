@@ -107,10 +107,9 @@
   function handleSelect (suggestion: EventSuggestion) {
     inputValue.value = suggestion.title
     emit('update:modelValue', suggestion.title)
-    emit('search', suggestion.title)
     isOpen.value = false
     suggestions.value = []
-    router.push({ path: '/private/feed', query: { search: suggestion.title } })
+    router.push({ path: `/private/event/${suggestion.id}` })
   }
 
   function handleKeydown (event: KeyboardEvent) {

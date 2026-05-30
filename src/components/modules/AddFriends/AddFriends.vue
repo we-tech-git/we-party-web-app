@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { requestFollowUser, requestUnFollowUser } from '@/api/follows'
@@ -8,7 +8,7 @@ import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
 import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
 import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
 import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-import { svgIcons } from '@/utils/svgSet'
+import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
 // i18n
 const { t } = useI18n()
@@ -161,11 +161,13 @@ async function performSearch(query: string) {
     return
   }
 
-  try {
-    isSearching.value = true
-    hasError.value = false
-    errorMessage.value = ''
+  // Limpa resultados anteriores e ativa loading ao iniciar nova busca
+  users.value = []
+  isSearching.value = true
+  hasError.value = false
+  errorMessage.value = ''
 
+  try {
     const response = await searchUsers(query.trim())
 
     // Tenta extrair os usuários
@@ -206,6 +208,19 @@ async function performSearch(query: string) {
     isSearching.value = false
   }
 }
+
+// Ativa o loading imediatamente ao digitar, antes do debounce do SearchInput disparar,
+// para evitar que o estado vazio apareça durante a janela de debounce.
+watch(searchQuery, (newValue) => {
+  if (newValue.trim()) {
+    isSearching.value = true
+  } else {
+    isSearching.value = false
+    users.value = [...recommendedUsers.value]
+    hasError.value = false
+    errorMessage.value = ''
+  }
+})
 
 // Handler para o evento search do SearchInput (já com debounce)
 function handleSearch(query: string) {
@@ -275,6 +290,13 @@ onMounted(() => {
 <template>
   <AuthLayout>
     <template #form-content>
+      <!-- Botão de Voltar -->
+      <button class="btn-back" type="button" @click="router.back()">
+        <svg class="btn-back__arrow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Voltar</span>
+      </button>
       <h2 class="mobile-brand-title notranslate" translate="no">WE PARTY</h2>
       <!-- Título e subtítulo -->
       <h1 class="auth-title">
@@ -288,8 +310,8 @@ onMounted(() => {
           @clear="handleClearSearch" @search="handleSearch" />
       </div>
 
-      <!-- Estado de loading -->
-      <div v-if="isLoading" class="loading-state">
+      <!-- Estado de loading (load inicial e durante a busca) -->
+      <div v-if="isLoading || isSearching" class="loading-state">
         <AppLoader size="md" text="Carregando..." />
       </div>
 
@@ -303,7 +325,7 @@ onMounted(() => {
       </div>
 
       <!-- Estado vazio -->
-      <div v-else-if="!isLoading && users.length === 0" class="empty-state">
+      <div v-else-if="!isLoading && !isSearching && users.length === 0" class="empty-state">
         <div class="empty-icon">👥</div>
         <h3>{{ errorMessage || 'Nenhum usuário disponível' }}</h3>
         <p v-if="searchQuery">Tente buscar por outro nome</p>
@@ -325,8 +347,14 @@ onMounted(() => {
             <span v-if="user.username" class="username">@{{ user.username }}</span>
           </div>
           <button :class="['invite-btn', user.isFollowing ? 'sent' : 'send']" type="button" @click="toggleInvite(user)">
-            <svg v-if="svgIcons.planeIcon" class="plane-icon" fill="currentColor" :viewBox="svgIcons.planeIcon.viewBox">
-              <path v-for="(path, index) in svgIcons.planeIcon.paths" :key="index" :d="path.d" />
+            <svg v-if="!user.isFollowing" class="follow-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke-linecap="round" stroke-linejoin="round" />
+              <circle cx="9" cy="7" r="4" />
+              <line x1="19" y1="8" x2="19" y2="14" stroke-linecap="round" />
+              <line x1="22" y1="11" x2="16" y2="11" stroke-linecap="round" />
+            </svg>
+            <svg v-else class="follow-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             {{ user.isFollowing ? t('addFriends.sent') : t('addFriends.send') }}
           </button>
@@ -368,6 +396,47 @@ onMounted(() => {
 
 .mobile-brand-title {
   display: none;
+}
+
+/* ===============================
+   BOTÃO VOLTAR
+================================ */
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px 10px 12px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(90deg, #FFC25B 0%, #FF5FA6 100%);
+  box-shadow: 0 4px 14px rgba(255, 95, 166, 0.28);
+  color: #fff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 40px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-back:hover {
+  transform: translateX(-3px);
+  box-shadow: 0 6px 20px rgba(255, 95, 166, 0.42);
+}
+
+.btn-back:active {
+  transform: translateX(-1px);
+}
+
+.btn-back__arrow {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.btn-back:hover .btn-back__arrow {
+  transform: translateX(-3px);
 }
 
 /* Tema rosa para InputLabel dentro desta página */
@@ -545,10 +614,11 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.plane-icon {
+.follow-icon {
   width: 0.95rem;
   height: 0.95rem;
   color: inherit;
+  flex-shrink: 0;
 }
 
 .invite-btn.send {

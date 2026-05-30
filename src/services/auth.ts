@@ -10,6 +10,7 @@
  */
 
 import { STORAGE_KEYS } from '@/common/storage'
+import { logger } from '@/utils/logger'
 
 export interface LoginResponse {
   success: boolean
@@ -75,7 +76,7 @@ export const AuthService = {
     try {
       return JSON.parse(userData) as LoggedUser
     } catch (error) {
-      console.error('Erro ao parsear dados do usuário:', error)
+      logger.error('Erro ao parsear dados do usuário:', error)
       return null
     }
   },
@@ -159,24 +160,26 @@ export const AuthService = {
 
       const payload = JSON.parse(atob(payloadPart))
 
-      // Verifica se tem claim de expiração
+      // Rejeita tokens sem claim de expiração — política de segurança
       if (!payload.exp) {
-        return true
-      } // Token sem expiração é considerado válido
+        logger.warn('[AUTH] Token sem claim de expiração — rejeitado')
+        this.logout()
+        return false
+      }
 
-      // Verifica se expirou (com margem de 60 segundos)
+      // Verifica se o token já passou do prazo de expiração
       const now = Math.floor(Date.now() / 1000)
-      const isExpired = payload.exp < (now + 60)
+      const isExpired = payload.exp <= now
 
       if (isExpired) {
-        console.warn('[AUTH] Token expirado, fazendo logout automático')
+        logger.warn('[AUTH] Token expirado, fazendo logout automático')
         this.logout()
         return false
       }
 
       return true
     } catch (error) {
-      console.error('[AUTH] Erro ao validar token:', error)
+      logger.error('[AUTH] Erro ao validar token:', error)
       return false
     }
   },
@@ -211,6 +214,8 @@ export const AuthService = {
     localStorage.removeItem(STORAGE_KEYS.LOGGED_USER)
     localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
     localStorage.removeItem(STORAGE_KEYS.SESSION_ID)
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
+    localStorage.removeItem(STORAGE_KEYS.USER_ID)
   },
 
   /**
@@ -240,18 +245,4 @@ export const AuthService = {
     return roles.some(role => user.roles.includes(role))
   },
 
-  /**
-   * Debug: mostra informações de autenticação no console
-   */
-  debugAuth (): void {
-    console.group('🔍 Auth Debug Info')
-    // console.log('Token:', this.getToken() ? '✅ Presente' : '❌ Ausente')
-    // console.log('Usuário:', this.getUser() ? '✅ Presente' : '❌ Ausente')
-    // console.log('Autenticado:', this.isAuthenticated() ? '✅ Sim' : '❌ Não')
-    // console.log('Dados completos:', {
-    //   token: this.getToken(),
-    //   user: this.getUser(),
-    // })
-    console.groupEnd()
-  },
 }

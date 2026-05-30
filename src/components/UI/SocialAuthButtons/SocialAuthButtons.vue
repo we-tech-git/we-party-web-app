@@ -7,8 +7,7 @@
   import axios from 'axios'
   import { onMounted, ref } from 'vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
-  import { STORAGE_KEYS } from '@/common/storage'
-  import { AuthService } from '@/services/auth'
+  import { useAuth } from '@/composables/useAuth'
   import { SocialAuthService } from '@/services/socialAuth'
 
   interface Props {
@@ -36,6 +35,7 @@
     facebook: false,
   })
 
+  const { login } = useAuth()
   const socialAuthService = new SocialAuthService()
   let googleInitialized = false
 
@@ -78,20 +78,21 @@
       return
     }
 
-    googleInitialized = true
-    const clientId = import.meta.env.VITE__GOOGLE_CLIENT_ID
+    const clientId = import.meta.env.VITE__GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID
 
     if (!clientId) {
-      // console.warn('⚠️ VITE__GOOGLE_CLIENT_ID não configurado')
+      console.warn('⚠️ Google Client ID não configurado. Adicione VITE__GOOGLE_CLIENT_ID no arquivo .env')
       return
     }
+
+    googleInitialized = true
 
     // Inicializa o cliente Google com callback (UMA ÚNICA VEZ)
     window.google.accounts.id.initialize({
       client_id: clientId,
       callback: handleGoogleCredential,
       auto_select: false,
-      ux_mode: 'popup', // Usa popup em vez de redirect
+      ux_mode: 'popup',
     })
   }
 
@@ -110,6 +111,11 @@
       // Usa o callback do serviço para processar o token
       const callback = socialAuthService.getGoogleSignInCallback()
       const result = await callback(response)
+
+      // Atualiza estado reativo imediatamente
+      if (result.token && result.backendResponse?.user) {
+        login(result.token, result.backendResponse.user)
+      }
 
       // Emite evento de sucesso para o componente pai
       emit('google-success', result)
@@ -132,9 +138,9 @@
     isLoading.value.google = true
 
     try {
-      const clientId = import.meta.env.VITE__GOOGLE_CLIENT_ID
+      const clientId = import.meta.env.VITE__GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID
       if (!clientId) {
-        throw new Error('Client ID não configurado')
+        throw new Error('Google Client ID não configurado. Verifique VITE__GOOGLE_CLIENT_ID no arquivo .env')
       }
 
       // Usa requestCode para popup de autenticação
@@ -183,16 +189,9 @@
           message: axiosResponse.data.message || 'Autenticado com sucesso',
         }
 
-        // Salva dados de autenticação (igual ao fluxo de ID Token)
+        // Atualiza estado reativo imediatamente
         if (result.token && result.user) {
-          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, result.token)
-          localStorage.setItem(STORAGE_KEYS.USER_ID, result.user.id)
-          AuthService.saveAuthData({
-            success: true,
-            message: result.message,
-            token: result.token,
-            user: result.user,
-          })
+          login(result.token, result.user)
         }
 
         // Emite evento de sucesso

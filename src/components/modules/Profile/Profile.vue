@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { NavItem } from '@/types/navigation'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { followUserById, getFollowStats, getMyFollowers, getMyFollowing, unfollowUserById } from '@/api/follows'
 import { addUserInterest, getInterests, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
-import { getMyConfirmedEvents } from '@/api/event'
-import { getUserInterests, getUserProfile, getUserRecomendations, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
+import { deleteUser, getUserInterests, getUserProfile, getUserRecomendations, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
 import AppFooter from '@/components/AppFooter.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
@@ -43,6 +42,7 @@ const SNACKBAR_COLORS = {
 
 const { t } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const { loggedUser, updateUser } = useAuth()
 const eventsStore = useEventsStore()
 const shareStore = useShareStore()
@@ -69,7 +69,7 @@ const recommendedUsers = ref<FollowUser[]>([])
 const loadingFollowStats = ref(false)
 const loadingFollowers = ref(false)
 const loadingFollowing = ref(false)
-const loadingRecommendations = ref(false)
+const loadingRecommendations = ref(true)
 const showFollowersModal = ref(false)
 const showFollowingModal = ref(false)
 
@@ -210,6 +210,20 @@ let pendingAvatarInput: HTMLInputElement | null = null
 
 // Container usa a constante
 const CROP_CONTAINER = CONFIG.CROP_CONTAINER_SIZE
+
+// ── Banner Cropper ──
+const showBannerCropModal = ref(false)
+const bannerCropImageSrc = ref('')
+const bannerCropZoom = ref(1)
+const bannerCropOffset = reactive({ x: 0, y: 0 })
+const bannerCropDragging = ref(false)
+const bannerCropDragStart = reactive({ x: 0, y: 0 })
+const bannerCropOffsetStart = reactive({ x: 0, y: 0 })
+const bannerCropImageNatural = reactive({ width: 0, height: 0 })
+const bannerCropAreaRef = ref<HTMLElement | null>(null)
+const bannerCropW = ref(560)
+const bannerCropH = ref(175)
+let pendingBannerInput: HTMLInputElement | null = null
 
 // Base display size: image fits entirely inside the container (contain)
 function getBaseSize() {
@@ -405,6 +419,208 @@ async function confirmCrop() {
       if (pendingAvatarInput) {
         pendingAvatarInput.value = ''
         pendingAvatarInput = null
+      }
+    }
+  }, 'image/jpeg', 0.9)
+}
+
+// ── Banner Crop Functions ──
+function getBannerBaseSize() {
+  const { width: nw, height: nh } = bannerCropImageNatural
+  const cw = bannerCropW.value
+  const ch = bannerCropH.value
+  if (!nw || !nh) return { w: cw, h: ch }
+  const imgAspect = nw / nh
+  const containerAspect = cw / ch
+  if (imgAspect >= containerAspect) {
+    return { w: ch * imgAspect, h: ch }
+  }
+  return { w: cw, h: cw / imgAspect }
+}
+
+function clampBannerOffset(ox: number, oy: number, zoom: number) {
+  const base = getBannerBaseSize()
+  const cw = bannerCropW.value
+  const ch = bannerCropH.value
+  const scaledW = base.w * zoom
+  const scaledH = base.h * zoom
+  const maxX = Math.max(0, (scaledW - cw) / 2)
+  const maxY = Math.max(0, (scaledH - ch) / 2)
+  return {
+    x: Math.min(maxX, Math.max(-maxX, ox)),
+    y: Math.min(maxY, Math.max(-maxY, oy)),
+  }
+}
+
+const bannerCropMinZoom = computed(() => {
+  const base = getBannerBaseSize()
+  const cw = bannerCropW.value
+  const ch = bannerCropH.value
+  return Math.max(cw / base.w, ch / base.h)
+})
+
+const bannerCropImageStyle = computed(() => {
+  const base = getBannerBaseSize()
+  const z = bannerCropZoom.value
+  const cw = bannerCropW.value
+  const ch = bannerCropH.value
+  const w = base.w * z
+  const h = base.h * z
+  return {
+    width: `${w}px`,
+    height: `${h}px`,
+    left: `${(cw - w) / 2 + bannerCropOffset.x}px`,
+    top: `${(ch - h) / 2 + bannerCropOffset.y}px`,
+  }
+})
+
+async function openBannerCropModal(imageSrc: string, input: HTMLInputElement) {
+  bannerCropImageSrc.value = imageSrc
+  pendingBannerInput = input
+  bannerCropOffset.x = 0
+  bannerCropOffset.y = 0
+
+  const img = new Image()
+  img.addEventListener('load', async () => {
+    bannerCropImageNatural.width = img.naturalWidth
+    bannerCropImageNatural.height = img.naturalHeight
+    showBannerCropModal.value = true
+    await nextTick()
+    if (bannerCropAreaRef.value) {
+      bannerCropW.value = bannerCropAreaRef.value.offsetWidth
+      bannerCropH.value = bannerCropAreaRef.value.offsetHeight
+    }
+    bannerCropZoom.value = bannerCropMinZoom.value
+  })
+  img.src = imageSrc
+}
+
+function closeBannerCropModal() {
+  showBannerCropModal.value = false
+  bannerCropImageSrc.value = ''
+  if (pendingBannerInput) {
+    pendingBannerInput.value = ''
+    pendingBannerInput = null
+  }
+}
+
+watch(bannerCropZoom, newZoom => {
+  if (newZoom < bannerCropMinZoom.value) {
+    bannerCropZoom.value = bannerCropMinZoom.value
+  }
+  const clamped = clampBannerOffset(bannerCropOffset.x, bannerCropOffset.y, bannerCropZoom.value)
+  bannerCropOffset.x = clamped.x
+  bannerCropOffset.y = clamped.y
+})
+
+function onBannerCropMouseDown(e: MouseEvent) {
+  bannerCropDragging.value = true
+  bannerCropDragStart.x = e.clientX
+  bannerCropDragStart.y = e.clientY
+  bannerCropOffsetStart.x = bannerCropOffset.x
+  bannerCropOffsetStart.y = bannerCropOffset.y
+}
+
+function onBannerCropMouseMove(e: MouseEvent) {
+  if (!bannerCropDragging.value) return
+  const raw = {
+    x: bannerCropOffsetStart.x + (e.clientX - bannerCropDragStart.x),
+    y: bannerCropOffsetStart.y + (e.clientY - bannerCropDragStart.y),
+  }
+  const clamped = clampBannerOffset(raw.x, raw.y, bannerCropZoom.value)
+  bannerCropOffset.x = clamped.x
+  bannerCropOffset.y = clamped.y
+}
+
+function onBannerCropMouseUp() {
+  bannerCropDragging.value = false
+}
+
+function onBannerCropTouchStart(e: TouchEvent) {
+  const touch = e.touches[0]
+  if (!touch || e.touches.length !== 1) return
+  bannerCropDragging.value = true
+  bannerCropDragStart.x = touch.clientX
+  bannerCropDragStart.y = touch.clientY
+  bannerCropOffsetStart.x = bannerCropOffset.x
+  bannerCropOffsetStart.y = bannerCropOffset.y
+}
+
+function onBannerCropTouchMove(e: TouchEvent) {
+  const touch = e.touches[0]
+  if (!bannerCropDragging.value || !touch || e.touches.length !== 1) return
+  e.preventDefault()
+  const raw = {
+    x: bannerCropOffsetStart.x + (touch.clientX - bannerCropDragStart.x),
+    y: bannerCropOffsetStart.y + (touch.clientY - bannerCropDragStart.y),
+  }
+  const clamped = clampBannerOffset(raw.x, raw.y, bannerCropZoom.value)
+  bannerCropOffset.x = clamped.x
+  bannerCropOffset.y = clamped.y
+}
+
+function onBannerCropTouchEnd() {
+  bannerCropDragging.value = false
+}
+
+async function confirmBannerCrop() {
+  const canvas = document.createElement('canvas')
+  const BANNER_OUT_W = 1500
+  const BANNER_OUT_H = Math.round(BANNER_OUT_W * (bannerCropH.value / bannerCropW.value))
+  canvas.width = BANNER_OUT_W
+  canvas.height = BANNER_OUT_H
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.src = bannerCropImageSrc.value
+
+  await new Promise<void>(resolve => {
+    img.addEventListener('load', () => resolve())
+    if (img.complete) resolve()
+  })
+
+  const base = getBannerBaseSize()
+  const z = bannerCropZoom.value
+  const cw = bannerCropW.value
+  const ch = bannerCropH.value
+  const scaledW = base.w * z
+  const scaledH = base.h * z
+
+  const imgLeft = (cw - scaledW) / 2 + bannerCropOffset.x
+  const imgTop = (ch - scaledH) / 2 + bannerCropOffset.y
+
+  const scaleToNatX = img.naturalWidth / scaledW
+  const scaleToNatY = img.naturalHeight / scaledH
+
+  const srcX = -imgLeft * scaleToNatX
+  const srcY = -imgTop * scaleToNatY
+  const srcW = cw * scaleToNatX
+  const srcH = ch * scaleToNatY
+
+  ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, BANNER_OUT_W, BANNER_OUT_H)
+
+  canvas.toBlob(async blob => {
+    if (!blob) return
+    const croppedFile = new File([blob], 'cover.jpg', { type: 'image/jpeg' })
+
+    try {
+      uploadingBanner.value = true
+      showBannerCropModal.value = false
+
+      await uploadBannerImage(croppedFile)
+      await fetchUserProfile()
+
+      showSnackbar(t('profile.messages.coverImageSuccess'))
+    } catch (error_: any) {
+      const errorMessage = error_.message || t('profile.messages.coverImageError')
+      showSnackbar(errorMessage, '#ef4444')
+    } finally {
+      uploadingBanner.value = false
+      if (pendingBannerInput) {
+        pendingBannerInput.value = ''
+        pendingBannerInput = null
       }
     }
   }, 'image/jpeg', 0.9)
@@ -628,20 +844,33 @@ async function fetchRecommendedUsers() {
   }
 }
 
-// ── Handler para busca de usuários (chamado pelo SearchInput com debounce) ──
-function handleUserSearch(query: string) {
-  if (query.trim()) {
+// Ativa o loading imediatamente ao digitar (antes do debounce do SearchInput),
+// para evitar que a UI mostre "nenhum resultado" durante a janela de debounce.
+watch(userSearchQuery, newValue => {
+  if (newValue.trim()) {
+    filteredRecommendedUsers.value = []
     searchingUsers.value = true
-    const lowerQuery = query.toLowerCase()
-    filteredRecommendedUsers.value = allRecommendedUsers.value.filter(user =>
-      user.name.toLowerCase().includes(lowerQuery)
-      || (user.username && user.username.toLowerCase().includes(lowerQuery)),
-    )
-    searchingUsers.value = false
   } else {
     filteredRecommendedUsers.value = [...allRecommendedUsers.value]
     searchingUsers.value = false
   }
+})
+
+// ── Handler para busca de usuários (chamado pelo SearchInput com debounce) ──
+function handleUserSearch(query: string) {
+  if (!query.trim()) {
+    filteredRecommendedUsers.value = [...allRecommendedUsers.value]
+    searchingUsers.value = false
+    return
+  }
+
+  // Filtro local (síncrono)
+  const lowerQuery = query.toLowerCase()
+  filteredRecommendedUsers.value = allRecommendedUsers.value.filter(user =>
+    user.name.toLowerCase().includes(lowerQuery)
+    || (user.username && user.username.toLowerCase().includes(lowerQuery)),
+  )
+  searchingUsers.value = false
 }
 
 // ── Handler para limpar busca de usuários ──
@@ -758,6 +987,18 @@ function closeInterestsModal() {
   suggestedInterests.value = []
 }
 
+// Ativa o loading imediatamente ao digitar (antes do debounce do SearchInput),
+// para evitar que a UI mostre "interesse não encontrado" durante a janela de debounce.
+watch(interestsSearchQuery, newValue => {
+  if (newValue.trim()) {
+    searchedInterests.value = []
+    isSearchingInterests.value = true
+  } else {
+    searchedInterests.value = []
+    isSearchingInterests.value = false
+  }
+})
+
 // ── Handler para busca de interesses (chamado pelo SearchInput com debounce) ──
 async function handleInterestsSearch(query: string) {
   if (!query.trim()) {
@@ -766,6 +1007,7 @@ async function handleInterestsSearch(query: string) {
     return
   }
 
+  // Ativa loading (caso ainda não esteja ativo pelo watcher)
   isSearchingInterests.value = true
 
   try {
@@ -1026,22 +1268,15 @@ async function handleBannerChange(event: Event) {
     return
   }
 
-  try {
-    uploadingBanner.value = true
-
-    await uploadBannerImage(file)
-
-    // Recarrega o perfil para pegar as URLs atualizadas do servidor
-    await fetchUserProfile()
-
-    showSnackbar(t('profile.messages.coverImageSuccess'))
-  } catch (error_: any) {
-    const errorMessage = error_.message || t('profile.messages.coverImageError')
-    showSnackbar(errorMessage, '#ef4444')
-  } finally {
-    uploadingBanner.value = false
-    input.value = ''
-  }
+  // Abre o modal de enquadramento da capa
+  const reader = new FileReader()
+  reader.addEventListener('load', e => {
+    const result = (e.target as FileReader)?.result as string
+    if (result) {
+      openBannerCropModal(result, input)
+    }
+  })
+  reader.readAsDataURL(file)
 }
 
 // ── Navigation ──
@@ -1061,23 +1296,25 @@ function handleNavSelect(id: string) {
 }
 
 // ── Tabs ──
-const activeTab = ref('liked')
-const tabs = [
-  // { id: 'badges', label: 'Conquistas', icon: 'mdi-trophy-outline' }, // Comentado - não será usado no primeiro momento
+const VALID_TABS = ['liked', 'confirmed', 'settings'] as const
+type TabId = typeof VALID_TABS[number]
+const initialTab = VALID_TABS.includes(route.query.tab as TabId)
+  ? (route.query.tab as TabId)
+  : 'liked'
+const activeTab = ref<TabId>(initialTab)
+
+const tabs: Array<{ id: TabId; label: string; icon: string }> = [
   { id: 'liked', label: t('profile.tabs.liked'), icon: 'mdi-heart-outline' },
   { id: 'confirmed', label: 'Confirmados', icon: 'mdi-calendar-check' },
   { id: 'settings', label: t('profile.tabs.settings'), icon: 'mdi-cog-outline' },
 ]
 
-// Refetch liked/confirmed events quando entra na aba
-watch(activeTab, val => {
-  if (val === 'liked' && loggedUser.value?.id) {
-    fetchLikedEvents()
-  }
-  if (val === 'confirmed' && loggedUser.value?.id) {
-    // Eventos confirmados já vem do getUserProfile, mas pode recarregar se necessário
-    // fetchConfirmedEvents()
-  }
+// Persiste a aba na URL e re-busca dados ao trocar
+watch(activeTab, (val) => {
+  router.replace({ query: { ...route.query, tab: val } })
+  if (!loggedUser.value?.id) return
+  if (val === 'liked') fetchLikedEvents()
+  if (val === 'confirmed') fetchConfirmedEvents()
 })
 
 // Comentado - não usado no primeiro momento
@@ -1155,6 +1392,33 @@ async function saveProfile() {
     console.error('Erro ao atualizar perfil:', error)
   } finally {
     saving.value = false
+  }
+}
+
+// ── Delete Account ──
+const showDeleteModal = ref(false)
+const isDeletingAccount = ref(false)
+
+function openDeleteModal() {
+  showDeleteModal.value = true
+}
+
+function closeDeleteModal() {
+  if (isDeletingAccount.value) return
+  showDeleteModal.value = false
+}
+
+async function handleDeleteAccount() {
+  try {
+    isDeletingAccount.value = true
+    await deleteUser()
+    AuthService.logout()
+    showDeleteModal.value = false
+    showSnackbar(t('profile.deleteAccount.goodbye'), SNACKBAR_COLORS.success)
+    setTimeout(() => router.push('/public/Login'), 1500)
+  } catch {
+    showSnackbar(t('profile.deleteAccount.error'), SNACKBAR_COLORS.error)
+    isDeletingAccount.value = false
   }
 }
 
@@ -1265,6 +1529,7 @@ function mapLikedEvent(evt: any): LikedEventItem {
 async function fetchLikedEvents() {
   if (!loggedUser.value?.id) return
 
+  likedEventsItems.value = []
   startLoading('profile:liked')
 
   // Timeout de 3 segundos para o skeleton loading
@@ -1353,9 +1618,9 @@ async function handleUnlikeEvent(eventId: string | number, event: Event) {
 async function fetchConfirmedEvents() {
   if (!loggedUser.value?.id) return
 
+  confirmedEventsItems.value = []
   startLoading('profile:confirmed')
 
-  // Timeout de 3 segundos para o skeleton loading
   if (confirmedEventsTimeout) {
     clearTimeout(confirmedEventsTimeout)
   }
@@ -1367,30 +1632,18 @@ async function fetchConfirmedEvents() {
   }, 3000)
 
   try {
-    const response = await getMyConfirmedEvents(1, 50)
-    const data = response?.data?.data ?? response?.data ?? response
+    // Usa o mesmo endpoint de getUserProfile que já retorna eventAttendances corretamente
+    const response = await getUserProfile(loggedUser.value.id)
+    const userData = response.data?.data ?? response.data
 
-    // Extrai eventos confirmados
-    let events: any[] = []
-    if (Array.isArray(data?.events)) {
-      events = data.events
-    } else if (Array.isArray(data?.attendances)) {
-      events = data.attendances.map((a: any) => a.event || a)
-    } else if (Array.isArray(data)) {
-      events = data
+    if (userData?.eventAttendances && Array.isArray(userData.eventAttendances)) {
+      confirmedEventsItems.value = userData.eventAttendances
+        .filter((e: any) => e && (e.id || e.eventId))
+        .map((evt: any) => mapLikedEvent(evt.event || evt))
+    } else {
+      confirmedEventsItems.value = []
     }
 
-    // Mapeia para o formato de exibição
-    confirmedEventsItems.value = events
-      .filter((e: any) => e && e.id)
-      .map((evt: any) => mapLikedEvent(evt))
-
-    // Se a lista está vazia, aguarda o timeout antes de mostrar empty state
-    if (events.length === 0) {
-      return
-    }
-
-    // Se há eventos, cancela o timeout e remove o loading imediatamente
     if (confirmedEventsTimeout) {
       clearTimeout(confirmedEventsTimeout)
       confirmedEventsTimeout = null
@@ -1399,6 +1652,7 @@ async function fetchConfirmedEvents() {
   } catch (error_) {
     console.error('Erro ao buscar eventos confirmados:', error_)
     confirmedEventsItems.value = []
+    stopLoading('profile:confirmed')
   }
 }
 
@@ -1617,13 +1871,19 @@ function handleShareProfile() {
 
           <!-- Liked -->
           <div v-if="activeTab === 'liked'" class="liked-events-panel">
-            <div v-if="checkLoading('profile:liked')" class="loading-liked">
-              <div class="skeleton-grid-mini">
-                <div v-for="n in 5" :key="n" class="skeleton-mini-card">
-                  <div class="skeleton-mini-banner" />
-                  <div class="skeleton-mini-content">
-                    <div class="skeleton-line short" />
-                    <div class="skeleton-line medium" />
+            <div v-if="loading || checkLoading('profile:liked')" class="loading-liked">
+              <div class="skeleton-event-grid">
+                <div v-for="n in 6" :key="n" class="skeleton-event-card">
+                  <div class="skel-banner">
+                    <div class="skel-date-chip" />
+                  </div>
+                  <div class="skel-body">
+                    <div class="skel-line skel-title" />
+                    <div class="skel-line skel-location" />
+                    <div class="skel-stats-row">
+                      <div class="skel-line skel-stat" />
+                      <div class="skel-line skel-stat-sm" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1696,13 +1956,19 @@ function handleShareProfile() {
 
           <!-- Confirmed Events -->
           <div v-if="activeTab === 'confirmed'" class="confirmed-events-panel">
-            <div v-if="checkLoading('profile:confirmed')" class="loading-liked">
-              <div class="skeleton-grid-mini">
-                <div v-for="n in 5" :key="n" class="skeleton-mini-card">
-                  <div class="skeleton-mini-banner" />
-                  <div class="skeleton-mini-content">
-                    <div class="skeleton-line short" />
-                    <div class="skeleton-line medium" />
+            <div v-if="loading || checkLoading('profile:confirmed')" class="loading-liked">
+              <div class="skeleton-event-grid">
+                <div v-for="n in 6" :key="n" class="skeleton-event-card">
+                  <div class="skel-banner">
+                    <div class="skel-date-chip" />
+                  </div>
+                  <div class="skel-body">
+                    <div class="skel-line skel-title" />
+                    <div class="skel-line skel-location" />
+                    <div class="skel-stats-row">
+                      <div class="skel-line skel-stat" />
+                      <div class="skel-line skel-stat-sm" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1829,6 +2095,18 @@ function handleShareProfile() {
                 <i class="mdi mdi-chevron-right setting-arrow" />
               </div>
             </div>
+
+            <div class="danger-zone-group">
+              <div class="danger-zone-header">
+                <i class="mdi mdi-alert-octagon-outline" />
+                <h4>{{ t('profile.deleteAccount.dangerZone') }}</h4>
+              </div>
+              <p class="danger-zone-desc">{{ t('profile.deleteAccount.dangerZoneDesc') }}</p>
+              <button class="delete-account-btn" type="button" @click="openDeleteModal">
+                <i class="mdi mdi-delete-forever-outline" />
+                {{ t('profile.deleteAccount.button') }}
+              </button>
+            </div>
           </div>
         </div>
       </main>
@@ -1842,7 +2120,10 @@ function handleShareProfile() {
               <i class="mdi mdi-plus" />
             </button>
           </div>
-          <div v-if="userInterests.length > 0" class="interests-tags-wrapper">
+          <div v-if="loading" class="interests-sidebar-loading">
+            <AppLoader size="sm" :text="t('profile.interests.loading')" />
+          </div>
+          <div v-else-if="userInterests.length > 0" class="interests-tags-wrapper">
             <div class="interests-tags">
               <span v-for="interest in userInterests" :key="interest.id" class="tag">
                 {{ interest.name }}
@@ -1870,6 +2151,9 @@ function handleShareProfile() {
           <div v-if="loadingRecommendations" class="recommendations-loading">
             <AppLoader size="sm" :text="t('profile.recommendations.loading')" />
           </div>
+          <div v-else-if="searchingUsers && userSearchQuery.trim()" class="recommendations-loading">
+            <AppLoader size="sm" :text="t('profile.recommendations.searching') || 'Buscando...'" />
+          </div>
           <div v-else-if="filteredRecommendedUsers.length > 0" class="recommendations-list-wrapper">
             <ul class="recommendations-list">
               <li v-for="recUser in filteredRecommendedUsers" :key="recUser.id" class="recommendation-item">
@@ -1892,7 +2176,7 @@ function handleShareProfile() {
               </li>
             </ul>
           </div>
-          <p v-else-if="userSearchQuery && filteredRecommendedUsers.length === 0" class="recommendations-empty">
+          <p v-else-if="userSearchQuery && !searchingUsers && filteredRecommendedUsers.length === 0" class="recommendations-empty">
             {{ t('profile.recommendations.noResults') || 'Nenhum usuário encontrado' }}
           </p>
           <p v-else class="recommendations-empty">{{ t('profile.recommendations.empty') }}</p>
@@ -2030,6 +2314,58 @@ function handleShareProfile() {
       </Transition>
     </Teleport>
 
+    <!-- Banner Crop Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showBannerCropModal" class="modal-overlay banner-crop-modal-overlay"
+          @click.self="closeBannerCropModal">
+          <div class="banner-crop-modal-container">
+            <div class="crop-modal-header">
+              <div class="banner-crop-header-content">
+                <i class="mdi mdi-panorama" />
+                <h2>Enquadrar Foto de Capa</h2>
+              </div>
+              <button class="modal-close" @click="closeBannerCropModal">
+                <i class="mdi mdi-close" />
+              </button>
+            </div>
+
+            <div class="banner-crop-modal-body">
+              <p class="banner-crop-hint">
+                <i class="mdi mdi-gesture-swipe" />
+                Arraste para reposicionar · Use o controle abaixo para ajustar o zoom
+              </p>
+
+              <div ref="bannerCropAreaRef" class="banner-crop-area" @mousedown.prevent="onBannerCropMouseDown"
+                @mousemove.prevent="onBannerCropMouseMove" @mouseup="onBannerCropMouseUp"
+                @mouseleave="onBannerCropMouseUp" @touchstart.prevent="onBannerCropTouchStart"
+                @touchmove="onBannerCropTouchMove" @touchend="onBannerCropTouchEnd">
+                <img class="banner-crop-image" draggable="false" :src="bannerCropImageSrc"
+                  :style="bannerCropImageStyle">
+                <div class="banner-crop-guides" />
+                <div class="banner-crop-border" />
+              </div>
+
+              <div class="banner-crop-zoom-control">
+                <i class="mdi mdi-image-size-select-small" />
+                <input v-model.number="bannerCropZoom" class="crop-zoom-slider" max="3" :min="bannerCropMinZoom"
+                  step="0.01" type="range">
+                <i class="mdi mdi-magnify-plus-outline" />
+              </div>
+            </div>
+
+            <div class="crop-modal-footer">
+              <button class="btn-cancel" @click="closeBannerCropModal">Cancelar</button>
+              <button class="btn-save" :disabled="uploadingBanner" @click="confirmBannerCrop">
+                <i v-if="uploadingBanner" class="mdi mdi-loading mdi-spin" />
+                {{ uploadingBanner ? 'Enviando...' : 'Aplicar' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- Manage Interests Modal -->
     <Teleport to="body">
       <Transition name="modal">
@@ -2050,8 +2386,13 @@ function handleShareProfile() {
                   @search="handleInterestsSearch" />
               </div>
 
+              <!-- Estado de loading -->
+              <div v-if="isSearchingInterests && interestsSearchQuery.trim()" class="loading-suggestions">
+                <AppLoader size="md" :text="t('profile.interests.searching') || 'Buscando interesses...'" />
+              </div>
+
               <!-- Resultados da busca -->
-              <div v-if="interestsSearchQuery.trim() && searchedInterests.length > 0" class="search-results-section">
+              <div v-else-if="interestsSearchQuery.trim() && searchedInterests.length > 0" class="search-results-section">
                 <h4>{{ t('profile.interests.searchResults') }}</h4>
                 <div class="interests-list">
                   <div v-for="interest in searchedInterests" :key="interest.id" class="interest-item">
@@ -2267,6 +2608,43 @@ function handleShareProfile() {
                 <i class="mdi mdi-account-search-outline" />
                 <p>{{ t('profile.followingModal.empty') }}</p>
               </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Delete Account Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showDeleteModal" class="modal-overlay" @click.self="closeDeleteModal">
+          <div class="modal-container delete-modal-container">
+            <div class="delete-modal-icon-wrap">
+              <i class="mdi mdi-alert-circle-outline delete-modal-icon" />
+            </div>
+            <div class="modal-header delete-modal-header">
+              <h2>{{ t('profile.deleteAccount.modalTitle') }}</h2>
+              <button class="modal-close" :disabled="isDeletingAccount" @click="closeDeleteModal">
+                <i class="mdi mdi-close" />
+              </button>
+            </div>
+            <div class="modal-body delete-modal-body">
+              <p class="delete-warning-text">{{ t('profile.deleteAccount.warningText') }}</p>
+              <ul class="delete-consequences">
+                <li><i class="mdi mdi-close-circle" />{{ t('profile.deleteAccount.consequence1') }}</li>
+                <li><i class="mdi mdi-close-circle" />{{ t('profile.deleteAccount.consequence2') }}</li>
+                <li><i class="mdi mdi-close-circle" />{{ t('profile.deleteAccount.consequence3') }}</li>
+              </ul>
+            </div>
+            <div class="modal-footer delete-modal-footer">
+              <button class="btn-cancel" :disabled="isDeletingAccount" @click="closeDeleteModal">
+                {{ t('profile.deleteAccount.cancel') }}
+              </button>
+              <button class="btn-delete-confirm" :disabled="isDeletingAccount" @click="handleDeleteAccount">
+                <i v-if="isDeletingAccount" class="mdi mdi-loading mdi-spin" />
+                <i v-else class="mdi mdi-delete-forever-outline" />
+                {{ isDeletingAccount ? t('profile.deleteAccount.deleting') : t('profile.deleteAccount.confirm') }}
+              </button>
             </div>
           </div>
         </div>
@@ -2804,10 +3182,7 @@ function handleShareProfile() {
 }
 
 .loading-liked {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 2rem;
+  width: 100%;
 }
 
 .skeleton-grid {
@@ -3143,36 +3518,82 @@ function handleShareProfile() {
   transition: transform 0.4s ease;
 }
 
-/* Skeleton para mini cards */
-.skeleton-grid-mini {
+/* ── Skeleton de eventos (Curtidos & Confirmados) ── */
+.skeleton-event-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  width: 100%;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 1rem;
 }
 
-.skeleton-mini-card {
-  background: white;
+.skeleton-event-card {
+  background: #fff;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
-.skeleton-mini-banner {
+.skel-banner {
   width: 100%;
-  height: 140px;
-  background: linear-gradient(90deg,
-      rgba(240, 240, 240, 1) 0%,
-      rgba(250, 250, 250, 1) 50%,
-      rgba(240, 240, 240, 1) 100%);
-  background-size: 200% 100%;
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  height: 130px;
+  position: relative;
 }
 
-.skeleton-mini-content {
-  padding: 1rem;
+.skel-date-chip {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  width: 56px;
+  height: 20px;
+  border-radius: 20px;
+}
+
+.skel-body {
+  padding: 0.85rem 0.9rem 0.9rem;
   display: flex;
   flex-direction: column;
+  gap: 0.45rem;
+}
+
+.skel-stats-row {
+  display: flex;
   gap: 0.5rem;
+  margin-top: 0.15rem;
+}
+
+/* ── Base shimmer aplicado em todos os elementos do skeleton ── */
+.skel-banner,
+.skel-line,
+.skel-date-chip {
+  background: linear-gradient(
+    90deg,
+    #f0ecf7 0%,
+    #faf7fd 38%,
+    #ece6f5 62%,
+    #f0ecf7 100%
+  );
+  background-size: 300% 100%;
+  animation: shimmer-card 1.8s ease-in-out infinite;
+}
+
+.skel-date-chip {
+  animation-delay: 0.15s;
+}
+
+.skel-line {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.skel-title    { width: 68%; height: 14px; animation-delay: 0.05s; }
+.skel-location { width: 46%; animation-delay: 0.1s; }
+.skel-stat     { width: 48px; animation-delay: 0.15s; }
+.skel-stat-sm  { width: 36px; animation-delay: 0.2s; }
+
+@keyframes shimmer-card {
+  0%   { background-position:  200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* Botão Mostrar Mais */
@@ -4283,8 +4704,8 @@ function handleShareProfile() {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4598,11 +5019,11 @@ function handleShareProfile() {
 
 /* Modal Transitions */
 .modal-enter-active {
-  transition: all 0.3s ease;
+  transition: all 0.15s ease-out;
 }
 
 .modal-leave-active {
-  transition: all 0.2s ease;
+  transition: all 0.1s ease-in;
 }
 
 .modal-enter-from,
@@ -4611,11 +5032,11 @@ function handleShareProfile() {
 }
 
 .modal-enter-from .modal-container {
-  transform: scale(0.95) translateY(20px);
+  transform: scale(0.97) translateY(8px);
 }
 
 .modal-leave-to .modal-container {
-  transform: scale(0.97) translateY(10px);
+  transform: scale(0.98) translateY(4px);
 }
 
 /* ── Breadcrumb ── */
@@ -4749,8 +5170,8 @@ function handleShareProfile() {
 }
 
 .liked-mini-cards-grid,
-.skeleton-grid-mini {
-  grid-template-columns: 1fr;
+.skeleton-event-grid {
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.75rem;
 }
 
@@ -4857,8 +5278,8 @@ function handleShareProfile() {
   }
 
   .liked-mini-cards-grid,
-  .skeleton-grid-mini {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  .skeleton-event-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 0.85rem;
   }
 
@@ -4936,8 +5357,8 @@ function handleShareProfile() {
   }
 
   .liked-mini-cards-grid,
-  .skeleton-grid-mini {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  .skeleton-event-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 1rem;
   }
 }
@@ -5140,11 +5561,138 @@ function handleShareProfile() {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
+/* ── Banner Crop Modal ── */
+.banner-crop-modal-overlay {
+  z-index: 10002;
+}
+
+.banner-crop-modal-container {
+  background: #1a1c2e;
+  border-radius: 20px;
+  width: min(660px, 92vw);
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+  animation: modal-pop 0.3s ease;
+}
+
+.banner-crop-header-content {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #fff;
+}
+
+.banner-crop-header-content i {
+  font-size: 1.3rem;
+  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.banner-crop-modal-body {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.banner-crop-hint {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.45);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  text-align: center;
+}
+
+.banner-crop-hint i {
+  font-size: 1rem;
+  opacity: 0.7;
+}
+
+.banner-crop-area {
+  width: 100%;
+  aspect-ratio: 16 / 5;
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+  background: #0a0b14;
+  touch-action: none;
+  border-radius: 10px;
+  user-select: none;
+}
+
+.banner-crop-area:active {
+  cursor: grabbing;
+}
+
+.banner-crop-image {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.banner-crop-guides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 33.33% 50%;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.banner-crop-area:active .banner-crop-guides {
+  opacity: 1;
+}
+
+.banner-crop-border {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 2px rgba(255, 186, 75, 0.35);
+  transition: box-shadow 0.2s;
+}
+
+.banner-crop-area:active .banner-crop-border {
+  box-shadow: inset 0 0 0 2px rgba(255, 186, 75, 0.7);
+}
+
+.banner-crop-zoom-control {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 1.3rem;
+}
+
 /* ═════════════════════════════════════════════════════
    MICRO-INTERAÇÕES E ANIMAÇÕES
    ═════════════════════════════════════════════════════ */
 
 /* Animação de pulso para indicador online */
+@keyframes modal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 @keyframes pulse-online {
 
   0%,
@@ -5241,27 +5789,10 @@ a:focus-visible {
   transition: transform 0s;
 }
 
-/* Skeleton shimmer melhorado */
+/* Skeleton shimmer (legado — usado no skeleton do feed principal) */
 @keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.skeleton-mini-banner,
-.skeleton-line {
-  background: linear-gradient(90deg,
-      #f0f0f0 0%,
-      #f8f8f8 25%,
-      #f0f0f0 50%,
-      #f8f8f8 75%,
-      #f0f0f0 100%);
-  background-size: 400% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
 }
 
 /* Reduced motion para acessibilidade */
@@ -5569,5 +6100,177 @@ a:focus-visible {
 .interests-card,
 .recommendations-card {
   max-height: fit-content;
+}
+
+.interests-sidebar-loading {
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem 0;
+}
+
+/* ── Danger Zone ── */
+.danger-zone-group {
+  margin-top: 1.25rem;
+  border: 1.5px solid rgba(244, 63, 94, 0.25);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+  background: rgba(244, 63, 94, 0.03);
+}
+
+.danger-zone-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.danger-zone-header i {
+  font-size: 1.1rem;
+  color: #f43f5e;
+}
+
+.danger-zone-header h4 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #f43f5e;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.danger-zone-desc {
+  font-size: 0.82rem;
+  color: #9aa0b8;
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+.delete-account-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.25rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid #f43f5e;
+  background: transparent;
+  color: #f43f5e;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.delete-account-btn:hover {
+  background: #f43f5e;
+  color: #fff;
+}
+
+/* ── Delete Account Modal ── */
+.delete-modal-container {
+  max-width: 440px;
+  text-align: center;
+  padding: 2rem;
+}
+
+.delete-modal-icon-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.delete-modal-icon {
+  font-size: 3rem;
+  color: #f43f5e;
+  background: rgba(244, 63, 94, 0.08);
+  border-radius: 50%;
+  padding: 0.6rem;
+  line-height: 1;
+}
+
+.delete-modal-header {
+  justify-content: center;
+  border-bottom: none;
+  padding-bottom: 0;
+  position: relative;
+}
+
+.delete-modal-header h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1a1c2e;
+}
+
+.delete-modal-header .modal-close {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.delete-modal-body {
+  padding: 1rem 0 0.5rem;
+}
+
+.delete-warning-text {
+  font-size: 0.9rem;
+  color: #555b77;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.delete-consequences {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.delete-consequences li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: #9aa0b8;
+}
+
+.delete-consequences li i {
+  color: #f43f5e;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.delete-modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  padding-top: 1.25rem;
+  border-top: 1px solid #f0f1f7;
+}
+
+.btn-delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.5rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: #f43f5e;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-delete-confirm:hover:not(:disabled) {
+  background: #e11d48;
+}
+
+.btn-delete-confirm:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 </style>

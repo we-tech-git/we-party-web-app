@@ -12,8 +12,10 @@
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import router from '@/router'
-  import { AuthService } from '@/services/auth'
+  import { useAuth } from '@/composables/useAuth'
   import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
+
+  const { login } = useAuth()
 
   const { t } = useI18n()
 
@@ -156,12 +158,7 @@
         showSnackbar(t('confirmEmail.success'), '#22c55e')
 
         if (data.data?.token) {
-          AuthService.saveAuthData({
-            success: true,
-            message: 'Login realizado com sucesso',
-            token: data.data.token,
-            user: data.data,
-          })
+          login(data.data.token, data.data)
         }
 
         setTimeout(() => {
@@ -267,23 +264,12 @@
 <template>
   <AuthLayout>
     <template #form-content>
-      <a class="back-link" href="#" @click="router.back()">
-        <svg
-          class="back-arrow"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          :viewBox="svgIcons.backArrow ? svgIcons.backArrow.viewBox : '0 0 24 24'"
-        >
-          <path
-            v-for="(path, index) in (svgIcons.backArrow ? svgIcons.backArrow.paths : [{ d: 'M10 19l-7-7m0 0l7-7m-7 7h18', strokeLinecap: 'round', strokeLinejoin: 'round' }])"
-            :key="index"
-            :d="path.d"
-            :stroke-linecap="path.strokeLinecap as StrokeLinecap"
-            :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin"
-          />
+      <button class="btn-back" type="button" @click="router.back()">
+        <svg class="btn-back__arrow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
-      </a>
+        <span>Voltar</span>
+      </button>
       <h2 class="mobile-brand-title notranslate" translate="no">WE PARTY</h2>
 
       <div class="confirm-email-content">
@@ -404,15 +390,42 @@
   max-width: 400px;
 }
 
-.back-link {
+.btn-back {
   display: inline-flex;
-  color: #FFB37B;
-  margin-bottom: 48px;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px 10px 12px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(90deg, #FFC25B 0%, #FF5FA6 100%);
+  box-shadow: 0 4px 14px rgba(255, 95, 166, 0.28);
+  color: #fff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 40px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.back-arrow {
-  width: 32px;
-  height: 32px;
+.btn-back:hover {
+  transform: translateX(-3px);
+  box-shadow: 0 6px 20px rgba(255, 95, 166, 0.42);
+}
+
+.btn-back:active {
+  transform: translateX(-1px);
+}
+
+.btn-back__arrow {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.btn-back:hover .btn-back__arrow {
+  transform: translateX(-3px);
 }
 
 .confirm-email-content {
@@ -768,7 +781,7 @@
     line-height: 1.2;
   }
 
-  .back-link {
+  .btn-back {
     margin-bottom: 24px;
   }
 }

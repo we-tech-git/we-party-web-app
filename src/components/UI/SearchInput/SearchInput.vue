@@ -226,11 +226,6 @@ input.search-input-field::placeholder {
     opacity: 1 !important;
 }
 
-.search-input-field:hover:not(:disabled) {
-    border-color: #cfd2e0;
-    background-color: #fff !important;
-}
-
 .search-input-field:focus {
     border-color: #ff5fa6;
     background-color: #fff !important;
@@ -239,7 +234,7 @@ input.search-input-field::placeholder {
 
 /* Focus state - muda cor do ícone */
 .search-input-container:focus-within .search-input-icon {
-    color: #ff5fa6;
+    color: #ff5fa6 !important;
 }
 
 /* Loading indicator */

@@ -24,8 +24,8 @@ export interface SocialAuthResponse {
 
 export class SocialAuthService {
   private readonly providers: SocialAuthProvider = {
-    google: import.meta.env.VITE__GOOGLE_CLIENT_ID || '',
-    facebook: import.meta.env.VITE_FACEBOOK_APP_ID || '',
+    google: import.meta.env.VITE__GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+    facebook: import.meta.env.VITE__FACEBOOK_APP_ID || import.meta.env.VITE_FACEBOOK_APP_ID || '',
   }
 
   /**

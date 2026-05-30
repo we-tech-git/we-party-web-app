@@ -90,7 +90,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Baloo Thambi 2', sans-serif;
     font-weight: 500;
 }
 

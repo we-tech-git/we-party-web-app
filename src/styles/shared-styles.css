@@ -2,39 +2,43 @@
 
 /* ===============================
    RESET TAILWIND V4 PREFLIGHT
-   Sobrescreve o reset do Tailwind que deixa inputs transparentes
+   Usa @layer base para ter precedência correta sobre o reset do Tailwind
+   sem precisar de !important, evitando guerras de especificidade com Vuetify.
 ================================ */
-input,
-textarea,
-select {
-  background-color: #ffffff !important;
-  color: #1a1c2e !important;
-  -webkit-text-fill-color: #1a1c2e !important;
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: #9ca3af !important;
-  -webkit-text-fill-color: #9ca3af !important;
-  opacity: 1 !important;
-}
-
-/* O app não possui tema escuro implementado.
-   Mantemos texto escuro e fundo branco independente do modo do SO. */
-@media (prefers-color-scheme: dark) {
-  input:not([type="checkbox"]):not([type="radio"]),
-  textarea,
-  select {
-    background-color: #ffffff !important;
-    color: #1a1c2e !important;
-    -webkit-text-fill-color: #1a1c2e !important;
+@layer base {
+  /* Exclui componentes do Vuetify (prefixo .v-) para não interferir neles */
+  input:not([class*="v-"]),
+  textarea:not([class*="v-"]),
+  select:not([class*="v-"]) {
+    background-color: #ffffff;
+    color: #1a1c2e;
+    -webkit-text-fill-color: #1a1c2e;
   }
 
-  input::placeholder,
-  textarea::placeholder {
-    color: #9ca3af !important;
-    -webkit-text-fill-color: #9ca3af !important;
-    opacity: 1 !important;
+  input:not([class*="v-"])::placeholder,
+  textarea:not([class*="v-"])::placeholder {
+    color: #9ca3af;
+    -webkit-text-fill-color: #9ca3af;
+    opacity: 1;
+  }
+
+  /* O app não possui tema escuro implementado.
+     Mantemos texto escuro e fundo branco independente do modo do SO. */
+  @media (prefers-color-scheme: dark) {
+    input:not([type="checkbox"]):not([type="radio"]):not([class*="v-"]),
+    textarea:not([class*="v-"]),
+    select:not([class*="v-"]) {
+      background-color: #ffffff;
+      color: #1a1c2e;
+      -webkit-text-fill-color: #1a1c2e;
+    }
+
+    input:not([class*="v-"])::placeholder,
+    textarea:not([class*="v-"])::placeholder {
+      color: #9ca3af;
+      -webkit-text-fill-color: #9ca3af;
+      opacity: 1;
+    }
   }
 }
 
@@ -98,30 +102,6 @@ textarea::placeholder {
   transform: none;
 }
 
-/* NOTA: Classes .search-input e .search-input-icon foram removidas
-   pois agora utilizamos o componente SearchInput.vue padronizado.
-   As regras antigas causavam conflitos de CSS. */
-
-/* ===============================
-   CORREÇÃO PREFLIGHT TAILWIND v4
-   O Tailwind v4 reseta inputs para background-color: transparent e color: inherit.
-   Como este arquivo é carregado DEPOIS do preflight (mesma especificidade),
-   estas regras garantem que os inputs tenham fundo e cor visíveis.
-================================ */
-input,
-textarea,
-select {
-  background-color: #ffffff !important;
-  color: #1a1c2e !important;
-  -webkit-text-fill-color: #1a1c2e !important;
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: #9ca3af !important;
-  -webkit-text-fill-color: #9ca3af !important;
-  opacity: 1 !important;
-}
 
 /* ===============================
    TEMA PARA INPUTS

@@ -1,36 +1,36 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+  import { computed } from 'vue'
 
-const props = withDefaults(
-  defineProps<{
-    size?: 'sm' | 'md' | 'lg'
-    variant?: 'spinner' | 'text' | 'overlay'
-    text?: string
-  }>(),
-  {
-    size: 'md',
-    variant: 'spinner',
-    text: undefined,
-  },
-)
+  const props = withDefaults(
+    defineProps<{
+      size?: 'sm' | 'md' | 'lg'
+      variant?: 'spinner' | 'text' | 'overlay'
+      text?: string
+    }>(),
+    {
+      size: 'md',
+      variant: 'spinner',
+      text: undefined,
+    },
+  )
 
-const spinnerSize = computed(() => ({
-  'size-4': props.size === 'sm',
-  'size-8': props.size === 'md',
-  'size-12': props.size === 'lg',
-}))
+  const spinnerSize = computed(() => ({
+    'size-4': props.size === 'sm',
+    'size-8': props.size === 'md',
+    'size-12': props.size === 'lg',
+  }))
 
-const inlineSize = computed(() => ({
-  'size-3': props.size === 'sm',
-  'size-4': props.size === 'md',
-  'size-5': props.size === 'lg',
-}))
+  const inlineSize = computed(() => ({
+    'size-3': props.size === 'sm',
+    'size-4': props.size === 'md',
+    'size-5': props.size === 'lg',
+  }))
 
-const textSize = computed(() => ({
-  'text-xs': props.size === 'sm',
-  'text-sm': props.size === 'md',
-  'text-base': props.size === 'lg',
-}))
+  const textSize = computed(() => ({
+    'text-xs': props.size === 'sm',
+    'text-sm': props.size === 'md',
+    'text-base': props.size === 'lg',
+  }))
 </script>
 
 <template>
@@ -43,12 +43,19 @@ const textSize = computed(() => ({
     role="status"
   >
     <svg
-      :class="['animate-spin text-brand-500', spinnerSize]"
       aria-hidden="true"
+      :class="['animate-spin text-brand-500', spinnerSize]"
       fill="none"
       viewBox="0 0 24 24"
     >
-      <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" />
+      <circle
+        class="opacity-20"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        stroke-width="3"
+      />
       <path
         class="opacity-90"
         d="M4 12a8 8 0 018-8"
@@ -69,17 +76,24 @@ const textSize = computed(() => ({
   <span
     v-else-if="variant === 'text'"
     :aria-label="text ?? 'Carregando...'"
-    :class="['inline-flex items-center gap-1.5 font-medium text-current', textSize]"
     aria-live="polite"
+    :class="['inline-flex items-center gap-1.5 font-medium text-current', textSize]"
     role="status"
   >
     <svg
-      :class="['shrink-0 animate-spin text-current', inlineSize]"
       aria-hidden="true"
+      :class="['shrink-0 animate-spin text-current', inlineSize]"
       fill="none"
       viewBox="0 0 24 24"
     >
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" />
+      <circle
+        class="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        stroke-width="3"
+      />
       <path
         class="opacity-90"
         d="M4 12a8 8 0 018-8"
@@ -95,17 +109,24 @@ const textSize = computed(() => ({
   <span
     v-else
     :aria-label="text ?? 'Carregando...'"
-    :class="['inline-flex flex-col items-center justify-center text-brand-500', text ? 'gap-2' : '']"
     aria-live="polite"
+    :class="['inline-flex flex-col items-center justify-center text-brand-500', text ? 'gap-2' : '']"
     role="status"
   >
     <svg
-      :class="['animate-spin text-current', spinnerSize]"
       aria-hidden="true"
+      :class="['animate-spin text-current', spinnerSize]"
       fill="none"
       viewBox="0 0 24 24"
     >
-      <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" />
+      <circle
+        class="opacity-20"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        stroke-width="3"
+      />
       <path
         class="opacity-90"
         d="M4 12a8 8 0 018-8"
