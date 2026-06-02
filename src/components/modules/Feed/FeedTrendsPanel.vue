@@ -2,6 +2,7 @@
   import { computed, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import router from '@/router'
+  import { useGuestMode } from '@/composables/useGuestMode'
 
   interface TrendItem {
     id: number
@@ -13,9 +14,11 @@
   const props = defineProps<{
     items: TrendItem[]
     loading?: boolean
+    guestMode?: boolean
   }>()
 
   const { t } = useI18n()
+  const { requireLogin } = useGuestMode()
 
   const INITIAL_COUNT = 5
   const visibleCount = ref(INITIAL_COUNT)
@@ -25,6 +28,10 @@
   const isExpanded = computed(() => visibleCount.value > INITIAL_COUNT)
 
   function showMore () {
+    if (props.guestMode) {
+      requireLogin('ver mais eventos em destaque')
+      return
+    }
     visibleCount.value += 5
   }
 
@@ -33,6 +40,10 @@
   }
 
   function goToMainEvent (eventItem: TrendItem) {
+    if (props.guestMode) {
+      requireLogin('ver detalhes do evento')
+      return
+    }
     router.push(`/private/event/${eventItem.id}`)
   }
 

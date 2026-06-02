@@ -798,6 +798,11 @@
   function selectTab (id: string) {
     if (activeTab.value === id) return
 
+    if (props.guestMode && id === 'today') {
+      requireLogin('ver acontecendo hoje')
+      return
+    }
+
     activeTab.value = id
   }
 
@@ -1331,7 +1336,7 @@
         </p>
       </main>
 
-      <FeedTrendsPanel class="feed-trends" :items="displayedTrends" :loading="checkLoading('feed:trends')" />
+      <FeedTrendsPanel class="feed-trends" :items="displayedTrends" :loading="checkLoading('feed:trends')" :guest-mode="props.guestMode" />
     </section>
 
     <!-- Mobile Trending FAB Button -->
