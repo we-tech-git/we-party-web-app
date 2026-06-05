@@ -1,5 +1,6 @@
 import { logger } from '@/utils/logger'
 import { callApi } from './index'
+import axios from 'axios'
 
 interface NewUser {
   name: string
@@ -244,24 +245,26 @@ export async function uploadProfileImage (file: File) {
   }
 
   try {
-    const response = await fetch(`${baseUrl}/users/profile`, {
+    const response = await axios({
       method: 'PATCH',
+      url: `${baseUrl}/users/profile`,
+      data: formData,
       headers: {
         Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
       },
-      body: formData,
+      withCredentials: true,
+      timeout: 30000,
+      httpAgent: { keepAlive: true },
+      httpsAgent: { keepAlive: true },
     })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }))
-      throw new Error(errorData.message || `Erro ao fazer upload da imagem (${response.status})`)
-    }
-
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error('Erro ao fazer upload da foto de perfil:', error)
-    throw error
+    logger.log('✅ Foto de perfil enviada com sucesso')
+    return response.data
+  } catch (error: any) {
+    const message = error.response?.data?.message || 'Erro ao fazer upload da foto de perfil'
+    logger.error('❌ Erro ao fazer upload da foto de perfil:', message)
+    throw new Error(message)
   }
 }
 
@@ -278,23 +281,25 @@ export async function uploadBannerImage (file: File) {
   }
 
   try {
-    const response = await fetch(`${baseUrl}/users/profile`, {
+    const response = await axios({
       method: 'PATCH',
+      url: `${baseUrl}/users/profile`,
+      data: formData,
       headers: {
         Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
       },
-      body: formData,
+      withCredentials: true,
+      timeout: 30000,
+      httpAgent: { keepAlive: true },
+      httpsAgent: { keepAlive: true },
     })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }))
-      throw new Error(errorData.message || `Erro ao fazer upload da capa (${response.status})`)
-    }
-
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error('Erro ao fazer upload da capa:', error)
-    throw error
+    logger.log('✅ Foto de capa enviada com sucesso')
+    return response.data
+  } catch (error: any) {
+    const message = error.response?.data?.message || 'Erro ao fazer upload da capa'
+    logger.error('❌ Erro ao fazer upload da capa:', message)
+    throw new Error(message)
   }
 }

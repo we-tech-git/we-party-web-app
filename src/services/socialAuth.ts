@@ -312,7 +312,7 @@ export class SocialAuthService {
 
       // Para Facebook e outros, usa fluxo antigo
       const baseUrl
-        = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+        = import.meta.env.VITE__BASE_URL || 'http://localhost:8000'
       const endpoint = `${baseUrl}/auth/social/${provider}`
 
       logger.log(`📤 Enviando token para o backend: ${endpoint}`)
@@ -374,7 +374,7 @@ export class SocialAuthService {
   ): Promise<SocialAuthResponse> {
     try {
       const baseUrl
-        = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+        = import.meta.env.VITE__BASE_URL || 'http://localhost:8000'
       const endpoint = `${baseUrl}/auth/social/${provider}/callback`
 
       logger.log(

@@ -72,6 +72,12 @@ export async function callApi (
       // SEGURANÇA: Permite envio de cookies (necessário para CSRF)
       // ===========================================
       withCredentials: true,
+      // ===========================================
+      // PERFORMANCE: Timeout e connection keep-alive
+      // ===========================================
+      timeout: 30000,
+      httpAgent: { keepAlive: true },
+      httpsAgent: { keepAlive: true },
     })
 
     // logger.log(`✅ [API] ${method} ${url} - Status: ${response.status}`)
