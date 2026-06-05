@@ -5,7 +5,7 @@
   Data: 13/10/2025
 -->
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { addUserInterest, getRecommendedInterests, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
@@ -37,6 +37,18 @@ const isSearching = ref(false)
 
 const query = ref('')
 const searchResults = ref<IInterest[]>([])
+
+// Ativa o loading imediatamente ao digitar, antes do debounce do SearchInput disparar,
+// para evitar que "não encontrado" apareça durante a janela de debounce.
+watch(query, (newValue) => {
+  if (newValue.trim()) {
+    searchResults.value = []
+    isSearching.value = true
+  } else {
+    searchResults.value = []
+    isSearching.value = false
+  }
+})
 
 // Máximo de interesses exibidos para não quebrar o layout
 const MAX_DISPLAYED_INTERESTS = 9
@@ -103,8 +115,11 @@ async function searchInterests(searchQuery: string) {
     return
   }
 
+  // Limpa resultados anteriores e ativa loading ao iniciar nova busca
+  searchResults.value = []
+  isSearching.value = true
+
   try {
-    isSearching.value = true
     const response = await searchInterestsByName(searchQuery.trim())
 
     // Tenta extrair os interesses de diferentes estruturas de resposta
@@ -323,15 +338,12 @@ async function submitNewInterestRequest() {
   <AuthLayout>
     <template #form-content>
       <!-- Botão de Voltar -->
-      <a class="back-link" href="#" @click="router.back()">
-        <svg class="back-arrow" fill="none" stroke="currentColor" stroke-width="1.5"
-          :viewBox="svgIcons.backArrow ? svgIcons.backArrow.viewBox : '0 0 24 24'">
-          <path
-            v-for="(path, index) in (svgIcons.backArrow ? svgIcons.backArrow.paths : [{ d: 'M10 19l-7-7m0 0l7-7m-7 7h18', strokeLinecap: 'round', strokeLinejoin: 'round' }])"
-            :key="index" :d="path.d" :stroke-linecap="path.strokeLinecap as StrokeLinecap"
-            :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin" />
+      <button class="btn-back" type="button" @click="router.back()">
+        <svg class="btn-back__arrow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
-      </a>
+        <span>Voltar</span>
+      </button>
       <h2 class="mobile-brand-title notranslate" translate="no">WE PARTY</h2>
       <h1 class="title">{{ t('interest.title') }}</h1>
       <p class="subtitle">{{ t('interest.subtitle') }}</p>
@@ -713,15 +725,42 @@ async function submitNewInterestRequest() {
 /* ===============================
    BOTÃO VOLTAR
 ================================ */
-.back-link {
+.btn-back {
   display: inline-flex;
-  color: #FFB37B;
-  margin-bottom: 48px;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px 10px 12px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(90deg, #FFC25B 0%, #FF5FA6 100%);
+  box-shadow: 0 4px 14px rgba(255, 95, 166, 0.28);
+  color: #fff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 40px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.back-arrow {
-  width: 32px;
-  height: 32px;
+.btn-back:hover {
+  transform: translateX(-3px);
+  box-shadow: 0 6px 20px rgba(255, 95, 166, 0.42);
+}
+
+.btn-back:active {
+  transform: translateX(-1px);
+}
+
+.btn-back__arrow {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.btn-back:hover .btn-back__arrow {
+  transform: translateX(-3px);
 }
 
 /* ===============================

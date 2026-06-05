@@ -586,10 +586,8 @@
   border-radius: 28px;
   overflow: visible;
   background: #07091a;
-  box-shadow: 0 24px 52px rgba(0, 0, 0, 0.4);
   isolation: isolate;
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.35s ease;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   padding: 0.35rem;
   width: 100%;
   transform: translateZ(0);
@@ -599,8 +597,6 @@
 
 .feed-card:hover {
   transform: translateY(-6px) translateZ(0);
-  box-shadow: 0 36px 70px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(var(--accent-rgb), 0.18);
 }
 
 .feed-card:not(:hover) {
@@ -611,8 +607,6 @@
    HIGHLIGHT CARD (Destaque)
    ═══════════════════════════════════════════════════════════════════════════ */
 .feed-card.highlight-card {
-  box-shadow: 0 28px 56px rgba(var(--accent-rgb), 0.2),
-    0 0 0 1px rgba(var(--accent-light-rgb), 0.25);
 }
 
 .feed-card.highlight-card::before {
@@ -648,7 +642,6 @@
   font-weight: 800;
   font-size: 1.65rem;
   border-radius: 18px;
-  box-shadow: 0 6px 18px rgba(var(--accent-rgb), 0.55);
   transform: rotate(-10deg);
   border: 2px solid rgba(255, 255, 255, 0.25);
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
@@ -731,7 +724,6 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.93);
   backdrop-filter: blur(8px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   color: #1a1d35;
   font-size: 0.8rem;
   font-weight: 700;
@@ -755,7 +747,6 @@
   height: 26px;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .host-avatar.placeholder {
@@ -788,7 +779,6 @@
   cursor: pointer;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
     background 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
     border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -801,7 +791,6 @@
 .bookmark:hover {
   background: linear-gradient(135deg, var(--accent-light), var(--accent));
   transform: scale(1.1);
-  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.45);
   border-color: transparent;
 }
 
@@ -826,7 +815,6 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   max-height: 70%;
   overflow-y: auto;
-  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .interests-panel-header {
@@ -1083,7 +1071,6 @@
   background: linear-gradient(135deg, var(--accent-light), var(--accent));
   border-color: transparent;
   transform: scale(1.08);
-  box-shadow: 0 4px 16px rgba(var(--accent-rgb), 0.4);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

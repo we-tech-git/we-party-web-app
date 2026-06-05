@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import { addEventComment, deleteEventComment, getEventComments, toggleLikeComment } from '@/api/comments'
   import { getEventById, getMyAttendance } from '@/api/event'
   import { useAuth } from '@/composables/useAuth'
@@ -202,6 +203,29 @@
   const loading = ref(false)
   const errorMessage = ref('')
   const showConfirmModal = ref(false)
+
+  // ── Snackbar ──
+  const SNACKBAR_COLORS = {
+    success: '#22c55e',
+    error: '#ef4444',
+  } as const
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref<string>(SNACKBAR_COLORS.success)
+
+  function showSnackbar (message: string, color: string = SNACKBAR_COLORS.success) {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+    if (snackbarVisible.value) {
+      snackbarVisible.value = false
+      requestAnimationFrame(() => {
+        snackbarVisible.value = true
+      })
+      return
+    }
+    snackbarVisible.value = true
+  }
+
   const isModalCanceling = ref(false) // true = modal de cancelar, false = modal de confirmar
   const confirmingAttendance = ref(false)
   const activeTab = ref<'info' | 'location' | 'lineup' | 'comments'>('info')
@@ -755,12 +779,19 @@
       // Usa a store que já faz a chamada à API internamente
       await eventsStore.toggleConfirm(event.value.id)
 
-      // Feedback visual ao usuário
+      // Feedback visual ao usuário — emite o alerta da ação executada
       const isNowConfirmed = eventsStore.isConfirmed(event.value.id)
-      console.log(isNowConfirmed ? '✅ Presença confirmada!' : '❌ Presença cancelada')
+      showSnackbar(
+        isNowConfirmed ? 'Presença confirmada com sucesso!' : 'Presença cancelada com sucesso!',
+        SNACKBAR_COLORS.success,
+      )
     } catch (error: any) {
       console.error('Erro ao confirmar presença:', error)
       errorMessage.value = error?.message || 'Não foi possível confirmar presença. Tente novamente.'
+      showSnackbar(
+        isModalCanceling.value ? 'Erro ao cancelar presença. Tente novamente.' : 'Erro ao confirmar presença. Tente novamente.',
+        SNACKBAR_COLORS.error,
+      )
 
       // Limpa a mensagem de erro após 5 segundos
       setTimeout(() => {
@@ -816,7 +847,12 @@
 
   onMounted(() => {
     const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
-    if (id) fetchEventDetails(id)
+    if (id) {
+      fetchEventDetails(id)
+      // Carrega comentários logo de início para a contagem aparecer no badge
+      // mesmo antes de abrir a aba e ao transitar entre outras abas
+      fetchComments()
+    }
 
     // Mobile responsive setup
     checkMobile()
@@ -1075,7 +1111,7 @@
         <button class="tab-btn" :class="{ active: activeTab === 'comments' }" @click="activeTab = 'comments'">
           <i class="mdi mdi-comment-outline" />
           <span>Comentários</span>
-          <span v-if="activeTab === 'comments' && comments.length > 0" class="tab-badge">{{ comments.length }}</span>
+          <span v-if="comments.length > 0" class="tab-badge">{{ comments.length }}</span>
         </button>
         <button class="tab-btn" :class="{ active: activeTab === 'location' }" @click="activeTab = 'location'">
           <i class="mdi mdi-map-marker-outline" />
@@ -1377,6 +1413,9 @@
       </div>
 
     </template>
+
+    <!-- Snackbar de feedback (confirmar / cancelar presença) -->
+    <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="1500" />
 
     <!-- Confirmation Modal -->
     <Teleport to="body">

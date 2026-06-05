@@ -1,9 +1,11 @@
 <script setup lang="ts">
+  import { ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
   import { useAuth } from '@/composables/useAuth'
   import { svgIcons } from '@/utils/svgSet'
+  import EventSearchAutocomplete from '@/components/modules/Feed/EventSearchAutocomplete.vue'
 
   interface UserSummary {
     name: string
@@ -55,6 +57,14 @@
   function goToSignup () {
     router.push('/public/Signup')
   }
+
+  const defaultSearchQuery = ref('')
+
+  function handleDefaultSearch (query: string) {
+    if (query.trim()) {
+      router.push({ path: '/private/feed', query: { search: query.trim() } })
+    }
+  }
 </script>
 
 <template>
@@ -85,7 +95,15 @@
         </div>
       </div>
       <div class="center-container">
-        <slot name="center-content" />
+        <slot name="center-content">
+          <div class="default-search-wrapper">
+            <EventSearchAutocomplete
+              v-model="defaultSearchQuery"
+              :placeholder="t('feed.searchPlaceholder')"
+              @search="handleDefaultSearch"
+            />
+          </div>
+        </slot>
       </div>
       <div class="user-summary">
         <!-- Seletor de idioma apenas no modo guest (explore) -->
@@ -208,10 +226,10 @@
   top: 0;
   margin-bottom: 1rem;
   z-index: 999;
-  background: rgba(255, 245, 247, 0.95);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgb(255, 245, 247);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 200, 220, 0.3);
   transition: all 0.3s ease;
   will-change: transform;
   /* Suporte para safe area em iOS */
@@ -262,6 +280,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 
 .header-inner {
   grid-template-columns: minmax(180px, 250px) 1fr minmax(200px, 250px);
@@ -350,6 +369,30 @@
   justify-content: center;
   min-width: 0;
   /* Allows shrinking */
+}
+
+.default-search-wrapper {
+  width: 100%;
+}
+
+.default-search-wrapper :deep(.search-input-container) {
+  box-shadow: 0 20px 45px rgba(14, 23, 58, 0.12);
+  border-radius: 20px;
+}
+
+.default-search-wrapper :deep(.search-input-field) {
+  border-radius: 20px;
+  background: #ffffff;
+  border-color: transparent;
+}
+
+.default-search-wrapper :deep(.search-input-field:focus) {
+  border-color: #ff5fa6;
+}
+
+.default-search-wrapper :deep(.autocomplete-wrapper.is-open .search-input-field) {
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
 }
 
 .user-summary {
@@ -491,6 +534,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 
 :deep(.dropdown-action-item) {
   border-radius: 10px !important;

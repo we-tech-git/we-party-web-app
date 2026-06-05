@@ -115,7 +115,7 @@ export default defineConfig({
       '/api': {
         target: 'https://api.dev.wepartyapp.com',
         changeOrigin: true,
-        secure: false,
+        secure: true,
         rewrite: path => path.replace(/^\/api/, ''),
       },
     },

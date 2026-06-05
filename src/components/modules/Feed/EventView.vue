@@ -4,9 +4,11 @@
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import { getEventById, getTrendingEvents } from '@/api/event'
-  import { useAuth } from '@/composables/useAuth'
-  import { useEventsStore } from '@/stores/events'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import { useAuth } from '@/composables/useAuth'
+  import { useEventImages } from '@/composables/useEventImages'
+  import { useLoading } from '@/composables/useLoading'
+  import { useEventsStore } from '@/stores/events'
   import EventDetails from './EventDetails.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
   import FeedTopHeader from './FeedTopHeader.vue'
@@ -26,34 +28,7 @@
   const isLoaded = ref(false)
   const isLoadingEventData = ref(true)
 
-  // Computed para processar imagens do evento (mesma lógica do FeedCard)
-  const eventImages = computed(() => {
-    if (!eventData.value?.images || !Array.isArray(eventData.value.images) || eventData.value.images.length === 0) {
-      return { desktop: '', mobile: '' }
-    }
-
-    const images = eventData.value.images
-
-    // Desktop: melhor imagem 16_9 (maior resolução)
-    const landscapeImages = images
-      .filter((img: any) => img.ratio === '16_9')
-      .toSorted((a: any, b: any) => b.width - a.width)
-
-    const desktopImage = landscapeImages[0]?.url || ''
-
-    // Mobile: preferir 3_2 (proporção mais vertical), senão usar a menor 16_9
-    const verticalImages = images.filter((img: any) => img.ratio === '3_2')
-    const mobileImages = verticalImages.length > 0
-      ? verticalImages.toSorted((a: any, b: any) => b.width - a.width)
-      : landscapeImages.toReversed()
-
-    const mobileImage = mobileImages[0]?.url || desktopImage
-
-    return {
-      desktop: desktopImage,
-      mobile: mobileImage,
-    }
-  })
+  const eventImages = useEventImages(() => eventData.value?.images)
 
   // Parallax effect
   const scrollY = ref(0)
@@ -63,19 +38,20 @@
     scrollY.value = window.scrollY
   }
 
+  let entranceTimer: ReturnType<typeof setTimeout> | null = null
+
   onMounted(() => {
-    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', handleScroll, { passive: true })
     fetchEventData()
     fetchTrends()
-
-    // Trigger entrance animation
-    setTimeout(() => {
+    entranceTimer = setTimeout(() => {
       isLoaded.value = true
     }, 100)
   })
 
   onUnmounted(() => {
     window.removeEventListener('scroll', handleScroll)
+    if (entranceTimer) clearTimeout(entranceTimer)
   })
 
   async function fetchEventData () {
@@ -129,21 +105,28 @@
   ])
 
   const trends = ref<any[]>([])
+  const { withLoading, isLoading: checkLoading } = useLoading()
 
   async function fetchTrends () {
-    try {
-      const response = await getTrendingEvents()
-      const data = response.data.events || response.data || []
+    await withLoading(
+      async () => {
+        try {
+          const response = await getTrendingEvents()
+          const data = response.data.events || response.data || []
 
-      trends.value = data.map((evt: any) => ({
-        id: evt.id,
-        title: evt.name || evt.title || 'Evento sem nome',
-        highlight: evt.location || evt.city || t('feed.trending.cityHighlight'),
-        baseCount: evt.likesCount || evt.likes || evt._count?.likes || evt.confirmedCount || 0,
-      }))
-    } catch (error) {
-      console.error('Error fetching trends', error)
-    }
+          trends.value = data.map((evt: any) => ({
+            id: evt.id,
+            title: evt.name || evt.title || 'Evento sem nome',
+            highlight: evt.location || evt.city || t('feed.trending.cityHighlight'),
+            baseCount: evt.likesCount || evt.likes || evt._count?.likes || evt.confirmedCount || 0,
+          }))
+        } catch (error) {
+          console.error('Error fetching trends', error)
+        }
+      },
+      'eventview:trends',
+      1000, // garante skeleton visível por ≥ 1s (animação do painel leva 0.9s)
+    )
   }
 
   const displayedTrends = computed(() => {
@@ -199,11 +182,7 @@
     </div>
 
     <!-- Header Global -->
-    <FeedTopHeader :user="user">
-      <template #center-content>
-        <div class="header-spacer" />
-      </template>
-    </FeedTopHeader>
+    <FeedTopHeader :user="user" />
 
     <section class="layout-shell">
       <!-- Sidebar -->
@@ -260,7 +239,7 @@
       </main>
 
       <!-- Trends Panel -->
-      <FeedTrendsPanel class="layout-trends" :items="displayedTrends" />
+      <FeedTrendsPanel class="layout-trends" :items="displayedTrends" :loading="checkLoading('eventview:trends')" />
     </section>
   </div>
 </template>
@@ -271,7 +250,7 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Immersive Background */
@@ -429,7 +408,7 @@
   column-gap: 2rem;
   row-gap: 0;
   width: min(100%, 1280px);
-  margin: 0 auto 3.5rem;
+  margin: 2rem auto 3.5rem;
   background: transparent;
   align-items: start;
   position: relative;
@@ -506,11 +485,6 @@
     opacity: 1;
     transform: translateX(0);
   }
-}
-
-.header-spacer {
-  width: 100%;
-  height: 100%;
 }
 
 /* Responsive */
@@ -797,7 +771,6 @@
   }
 
 }
-
 
 /* ─── RESPONSIVE: Mobile Small (480px) ────────────────────────────────────── */
 @media (max-width: 480px) {

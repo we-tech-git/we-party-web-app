@@ -1,9 +1,18 @@
 <!--
-  Página de teste para verificar autenticação
+  Página de diagnóstico de autenticação — visível apenas em desenvolvimento.
+  Em produção redireciona automaticamente para o feed.
 -->
 <script setup lang="ts">
   import { onMounted } from 'vue'
+  import { useRouter } from 'vue-router'
   import { useAuth } from '@/composables/useAuth'
+
+  const router = useRouter()
+  const isProd = import.meta.env.PROD
+
+  if (isProd) {
+    router.replace('/private/feed')
+  }
 
   const {
     isAuthenticated,
@@ -11,7 +20,6 @@
     loggedUser,
     accessToken,
     logout,
-    debugAuth,
   } = useAuth()
 
   function handleLogout () {
@@ -19,7 +27,12 @@
   }
 
   onMounted(() => {
-    debugAuth()
+    if (isProd) return
+    console.group('🔍 Auth Debug Info')
+    console.log('Token:', accessToken.value ? '✅ Presente' : '❌ Ausente')
+    console.log('Usuário:', loggedUser.value ? '✅ Presente' : '❌ Ausente')
+    console.log('Autenticado:', isAuthenticated.value ? '✅ Sim' : '❌ Não')
+    console.groupEnd()
   })
 </script>
 
@@ -81,10 +94,6 @@
       </div>
 
       <div class="actions">
-        <button class="btn-debug" @click="debugAuth">
-          🔍 Debug no Console
-        </button>
-
         <button v-if="isAuthenticated" class="btn-logout" @click="handleLogout">
           🚪 Fazer Logout
         </button>
@@ -103,6 +112,7 @@
           <li>Você deve ser redirecionado automaticamente para o login</li>
         </ul>
       </div>
+
     </div>
   </div>
 </template>

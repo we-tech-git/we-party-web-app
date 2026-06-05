@@ -80,17 +80,5 @@ export function saveUserInterests (interestIds: string[]) {
  * @param interestNames - Um array com os nomes dos interesses solicitados.
  */
 export function requestNewInterests (interestNames: string[]) {
-  const body = { interests: interestNames }
-  return callApi('POST', '/interest/request', body, true)
-}
-
-/**
- * Envia a sugestão de um novo interesse para aprovação dos desenvolvedores.
- * O interesse fica com status "pendente" até ser aprovado/rejeitado.
- * Rota autenticada.
- * @param name - O nome do interesse sugerido pelo usuário.
- */
-export function suggestInterest (name: string) {
-  const body = { name }
-  return callApi('POST', '/create/interest', body, true)
+  return Promise.all(interestNames.map(name => callApi('POST', '/interest/public-create', { name }, true)))
 }

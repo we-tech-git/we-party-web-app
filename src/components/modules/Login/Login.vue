@@ -17,11 +17,12 @@
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
   import router from '@/router'
-  import { AuthService } from '@/services/auth'
+  import { useAuth } from '@/composables/useAuth'
   import { SocialAuthService } from '@/services/socialAuth'
   import { logger } from '@/utils/logger'
 
   const { t } = useI18n()
+  const { login } = useAuth()
   const socialAuthService = new SocialAuthService()
 
   // Estado do formulário de login
@@ -133,12 +134,7 @@
       // PRIMEIRO, VERIFICAMOS SE O LOGIN FOI UM SUCESSO REAL
       if (data?.success && !!data?.data?.token) {
         // --- LÓGICA DE SUCESSO ---
-        AuthService.saveAuthData({
-          success: true,
-          message: 'Login realizado com sucesso',
-          token: data.data.token,
-          user: data.data,
-        })
+        login(data.data.token, data.data)
 
         // Salva o e-mail se "Lembrar-me" estiver ativo
         if (rememberMe.value) {
@@ -227,16 +223,8 @@
         isNewUser: data.isNewUser,
       })
 
-      // Salva dados de autenticação (já feito no socialAuthService, mas reforça aqui)
       if (data.token && data.user) {
-        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token)
-        localStorage.setItem(STORAGE_KEYS.USER_ID, data.user.id)
-        AuthService.saveAuthData({
-          success: true,
-          message: data.message,
-          token: data.token,
-          user: data.user,
-        })
+        login(data.token, data.user)
       }
 
       // Mostra sucesso e redireciona
@@ -282,6 +270,9 @@
       const result = await socialAuthService.loginWithFacebook()
 
       if (result.success) {
+        if (result.token && result.user) {
+          login(result.token, result.user)
+        }
         showSnackbar('Login com Facebook realizado com sucesso! 🎉', '#22c55e')
         setTimeout(() => {
           router.push('/private/feed')

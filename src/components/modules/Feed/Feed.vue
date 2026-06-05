@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import type { FeedItem } from '@/stores/events'
+  import { useWindowSize } from '@vueuse/core'
   import { computed, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
 
@@ -68,18 +69,9 @@
 
   // Mobile trending drawer
   const showTrendingMobile = ref(false)
-  const isMobile = ref(false)
-
-  // Detecta se é mobile
-  function checkMobile () {
-    isMobile.value = window.innerWidth <= 960
-  }
-
-  // Lifecycle para detectar resize
-  onMounted(() => {
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-  })
+  // useWindowSize do VueUse atualiza reativamente sem addEventListener manual
+  const { width: windowWidth } = useWindowSize()
+  const isMobile = computed(() => windowWidth.value <= 960)
 
   const activeNav = ref((route.query.tab as string) || 'home')
   // Inicia sempre com 'for-you'
@@ -98,12 +90,6 @@
 
   // IDs de navegação que requerem autenticação
   const protectedNavIds = new Set(['favorites', 'profile'])
-
-  // Retorna todos os itens de navegação (não filtra mais em modo guest)
-  // O diálogo de login será mostrado ao clicar em itens protegidos
-  const guestFilteredNavItems = computed<NavItem[]>(() => {
-    return navItems.value
-  })
 
   /**
    * Gerencia seleção de navegação com verificação de modo guest
@@ -135,11 +121,9 @@
     ]
   })
 
-  const filteredItems = ref<FeedItem[]>([
-
-  ])
-
   const items = ref<FeedItem[]>([])
+  // null = sem busca ativa; array = resultados da pesquisa em vigor
+  const searchResults = ref<FeedItem[] | null>(null)
   const loading = ref(false)
   const loadingMore = ref(false)
   const page = ref(1)
@@ -438,6 +422,44 @@
     }
   }
 
+  /**
+   * Retorna a função de fetch correta com base no modo (guest/autenticado)
+   * e na aba/seção ativa. Elimina a IIFE que existia dentro de fetchEvents.
+   */
+  function selectFetchFn () {
+    if (props.guestMode) {
+      if (activeNav.value === 'top-events') {
+        logger.info('→ Calling: getPublicTrendingEvents')
+        return getPublicTrendingEvents
+      }
+      if (activeTab.value === 'today') {
+        logger.info('→ Calling: getPublicEventsToday')
+        return getPublicEventsToday
+      }
+      if (activeTab.value === 'all-events') {
+        logger.info('→ Calling: getAllPublicEvents')
+        return getAllPublicEvents
+      }
+      logger.info('→ Calling: getPublicEventRecomendations')
+      return getPublicEventRecomendations
+    }
+
+    if (activeNav.value === 'top-events') {
+      logger.info('→ Calling: getTrendingEvents (authenticated)')
+      return getTrendingEvents
+    }
+    if (activeTab.value === 'today') {
+      logger.info('→ Calling: getEventsToday (authenticated)')
+      return getEventsToday
+    }
+    if (activeTab.value === 'all-events') {
+      logger.info('→ Calling: getAllEvents (authenticated)')
+      return getAllEvents
+    }
+    logger.info('→ Calling: getEventRecomendations (authenticated)')
+    return getEventRecomendations
+  }
+
   async function fetchEvents (isLoadMore = false) {
     if (isLoadMore) {
       loadingMore.value = true
@@ -450,48 +472,14 @@
     }
 
     try {
-      const fetchPromise = (async () => {
-        logger.info('📡 Fetching events...', {
-          guestMode: props.guestMode,
-          activeNav: activeNav.value,
-          activeTab: activeTab.value,
-          page: page.value,
-        })
+      logger.info('📡 Fetching events...', {
+        guestMode: props.guestMode,
+        activeNav: activeNav.value,
+        activeTab: activeTab.value,
+        page: page.value,
+      })
 
-        // Em modo guest, usa as funções públicas (sem autenticação)
-        if (props.guestMode) {
-          if (activeNav.value === 'top-events') {
-            logger.info('→ Calling: getPublicTrendingEvents')
-            return await getPublicTrendingEvents(page.value, limit)
-          } else if (activeTab.value === 'today') {
-            logger.info('→ Calling: getPublicEventsToday')
-            return await getPublicEventsToday(page.value, limit)
-          } else if (activeTab.value === 'all-events') {
-            logger.info('→ Calling: getAllPublicEvents')
-            return await getAllPublicEvents(page.value, limit)
-          } else {
-            logger.info('→ Calling: getPublicEventRecomendations')
-            return await getPublicEventRecomendations(page.value, limit)
-          }
-        }
-
-        // Modo autenticado - usa funções normais
-        if (activeNav.value === 'top-events') {
-          logger.info('→ Calling: getTrendingEvents (authenticated)')
-          return await getTrendingEvents(page.value, limit)
-        } else if (activeTab.value === 'today') {
-          logger.info('→ Calling: getEventsToday (authenticated)')
-          return await getEventsToday(page.value, limit)
-        } else if (activeTab.value === 'all-events') {
-          logger.info('→ Calling: getAllEvents (authenticated)')
-          return await getAllEvents(page.value, limit)
-        } else {
-          logger.info('→ Calling: getEventRecomendations (authenticated)')
-          return await getEventRecomendations(page.value, limit)
-        }
-      })()
-
-      const response = await fetchPromise
+      const response = await selectFetchFn()(page.value, limit)
 
       logger.info('✅ API Response received:', {
         status: response.status,
@@ -642,13 +630,10 @@
         // Reverte o incremento de página se não trouxe resultados
         page.value = page.value - 1
       }
-
-      filteredItems.value = items.value
     } catch (error) {
       logger.error('Failed to fetch events', error)
       if (!isLoadMore) {
         items.value = []
-        filteredItems.value = []
       }
     } finally {
       loading.value = false
@@ -679,12 +664,13 @@
   const { startLoading, stopLoading, isLoading: checkLoading } = useLoading()
 
   const trends = ref<TrendItem[]>([])
-  startLoading('feed:trends') // equivalente ao antigo ref(true)
 
   async function fetchTrends () {
     startLoading('feed:trends')
     try {
-      const response = await getTrendingEvents()
+      const response = props.guestMode
+        ? await getPublicTrendingEvents()
+        : await getTrendingEvents()
       const data = response.data.events || response.data || []
 
       trends.value = data.map((evt: any) => ({
@@ -812,6 +798,11 @@
   function selectTab (id: string) {
     if (activeTab.value === id) return
 
+    if (props.guestMode && id === 'today') {
+      requireLogin('ver acontecendo hoje')
+      return
+    }
+
     activeTab.value = id
   }
 
@@ -852,7 +843,7 @@
 
     if (!normalized) {
       isSearching.value = false
-      filteredItems.value = items.value
+      searchResults.value = null
       return
     }
 
@@ -860,10 +851,10 @@
 
     try {
       const events = await requestSearchEvents(normalized)
-      filteredItems.value = (events || []).map((event: any) => mapEventToFeedItem(event))
+      searchResults.value = (events || []).map((event: any) => mapEventToFeedItem(event))
     } catch (error) {
       logger.error(error)
-      filteredItems.value = []
+      searchResults.value = []
     } finally {
       isSearching.value = false
     }
@@ -871,7 +862,7 @@
 
   // Handler para limpar a busca
   function handleClearSearch () {
-    filteredItems.value = items.value
+    searchResults.value = null
     isSearching.value = false
   }
 
@@ -955,12 +946,10 @@
       const sortedEvents = sortEventsByInterestMatch(mappedEvents)
 
       items.value = isLoadMore ? [...items.value, ...sortedEvents] : sortedEvents
-      filteredItems.value = items.value
     } catch (error) {
       logger.error('Erro ao buscar eventos favoritos:', error)
       if (!isLoadMore) {
         items.value = []
-        filteredItems.value = []
       }
     } finally {
       loading.value = false
@@ -968,7 +957,79 @@
     }
   }
 
-  const displayedItems = computed(() => filteredItems.value)
+  function getCategoryLabel (id: string): string {
+    if (id.startsWith('user-')) {
+      const idx = Number.parseInt(id.replace('user-', ''), 10)
+      return userInterests.value[idx] ?? ''
+    }
+    return (allInterestsCache.value.find(cat => cat.id === id)?.label ?? '').toLowerCase()
+  }
+
+  function matchesDateFilter (item: FeedItem): boolean {
+    const rawDate = rawEventDates.value[String(item.id)]
+    if (!rawDate) return true
+
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const eventDay = new Date(rawDate.getFullYear(), rawDate.getMonth(), rawDate.getDate())
+
+    switch (activeDateFilter.value) {
+      case 'today': {
+        return eventDay.getTime() === today.getTime()
+      }
+      case 'tomorrow': {
+        const tomorrow = new Date(today)
+        tomorrow.setDate(today.getDate() + 1)
+        return eventDay.getTime() === tomorrow.getTime()
+      }
+      case 'this-week': {
+        const endOfWeek = new Date(today)
+        endOfWeek.setDate(today.getDate() + (6 - today.getDay()))
+        return rawDate >= today && rawDate <= endOfWeek
+      }
+      case 'this-weekend': {
+        const daysUntilSat = (6 - today.getDay() + 7) % 7
+        const saturday = new Date(today)
+        saturday.setDate(today.getDate() + daysUntilSat)
+        const sunday = new Date(saturday)
+        sunday.setDate(saturday.getDate() + 1)
+        return eventDay.getTime() === saturday.getTime() || eventDay.getTime() === sunday.getTime()
+      }
+      case 'next-week': {
+        const daysUntilMon = (8 - today.getDay()) % 7 || 7
+        const nextMonday = new Date(today)
+        nextMonday.setDate(today.getDate() + daysUntilMon)
+        const nextSunday = new Date(nextMonday)
+        nextSunday.setDate(nextMonday.getDate() + 6)
+        return rawDate >= nextMonday && rawDate <= nextSunday
+      }
+      default: {
+        return true
+      }
+    }
+  }
+
+  const displayedItems = computed(() => {
+    // searchResults !== null significa que uma busca está ativa — usa os resultados dela;
+    // caso contrário usa os itens normais do feed como fonte de verdade.
+    let result = searchResults.value ?? items.value
+
+    if (activeCategories.value.length > 0) {
+      result = result.filter((item: FeedItem) => {
+        const eventInterests = new Set((item.interests ?? []).map((i: string) => i.toLowerCase()))
+        return activeCategories.value.some(catId => {
+          const label = getCategoryLabel(catId)
+          return label !== '' && eventInterests.has(label)
+        })
+      })
+    }
+
+    if (activeDateFilter.value) {
+      result = result.filter((item: FeedItem) => matchesDateFilter(item))
+    }
+
+    return result
+  })
 
   /**
    * Gerencia o toggle de favorito com atualização da lista quando necessário
@@ -979,23 +1040,18 @@
     // Chama o toggleSave do store
     await eventsStore.toggleSave(item)
 
-    // Se estava na aba de favoritos e foi desfavoritado, atualiza a lista
+    // Se estava na aba de favoritos e foi desfavoritado, remove imediatamente da lista
     if (activeNav.value === 'favorites' && wasSaved) {
-      // Remove o item da lista imediatamente para feedback visual rápido
-      filteredItems.value = filteredItems.value.filter(e => e.id !== item.id)
-      items.value = items.value.filter(e => e.id !== item.id)
+      items.value = items.value.filter((e: FeedItem) => e.id !== item.id)
     }
   }
 
   /**
-   * Remove evento da lista de favoritos com feedback visual
+   * Remove evento da lista de favoritos com feedback visual imediato.
+   * displayedItems atualiza automaticamente via computed.
    */
   async function handleRemoveFavorite (item: FeedItem) {
-    // Remove o item da lista imediatamente para feedback visual rápido
-    filteredItems.value = filteredItems.value.filter(e => e.id !== item.id)
-    items.value = items.value.filter(e => e.id !== item.id)
-
-    // Chama o toggleSave do store para desfavoritar
+    items.value = items.value.filter((e: FeedItem) => e.id !== item.id)
     await eventsStore.toggleSave(item)
   }
 
@@ -1150,7 +1206,7 @@
       <FeedSidebarNav
         :active="activeNav"
         class="feed-sidebar"
-        :items="guestFilteredNavItems"
+        :items="navItems"
         @select="handleNavSelect"
       />
 
@@ -1238,7 +1294,7 @@
           />
         </section>
 
-        <div v-if="!loading && hasMore && displayedItems.length > 0 && !isSearching" class="load-more-container">
+        <div v-if="!loading && hasMore && displayedItems.length > 0 && !isSearching && searchResults === null" class="load-more-container">
           <button
             class="load-more-btn"
             :disabled="loadingMore"
@@ -1266,7 +1322,7 @@
         </div>
 
         <div v-else-if="!loading && !hasMore && displayedItems.length > 0 && !isSearching" class="end-of-results">
-          <div class="end-icon">✓</div>
+          <div aria-hidden="true" class="end-icon">✓</div>
           <p class="end-message">
             Você visualizou todos os eventos disponíveis.
           </p>
@@ -1280,7 +1336,7 @@
         </p>
       </main>
 
-      <FeedTrendsPanel class="feed-trends" :items="displayedTrends" :loading="checkLoading('feed:trends')" />
+      <FeedTrendsPanel class="feed-trends" :items="displayedTrends" :loading="checkLoading('feed:trends')" :guest-mode="props.guestMode" />
     </section>
 
     <!-- Mobile Trending FAB Button -->
@@ -1311,12 +1367,22 @@
 
     <!-- Mobile Trending Bottom Sheet -->
     <Transition name="bottom-sheet">
-      <div v-if="showTrendingMobile" class="trending-overlay" @click.self="showTrendingMobile = false">
-        <div class="trending-sheet">
+      <div
+        v-if="showTrendingMobile"
+        class="trending-overlay"
+        @click.self="showTrendingMobile = false"
+        @keydown.esc="showTrendingMobile = false"
+      >
+        <div
+          aria-labelledby="trending-sheet-title"
+          aria-modal="true"
+          class="trending-sheet"
+          role="dialog"
+        >
           <div class="sheet-header">
-            <div class="sheet-handle" />
-            <h3 class="sheet-title">🔥 {{ t('feed.trending.title') }}</h3>
-            <button aria-label="Fechar" class="sheet-close" type="button" @click="showTrendingMobile = false">
+            <div aria-hidden="true" class="sheet-handle" />
+            <h3 id="trending-sheet-title" class="sheet-title">🔥 {{ t('feed.trending.title') }}</h3>
+            <button aria-label="Fechar tendências" class="sheet-close" type="button" @click="showTrendingMobile = false">
               <svg
                 fill="none"
                 height="20"
@@ -1334,18 +1400,19 @@
           </div>
           <div class="sheet-content">
             <ul class="trending-list-mobile">
-              <li
-                v-for="(item, index) in displayedTrends"
-                :key="item.id"
-                class="trending-item-mobile"
-                @click="router.push(`/private/event/${item.id}`); showTrendingMobile = false"
-              >
-                <span class="trend-rank">{{ index + 1 }}</span>
-                <div class="trend-info">
-                  <span class="trend-highlight">{{ item.highlight }}</span>
-                  <span class="trend-title">{{ item.title }}</span>
-                  <span class="trend-engagement">{{ item.engagement }}</span>
-                </div>
+              <li v-for="(item, index) in displayedTrends" :key="item.id">
+                <button
+                  class="trending-item-mobile"
+                  type="button"
+                  @click="router.push(`/private/event/${item.id}`); showTrendingMobile = false"
+                >
+                  <span aria-hidden="true" class="trend-rank">{{ index + 1 }}</span>
+                  <div class="trend-info">
+                    <span class="trend-highlight">{{ item.highlight }}</span>
+                    <span class="trend-title">{{ item.title }}</span>
+                    <span class="trend-engagement">{{ item.engagement }}</span>
+                  </div>
+                </button>
               </li>
             </ul>
           </div>
@@ -1404,7 +1471,8 @@
   scrollbar-width: none;
   position: relative;
   z-index: 1;
-  padding-bottom: 3rem;
+  padding: 0 10px 3rem;
+  background-color: #ff5fa70a;
 }
 
 .feed-main::-webkit-scrollbar {
@@ -1755,7 +1823,6 @@
 
 @media (max-width: 1100px) {
   .feed-shell {
-    /* Increase sticky offset because header is taller (stacked) in this range */
     --feed-sticky-offset: 180px;
     grid-template-columns: 72px 1fr 200px;
     grid-template-areas: 'sidebar main trends';
@@ -1832,19 +1899,6 @@
     /* Ensure it takes full width */
   }
 
-  .search {
-    padding: 0.75rem 1rem 0.75rem 2.75rem;
-    box-shadow: 0 4px 20px rgba(14, 23, 58, 0.05);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-  }
-
-  .search-icon {
-    left: 1rem;
-  }
-
-  .feed-shell {
-    --feed-sticky-offset: 0px;
-  }
 }
 
 @media (max-width: 640px) {
@@ -1858,20 +1912,6 @@
 
   .feed-controls {
     gap: 0.5rem;
-  }
-
-  .search {
-    padding: 0.6rem 1rem 0.6rem 2.5rem;
-    font-size: 0.9rem;
-  }
-
-  .search-icon {
-    left: 0.8rem;
-  }
-
-  .search-icon svg {
-    width: 16px;
-    height: 16px;
   }
 
   .tabs {
