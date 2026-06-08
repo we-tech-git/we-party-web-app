@@ -62,8 +62,7 @@
           📧
         </div>
         <h1 class="confirm-title">{{ $t('confirmEmail.title') }}</h1>
-        <!-- SEGURANÇA: Removido v-html para prevenir XSS -->
-        <p class="confirm-subtitle">{{ $t('verifyPin.subtitle', { email: userEmail }) }}</p>
+        <p class="confirm-subtitle" v-html="$t('verifyPin.subtitle', { email: userEmail })" />
 
         <!-- Verify Button -->
         <button class="verify-button active flex items-center justify-center gap-2" type="button" @click="backToLogin">
