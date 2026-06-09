@@ -10,7 +10,7 @@
       http-equiv="Content-Security-Policy"
       content="
       default-src 'self';
-      script-src 'self' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.google.com https://maps.googleapis.com https://maps.google.com;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.google.com https://maps.googleapis.com https://maps.google.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
       font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:;
       img-src 'self' data: https: blob:;
@@ -22,12 +22,9 @@
     "
     />
 
-    <!-- Outras políticas de segurança -->
+    <!-- X-Content-Type-Options via meta (fallback; authoritative value set in HTTP headers) -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
-    
-    <!-- Políticas de segurança são configuradas via HTTP headers (vercel.json/netlify.toml) -->
-    <!-- Meta tags de segurança são mantidas apenas como fallback -->
+    <!-- X-Frame-Options MUST be set as an HTTP header — not supported as a meta tag -->
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />

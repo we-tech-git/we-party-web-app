@@ -25,6 +25,7 @@
   import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import { useAuth } from '@/composables/useAuth'
+  import { useGeolocation } from '@/composables/useGeolocation'
   import { useGuestMode } from '@/composables/useGuestMode'
   import { useLoading } from '@/composables/useLoading'
   import { useEventsStore } from '@/stores/events'
@@ -62,6 +63,10 @@
   const route = useRoute()
   const { loggedUser, userDisplayName } = useAuth()
   const { requireLogin } = useGuestMode()
+  const { getCoords } = useGeolocation()
+
+  // Coordenadas do usuário enviadas ao backend nas recomendações (headers x-user-latitude/longitude)
+  const userCoords = ref<{ lat: number, lng: number } | null>(null)
 
   // Dados adicionais do usuário para o header
   const userBio = ref('')
@@ -440,8 +445,9 @@
         logger.info('→ Calling: getAllPublicEvents')
         return getAllPublicEvents
       }
-      logger.info('→ Calling: getPublicEventRecomendations')
-      return getPublicEventRecomendations
+      logger.info('→ Calling: getPublicEventRecomendations (with geo)')
+      return (page: number, limit: number) =>
+        getPublicEventRecomendations(page, limit, userCoords.value?.lat, userCoords.value?.lng)
     }
 
     if (activeNav.value === 'top-events') {
@@ -456,8 +462,9 @@
       logger.info('→ Calling: getAllEvents (authenticated)')
       return getAllEvents
     }
-    logger.info('→ Calling: getEventRecomendations (authenticated)')
-    return getEventRecomendations
+    logger.info('→ Calling: getEventRecomendations (authenticated, with geo)')
+    return (page: number, limit: number) =>
+      getEventRecomendations(page, limit, userCoords.value?.lat, userCoords.value?.lng)
   }
 
   async function fetchEvents (isLoadMore = false) {
@@ -567,7 +574,7 @@
 
         try {
           // Busca eventos públicos para complementar
-          const publicResponse = await getPublicEventRecomendations(page.value, limit)
+          const publicResponse = await getPublicEventRecomendations(page.value, limit, userCoords.value?.lat, userCoords.value?.lng)
           const publicEvents = publicResponse.data.events || publicResponse.data.content || publicResponse.data || []
 
           if (Array.isArray(publicEvents) && publicEvents.length > 0) {
@@ -649,6 +656,9 @@
         fetchUserProfileData(),
       ])
     }
+
+    // Captura a localização uma vez por sessão antes de buscar eventos
+    userCoords.value = await getCoords()
 
     // Em modo guest, não tenta carregar favoritos
     if (props.guestMode) {

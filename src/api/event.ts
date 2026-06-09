@@ -8,16 +8,17 @@ import { callApi } from '.'
 /**
  * Busca eventos recomendados (público - sem autenticação)
  */
-export async function getPublicEventRecomendations (page = 1, limit = 10) {
+export async function getPublicEventRecomendations (page = 1, limit = 10, lat?: number, lng?: number) {
+  const hasGeo = lat !== undefined && lng !== undefined
+  const geoQuery = hasGeo ? `&lat=${lat}&lng=${lng}` : ''
   try {
-    const response = await callApi(
+    return await callApi(
       'GET',
-      `/events/recommendations?page=${page}&limit=${limit}`,
+      `/events/recommendations?page=${page}&limit=${limit}${geoQuery}`,
       {},
-      false, // Sem autenticação
+      false,
     )
-    return response
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Erro ao buscar recomendações públicas:', error)
     throw error
   }
@@ -126,16 +127,25 @@ export async function getAllEvents (page = 1, limit = 10) {
   }
 }
 
-export async function getEventRecomendations (page = 1, limit = 10) {
+export async function getEventRecomendations (page = 1, limit = 10, lat?: number, lng?: number) {
+  const hasGeo = lat !== undefined && lng !== undefined
   try {
-    const response = await callApi(
+    const geoHeaders = hasGeo
+      ? { 'x-user-latitude': String(lat), 'x-user-longitude': String(lng) }
+      : {}
+    return await callApi(
       'GET',
       `/events/recommendations?page=${page}&limit=${limit}`,
       {},
       true,
+      geoHeaders,
     )
-    return response
-  } catch (error) {
+  } catch (error: any) {
+    // CORS bloqueia headers customizados até o backend liberar — retenta sem geo
+    if (hasGeo && (error.code === 'ERR_NETWORK' || error.message === 'Network Error')) {
+      logger.warn('Geo headers bloqueados por CORS, retentando sem localização...')
+      return callApi('GET', `/events/recommendations?page=${page}&limit=${limit}`, {}, true)
+    }
     logger.error('Erro ao buscar recomendações:', error)
     throw error
   }
