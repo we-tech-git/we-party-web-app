@@ -141,11 +141,6 @@ export async function getEventRecomendations (page = 1, limit = 10, lat?: number
       geoHeaders,
     )
   } catch (error: any) {
-    // CORS bloqueia headers customizados até o backend liberar — retenta sem geo
-    if (hasGeo && (error.code === 'ERR_NETWORK' || error.message === 'Network Error')) {
-      logger.warn('Geo headers bloqueados por CORS, retentando sem localização...')
-      return callApi('GET', `/events/recommendations?page=${page}&limit=${limit}`, {}, true)
-    }
     logger.error('Erro ao buscar recomendações:', error)
     throw error
   }
