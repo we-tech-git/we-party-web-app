@@ -23,6 +23,7 @@ declare module 'vue-router/auto-routes' {
     '/landing': RouteRecordInfo<'/landing', '/landing', Record<never, never>, Record<never, never>>,
     '/private/AddFriends': RouteRecordInfo<'/private/AddFriends', '/private/AddFriends', Record<never, never>, Record<never, never>>,
     '/private/event/[id]': RouteRecordInfo<'/private/event/[id]', '/private/event/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
+    '/private/event-new/[id]': RouteRecordInfo<'/private/event-new/[id]', '/private/event-new/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     '/private/feed': RouteRecordInfo<'/private/feed', '/private/feed', Record<never, never>, Record<never, never>>,
     '/private/profile': RouteRecordInfo<'/private/profile', '/private/profile', Record<never, never>, Record<never, never>>,
     '/private/test-auth': RouteRecordInfo<'/private/test-auth', '/private/test-auth', Record<never, never>, Record<never, never>>,
@@ -68,6 +69,10 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/private/event/[id].vue': {
       routes: '/private/event/[id]'
+      views: never
+    }
+    'src/pages/private/event-new/[id].vue': {
+      routes: '/private/event-new/[id]'
       views: never
     }
     'src/pages/private/feed.vue': {

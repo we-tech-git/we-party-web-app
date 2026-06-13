@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vue-tsc *)",
+      "Bash(git fetch *)",
+      "Bash(git merge *)",
+      "Bash(npx eslint *)",
+      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\(JSON.stringify\\(p.scripts,null,1\\)\\)\")",
+      "Bash(find src/pages -path '*event*' -name '*.vue')",
+      "Bash(find src/layouts -name '*.vue')",
+      "Bash(grep -rln -iE \"bubble|particle|float-up|floatUp|@keyframes\" src/components/EventView* src/views)",
+      "Bash(find src *)"
+    ]
+  }
+}
