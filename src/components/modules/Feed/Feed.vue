@@ -24,6 +24,7 @@
   import EventSearchAutocomplete from '@/components/modules/Feed/EventSearchAutocomplete.vue'
   import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useGeolocation } from '@/composables/useGeolocation'
   import { useGuestMode } from '@/composables/useGuestMode'
@@ -545,12 +546,20 @@
 
       // Filtra eventos encerrados (com data no passado)
       const now = new Date()
+      // Aba "Acontecendo esse mês": limita estritamente ao mês atual.
+      // (Não se aplica em "top-events", que retorna trending independente da aba.)
+      const monthOnly = activeTab.value === 'today' && activeNav.value !== 'top-events'
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
       const beforeFilterCount = events.length
       events = events.filter((event: any) => {
         const rawDate = event.date || event.startDate || event.dateTime || event.startAt || event.eventDate || event.start_date
         if (!rawDate) return true // Mantém eventos sem data definida
         const eventDate = new Date(rawDate)
         if (Number.isNaN(eventDate.getTime())) return true // Mantém se data inválida
+        if (monthOnly) {
+          // Mantém apenas eventos ainda por acontecer dentro do mês atual
+          return eventDate >= now && eventDate < monthEnd
+        }
         return eventDate >= now // Remove eventos passados
       })
 
@@ -567,9 +576,10 @@
         titles: events.map((e: any) => e.title).slice(0, 5),
       })
 
-      // Fallback: Se modo autenticado retornou poucos eventos únicos, complementa com públicos
+      // Fallback: Se modo autenticado retornou poucos eventos únicos, complementa com públicos.
+      // Não aplica na aba "Acontecendo esse mês", pois as recomendações não respeitam o mês.
       const MIN_EVENTS = 5
-      if (!props.guestMode && events.length < MIN_EVENTS && !isLoadMore) {
+      if (!props.guestMode && !monthOnly && events.length < MIN_EVENTS && !isLoadMore) {
         logger.warn('⚠️ Poucos eventos únicos retornados, buscando eventos públicos para complementar...')
 
         try {
@@ -675,8 +685,13 @@
 
   const trends = ref<TrendItem[]>([])
 
+  // Tempo mínimo (ms) que o skeleton dos trends fica visível, para o loader
+  // aparecer mesmo quando a resposta vem rápida (ou do cache HTTP).
+  const MIN_TRENDS_SKELETON_MS = 500
+
   async function fetchTrends () {
     startLoading('feed:trends')
+    const trendsStartedAt = Date.now()
     try {
       const response = props.guestMode
         ? await getPublicTrendingEvents()
@@ -692,7 +707,8 @@
     } catch (error) {
       logger.error('Error fetching trends', error)
     } finally {
-      stopLoading('feed:trends')
+      const elapsed = Date.now() - trendsStartedAt
+      setTimeout(() => stopLoading('feed:trends'), Math.max(0, MIN_TRENDS_SKELETON_MS - elapsed))
     }
   }
 
@@ -809,7 +825,7 @@
     if (activeTab.value === id) return
 
     if (props.guestMode && id === 'today') {
-      requireLogin('ver acontecendo hoje')
+      requireLogin('ver acontecendo esse mês')
       return
     }
 
@@ -918,6 +934,8 @@
     } else {
       fetchEvents()
     }
+    // Recarrega os trends ao trocar de seção para exibir o skeleton de loading
+    fetchTrends()
   })
 
   /**
@@ -1269,9 +1287,14 @@
           </button>
         </nav>
 
-        <div v-if="loading" class="loading-state">
-          <AppLoader size="lg" text="Carregando feed..." variant="spinner" />
-        </div>
+        <WePartyLoader
+          v-if="loading"
+          :messages="[
+            'Carregando seu feed...',
+            'Buscando eventos pra você...',
+            'Quase lá...',
+          ]"
+        />
         <section v-else-if="displayedItems.length > 0" class="cards-stack">
           <FeedCard
             v-for="(item, index) in displayedItems"

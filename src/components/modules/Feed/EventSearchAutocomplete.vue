@@ -41,7 +41,7 @@
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
   const DEBOUNCE_DELAY = 300
 
-  watch(() => props.modelValue, (val) => {
+  watch(() => props.modelValue, val => {
     if (val !== inputValue.value) inputValue.value = val
   })
 
@@ -252,7 +252,7 @@
               <span class="autocomplete-item-title">{{ suggestion.title }}</span>
               <span v-if="suggestion.location || suggestion.schedule" class="autocomplete-item-meta">
                 <span v-if="suggestion.location">{{ suggestion.location }}</span>
-                <span v-if="suggestion.location && suggestion.schedule" class="meta-dot" aria-hidden="true">·</span>
+                <span v-if="suggestion.location && suggestion.schedule" aria-hidden="true" class="meta-dot">·</span>
                 <span v-if="suggestion.schedule">{{ suggestion.schedule }}</span>
               </span>
             </div>

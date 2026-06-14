@@ -4,7 +4,7 @@
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import { getEventById, getTrendingEvents } from '@/api/event'
-  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useEventImages } from '@/composables/useEventImages'
   import { useLoading } from '@/composables/useLoading'
@@ -225,9 +225,14 @@
         </div>
 
         <!-- Loading state -->
-        <div v-if="isLoadingEventData" class="event-loading">
-          <AppLoader size="lg" text="Carregando evento..." />
-        </div>
+        <WePartyLoader
+          v-if="isLoadingEventData"
+          :messages="[
+            'Carregando evento...',
+            'Buscando os detalhes...',
+            'Quase lá...',
+          ]"
+        />
 
         <!-- Event Details - só renderiza quando dados estiverem disponíveis -->
         <EventDetails v-else-if="eventData" :event-data="eventData" :event-id="eventId" />

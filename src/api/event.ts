@@ -43,16 +43,31 @@ export async function getPublicTrendingEvents (page = 1, limit = 10) {
 }
 
 /**
- * Busca eventos de hoje (público - sem autenticação)
+ * Calcula o intervalo de datas do mês atual.
+ * startDate = primeiro dia do mês; endDate = primeiro dia do mês seguinte (exclusivo).
+ * Sempre baseado na data atual, garantindo o mês correto.
+ */
+function getCurrentMonthRange () {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth() // 0-based
+  const pad = (n: number) => String(n).padStart(2, '0')
+
+  const startDate = `${year}-${pad(month + 1)}-01`
+
+  const nextMonthYear = month === 11 ? year + 1 : year
+  const nextMonth = month === 11 ? 0 : month + 1
+  const endDate = `${nextMonthYear}-${pad(nextMonth + 1)}-01`
+
+  return { startDate, endDate }
+}
+
+/**
+ * Busca eventos do mês atual (público - sem autenticação)
  */
 export async function getPublicEventsToday (page = 1, limit = 10) {
   try {
-    const now = new Date()
-    const startDate = now.toISOString().split('T')[0]
-
-    const nextDay = new Date(now)
-    nextDay.setDate(now.getDate() + 1)
-    const endDate = nextDay.toISOString().split('T')[0]
+    const { startDate, endDate } = getCurrentMonthRange()
 
     const response = await callApi(
       'GET',
@@ -62,7 +77,7 @@ export async function getPublicEventsToday (page = 1, limit = 10) {
     )
     return response
   } catch (error) {
-    logger.error('Erro ao buscar eventos de hoje (público):', error)
+    logger.error('Erro ao buscar eventos do mês (público):', error)
     throw error
   }
 }
@@ -178,12 +193,7 @@ export async function getTrendingEvents (page = 1, limit = 10) {
 
 export async function getEventsToday (page = 1, limit = 10) {
   try {
-    const now = new Date()
-    const startDate = now.toISOString().split('T')[0]
-
-    const nextDay = new Date(now)
-    nextDay.setDate(now.getDate() + 1)
-    const endDate = nextDay.toISOString().split('T')[0]
+    const { startDate, endDate } = getCurrentMonthRange()
 
     const response = await callApi(
       'GET',
@@ -193,7 +203,7 @@ export async function getEventsToday (page = 1, limit = 10) {
     )
     return response
   } catch (error) {
-    logger.error('Erro ao buscar eventos de hoje:', error)
+    logger.error('Erro ao buscar eventos do mês:', error)
     throw error
   }
 }

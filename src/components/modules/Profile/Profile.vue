@@ -15,6 +15,7 @@ import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useLoading } from '@/composables/useLoading'
 import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
 import { AuthService } from '@/services/auth'
 import { useEventsStore } from '@/stores/events'
 import { useShareStore } from '@/stores/share'
@@ -178,6 +179,9 @@ interface UserInterest {
   name: string
 }
 const userInterests = ref<UserInterest[]>([])
+// Loading dedicado do card de interesses (independente do load principal da página),
+// para mostrar o loader sempre que os interesses forem (re)carregados.
+const loadingInterests = ref(false)
 
 // ── Cache dos dados do perfil para evitar chamadas duplicadas ──
 const cachedUserProfileData = ref<any>(null)
@@ -672,8 +676,9 @@ async function fetchUserProfile() {
       profileImage: userData.profilePhoto || userData.profileImage || userData.avatar || '',
     })
 
-    // Busca os interesses do usuário
-    await fetchUserInterests()
+    // Busca os interesses em paralelo, sem bloquear o load principal da página:
+    // o card de interesses exibe o próprio loader (loadingInterests) enquanto carrega.
+    fetchUserInterests()
 
     // ── Extrai eventos confirmados (eventAttendances) que já vem no getUserProfile ──
     // A API retorna eventAttendances no GET /users/:id, evitando chamada adicional
@@ -698,6 +703,7 @@ async function fetchUserProfile() {
 
 // ── Fetch user interests ──
 async function fetchUserInterests() {
+  loadingInterests.value = true
   try {
     const response = await getUserInterests()
     const data = response.data
@@ -716,6 +722,8 @@ async function fetchUserInterests() {
     }
   } catch {
     userInterests.value = []
+  } finally {
+    loadingInterests.value = false
   }
 }
 
@@ -1443,6 +1451,10 @@ interface LikedEventItem {
 }
 const { startLoading, stopLoading, isLoading: checkLoading } = useLoading()
 
+// Tempo mínimo (ms) que o skeleton fica visível. Sem isso, quando os dados vêm
+// do cache a busca resolve no mesmo tick e o loader não chega a aparecer.
+const MIN_SKELETON_MS = 600
+
 const likedEventsItems = ref<LikedEventItem[]>([])
 const displayLimit = ref(CONFIG.INITIAL_DISPLAY_LIMIT)
 let likedEventsTimeout: ReturnType<typeof setTimeout> | null = null
@@ -1531,6 +1543,7 @@ async function fetchLikedEvents() {
 
   likedEventsItems.value = []
   startLoading('profile:liked')
+  const likedStartedAt = Date.now()
 
   // Timeout de 3 segundos para o skeleton loading
   if (likedEventsTimeout) {
@@ -1578,12 +1591,16 @@ async function fetchLikedEvents() {
       return
     }
 
-    // Se há eventos, cancela o timeout e remove o loading imediatamente
+    // Cancela o timeout de fallback e encerra o loading respeitando o tempo
+    // mínimo de skeleton (garante que o loader apareça mesmo com cache).
     if (likedEventsTimeout) {
       clearTimeout(likedEventsTimeout)
-      likedEventsTimeout = null
     }
-    stopLoading('profile:liked')
+    const likedElapsed = Date.now() - likedStartedAt
+    likedEventsTimeout = setTimeout(() => {
+      stopLoading('profile:liked')
+      likedEventsTimeout = null
+    }, Math.max(0, MIN_SKELETON_MS - likedElapsed))
   } catch (error_) {
     console.error('Erro ao buscar eventos curtidos do perfil do usuário:', error_)
     likedEventsItems.value = []
@@ -1620,6 +1637,7 @@ async function fetchConfirmedEvents() {
 
   confirmedEventsItems.value = []
   startLoading('profile:confirmed')
+  const confirmedStartedAt = Date.now()
 
   if (confirmedEventsTimeout) {
     clearTimeout(confirmedEventsTimeout)
@@ -1646,9 +1664,12 @@ async function fetchConfirmedEvents() {
 
     if (confirmedEventsTimeout) {
       clearTimeout(confirmedEventsTimeout)
-      confirmedEventsTimeout = null
     }
-    stopLoading('profile:confirmed')
+    const confirmedElapsed = Date.now() - confirmedStartedAt
+    confirmedEventsTimeout = setTimeout(() => {
+      stopLoading('profile:confirmed')
+      confirmedEventsTimeout = null
+    }, Math.max(0, MIN_SKELETON_MS - confirmedElapsed))
   } catch (error_) {
     console.error('Erro ao buscar eventos confirmados:', error_)
     confirmedEventsItems.value = []
@@ -1719,6 +1740,15 @@ function handleShareProfile() {
 
 <template>
   <div class="profile-page-layout">
+    <WePartyLoader
+      v-if="loading"
+      :messages="[
+        'Carregando seu perfil...',
+        'Buscando suas informações...',
+        'Quase lá...',
+      ]"
+    />
+
     <FeedTopHeader :user="user" />
 
     <section :aria-label="t('profile.aria.profileContent')" class="layout-shell">
@@ -2120,7 +2150,7 @@ function handleShareProfile() {
               <i class="mdi mdi-plus" />
             </button>
           </div>
-          <div v-if="loading" class="interests-sidebar-loading">
+          <div v-if="loading || loadingInterests" class="interests-sidebar-loading">
             <AppLoader size="sm" :text="t('profile.interests.loading')" />
           </div>
           <div v-else-if="userInterests.length > 0" class="interests-tags-wrapper">
@@ -4702,6 +4732,15 @@ function handleShareProfile() {
 
 /* ── Modal ── */
 .modal-overlay {
+  /* O modal é teleportado para <body>, fora de .profile-page-layout,
+     então precisa redeclarar os tokens do design system que usa. */
+  --color-primary: #ff5fa6;
+  --color-text-primary: #1a1c2e;
+  --color-text-secondary: #555b77;
+  --color-border: rgba(0, 0, 0, 0.04);
+  --color-border-strong: #e0e2ed;
+  --shadow-primary: 0 4px 16px rgba(255, 95, 166, 0.25);
+
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);

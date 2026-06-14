@@ -1,6 +1,6 @@
+import axios from 'axios'
 import { logger } from '@/utils/logger'
 import { callApi } from './index'
-import axios from 'axios'
 
 interface NewUser {
   name: string
@@ -250,11 +250,11 @@ export async function uploadProfileImage (file: File) {
       url: `${baseUrl}/users/profile`,
       data: formData,
       headers: {
-        Authorization: `Bearer ${token}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
       },
       withCredentials: true,
-      timeout: 30000,
+      timeout: 30_000,
       httpAgent: { keepAlive: true },
       httpsAgent: { keepAlive: true },
     })
@@ -286,11 +286,11 @@ export async function uploadBannerImage (file: File) {
       url: `${baseUrl}/users/profile`,
       data: formData,
       headers: {
-        Authorization: `Bearer ${token}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
       },
       withCredentials: true,
-      timeout: 30000,
+      timeout: 30_000,
       httpAgent: { keepAlive: true },
       httpsAgent: { keepAlive: true },
     })

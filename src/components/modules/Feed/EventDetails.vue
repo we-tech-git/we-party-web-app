@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import { addEventComment, deleteEventComment, getEventComments, toggleLikeComment } from '@/api/comments'
   import { getEventById, getMyAttendance } from '@/api/event'
@@ -925,9 +926,14 @@
 <template>
   <div class="event-details-container">
     <!-- Loading State -->
-    <div v-if="loading" class="loading-wrapper">
-      <AppLoader size="lg" text="Carregando evento incrível..." />
-    </div>
+    <WePartyLoader
+      v-if="loading"
+      :messages="[
+        'Carregando evento...',
+        'Buscando os detalhes...',
+        'Quase lá...',
+      ]"
+    />
 
     <!-- Error State -->
     <div v-else-if="errorMessage" class="error-wrapper">

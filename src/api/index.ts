@@ -75,7 +75,7 @@ export async function callApi (
       // ===========================================
       // PERFORMANCE: Timeout e connection keep-alive
       // ===========================================
-      timeout: 30000,
+      timeout: 30_000,
       httpAgent: { keepAlive: true },
       httpsAgent: { keepAlive: true },
     })

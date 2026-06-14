@@ -8,34 +8,38 @@
         : 'text-white py-4'
     ]"
   >
-    <div
-      class="brand-logo-wrapper flex items-center gap-2.5 cursor-pointer"
-      @click="goHome"
-    >
-      <img
-        alt="We Party Logo"
-        class="brand-logo-img"
-        src="/logoweparty.png"
+    <!-- Left: logo + nav -->
+    <div class="flex items-center gap-1 lg:gap-2 shrink-0">
+      <div
+        class="brand-logo-wrapper flex items-center gap-2.5 cursor-pointer"
+        @click="goHome"
       >
-      <span class="brand-title notranslate" translate="no">WE PARTY</span>
+        <img
+          alt="We Party Logo"
+          class="brand-logo-img"
+          src="/logoweparty.png"
+        >
+        <span class="brand-title notranslate" translate="no">WE PARTY</span>
+      </div>
+
+      <nav class="hidden md:flex gap-1 lg:gap-2 ml-1 lg:ml-2">
+        <a
+          v-for="item in navLinks"
+          :key="item.label"
+          :class="[
+            'flex items-center gap-2 px-3 lg:px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all duration-150',
+            item.active
+              ? navSolid ? 'bg-grad-main text-white' : 'bg-white/20'
+              : navSolid ? 'hover:bg-pink-50 hover:text-weparty-pink' : 'hover:bg-white/25 hover:text-white'
+          ]"
+          :href="item.href"
+          @click.prevent="handleNav(item)"
+        >{{ item.label }}</a>
+      </nav>
     </div>
 
-    <nav class="hidden md:flex gap-1 lg:gap-2 ml-1 lg:ml-2">
-      <a
-        v-for="item in navLinks"
-        :key="item.label"
-        :class="[
-          'flex items-center gap-2 px-3 lg:px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all duration-150',
-          item.active
-            ? navSolid ? 'bg-grad-main text-white' : 'bg-white/20'
-            : navSolid ? 'hover:bg-pink-50 hover:text-weparty-pink' : 'hover:bg-white/25 hover:text-white'
-        ]"
-        :href="item.href"
-        @click.prevent="handleNav(item)"
-      >{{ item.label }}</a>
-    </nav>
-
-    <div class="nav-search hidden lg:block ml-auto flex-1 min-w-0 max-w-sm">
+    <!-- Center: search (flex-1 fills all available space like FeedTopHeader) -->
+    <div class="nav-search hidden lg:flex flex-1 min-w-0 mx-4 lg:mx-6">
       <EventSearchAutocomplete
         v-model="searchQuery"
         placeholder="Buscar eventos, artistas..."
@@ -43,6 +47,7 @@
       />
     </div>
 
+    <!-- Right: user menu -->
     <v-menu location="bottom end" transition="slide-y-transition">
       <template #activator="{ props: menuProps }">
         <div
@@ -163,6 +168,28 @@
       Voltar
     </a>
 
+    <!-- Like (hero) -->
+    <button
+      :class="[
+        'btn-like-hero absolute top-20 sm:top-24 right-4 md:right-14 z-10 flex items-center gap-2 backdrop-blur-sm border font-extrabold px-4 py-2.5 rounded-2xl transition-all cursor-pointer hover:-translate-y-0.5',
+        liked
+          ? 'bg-grad-main border-transparent text-white shadow-pink-glow'
+          : 'bg-white/16 border-white/28 text-white'
+      ]"
+      @click="toggleLike"
+    >
+      <svg
+        class="w-4 h-4"
+        :fill="liked ? 'currentColor' : 'none'"
+        stroke="currentColor"
+        stroke-width="2.6"
+        viewBox="0 0 24 24"
+      >
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+      </svg>
+      {{ likeCount }}
+    </button>
+
     <!-- Hero inner -->
     <div class="relative z-10 w-full max-w-295 mx-auto px-4 md:px-10 pb-20 md:pb-28 animate-rise">
       <div class="flex flex-wrap gap-2 mb-5">
@@ -184,44 +211,6 @@
       >
         {{ event.title }}
       </h1>
-
-      <div
-        class="flex flex-wrap gap-x-7 gap-y-2 mt-5 font-semibold text-base"
-        style="color: rgba(255,255,255,.95)"
-      >
-        <span class="flex items-center gap-2">
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-          >
-            <rect
-              height="18"
-              rx="3"
-              width="18"
-              x="3"
-              y="4"
-            />
-            <path d="M3 9h18M8 2v4M16 2v4" />
-          </svg>
-          {{ event.dateLabel }}
-        </span>
-        <span class="flex items-center gap-2">
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-          >
-            <path d="M12 21s-7-5.5-7-11a7 7 0 0114 0c0 5.5-7 11-7 11z" />
-            <circle cx="12" cy="10" r="2.5" />
-          </svg>
-          {{ event.venue }} · {{ event.city }}
-        </span>
-      </div>
 
     </div>
   </section>
@@ -396,7 +385,7 @@
                   </div>
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
                   <div
                     v-for="info in eventInfoGrid"
                     :key="info.label"
@@ -408,9 +397,9 @@
                     >{{
                       info.emoji }}</span>
                     <div class="min-w-0">
-                      <small class="block text-gray-400 font-semibold text-xs truncate">{{ info.label
+                      <small class="block text-gray-400 font-semibold text-xs leading-tight">{{ info.label
                       }}</small>
-                      <b class="text-sm truncate block">{{ info.value }}</b>
+                      <b class="text-sm leading-tight line-clamp-2 block" :title="info.value">{{ info.value }}</b>
                     </div>
                   </div>
                 </div>
@@ -465,7 +454,6 @@
                   <div class="min-w-0">
                     <span class="eyebrow">Organizado por</span>
                     <b class="block font-display text-[17px] truncate">{{ event.organizer }}</b>
-                    <small class="text-gray-400 font-semibold">128 eventos · 4,8 ★</small>
                   </div>
                   <button
                     :class="[
@@ -747,21 +735,7 @@
               <!-- Termômetro do evento: "calor"/lotação derivado de confirmações + curtidas -->
               <div class="mb-5">
                 <div class="flex items-center justify-between gap-2 mb-2.5">
-                  <span class="flex items-center gap-2 font-extrabold text-[15px]">
-                    <span class="w-9 h-9 rounded-xl bg-pink-50 text-weparty-pink grid place-items-center flex-none">
-                      <svg
-                        class="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2.2"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M8.5 14.5A4 4 0 1 0 14 9V4a2 2 0 0 0-4 0v8" />
-                        <path d="M10 12a2 2 0 1 0 2 4" />
-                      </svg>
-                    </span>
-                    Termômetro
-                  </span>
+                  <span class="font-extrabold text-[15px]">Termômetro</span>
                   <span class="heat-badge flex-none">{{ eventHeat.emoji }} {{ eventHeat.label }}</span>
                 </div>
                 <div class="heat-track">
@@ -980,12 +954,14 @@
     </button>
   </div>
 
-  <div
+  <WePartyLoader
     v-if="loading"
-    class="fixed inset-0 z-60 grid place-items-center bg-white/80 backdrop-blur-sm"
-  >
-    <AppLoader size="lg" text="Carregando evento incrível..." />
-  </div>
+    :messages="[
+      'Carregando evento...',
+      'Buscando os detalhes...',
+      'Quase lá...',
+    ]"
+  />
 
   <!-- ===== ESTADO DE ERRO (com retry, mesma dinâmica da tela antiga) ===== -->
   <div
@@ -1043,6 +1019,7 @@
   import EventSearchAutocomplete from '@/components/modules/Feed/EventSearchAutocomplete.vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useGeolocation } from '@/composables/useGeolocation'
   import { useEventsStore } from '@/stores/events'
@@ -1383,6 +1360,11 @@
   const liked = computed(() => eventsStore.isLiked(event.value.id))
   const saved = computed(() => eventsStore.isSaved(event.value.id))
   const rsvped = computed(() => eventsStore.isConfirmed(event.value.id))
+
+  function toggleLike () {
+    if (!event.value.id) return
+    eventsStore.toggleLike(event.value.id)
+  }
   // ── Seguir organizador (mesmo endpoint da página de perfil) ──
   const following = ref(false)
   const followLoading = ref(false)
@@ -1448,16 +1430,6 @@
     return `${Math.round(km)} km`
   })
 
-  // "Popularidade": nível derivado de confirmações + curtidas
-  const popularityLabel = computed(() => {
-    const score = goingCount.value + likeCount.value
-    if (score >= 50) return 'Em alta'
-    if (score >= 20) return 'Popular'
-    if (score >= 5) return 'Subindo'
-    if (score >= 1) return 'Novo'
-    return '—'
-  })
-
   // Rótulos qualitativos do termômetro — atribuídos pela % calculada
   const HEAT_LABELS = [
     { minPct: 80, label: 'Bombando', emoji: '🔥' },
@@ -1478,12 +1450,18 @@
     return { pct, label: levelLabel.label, emoji: levelLabel.emoji, going, likes }
   })
 
-  // Grade de informações — gênero real (categoria), popularidade e distância calculadas
+  // Local exibido no card (antes ficava na hero): "Local · Cidade"
+  const venueLabel = computed(() => {
+    const parts = [event.value.venue, event.value.city].filter(Boolean)
+    return parts.join(' · ') || 'Local a definir'
+  })
+
+  // Grade de informações — gênero real (categoria), localização e distância calculadas
   const eventInfoGrid = computed(() => [
     { emoji: '🎟️', label: 'Classificação', value: 'Livre' },
-    { emoji: '🔥', label: 'Popularidade', value: popularityLabel.value },
+    { emoji: '🗺️', label: 'Localização', value: venueLabel.value },
     { emoji: '🎼', label: 'Gênero', value: event.value.tags[0] || 'Diversos' },
-    { emoji: '📍', label: 'Distância de você', value: distanceLabel.value },
+    { emoji: '🧭', label: 'Distância de você', value: distanceLabel.value },
   ])
 
   function toggleSave () {

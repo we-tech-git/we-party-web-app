@@ -48,5 +48,6 @@ declare module 'vue' {
     Snackbar: typeof import('./components/UI/Snackbar/Snackbar.vue')['default']
     SocialAuthButtons: typeof import('./components/UI/SocialAuthButtons/SocialAuthButtons.vue')['default']
     VerifyPin: typeof import('./components/modules/PasswordRecovery/VerifyPin.vue')['default']
+    WePartyLoader: typeof import('./components/UI/WePartyLoader/WePartyLoader.vue')['default']
   }
 }

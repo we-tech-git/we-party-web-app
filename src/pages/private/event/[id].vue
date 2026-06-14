@@ -2,10 +2,14 @@
   import { definePage } from 'unplugin-vue-router/runtime'
   import { computed } from 'vue'
   import { useRoute } from 'vue-router'
+  import NewEventDetails from '@/components/modules/Feed/NewEventDetails.vue'
 
+  // Usa a nova tela de detalhes do evento (NewEventDetails).
+  // Layout "blank": a própria NewEventDetails já traz header, hero e barra inferior.
+  // A tela antiga (EventView/EventDetails) permanece no projeto, mas fora de uso.
   definePage({
     meta: {
-      layout: 'default',
+      layout: 'blank',
     },
   })
 
@@ -14,7 +18,7 @@
 </script>
 
 <template>
-  <EventView :event-id="eventId" />
+  <NewEventDetails :event-id="eventId" />
 </template>
 
 <style scoped>
