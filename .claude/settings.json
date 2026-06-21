@@ -9,7 +9,14 @@
       "Bash(find src/pages -path '*event*' -name '*.vue')",
       "Bash(find src/layouts -name '*.vue')",
       "Bash(grep -rln -iE \"bubble|particle|float-up|floatUp|@keyframes\" src/components/EventView* src/views)",
-      "Bash(find src *)"
+      "Bash(find src *)",
+      "Bash(curl -s \"https://api.dev.wepartyapp.com/events/by-date-range?startDate=2026-06-01&endDate=2026-07-01&page=1&limit=10\" -H \"ngrok-skip-browser-warning: true\")",
+      "Bash(curl -s \"https://api.dev.wepartyapp.com/events/by-date-range?startDate=2026-06-01&endDate=2026-07-01&page=1&limit=50\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); evs=d.get\\('events',d\\); print\\('total:',len\\(evs\\)\\); [print\\(e['startDate'],'|',e['title'][:40]\\) for e in evs]\")",
+      "Bash(curl -s \"https://api.dev.wepartyapp.com/events/by-date-range?startDate=2026-06-01&endDate=2026-07-01&page=1&limit=10\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); evs=d.get\\('events',d\\); print\\('datas pagina 1:', [e['startDate'][:10] for e in evs]\\)\")",
+      "Bash(curl -s \"https://api.dev.wepartyapp.com/events/by-date-range?startDate=2026-06-18&endDate=2026-07-01&page=1&limit=10\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); evs=d.get\\('events',d\\); print\\('datas pagina 1:', [e['startDate'][:10] for e in evs]\\); print\\('titulos:', [e['title'][:30] for e in evs][:5]\\)\")"
     ]
   }
 }

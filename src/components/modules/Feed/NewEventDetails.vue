@@ -386,22 +386,37 @@
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
-                  <div
+                  <component
+                    :is="info.tab ? 'button' : 'div'"
                     v-for="info in eventInfoGrid"
                     :key="info.label"
-                    class="flex items-center gap-3 rounded-2xl px-3 py-3 min-w-0"
+                    class="flex items-start gap-3 rounded-2xl px-3 py-3 min-w-0 text-left w-full"
+                    :class="info.tab ? 'cursor-pointer transition-all hover:-translate-y-0.5 hover:border-weparty-pink/30' : ''"
                     style="background:#FBF7FB; border: 1px solid rgba(34,26,61,.05)"
+                    :title="info.tab ? `${info.value} — ver endereço completo` : undefined"
+                    :type="info.tab ? 'button' : undefined"
+                    @click="info.tab ? (activeTab = info.tab) : null"
                   >
                     <span
                       class="w-9 h-9 rounded-xl bg-white border border-black/5 grid place-items-center text-lg flex-none"
                     >{{
                       info.emoji }}</span>
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
                       <small class="block text-gray-400 font-semibold text-xs leading-tight">{{ info.label
                       }}</small>
-                      <b class="text-sm leading-tight line-clamp-2 block" :title="info.value">{{ info.value }}</b>
+                      <b class="text-sm leading-tight line-clamp-2 wrap-break-word">{{ info.value }}</b>
+                      <span v-if="info.tab" class="mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-bold text-weparty-pink">
+                        Ver endereço
+                        <svg
+                          class="w-3 h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2.5"
+                          viewBox="0 0 24 24"
+                        ><path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                      </span>
                     </div>
-                  </div>
+                  </component>
                 </div>
               </div>
 
@@ -427,14 +442,23 @@
                   </span>
                   <h3>Sobre o evento</h3>
                 </div>
-                <p class="text-gray-500 font-medium leading-relaxed">{{ event.description }}</p>
-                <a
+                <p
+                  ref="aboutEl"
+                  :class="[
+                    'text-gray-500 font-medium leading-relaxed whitespace-pre-line',
+                    descriptionExpanded ? '' : 'about-clamp',
+                  ]"
+                >{{ event.description }}</p>
+                <button
+                  v-if="descriptionOverflowing || descriptionExpanded"
                   class="inline-flex items-center gap-1.5 mt-3 text-weparty-pink font-extrabold"
-                  href="#"
+                  type="button"
+                  @click="descriptionExpanded = !descriptionExpanded"
                 >
-                  Ler mais
+                  {{ descriptionExpanded ? 'Ler menos' : 'Ler mais' }}
                   <svg
-                    class="w-4 h-4"
+                    class="w-4 h-4 transition-transform"
+                    :class="{ 'rotate-180': descriptionExpanded }"
                     fill="none"
                     stroke="currentColor"
                     stroke-width="2.6"
@@ -442,7 +466,7 @@
                   >
                     <path d="M6 9l6 6 6-6" />
                   </svg>
-                </a>
+                </button>
               </div>
 
               <div class="card">
@@ -466,53 +490,68 @@
                 </div>
               </div>
 
-              <!-- FAQs (collapsible) — só aparece se houver FAQs da API -->
-              <div v-if="hasFaqs" class="faqs-section-inline">
-                <button class="faqs-toggle-btn" :class="{ open: showFaqs }" @click="showFaqs = !showFaqs">
-                  <div class="faqs-toggle-left">
-                    <div class="faqs-icon-wrapper-sm">
-                      <i class="mdi mdi-help-circle" />
-                    </div>
-                    <div class="faqs-toggle-text">
-                      <span class="faqs-toggle-title">Perguntas Frequentes</span>
-                      <span class="faqs-toggle-sub">Tire suas dúvidas sobre o evento</span>
-                    </div>
+              <!-- FAQs — só aparece se houver FAQs da API -->
+              <div v-if="hasFaqs" class="faq-card">
+                <button class="faq-header" @click="showFaqs = !showFaqs">
+                  <span class="faq-header-icon">
+                    <svg
+                      class="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.2"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 8h.01M12 12v4" />
+                    </svg>
+                  </span>
+                  <div class="faq-header-text">
+                    <span class="faq-header-title">Perguntas Frequentes</span>
+                    <span class="faq-header-sub">Tire suas dúvidas sobre o evento</span>
                   </div>
-                  <div class="faqs-chevron" :class="{ rotated: showFaqs }">
-                    <i class="mdi mdi-chevron-down" />
-                  </div>
+                  <span class="faq-header-badge">{{ normalizedFaqs.length }}</span>
+                  <span class="faq-header-chevron" :class="{ rotated: showFaqs }">
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.6"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </span>
                 </button>
 
                 <Transition name="faq-expand">
-                  <div v-if="showFaqs" class="faqs-content">
-                    <div class="faqs-list">
-                      <div
-                        v-for="(faq, index) in normalizedFaqs"
-                        :key="index"
-                        class="faq-item"
-                        :class="{ open: openFaqIndex === index }"
-                        :style="{ animationDelay: `${index * 0.05}s` }"
-                      >
-                        <button class="faq-question" :style="{ background: faq.gradient }" @click="toggleFaq(index)">
-                          <div class="faq-q-content">
-                            <div class="faq-icon">
-                              <i :class="faq.icon" />
-                            </div>
-                            <span class="faq-q-text">{{ faq.question }}</span>
-                          </div>
-                          <div class="faq-toggle-icon" :class="{ rotated: openFaqIndex === index }">
-                            <i class="mdi mdi-chevron-down" />
-                          </div>
-                        </button>
-                        <Transition name="faq-expand">
-                          <div v-if="openFaqIndex === index" class="faq-answer">
-                            <div class="faq-answer-content">
-                              <i class="mdi mdi-chat-question-outline faq-answer-icon" />
-                              <p>{{ faq.answer }}</p>
-                            </div>
-                          </div>
-                        </Transition>
-                      </div>
+                  <div v-if="showFaqs" class="faq-list">
+                    <div
+                      v-for="(faq, index) in normalizedFaqs"
+                      :key="index"
+                      class="faq-row"
+                      :class="{ active: openFaqIndex === index }"
+                    >
+                      <button class="faq-row-btn" @click="toggleFaq(index)">
+                        <span class="faq-row-num">{{ index + 1 }}</span>
+                        <span class="faq-row-label">{{ faq.question }}</span>
+                        <span class="faq-row-chevron" :class="{ rotated: openFaqIndex === index }">
+                          <svg
+                            class="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2.6"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M6 9l6 6 6-6" />
+                          </svg>
+                        </span>
+                      </button>
+                      <Transition name="faq-expand">
+                        <div v-if="openFaqIndex === index" class="faq-row-answer">
+                          <span class="faq-answer-tag">R</span>
+                          <p>{{ faq.answer }}</p>
+                        </div>
+                      </Transition>
                     </div>
                   </div>
                 </Transition>
@@ -1011,7 +1050,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+  import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import { addEventComment, deleteEventComment, getEventComments } from '@/api/comments'
   import { getEventById, getMyAttendance, getTrendingEvents } from '@/api/event'
@@ -1369,6 +1408,31 @@
   const following = ref(false)
   const followLoading = ref(false)
 
+  // "Sobre o evento": a descrição vem recortada por CSS (about-clamp). Só
+  // exibimos "Ler mais" quando o texto realmente transborda o trecho visível.
+  const aboutEl = ref<HTMLElement | null>(null)
+  const descriptionExpanded = ref(false)
+  const descriptionOverflowing = ref(false)
+
+  function measureDescription () {
+    const el = aboutEl.value
+    if (!el) {
+      descriptionOverflowing.value = false
+      return
+    }
+    descriptionOverflowing.value = el.scrollHeight > el.clientHeight + 1
+  }
+
+  // Recalcula sempre que a descrição muda (carregamento do evento) ou a janela
+  // é redimensionada, mantendo o botão coerente com o conteúdo visível.
+  watch(
+    () => event.value.description,
+    () => {
+      descriptionExpanded.value = false
+      nextTick(measureDescription)
+    },
+  )
+
   async function syncFollow () {
     following.value = false
     if (!event.value.organizerId) return
@@ -1456,10 +1520,18 @@
     return parts.join(' · ') || 'Local a definir'
   })
 
-  // Grade de informações — gênero real (categoria), localização e distância calculadas
-  const eventInfoGrid = computed(() => [
+  // Grade de informações — gênero real (categoria), localização e distância calculadas.
+  // `tab`: quando presente, o card vira atalho para a aba correspondente (ex.: endereço
+  // completo + mapa na aba "Local"), já que o texto aqui é resumido para 2 linhas.
+  interface InfoGridItem {
+    emoji: string
+    label: string
+    value: string
+    tab?: string
+  }
+  const eventInfoGrid = computed<InfoGridItem[]>(() => [
     { emoji: '🎟️', label: 'Classificação', value: 'Livre' },
-    { emoji: '🗺️', label: 'Localização', value: venueLabel.value },
+    { emoji: '🗺️', label: 'Localização', value: venueLabel.value, tab: 'local' },
     { emoji: '🎼', label: 'Gênero', value: event.value.tags[0] || 'Diversos' },
     { emoji: '🧭', label: 'Distância de você', value: distanceLabel.value },
   ])
@@ -1801,18 +1873,21 @@
   }
 
   async function loadEvent () {
-    // Se o pai já forneceu os dados, usa-os e evita nova requisição
-    if (props.eventData) {
+    // Se o pai já forneceu os dados (vindos do feed), pintamos a tela na hora
+    // para resposta imediata — mas NÃO paramos por aqui: o payload do feed traz
+    // a descrição recortada, então seguimos buscando o evento completo por ID
+    // para preencher o texto inteiro do "Sobre o evento".
+    const hasPreview = !!props.eventData
+    if (hasPreview) {
       event.value = mapEvent(props.eventData)
       applyCounters(props.eventData)
       buildAttendeeAvatars(props.eventData)
       tick()
-      await syncAttendance()
+      syncAttendance()
       syncFollow()
-      return
     }
     if (!currentId.value) return
-    loading.value = true
+    if (!hasPreview) loading.value = true
     errorMessage.value = ''
     try {
       const res: any = await getEventById(currentId.value)
@@ -1824,9 +1899,14 @@
       await syncAttendance()
       syncFollow()
     } catch (error) {
-      console.error('Erro ao carregar evento:', error)
-      errorMessage.value = 'Não foi possível carregar os detalhes do evento.'
-      showSnackbar('Não foi possível carregar os detalhes do evento.', SNACKBAR_COLORS.error)
+      // Se já temos o preview do feed, mantemos a tela e não interrompemos o usuário.
+      if (hasPreview) {
+        console.error('Erro ao carregar detalhes completos do evento:', error)
+      } else {
+        console.error('Erro ao carregar evento:', error)
+        errorMessage.value = 'Não foi possível carregar os detalhes do evento.'
+        showSnackbar('Não foi possível carregar os detalhes do evento.', SNACKBAR_COLORS.error)
+      }
     } finally {
       loading.value = false
     }
@@ -1853,6 +1933,7 @@
   let timer: ReturnType<typeof setInterval> | undefined
   onMounted(() => {
     window.addEventListener('scroll', onScroll)
+    window.addEventListener('resize', measureDescription)
     onScroll()
     // Captura a localização (cacheada por sessão) para a "Distância de você"
     getCoords().then(c => {
@@ -1868,6 +1949,7 @@
   })
   onUnmounted(() => {
     window.removeEventListener('scroll', onScroll)
+    window.removeEventListener('resize', measureDescription)
     if (timer) clearInterval(timer)
   })
 
@@ -1876,11 +1958,14 @@
     fetchComments()
   })
   watch(() => props.eventData, d => {
+    // Repinta com o preview do feed para resposta imediata e dispara a busca
+    // do evento completo (descrição inteira) via loadEvent.
     if (d) {
       event.value = mapEvent(d)
       applyCounters(d)
       buildAttendeeAvatars(d)
       tick()
+      loadEvent()
     }
   })
 </script>
@@ -2110,6 +2195,15 @@
     color: #ff5fa6;
 }
 
+/* "Sobre o evento": recorte da descrição até "Ler mais" expandir. */
+.about-clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
 /* ── Termômetro do evento ──────────────────────────────────── */
 .heat-badge {
     font-size: 11px;
@@ -2277,235 +2371,199 @@
     }
 }
 
-/* ── FAQs (mesma dinâmica/estilo da tela de detalhes antiga) ─── */
-.faqs-section-inline {
-    border-radius: 16px;
+/* ── FAQs ──────────────────────────────────────────────────── */
+.faq-card {
+    background: #fff;
+    border: 1px solid rgba(34, 26, 61, .06);
+    border-radius: 22px;
     overflow: hidden;
-    border: 1px solid #f0f0f0;
-    background: #fafafa;
-    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px -12px rgba(123, 38, 96, .3);
 }
 
-.faqs-section-inline:hover {
-    border-color: rgba(255, 95, 166, 0.2);
-}
-
-.faqs-toggle-btn {
+.faq-header {
     width: 100%;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 1.25rem;
+    gap: 14px;
     border: none;
-    background: transparent;
+    background: linear-gradient(135deg, #FFF0F6 0%, #FFF8F0 100%);
     cursor: pointer;
+    padding: 20px 22px;
+    text-align: left;
     transition: background 0.2s;
 }
 
-.faqs-toggle-btn:hover {
-    background: rgba(255, 95, 166, 0.04);
+.faq-header:hover {
+    background: linear-gradient(135deg, #ffe3ef 0%, #fff1e8 100%);
 }
 
-.faqs-toggle-left {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.faqs-icon-wrapper-sm {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.4rem;
-    color: white;
-    flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(255, 95, 166, 0.25);
-}
-
-.faqs-toggle-text {
-    display: flex;
-    flex-direction: column;
-    text-align: left;
-}
-
-.faqs-toggle-title {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #333;
-    background: linear-gradient(135deg, #ff5fa6, #ffba4b);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.faqs-toggle-sub {
-    font-size: 0.8rem;
-    color: #888;
-    margin-top: 0.1rem;
-}
-
-.faqs-chevron {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255, 95, 166, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.4rem;
-    color: #ff5fa6;
-    transition: all 0.3s ease;
-    flex-shrink: 0;
-}
-
-.faqs-chevron.rotated {
-    transform: rotate(180deg);
-    background: rgba(255, 95, 166, 0.2);
-}
-
-.faqs-content {
-    border-top: 1px solid rgba(255, 95, 166, 0.1);
-    padding: 1.25rem;
-}
-
-.faqs-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.faq-item {
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-    animation: fadeInUp 0.5s ease backwards;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.faq-item:hover {
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-    transform: translateY(-2px);
-}
-
-.faq-item.open {
-    box-shadow: 0 10px 35px rgba(255, 95, 166, 0.15);
-}
-
-.faq-question {
-    width: 100%;
-    padding: 1.25rem 1.5rem;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    color: white;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    /* Gradiente padrão caso não venha da API */
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.faq-question::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(255, 255, 255, 0.1);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.faq-question:hover::before {
-    opacity: 1;
-}
-
-.faq-q-content {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex: 1;
-    text-align: left;
-}
-
-.faq-icon {
+.faq-header-icon {
     width: 42px;
     height: 42px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3rem;
+    border-radius: 13px;
+    background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+    color: #fff;
+    display: grid;
+    place-items: center;
     flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(255, 95, 166, .3);
 }
 
-.faq-q-text {
-    line-height: 1.4;
-}
-
-.faq-toggle-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.25);
+.faq-header-text {
+    flex: 1;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    transition: all 0.3s ease;
-    flex-shrink: 0;
+    flex-direction: column;
+    gap: 2px;
 }
 
-.faq-toggle-icon.rotated {
-    transform: rotate(180deg);
-    background: rgba(255, 255, 255, 0.35);
+.faq-header-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #221A3D;
 }
 
-.faq-answer {
-    background: white;
-    overflow: hidden;
+.faq-header-sub {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #9ca3af;
 }
 
-.faq-answer-content {
-    padding: 1.5rem;
-    display: flex;
-    gap: 1rem;
-    align-items: flex-start;
-}
-
-.faq-answer-icon {
-    font-size: 1.5rem;
+.faq-header-badge {
+    font-size: 11px;
+    font-weight: 800;
     color: #ff5fa6;
+    background: #fff0f6;
+    border: 1px solid #ffd9e6;
+    border-radius: 999px;
+    padding: 2px 9px;
+    white-space: nowrap;
     flex-shrink: 0;
-    margin-top: 0.25rem;
 }
 
-.faq-answer-content p {
-    margin: 0;
-    color: #555;
-    line-height: 1.7;
-    font-size: 0.95rem;
+.faq-header-chevron {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 95, 166, .12);
+    color: #ff5fa6;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    transition: transform 0.25s ease, background 0.2s;
+}
+
+.faq-header-chevron.rotated {
+    transform: rotate(180deg);
+    background: rgba(255, 95, 166, .22);
+}
+
+.faq-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.faq-row {
+    border-top: 1px solid rgba(34, 26, 61, .05);
+    transition: background 0.15s;
+}
+
+.faq-row-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 15px 22px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
+}
+
+.faq-row-btn:hover {
+    background: #FBF7FB;
+}
+
+.faq-row.active > .faq-row-btn {
+    background: #FBF7FB;
+}
+
+.faq-row-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: #fff0f6;
+    border: 1px solid #ffd9e6;
+    color: #ff5fa6;
+    font-size: 11px;
+    font-weight: 800;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    transition: background 0.2s, color 0.2s;
+}
+
+.faq-row.active .faq-row-num {
+    background: linear-gradient(135deg, #ff5fa6, #ffba4b);
+    border-color: transparent;
+    color: #fff;
+}
+
+.faq-row-label {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #221A3D;
+    line-height: 1.4;
+    flex: 1;
+}
+
+.faq-row.active .faq-row-label {
+    color: #ff5fa6;
+}
+
+.faq-row-chevron {
+    color: #d1d5db;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    transition: transform 0.25s ease, color 0.2s;
+}
+
+.faq-row-chevron.rotated {
+    transform: rotate(180deg);
+    color: #ff5fa6;
+}
+
+.faq-row-answer {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 0 22px 18px 61px;
+    background: #FBF7FB;
+    border-top: 1px solid rgba(255, 95, 166, .08);
+}
+
+.faq-answer-tag {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #ff5fa6, #ffba4b);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    margin-top: 14px;
+}
+
+.faq-row-answer p {
+    margin: 14px 0 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+    line-height: 1.65;
+    font-weight: 500;
 }
 
 /* FAQ Expand Transition */

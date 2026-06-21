@@ -110,7 +110,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
   },
   server: {
-    port: 3000,
+    port: 3001,
     proxy: {
       '/api': {
         target: 'https://api.dev.wepartyapp.com',

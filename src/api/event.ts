@@ -43,9 +43,11 @@ export async function getPublicTrendingEvents (page = 1, limit = 10) {
 }
 
 /**
- * Calcula o intervalo de datas do mês atual.
- * startDate = primeiro dia do mês; endDate = primeiro dia do mês seguinte (exclusivo).
- * Sempre baseado na data atual, garantindo o mês correto.
+ * Calcula o intervalo de datas do mês atual para a aba "Acontecendo esse mês".
+ * startDate = hoje (não o dia 1), pois eventos já passados do mês seriam removidos
+ * pelo filtro do feed; começar pelo dia 1 fazia a 1ª página vir só com eventos
+ * passados (paginação ordenada por data crescente), resultando em feed vazio.
+ * endDate = primeiro dia do mês seguinte (exclusivo).
  */
 function getCurrentMonthRange () {
   const now = new Date()
@@ -53,7 +55,8 @@ function getCurrentMonthRange () {
   const month = now.getMonth() // 0-based
   const pad = (n: number) => String(n).padStart(2, '0')
 
-  const startDate = `${year}-${pad(month + 1)}-01`
+  // Começa a partir de hoje para trazer apenas eventos ainda por acontecer no mês
+  const startDate = `${year}-${pad(month + 1)}-${pad(now.getDate())}`
 
   const nextMonthYear = month === 11 ? year + 1 : year
   const nextMonth = month === 11 ? 0 : month + 1
