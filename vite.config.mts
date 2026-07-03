@@ -12,6 +12,7 @@ import { VueRouterAutoImports } from 'unplugin-vue-router'
 import VueRouter from 'unplugin-vue-router/vite'
 // Utilities
 import { defineConfig } from 'vite'
+import { VitePWA } from 'vite-plugin-pwa'
 import Layouts from 'vite-plugin-vue-layouts-next'
 import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 
@@ -55,6 +56,62 @@ export default defineConfig({
         resolve(dirname(fileURLToPath(import.meta.url)), './src/locales/**'),
       ],
       strictMessage: false,
+    }),
+    // PWA — torna o app instalável (Adicionar à tela inicial / Instalar app)
+    VitePWA({
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      includeAssets: [
+        'logoweparty.png',
+        'apple-touch-icon.png',
+        'pwa-64x64.png',
+      ],
+      manifest: {
+        name: 'We Party',
+        short_name: 'We Party',
+        description: 'Descubra eventos perto de você e conecte-se com pessoas que também vão.',
+        lang: 'pt-BR',
+        theme_color: '#FFB74D',
+        background_color: '#fff5f5',
+        display: 'standalone',
+        orientation: 'portrait',
+        start_url: '/',
+        scope: '/',
+        icons: [
+          {
+            src: 'pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: 'pwa-maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        // SPA fallback, mas sem interceptar chamadas de API
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api/],
+      },
+      devOptions: {
+        // Habilita o service worker em `yarn dev` para testar a instalação localmente
+        enabled: true,
+        type: 'module',
+        suppressWarnings: true,
+      },
     }),
     Fonts({
       fontsource: {
