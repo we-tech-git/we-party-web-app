@@ -4,7 +4,7 @@
 
   import { ScrollTrigger } from 'gsap/ScrollTrigger'
   import * as THREE from 'three'
-  import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+  import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import LoginRequiredDialog from '@/components/UI/LoginRequiredDialog/LoginRequiredDialog.vue'
   import { useGuestMode } from '@/composables/useGuestMode'
@@ -42,6 +42,29 @@
 
   // Parallax effect
   const _parallaxY = computed(() => scrollY.value * 0.3)
+
+  // Mobile menu state
+  const isMobileMenuOpen = ref(false)
+
+  function toggleMobileMenu () {
+    isMobileMenuOpen.value = !isMobileMenuOpen.value
+  }
+
+  function closeMobileMenu () {
+    isMobileMenuOpen.value = false
+  }
+
+  // Bloqueia o scroll do body enquanto o menu mobile está aberto
+  watch(isMobileMenuOpen, open => {
+    document.body.style.overflow = open ? 'hidden' : ''
+  })
+
+  // Fecha automaticamente o menu ao voltar para o layout desktop
+  watch(windowWidth, width => {
+    if (width > 768 && isMobileMenuOpen.value) {
+      closeMobileMenu()
+    }
+  })
 
   // FAQ state
   const faqOpen = ref<number | null>(null)
@@ -414,6 +437,8 @@
   onUnmounted(() => {
     destroyThreeJS()
     for (const t of ScrollTrigger.getAll()) t.kill()
+    // Garante que o scroll do body seja restaurado ao sair da página
+    document.body.style.overflow = ''
   })
 
   // Navigation
@@ -425,6 +450,29 @@
   }
   function goToFeed () {
     router.push('/public/explore')
+  }
+
+  // Navegação a partir do menu mobile (fecha o menu antes de agir)
+  function goToLoginMobile () {
+    closeMobileMenu()
+    goToLogin()
+  }
+  function goToSignupMobile () {
+    closeMobileMenu()
+    goToSignup()
+  }
+  function installAppMobile () {
+    closeMobileMenu()
+    installApp()
+  }
+
+  // Rola suavemente até uma seção da página e fecha o menu mobile
+  function goToSection (sectionId: string) {
+    closeMobileMenu()
+    nextTick(() => {
+      const el = document.querySelector(sectionId)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 </script>
 
@@ -493,12 +541,51 @@
           >
             <v-icon icon="mdi-download" size="22" />
           </button>
-          <button class="mobile-menu-btn" type="button">
-            <v-icon icon="mdi-menu" size="24" />
+          <button
+            class="mobile-menu-btn"
+            type="button"
+            :aria-label="isMobileMenuOpen ? 'Fechar menu' : 'Abrir menu'"
+            :aria-expanded="isMobileMenuOpen"
+            aria-controls="mobile-menu"
+            @click="toggleMobileMenu"
+          >
+            <v-icon :icon="isMobileMenuOpen ? 'mdi-close' : 'mdi-menu'" size="26" />
           </button>
         </div>
       </div>
     </header>
+
+    <!-- Mobile Menu -->
+    <Transition name="mobile-menu-fade">
+      <div v-if="isMobileMenuOpen" class="mobile-menu-overlay" @click.self="closeMobileMenu">
+        <nav id="mobile-menu" class="mobile-menu-panel" aria-label="Menu principal">
+          <a class="mobile-nav-link" href="#como-funciona" @click.prevent="goToSection('#como-funciona')">
+            <v-icon icon="mdi-information-outline" size="20" />
+            <span>Como funciona</span>
+          </a>
+          <a class="mobile-nav-link" href="#contato" @click.prevent="goToSection('#contato')">
+            <v-icon icon="mdi-email-outline" size="20" />
+            <span>Entre em contato</span>
+          </a>
+
+          <div class="mobile-menu-divider" />
+
+          <button
+            v-if="canInstall"
+            class="mobile-menu-install"
+            type="button"
+            @click="installAppMobile"
+          >
+            <v-icon icon="mdi-download" size="20" />
+            <span>Baixar app</span>
+          </button>
+          <button class="mobile-menu-ghost" type="button" @click="goToLoginMobile">Entrar</button>
+          <button class="mobile-menu-primary" type="button" @click="goToSignupMobile">
+            <span>CADASTRO</span>
+          </button>
+        </nav>
+      </div>
+    </Transition>
 
     <!-- Hero Section -->
     <section class="hero">
@@ -1373,10 +1460,166 @@ h2 .logo-text,
 
 .mobile-menu-btn {
   display: none;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
   background: transparent;
   border: none;
+  border-radius: 12px;
   color: var(--text);
   cursor: pointer;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.mobile-menu-btn:hover {
+  background: rgba(255, 183, 77, 0.1);
+  color: var(--primary);
+}
+
+/* ── Mobile Menu (drawer) ── */
+.mobile-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  /* Escurece o fundo abaixo do header fixo */
+  padding-top: 84px;
+  background: rgba(26, 26, 46, 0.35);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+
+.mobile-menu-panel {
+  width: min(82vw, 320px);
+  margin: 0.75rem 1rem 0 0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 183, 77, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(26, 26, 46, 0.18);
+}
+
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem;
+  color: #334155;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.98rem;
+  border-radius: 12px;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.mobile-nav-link .v-icon {
+  color: var(--primary);
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link:active {
+  background: rgba(255, 183, 77, 0.08);
+  color: var(--primary);
+}
+
+.mobile-menu-divider {
+  height: 1px;
+  margin: 0.5rem 0.25rem;
+  background: linear-gradient(90deg, transparent, rgba(255, 183, 77, 0.25), transparent);
+}
+
+.mobile-menu-install {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 183, 77, 0.1);
+  border: 1.5px solid rgba(255, 183, 77, 0.45);
+  border-radius: 12px;
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+}
+
+.mobile-menu-install:hover {
+  background: rgba(255, 183, 77, 0.18);
+}
+
+.mobile-menu-ghost {
+  padding: 0.85rem 1rem;
+  background: transparent;
+  border: 1.5px solid rgba(51, 65, 85, 0.15);
+  border-radius: 12px;
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.mobile-menu-ghost:hover {
+  background: rgba(255, 183, 77, 0.06);
+  color: var(--primary);
+}
+
+.mobile-menu-primary {
+  padding: 0.9rem 1rem;
+  background: var(--gradient);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(255, 183, 77, 0.35);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.mobile-menu-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(255, 183, 77, 0.45);
+}
+
+/* Transição de abertura/fechamento do menu mobile */
+.mobile-menu-fade-enter-active,
+.mobile-menu-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.mobile-menu-fade-enter-active .mobile-menu-panel,
+.mobile-menu-fade-leave-active .mobile-menu-panel {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease;
+}
+
+.mobile-menu-fade-enter-from,
+.mobile-menu-fade-leave-to {
+  opacity: 0;
+}
+
+.mobile-menu-fade-enter-from .mobile-menu-panel,
+.mobile-menu-fade-leave-to .mobile-menu-panel {
+  transform: translateY(-10px) scale(0.97);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .mobile-menu-fade-enter-active,
+  .mobile-menu-fade-leave-active,
+  .mobile-menu-fade-enter-active .mobile-menu-panel,
+  .mobile-menu-fade-leave-active .mobile-menu-panel {
+    transition: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -3191,7 +3434,7 @@ h2 .logo-text,
   }
 
   .mobile-menu-btn {
-    display: block;
+    display: inline-flex;
   }
 
   .hero {
