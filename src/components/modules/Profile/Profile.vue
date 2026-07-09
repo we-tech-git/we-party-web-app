@@ -5138,11 +5138,21 @@ function handleShareProfile() {
    ═════════════════════════════════════════════════════ */
 
 /* ── BASE MOBILE STYLES (≤ 479px) ── */
+/* Empilha tudo em coluna única (main + extras) de forma previsível, sem depender
+   de grid-areas. O grid de 2/3 colunas é restaurado a partir de 960px. */
 .layout-shell {
-  grid-template-columns: 1fr;
-  grid-template-areas: 'main';
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
   padding: var(--spacing-sm);
   padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Mobile: main não precisa forçar 100vh (evita lacuna antes da coluna extras) */
+.layout-main {
+  min-height: auto;
+  width: 100%;
 }
 
 .layout-sidebar {
@@ -5154,8 +5164,18 @@ function handleShareProfile() {
   z-index: 1000;
 }
 
+/* Mobile: mostra Interesses + Quem seguir empilhados abaixo do conteúdo principal.
+   position/top/max-height/overflow/align-self são reposicionados nos breakpoints ≥960px. */
 .layout-extras {
-  display: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  align-self: stretch;
+  position: static;
+  top: auto;
+  max-height: none;
+  overflow: visible;
 }
 
 .profile-content {
@@ -5344,11 +5364,25 @@ function handleShareProfile() {
 
 /* ── SMALL DESKTOP (≥ 960px) ── */
 @media (min-width: 960px) {
+  /* Restaura o layout em grid (mobile usa flex em coluna) */
   .layout-shell {
+    display: grid;
+    align-items: start;
     grid-template-columns: 220px 1fr;
     grid-template-areas: 'sidebar main';
     width: min(100%, 960px);
     padding: 0 var(--spacing-xl);
+  }
+
+  /* Layout de 2 colunas (sem coluna extras): esconde novamente.
+     As breakpoints 960-1099 e 1240+ reexibem a coluna extras. */
+  .layout-extras {
+    display: none;
+  }
+
+  /* Restaura a altura mínima da coluna principal em telas maiores */
+  .layout-main {
+    min-height: 100vh;
   }
 
   .layout-sidebar {

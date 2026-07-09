@@ -2,6 +2,9 @@
 node_modules
 /dist
 
+# PWA (service worker gerado em dev pelo vite-plugin-pwa)
+/dev-dist
+
 # local env files
 .env
 .env.local
