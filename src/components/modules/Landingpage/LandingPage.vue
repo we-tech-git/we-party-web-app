@@ -4,16 +4,24 @@
 
   import { ScrollTrigger } from 'gsap/ScrollTrigger'
   import * as THREE from 'three'
-  import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+  import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import LoginRequiredDialog from '@/components/UI/LoginRequiredDialog/LoginRequiredDialog.vue'
   import { useGuestMode } from '@/composables/useGuestMode'
+  import { usePwaInstall } from '@/composables/usePwaInstall'
   import { logger } from '@/utils/logger'
 
   gsap.registerPlugin(ScrollTrigger)
 
   const router = useRouter()
   const { requireLogin: _requireLogin } = useGuestMode()
+
+  // PWA — instalação do app a partir do header
+  const { canInstall, isIOS, showIOSInstructions, promptInstall } = usePwaInstall()
+
+  async function installApp () {
+    await promptInstall()
+  }
 
   // Three.js refs
   const canvasContainer = ref<HTMLDivElement | null>(null)
@@ -34,6 +42,29 @@
 
   // Parallax effect
   const _parallaxY = computed(() => scrollY.value * 0.3)
+
+  // Mobile menu state
+  const isMobileMenuOpen = ref(false)
+
+  function toggleMobileMenu () {
+    isMobileMenuOpen.value = !isMobileMenuOpen.value
+  }
+
+  function closeMobileMenu () {
+    isMobileMenuOpen.value = false
+  }
+
+  // Bloqueia o scroll do body enquanto o menu mobile está aberto
+  watch(isMobileMenuOpen, open => {
+    document.body.style.overflow = open ? 'hidden' : ''
+  })
+
+  // Fecha automaticamente o menu ao voltar para o layout desktop
+  watch(windowWidth, width => {
+    if (width > 768 && isMobileMenuOpen.value) {
+      closeMobileMenu()
+    }
+  })
 
   // FAQ state
   const faqOpen = ref<number | null>(null)
@@ -406,6 +437,8 @@
   onUnmounted(() => {
     destroyThreeJS()
     for (const t of ScrollTrigger.getAll()) t.kill()
+    // Garante que o scroll do body seja restaurado ao sair da página
+    document.body.style.overflow = ''
   })
 
   // Navigation
@@ -417,6 +450,29 @@
   }
   function goToFeed () {
     router.push('/public/explore')
+  }
+
+  // Navegação a partir do menu mobile (fecha o menu antes de agir)
+  function goToLoginMobile () {
+    closeMobileMenu()
+    goToLogin()
+  }
+  function goToSignupMobile () {
+    closeMobileMenu()
+    goToSignup()
+  }
+  function installAppMobile () {
+    closeMobileMenu()
+    installApp()
+  }
+
+  // Rola suavemente até uma seção da página e fecha o menu mobile
+  function goToSection (sectionId: string) {
+    closeMobileMenu()
+    nextTick(() => {
+      const el = document.querySelector(sectionId)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 </script>
 
@@ -461,17 +517,75 @@
             <a class="nav-link" href="#contato">Entre em contato</a>
           </nav>
           <div class="auth-buttons">
+            <button
+              v-if="canInstall"
+              class="btn-install"
+              type="button"
+              title="Instalar o app da We Party"
+              @click="installApp"
+            >
+              <v-icon icon="mdi-download" size="20" />
+              <span>Baixar app</span>
+            </button>
             <button class="btn-ghost" type="button" @click="goToLogin">Entrar</button>
             <button class="btn-primary-glow" type="button" @click="goToSignup">
               <span>CADASTRO</span>
             </button>
           </div>
-          <button class="mobile-menu-btn" type="button">
-            <v-icon icon="mdi-menu" size="24" />
+          <button
+            v-if="canInstall"
+            class="btn-install-mobile"
+            type="button"
+            aria-label="Instalar o app da We Party"
+            @click="installApp"
+          >
+            <v-icon icon="mdi-download" size="22" />
+          </button>
+          <button
+            class="mobile-menu-btn"
+            type="button"
+            :aria-label="isMobileMenuOpen ? 'Fechar menu' : 'Abrir menu'"
+            :aria-expanded="isMobileMenuOpen"
+            aria-controls="mobile-menu"
+            @click="toggleMobileMenu"
+          >
+            <v-icon :icon="isMobileMenuOpen ? 'mdi-close' : 'mdi-menu'" size="26" />
           </button>
         </div>
       </div>
     </header>
+
+    <!-- Mobile Menu -->
+    <Transition name="mobile-menu-fade">
+      <div v-if="isMobileMenuOpen" class="mobile-menu-overlay" @click.self="closeMobileMenu">
+        <nav id="mobile-menu" class="mobile-menu-panel" aria-label="Menu principal">
+          <a class="mobile-nav-link" href="#como-funciona" @click.prevent="goToSection('#como-funciona')">
+            <v-icon icon="mdi-information-outline" size="20" />
+            <span>Como funciona</span>
+          </a>
+          <a class="mobile-nav-link" href="#contato" @click.prevent="goToSection('#contato')">
+            <v-icon icon="mdi-email-outline" size="20" />
+            <span>Entre em contato</span>
+          </a>
+
+          <div class="mobile-menu-divider" />
+
+          <button
+            v-if="canInstall"
+            class="mobile-menu-install"
+            type="button"
+            @click="installAppMobile"
+          >
+            <v-icon icon="mdi-download" size="20" />
+            <span>Baixar app</span>
+          </button>
+          <button class="mobile-menu-ghost" type="button" @click="goToLoginMobile">Entrar</button>
+          <button class="mobile-menu-primary" type="button" @click="goToSignupMobile">
+            <span>CADASTRO</span>
+          </button>
+        </nav>
+      </div>
+    </Transition>
 
     <!-- Hero Section -->
     <section class="hero">
@@ -901,6 +1015,45 @@
       </Transition>
     </Teleport>
 
+    <!-- Instruções de instalação no iOS (Safari não suporta prompt automático) -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showIOSInstructions" class="ios-modal-overlay" @click.self="showIOSInstructions = false">
+          <div class="ios-modal">
+            <div class="ios-modal-header">
+              <img alt="We Party" class="ios-modal-logo" src="/logoweparty.png">
+              <h3 class="ios-modal-title">Instalar o app We Party</h3>
+              <button class="ios-modal-close" type="button" aria-label="Fechar" @click="showIOSInstructions = false">
+                <v-icon icon="mdi-close" size="20" />
+              </button>
+            </div>
+            <div class="ios-modal-body">
+              <p class="ios-modal-text">Adicione a We Party à tela de início em poucos toques:</p>
+              <ol class="ios-steps">
+                <li>
+                  <span class="ios-step-num">1</span>
+                  <span>Toque no botão <strong>Compartilhar</strong>
+                    <v-icon icon="mdi-export-variant" size="18" /> na barra do Safari.</span>
+                </li>
+                <li>
+                  <span class="ios-step-num">2</span>
+                  <span>Selecione <strong>Adicionar à Tela de Início</strong>
+                    <v-icon icon="mdi-plus-box-outline" size="18" />.</span>
+                </li>
+                <li>
+                  <span class="ios-step-num">3</span>
+                  <span>Confirme em <strong>Adicionar</strong> e pronto! 🎉</span>
+                </li>
+              </ol>
+            </div>
+            <div class="ios-modal-footer">
+              <button class="ios-close-btn" type="button" @click="showIOSInstructions = false">Entendi</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- Login Required Dialog -->
     <LoginRequiredDialog />
   </div>
@@ -1249,12 +1402,224 @@ h2 .logo-text,
   box-shadow: 0 8px 30px rgba(255, 183, 77, 0.45);
 }
 
+/* Botão de instalação do PWA (desktop) */
+.btn-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 183, 77, 0.1);
+  border: 1.5px solid rgba(255, 183, 77, 0.45);
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.3s ease;
+  transform: translateZ(0);
+}
+
+.btn-install:hover {
+  transform: translateY(-2px) translateZ(0);
+  background: rgba(255, 183, 77, 0.18);
+  box-shadow: 0 6px 20px rgba(255, 183, 77, 0.25);
+}
+
+.btn-install .v-icon {
+  animation: install-bounce 2s ease-in-out infinite;
+}
+
+@keyframes install-bounce {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+/* Botão de instalação do PWA (mobile — ao lado do menu) */
+.btn-install-mobile {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  background: var(--gradient);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(255, 183, 77, 0.35);
+}
+
 .mobile-menu-btn {
   display: none;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
   background: transparent;
   border: none;
+  border-radius: 12px;
   color: var(--text);
   cursor: pointer;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.mobile-menu-btn:hover {
+  background: rgba(255, 183, 77, 0.1);
+  color: var(--primary);
+}
+
+/* ── Mobile Menu (drawer) ── */
+.mobile-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  /* Escurece o fundo abaixo do header fixo */
+  padding-top: 84px;
+  background: rgba(26, 26, 46, 0.35);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+
+.mobile-menu-panel {
+  width: min(82vw, 320px);
+  margin: 0.75rem 1rem 0 0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 183, 77, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(26, 26, 46, 0.18);
+}
+
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem;
+  color: #334155;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.98rem;
+  border-radius: 12px;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.mobile-nav-link .v-icon {
+  color: var(--primary);
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link:active {
+  background: rgba(255, 183, 77, 0.08);
+  color: var(--primary);
+}
+
+.mobile-menu-divider {
+  height: 1px;
+  margin: 0.5rem 0.25rem;
+  background: linear-gradient(90deg, transparent, rgba(255, 183, 77, 0.25), transparent);
+}
+
+.mobile-menu-install {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 183, 77, 0.1);
+  border: 1.5px solid rgba(255, 183, 77, 0.45);
+  border-radius: 12px;
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+}
+
+.mobile-menu-install:hover {
+  background: rgba(255, 183, 77, 0.18);
+}
+
+.mobile-menu-ghost {
+  padding: 0.85rem 1rem;
+  background: transparent;
+  border: 1.5px solid rgba(51, 65, 85, 0.15);
+  border-radius: 12px;
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.mobile-menu-ghost:hover {
+  background: rgba(255, 183, 77, 0.06);
+  color: var(--primary);
+}
+
+.mobile-menu-primary {
+  padding: 0.9rem 1rem;
+  background: var(--gradient);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(255, 183, 77, 0.35);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.mobile-menu-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(255, 183, 77, 0.45);
+}
+
+/* Transição de abertura/fechamento do menu mobile */
+.mobile-menu-fade-enter-active,
+.mobile-menu-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.mobile-menu-fade-enter-active .mobile-menu-panel,
+.mobile-menu-fade-leave-active .mobile-menu-panel {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease;
+}
+
+.mobile-menu-fade-enter-from,
+.mobile-menu-fade-leave-to {
+  opacity: 0;
+}
+
+.mobile-menu-fade-enter-from .mobile-menu-panel,
+.mobile-menu-fade-leave-to .mobile-menu-panel {
+  transform: translateY(-10px) scale(0.97);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .mobile-menu-fade-enter-active,
+  .mobile-menu-fade-leave-active,
+  .mobile-menu-fade-enter-active .mobile-menu-panel,
+  .mobile-menu-fade-leave-active .mobile-menu-panel {
+    transition: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2735,6 +3100,145 @@ h2 .logo-text,
   z-index: 3000;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODAL DE INSTALAÇÃO iOS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ios-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 3000;
+}
+
+.ios-modal {
+  background: #fff;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+}
+
+.ios-modal-header {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1.5rem 1.25rem;
+  background: linear-gradient(180deg, rgba(255, 183, 77, 0.12), transparent);
+}
+
+.ios-modal-logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+.ios-modal-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-dark);
+  text-align: center;
+  margin: 0;
+}
+
+.ios-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.ios-modal-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.ios-modal-body {
+  padding: 0.5rem 1.75rem 1.5rem;
+}
+
+.ios-modal-text {
+  color: var(--text-light);
+  font-size: 0.95rem;
+  margin-bottom: 1.25rem;
+  text-align: center;
+}
+
+.ios-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ios-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  color: var(--text-dark);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.ios-steps li .v-icon {
+  color: var(--primary-dark);
+  vertical-align: middle;
+}
+
+.ios-step-num {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--gradient);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.ios-modal-footer {
+  padding: 0 1.75rem 1.75rem;
+}
+
+.ios-close-btn {
+  width: 100%;
+  padding: 0.9rem;
+  background: var(--gradient);
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(255, 183, 77, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.ios-close-btn:hover {
+  transform: translateY(-1px);
+}
+
 @media (max-width: 768px) {
   .terms-modal-overlay {
     backdrop-filter: blur(3px);
@@ -2923,8 +3427,14 @@ h2 .logo-text,
     display: none;
   }
 
+  .btn-install-mobile {
+    display: inline-flex;
+    margin-left: auto;
+    margin-right: 0.5rem;
+  }
+
   .mobile-menu-btn {
-    display: block;
+    display: inline-flex;
   }
 
   .hero {
