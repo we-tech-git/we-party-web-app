@@ -35,12 +35,15 @@
     <!-- X-Frame-Options MUST be set as an HTTP header — not supported as a meta tag -->
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
+    <!--
+      Preconnect para acelerar a conexão com o Google Fonts.
+      A folha de estilo da fonte "Baloo Thambi 2" (e "Poppins") é injetada
+      automaticamente pelo unplugin-fonts de forma NÃO bloqueante
+      (rel="preload" + display=swap), então não há <link rel="stylesheet">
+      manual aqui para evitar requisição que bloqueia a renderização.
+    -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@400..800&display=swap"
-      rel="stylesheet"
-    />
     <title>We Party</title>
   </head>
   <body>

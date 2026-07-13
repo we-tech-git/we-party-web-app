@@ -118,8 +118,14 @@ export default defineConfig({
         families: [
           {
             name: 'Roboto',
-            weights: [100, 300, 400, 500, 700, 900],
-            styles: ['normal', 'italic'],
+            // Fonte padrão do Vuetify (body/componentes). O app é pt-BR e não
+            // referencia Roboto explicitamente, então carregamos apenas o
+            // subset `latin` (cobre acentos do português: ã, ç, é, õ…),
+            // somente estilo normal e os pesos realmente usados pela UI.
+            // Antes: 6 pesos × 2 estilos × ~9 subsets (~200 arquivos de fonte).
+            weights: [300, 400, 500, 700],
+            styles: ['normal'],
+            subset: 'latin',
           },
         ],
       },

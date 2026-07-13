@@ -1316,6 +1316,7 @@
             :likes="(item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0)"
             :location="item.location"
             :matched-interests="item.matchedInterests"
+            :priority="index < 2"
             :rank="activeNav === 'top-events' ? index + 1 : undefined"
             :schedule="item.schedule"
             :show-remove-button="activeNav === 'favorites'"

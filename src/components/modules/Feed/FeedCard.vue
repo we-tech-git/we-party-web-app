@@ -31,6 +31,12 @@
     guestMode?: boolean
     sourceUrl?: string
     showRemoveButton?: boolean
+    /**
+     * Marca este card como prioritário (acima da dobra).
+     * Quando true, o banner carrega de forma antecipada (eager + fetchpriority=high),
+     * melhorando o LCP. Deve ser usado apenas nos primeiros cards visíveis.
+     */
+    priority?: boolean
   }>()
 
   const emit = defineEmits<{
@@ -194,7 +200,8 @@
         v-if="eventImages.desktop || bannerSrc"
         :alt="title"
         class="banner"
-        loading="lazy"
+        :fetchpriority="priority ? 'high' : 'auto'"
+        :loading="priority ? 'eager' : 'lazy'"
         :src="eventImages.desktop || bannerSrc"
       >
       <div v-else class="banner-placeholder">

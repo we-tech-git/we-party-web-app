@@ -299,10 +299,10 @@ export function privateRouteGuard (path?: string) {
   return true
 }
 
-export function publicRouteGuard () {
+export function publicRouteGuard (forceAccess?: boolean) {
   const authenticated = AuthService.isAuthenticated()
 
-  if (authenticated) {
+  if (authenticated && !forceAccess) {
     return '/private/feed'
   }
 
