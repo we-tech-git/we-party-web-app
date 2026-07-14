@@ -23,6 +23,16 @@
       "invalid": {
         "email": "Invalid email"
       }
+    },
+    "snackbar": {
+      "invalidEmail": "Please enter a valid email",
+      "missingFieldsPrefix": "Required fields: {fields}",
+      "missingFields": "Please fill in all required fields",
+      "success": "Login successful! 🎉",
+      "genericError": "Login failed. Please check your credentials.",
+      "googleSuccess": "✅ Google login successful! 🎉",
+      "googleProcessError": "Error processing login response",
+      "googleGenericError": "Error signing in with Google"
     }
   },
   "signup": {
@@ -40,7 +50,8 @@
       "lowercase": "At least one lowercase letter",
       "uppercase": "At least one uppercase letter",
       "minChars": "At least 10 characters",
-      "specialChar": "At least one special character"
+      "specialChar": "At least one special character",
+      "number": "At least one number"
     },
     "errors": {
       "required": {
@@ -59,7 +70,11 @@
       },
       "invalidForm": "Review the required fields before continuing",
       "success": "Registration complete! Redirecting to login...",
-      "failure": "We couldn't finish the registration. Try again."
+      "failure": "We couldn't finish the registration. Try again.",
+      "termsRequired": "You need to accept the Terms of Use to continue.",
+      "googleAuthenticating": "Signing up with Google...",
+      "googleSuccess": "Google sign-up successful! 🎉",
+      "googleGenericError": "Error signing up with Google"
     }
   },
   "feed": {
@@ -161,8 +176,9 @@
     "success": "Email confirmed successfully!",
     "invalidPin": "Invalid code. Please try again.",
     "verifyError": "Error verifying code. Please try again.",
-    "pinResent": "Code resent successfully!",
-    "resendError": "Error resending code. Please try again."
+    "pinSent": "Code resent successfully!",
+    "resendError": "Error resending code. Please try again.",
+    "emailNotIdentified": "Email not identified."
   },
   "form": {
     "loading": "Loading...",
@@ -185,6 +201,7 @@
     "title": "Verify Code",
     "subtitle": "We sent a 6-digit code to {email}. Please enter it below.",
     "button": "Verify",
+    "btn_back_to_login": "Back to login",
     "errors": {
       "invalidPin": "The code must be 6 digits long.",
       "generic": "Invalid or expired code. Please try again."
@@ -336,7 +353,12 @@
       "requestError": "Error sending request. Please try again.",
       "fileSizeError": "Image must be at most 5MB",
       "fileTypeError": "Please select image files only",
-      "loadProfileError": "Error loading profile data"
+      "loadProfileError": "Error loading profile data",
+      "unfollowSuccess": "You unfollowed {name}",
+      "followSuccess": "You started following {name}",
+      "followUpdateError": "Error updating. Please try again.",
+      "cancelAttendanceSuccess": "Attendance cancelled successfully!",
+      "cancelAttendanceError": "Error cancelling attendance"
     },
     "months": {
       "january": "January",
@@ -384,6 +406,13 @@
       "loading": "Loading...",
       "empty": "You're not following anyone yet",
       "unfollow": "Unfollow"
+    }
+  },
+  "loginRequiredDialog": {
+    "snackbar": {
+      "googleAuthenticating": "Signing in with Google...",
+      "googleSuccess": "Google login successful! 🎉",
+      "googleGenericError": "Error signing in with Google"
     }
   }
 }

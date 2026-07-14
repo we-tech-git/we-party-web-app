@@ -95,7 +95,9 @@
         <div v-if="errorMessage" class="error-message">
           {{ errorMessage }}
         </div>
-        <div v-if="successMessage" class="success-message" v-html="successMessage" />
+        <div v-if="successMessage" class="success-message">
+          {{ successMessage }}
+        </div>
 
         <button class="btn-primary flex items-center justify-center gap-2" :disabled="isLoading" type="submit">
           <AppLoader v-if="isLoading" size="sm" variant="text" :text="t('form.loading')" />

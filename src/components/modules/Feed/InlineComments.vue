@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import { nextTick, ref, watch } from 'vue'
+  import { unwrapList } from '@/api'
   import {
     addEventComment,
     deleteEventComment,
@@ -111,8 +112,8 @@
     loading.value = true
     try {
       const res = await getEventComments(props.eventId)
-      const raw = res?.data?.data || res?.data?.comments || res?.data?.content || res?.data || []
-      const dataArr: any[] = Array.isArray(raw) ? raw : []
+      // unwrapList aceita os envelopes conhecidos e retorna sempre um array
+      const dataArr: any[] = unwrapList(res, 'comments', 'content')
 
       function mapComment (c: any): Comment {
         return {

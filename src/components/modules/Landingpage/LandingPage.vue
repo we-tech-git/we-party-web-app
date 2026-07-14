@@ -3,7 +3,9 @@
   import gsap from 'gsap'
 
   import { ScrollTrigger } from 'gsap/ScrollTrigger'
-  import * as THREE from 'three'
+  // Import só de tipos: custo zero em runtime, não entra no bundle.
+  // O módulo real (~630KB) é carregado sob demanda dentro de initThreeJS (P11).
+  import type * as THREE from 'three'
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import LoginRequiredDialog from '@/components/UI/LoginRequiredDialog/LoginRequiredDialog.vue'
@@ -234,10 +236,19 @@
   const targetUsersOnline = 157
 
   // Three.js setup
-  function initThreeJS () {
+  async function initThreeJS () {
     try {
       if (!canvasContainer.value) {
         logger.warn('Canvas container não encontrado')
+        return
+      }
+
+      // Carrega o Three.js sob demanda (P11): evita que o chunk de ~630KB
+      // bloqueie o carregamento do conteúdo principal da landing.
+      const THREE = await import('three')
+
+      // O componente pode ter sido desmontado enquanto o chunk carregava
+      if (!canvasContainer.value) {
         return
       }
 
@@ -437,12 +448,14 @@
     try {
       await nextTick()
       isLoaded.value = true // Mostra o conteúdo imediatamente
-      initThreeJS()
       initAnimations()
     } catch (error) {
       logger.error('Erro ao inicializar landing page:', error)
       isLoaded.value = true // Garante que o conteúdo seja visível mesmo com erro
     }
+    // Three.js carrega em paralelo, sem bloquear o conteúdo principal (P11).
+    // Erros de import/inicialização já são tratados dentro de initThreeJS.
+    initThreeJS()
   })
 
   onUnmounted(() => {

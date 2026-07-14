@@ -1053,6 +1053,7 @@
   import { useThrottleFn } from '@vueuse/core'
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
+  import { unwrapList } from '@/api'
   import { addEventComment, deleteEventComment, getEventComments } from '@/api/comments'
   import { getEventById, getMyAttendance, getTrendingEvents } from '@/api/event'
   import { checkIsFollowing, followUserById, unfollowUserById } from '@/api/follows'
@@ -1731,8 +1732,8 @@
     commentsLoading.value = true
     try {
       const res: any = await getEventComments(currentId.value)
-      const raw = res?.data?.data || res?.data?.comments || res?.data?.content || res?.data || []
-      const arr: any[] = Array.isArray(raw) ? raw : []
+      // unwrapList aceita os envelopes conhecidos e retorna sempre um array
+      const arr: any[] = unwrapList(res, 'comments', 'content')
       comments.value = arr.map((c: any) => ({
         id: c.id,
         userId: c.user?.id || '',
@@ -1829,8 +1830,8 @@
     trendLoading.value = true
     try {
       const res: any = await getTrendingEvents(1, TREND_FETCH_SIZE)
-      const data = res?.data?.events || res?.data || []
-      const arr: any[] = Array.isArray(data) ? data : []
+      // unwrapList aceita os envelopes conhecidos e retorna sempre um array
+      const arr: any[] = unwrapList(res, 'events')
       trending.value = arr
         .filter((e: any) => String(e.id) !== String(currentId.value))
         .map((e: any, i: number) => mapTrend(e, i))

@@ -18,12 +18,11 @@
   import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
   import router from '@/router'
   import { useAuth } from '@/composables/useAuth'
-  import { SocialAuthService } from '@/services/socialAuth'
+  import { validationRules } from '@/composables/useValidation'
   import { logger } from '@/utils/logger'
 
   const { t } = useI18n()
   const { login } = useAuth()
-  const socialAuthService = new SocialAuthService()
 
   // Estado do formulário de login
   const email = ref('')
@@ -40,8 +39,10 @@
   })
 
   // Validação: e-mail + senha preenchidos
+  // (validationRules.email exige formato usuario@dominio.tld — .includes('@')
+  // aceitava qualquer string com um @ em qualquer posição)
   const isFormValid = computed(() => {
-    return email.value.trim() && password.value.trim() && email.value.includes('@')
+    return !!(email.value.trim() && password.value.trim() && validationRules.email().validator(email.value))
   })
 
   /**
@@ -86,20 +87,20 @@
 
     if (!email.value.trim()) {
       formErrors.value.email = t('login.errors.required.email')
-      missingFields.push('Email')
-    } else if (!email.value.includes('@')) {
+      missingFields.push(t('login.emailPlaceholder'))
+    } else if (!validationRules.email().validator(email.value)) {
       formErrors.value.email = t('login.errors.invalid.email')
-      showSnackbar('Por favor, insira um email válido')
+      showSnackbar(t('login.snackbar.invalidEmail'))
       return
     }
 
     if (!password.value.trim()) {
       formErrors.value.password = t('login.errors.required.password')
-      missingFields.push('Senha')
+      missingFields.push(t('login.passwordPlaceholder'))
     }
 
     if (missingFields.length > 0) {
-      showSnackbar(`Campos obrigatórios: ${missingFields.join(', ')}`)
+      showSnackbar(t('login.snackbar.missingFieldsPrefix', { fields: missingFields.join(', ') }))
       return
     }
 
@@ -114,11 +115,13 @@
     if (isSubmitting.value) return
 
     if (!isFormValid.value) {
-      showSnackbar('Por favor, preencha todos os campos obrigatórios')
+      showSnackbar(t('login.snackbar.missingFields'))
       return
     }
 
-    const minLoadingMs = 2000
+    // Piso curto só para evitar "flicker" do spinner em respostas muito rápidas
+    // (era 2000ms — lentidão artificial sem propósito real)
+    const minLoadingMs = 300
     const start = Date.now()
     isSubmitting.value = true
 
@@ -143,37 +146,29 @@
           localStorage.removeItem('REMEMBERED_EMAIL')
         }
 
-        showSnackbar('Login realizado com sucesso! 🎉', '#22c55e')
-
-        setTimeout(() => {
-          router.push('/private/feed')
-        }, 1500)
+        showSnackbar(t('login.snackbar.success'), '#22c55e')
+        router.push('/private/feed')
       } else {
         // Extrai a mensagem de erro da resposta, como "Email não verificado"
-        const errorMessage = response.response.data.message
+        // (falha lógica: HTTP 200 com success=false — o corpo está em response.data)
+        const errorMessage = data?.message || t('login.snackbar.genericError')
 
         // Verifica se o erro é sobre e-mail não verificado
         // Usamos uma verificação mais flexível para evitar problemas com espaços ou pontuação
-        if (errorMessage === 'Email não verificado. Por favor, verifique seu email antes de fazer login.') {
+        if (errorMessage.toLowerCase().includes('email não verificado')) {
           showSnackbar(errorMessage, '#ff9800')
           localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
           setTimeout(() => {
             router.push('/public/ConfirmEmail')
           }, 3000)
         } else {
-          // console.error('error =======>', {
-          //   test1: response,
-          //   test2: response.response,
-          //   test3: response.response.data,
-          //   test4: response.response.data.message,
-          // })
           // Trata outros erros lógicos que podem vir do backend
           showSnackbar(errorMessage, '#ef4444')
         }
       }
     } catch (error: any) {
       // Este bloco agora só será ativado para erros de rede (4xx, 5xx)
-      const errorMessage = error?.response?.data?.message || 'Erro ao fazer login. Verifique suas credenciais.'
+      const errorMessage = error?.response?.data?.message || t('login.snackbar.genericError')
 
       // Verifica se o erro é sobre e-mail não verificado (mesmo lógica do bloco else)
       if (errorMessage.toLowerCase().includes('email não verificado')) {
@@ -228,15 +223,12 @@
       }
 
       // Mostra sucesso e redireciona
-      showSnackbar('✅ Login com Google realizado! 🎉', '#22c55e')
+      showSnackbar(t('login.snackbar.googleSuccess'), '#22c55e')
       logger.log('[GOOGLE AUTH] 🎉 Redirecionando para /private/feed')
-
-      setTimeout(() => {
-        router.push('/private/feed')
-      }, 1000)
+      router.push('/private/feed')
     } catch (error: any) {
       logger.error('[GOOGLE AUTH] ❌ Erro ao processar sucesso:', error)
-      showSnackbar('Erro ao processar resposta do login', '#ef4444')
+      showSnackbar(t('login.snackbar.googleProcessError'), '#ef4444')
     }
   }
 
@@ -246,7 +238,7 @@
    */
   async function handleGoogleError (error: any) {
     logger.error('[GOOGLE AUTH] ❌ Erro recebido do SocialAuthButtons:', error)
-    const errorMessage = error?.message || error?.error || 'Erro ao fazer login com Google'
+    const errorMessage = error?.message || error?.error || t('login.snackbar.googleGenericError')
     showSnackbar(errorMessage, '#ef4444')
   }
 
@@ -262,28 +254,6 @@
     // O SocialAuthButtons.vue já emite @google-success/error
     // Este é um handler legado mantido para compatibilidade
     logger.log('[GOOGLE AUTH] ⚠️ handleGoogleAuth (legado) - não deveria ser chamado com novo fluxo')
-  }
-
-  async function handleFacebookAuth () {
-    try {
-      showSnackbar('Autenticando com Facebook...', '#1877F2')
-      const result = await socialAuthService.loginWithFacebook()
-
-      if (result.success) {
-        if (result.token && result.user) {
-          login(result.token, result.user)
-        }
-        showSnackbar('Login com Facebook realizado com sucesso! 🎉', '#22c55e')
-        setTimeout(() => {
-          router.push('/private/feed')
-        }, 1500)
-      } else {
-        showSnackbar(result.message || 'Erro ao fazer login com Facebook', '#ef4444')
-      }
-    } catch (error: any) {
-      logger.error('Erro na autenticação Facebook:', error)
-      showSnackbar(error.message || 'Erro ao fazer login com Facebook', '#ef4444')
-    }
   }
 </script>
 
@@ -348,7 +318,6 @@
           <SocialAuthButtons
             mode="login"
             :show-email="false"
-            @facebook-auth="handleFacebookAuth"
             @google-error="handleGoogleError"
             @google-success="handleGoogleSuccess"
           />

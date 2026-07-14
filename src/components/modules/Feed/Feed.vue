@@ -6,7 +6,7 @@
 
   import { useRoute, useRouter } from 'vue-router'
 
-  import { isRequestCanceled } from '@/api'
+  import { isRequestCanceled, unwrapItem, unwrapList } from '@/api'
   import {
     getAllEvents,
     getAllPublicEvents,
@@ -171,24 +171,12 @@
 
     try {
       const response = await getUserInterests()
-      const data = response?.data
 
       // Extrai os nomes dos interesses e normaliza para comparação
-      let interests: string[] = []
-
-      if (Array.isArray(data)) {
-        interests = data.map((item: any) =>
-          (item.interest?.name || item.name || '').toLowerCase(),
-        ).filter(Boolean)
-      } else if (data?.interests && Array.isArray(data.interests)) {
-        interests = data.interests.map((item: any) =>
-          (item.interest?.name || item.name || '').toLowerCase(),
-        ).filter(Boolean)
-      } else if (data?.data && Array.isArray(data.data)) {
-        interests = data.data.map((item: any) =>
-          (item.interest?.name || item.name || '').toLowerCase(),
-        ).filter(Boolean)
-      }
+      // (unwrapList aceita todos os envelopes conhecidos da API)
+      const interests = unwrapList(response, 'interests')
+        .map((item: any) => (item.interest?.name || item.name || '').toLowerCase())
+        .filter(Boolean)
 
       userInterests.value = interests
       logger.log('📋 Interesses do usuário carregados:', interests)
@@ -206,7 +194,7 @@
 
     try {
       const response = await getUserProfile(loggedUser.value.id)
-      const userData = response.data?.data ?? response.data
+      const userData = unwrapItem(response) ?? {}
 
       userBio.value = userData.bio || ''
       userStats.value = {
@@ -315,43 +303,6 @@
     return ''
   }
 
-  /**
-   * Força parâmetros de alta qualidade na URL da imagem
-   */
-  function enhanceImageUrl (url: string): string {
-    if (!url) return ''
-
-    try {
-      // Se já é uma URL completa, tenta adicionar parâmetros de qualidade
-      if (/^https?:\/\//i.test(url)) {
-        const urlObj = new URL(url)
-
-        // Remove parâmetros de baixa qualidade comuns
-        urlObj.searchParams.delete('w')
-        urlObj.searchParams.delete('h')
-        urlObj.searchParams.delete('width')
-        urlObj.searchParams.delete('height')
-        urlObj.searchParams.delete('q')
-        urlObj.searchParams.delete('quality')
-        urlObj.searchParams.delete('fit')
-        urlObj.searchParams.delete('crop')
-
-        // Adiciona parâmetros de alta qualidade (funcionam em muitos CDNs)
-        // Estes parâmetros são ignorados se o CDN não os suportar
-        urlObj.searchParams.set('quality', '100')
-        urlObj.searchParams.set('fm', 'jpg') // formato
-        urlObj.searchParams.set('auto', 'format') // formato automático otimizado
-
-        return urlObj.toString()
-      }
-    } catch (error) {
-      // Se falhar ao parsear URL, retorna original
-      logger.warn('Erro ao processar URL de imagem:', error)
-    }
-
-    return url
-  }
-
   function resolveLikesCount (event: any): number {
     if (typeof event.likesCount === 'number') return event.likesCount
     if (typeof event.likes === 'number') return event.likes
@@ -399,7 +350,7 @@
     const bestImageFromImages = extractBestImage(event.images)
     const bestPhotoUrl = extractPhotoUrl(event.photos)
 
-    let rawBanner = bestImageFromImages || bestPhotoUrl || getFirstValidString(
+    const rawBanner = bestImageFromImages || bestPhotoUrl || getFirstValidString(
       event.bannerUrl,
       event.banner,
       event.image,
@@ -407,9 +358,6 @@
       event.cover,
       event.thumbnail,
     )
-
-    // Melhora a qualidade da URL de imagem quando possível
-    rawBanner = enhanceImageUrl(rawBanner)
 
     const calculatedHostName = event.organizer?.name || event.hostName || event.creator?.name || 'Organizador'
 
@@ -513,14 +461,9 @@
         isArray: Array.isArray(response.data),
       })
 
-      // Extrai eventos da resposta garantindo que seja sempre um array
-      let events = response.data.events || response.data.content || response.data || []
-
-      // Validação: garante que events é um array
-      if (!Array.isArray(events)) {
-        logger.warn('Resposta da API não é um array, ajustando...', events)
-        events = []
-      }
+      // Extrai eventos da resposta (unwrapList aceita os envelopes conhecidos
+      // e garante que o retorno seja sempre um array)
+      let events = unwrapList<any>(response, 'events', 'content')
 
       logger.info('📊 Events extracted from API:', {
         total: events.length,
@@ -602,7 +545,7 @@
         try {
           // Busca eventos públicos para complementar
           const publicResponse = await getPublicEventRecomendations(page.value, limit, userCoords.value?.lat, userCoords.value?.lng)
-          const publicEvents = publicResponse.data.events || publicResponse.data.content || publicResponse.data || []
+          const publicEvents = unwrapList<any>(publicResponse, 'events', 'content')
 
           if (Array.isArray(publicEvents) && publicEvents.length > 0) {
             // Cria Set com chaves dos eventos já existentes
@@ -716,7 +659,7 @@
       const response = props.guestMode
         ? await getPublicTrendingEvents()
         : await getTrendingEvents()
-      const data = response.data.events || response.data || []
+      const data = unwrapList<any>(response, 'events')
 
       trends.value = data.map((evt: any) => ({
         id: evt.id,
@@ -883,7 +826,7 @@
     const resp = props.guestMode
       ? await searchPublicEvents(normalizedSearch, 1, 20, signal)
       : await searchByEvents(normalizedSearch, 1, 20, signal)
-    return resp.data.events || resp.data || []
+    return unwrapList<any>(resp, 'events')
   }
 
   // Handler para o evento search do SearchInput (já com debounce)
@@ -988,19 +931,9 @@
       }
 
       const response = await getFavoriteEvents(page.value, limit)
-      const data = response.data
 
-      // Tenta extrair eventos de diferentes estruturas de resposta
-      let events: any[] = []
-      if (data?.data?.events) {
-        events = data.data.events
-      } else if (data?.events) {
-        events = data.events
-      } else if (Array.isArray(data?.data)) {
-        events = data.data
-      } else if (Array.isArray(data)) {
-        events = data
-      }
+      // Extrai eventos da resposta (unwrapList aceita os envelopes conhecidos)
+      const events = unwrapList<any>(response, 'events')
 
       hasMore.value = events.length >= limit
 

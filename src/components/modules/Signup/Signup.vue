@@ -47,6 +47,7 @@
     hasUppercase: false,
     hasTenChars: false,
     hasSpecial: false,
+    hasNumber: false,
   })
 
   const formErrors = ref({
@@ -86,7 +87,10 @@
     passwordRules.value.hasLowercase = /[a-z]/.test(newValue)
     passwordRules.value.hasUppercase = /[A-Z]/.test(newValue)
     passwordRules.value.hasTenChars = newValue.length >= 10
-    passwordRules.value.hasSpecial = /[^A-Za-z0-9]/.test(newValue)
+    // Alinhado com validationRules.password (useValidation.ts): conjunto
+    // específico de especiais + exigência de número, que faltava aqui (P24)
+    passwordRules.value.hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(newValue)
+    passwordRules.value.hasNumber = /[0-9]/.test(newValue)
   }
 
   function resetErrors () {
@@ -144,7 +148,7 @@
     }
 
     if (!acceptedTerms.value) {
-      showSnackbar('Você precisa aceitar os Termos de Uso para continuar.', '#ef4444')
+      showSnackbar(t('signup.snackbar.termsRequired'), '#ef4444')
       return
     }
 
@@ -159,7 +163,10 @@
       return
     }
 
-    const minLoadingMs = 3000
+    // Piso curto só para evitar "flicker" do spinner em respostas muito rápidas
+    // (era 3000ms — lentidão artificial sem propósito real). O setTimeout de
+    // 1500ms abaixo, antes do redirect, é mantido: dá tempo do confete aparecer.
+    const minLoadingMs = 300
     const start = Date.now()
     isSubmitting.value = true
 
@@ -226,43 +233,24 @@
   // ===============================
   async function handleGoogleAuth () {
     try {
-      showSnackbar('Cadastrando com Google...', '#4285F4')
+      showSnackbar(t('signup.snackbar.googleAuthenticating'), '#4285F4')
       const result = await socialAuthService.loginWithGoogle()
 
       if (result.success) {
         triggerConfetti()
-        showSnackbar('Cadastro com Google realizado com sucesso! 🎉', '#22c55e')
+        showSnackbar(t('signup.snackbar.googleSuccess'), '#22c55e')
         setTimeout(() => {
           router.push('/private/feed')
         }, 1500)
       } else {
-        showSnackbar(result.message || 'Erro ao fazer cadastro com Google', '#ef4444')
+        showSnackbar(result.message || t('signup.snackbar.googleGenericError'), '#ef4444')
       }
     } catch (error: any) {
       logger.error('Erro na autenticação Google:', error)
-      showSnackbar(error.message || 'Erro ao fazer cadastro com Google', '#ef4444')
+      showSnackbar(error.message || t('signup.snackbar.googleGenericError'), '#ef4444')
     }
   }
 
-  async function handleFacebookAuth () {
-    try {
-      showSnackbar('Cadastrando com Facebook...', '#1877F2')
-      const result = await socialAuthService.loginWithFacebook()
-
-      if (result.success) {
-        triggerConfetti()
-        showSnackbar('Cadastro com Facebook realizado com sucesso! 🎉', '#22c55e')
-        setTimeout(() => {
-          router.push('/private/feed')
-        }, 1500)
-      } else {
-        showSnackbar(result.message || 'Erro ao fazer cadastro com Facebook', '#ef4444')
-      }
-    } catch (error: any) {
-      logger.error('Erro na autenticação Facebook:', error)
-      showSnackbar(error.message || 'Erro ao fazer cadastro com Facebook', '#ef4444')
-    }
-  }
 </script>
 
 <template>
@@ -370,6 +358,20 @@
               </svg>
               {{ $t('signup.rules.specialChar') }}
             </li>
+            <li :class="{ 'completed': passwordRules.hasNumber }">
+              <svg class="check-icon" fill="none" :viewBox="checkIconViewBox">
+                <path
+                  v-for="(path, index) in checkIconPaths"
+                  :key="`number-${index}`"
+                  :d="path.d"
+                  stroke="currentColor"
+                  :stroke-linecap="path.strokeLinecap as StrokeLinecap"
+                  :stroke-linejoin="path.strokeLinejoin as StrokeLinejoin"
+                  stroke-width="1.5"
+                />
+              </svg>
+              {{ $t('signup.rules.number') }}
+            </li>
           </ul>
 
           <InputLabel
@@ -426,7 +428,6 @@
         <SocialAuthButtons
           mode="signup"
           :show-email="false"
-          @facebook-auth="handleFacebookAuth"
           @google-auth="handleGoogleAuth"
         />
 

@@ -21,7 +21,7 @@
   }>()
   const { t } = useI18n()
   const router = useRouter()
-  const { logout: authLogout, loggedUser } = useAuth()
+  const { logout: authLogout, loggedUser, isAuthenticated } = useAuth()
 
   const avatarColors = [
     '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
@@ -51,7 +51,9 @@
   }
 
   function navigateToHome () {
-    router.push('/home')
+    // Logo leva cada usuário ao "seu" feed: autenticado → feed privado,
+    // visitante → explore público (a antiga rota /home não tinha guard)
+    router.push(isAuthenticated.value ? '/private/feed' : '/public/explore')
   }
 
   function goToSignup () {

@@ -2,8 +2,9 @@
   import { computed, onBeforeUnmount, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
 
-  import { isRequestCanceled } from '@/api'
+  import { isRequestCanceled, unwrapList } from '@/api'
   import { searchByEvents, searchPublicEvents } from '@/api/event'
+  import { useGuestMode } from '@/composables/useGuestMode'
   import { SEARCH_DEBOUNCE_MS } from '@/constants/timing'
   import { logger } from '@/utils/logger'
 
@@ -33,6 +34,7 @@
   }>()
 
   const router = useRouter()
+  const { requireLogin } = useGuestMode()
 
   const inputRef = ref<HTMLInputElement | null>(null)
   const inputValue = ref(props.modelValue)
@@ -77,8 +79,8 @@
         ? await searchPublicEvents(query, 1, 6, signal)
         : await searchByEvents(query, 1, 6, signal)
 
-      const events = resp.data.events || resp.data || []
-      suggestions.value = (Array.isArray(events) ? events : []).map((event: any) => ({
+      const events = unwrapList<any>(resp, 'events')
+      suggestions.value = events.map((event: any) => ({
         id: event.id,
         title: event.name || event.title || '',
         location: event.location || event.address || '',
@@ -122,6 +124,14 @@
     emit('update:modelValue', suggestion.title)
     isOpen.value = false
     suggestions.value = []
+
+    // Visitante: explica por que precisa logar, em vez de mandar
+    // silenciosamente para /public/Login sem contexto (P29)
+    if (props.guestMode) {
+      requireLogin('ver os detalhes deste evento')
+      return
+    }
+
     router.push({ path: `/private/event/${suggestion.id}` })
   }
 

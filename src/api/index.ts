@@ -38,6 +38,44 @@ export function isRequestCanceled (error: unknown): boolean {
   return axios.isCancel(error)
 }
 
+// ===========================================
+// NORMALIZAÇÃO DE RESPOSTAS
+// ===========================================
+// O backend retorna listas em envelopes variados — { data: { events: [] } },
+// { events: [] }, { data: [] } ou o array direto. Estes helpers concentram a
+// extração num único ponto: se o formato mudar, corrige-se apenas aqui.
+
+/**
+ * Extrai uma lista da resposta da API, aceitando todos os envelopes conhecidos.
+ * @param response - resposta do axios (retorno de callApi)
+ * @param keys - propriedades onde a lista pode estar (ex.: 'events', 'content')
+ */
+export function unwrapList<T = any> (response: any, ...keys: string[]): T[] {
+  const data = response?.data
+  for (const source of [data?.data, data]) {
+    if (!source) {
+      continue
+    }
+    if (Array.isArray(source)) {
+      return source
+    }
+    for (const key of keys) {
+      if (Array.isArray(source[key])) {
+        return source[key]
+      }
+    }
+  }
+  return []
+}
+
+/**
+ * Extrai um objeto único (perfil, evento, stats) do envelope
+ * { data: {...} } ou da resposta plana.
+ */
+export function unwrapItem<T = any> (response: any): T | null {
+  return response?.data?.data ?? response?.data ?? null
+}
+
 /**
  * Extrai o tempo de espera (ms) do header `Retry-After`, que pode vir como
  * segundos (ex.: "5") ou como data HTTP (ex.: "Wed, 21 Oct 2026 07:28:00 GMT").
@@ -115,11 +153,9 @@ export async function callApi (
         // ===========================================
         withCredentials: true,
         // ===========================================
-        // PERFORMANCE: Timeout e connection keep-alive
+        // PERFORMANCE: Timeout
         // ===========================================
         timeout: 30_000,
-        httpAgent: { keepAlive: true },
-        httpsAgent: { keepAlive: true },
       })
 
       // logger.log(`✅ [API] ${method} ${url} - Status: ${response.status}`)
