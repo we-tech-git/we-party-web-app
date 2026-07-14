@@ -22,6 +22,8 @@
 <script setup lang="ts">
   import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
+  import { SEARCH_DEBOUNCE_MS } from '@/constants/timing'
+
   interface Props {
     modelValue?: string
     placeholder?: string
@@ -37,7 +39,7 @@
     placeholder: 'Buscar...',
     loading: false,
     clearable: true,
-    debounce: 500,
+    debounce: SEARCH_DEBOUNCE_MS,
     disabled: false,
     size: 'medium',
   })

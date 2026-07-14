@@ -37,6 +37,8 @@
   }
 
   async function handleRequest () {
+    if (isLoading.value) return
+
     if (!email.value) {
       errorMessage.value = t('forgotPassword.errors.emailRequired')
       return

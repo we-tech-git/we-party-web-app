@@ -2,7 +2,9 @@
   import { computed, onBeforeUnmount, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
 
+  import { isRequestCanceled } from '@/api'
   import { searchByEvents, searchPublicEvents } from '@/api/event'
+  import { SEARCH_DEBOUNCE_MS } from '@/constants/timing'
   import { logger } from '@/utils/logger'
 
   interface Props {
@@ -39,7 +41,10 @@
   const isOpen = ref(false)
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
-  const DEBOUNCE_DELAY = 300
+  const DEBOUNCE_DELAY = SEARCH_DEBOUNCE_MS
+
+  // Cancela a busca anterior quando uma nova é disparada (evita respostas fora de ordem)
+  let suggestionsCtrl: AbortController | null = null
 
   watch(() => props.modelValue, val => {
     if (val !== inputValue.value) inputValue.value = val
@@ -62,10 +67,15 @@
   }
 
   async function fetchSuggestions (query: string) {
+    // Aborta a busca anterior antes de disparar a nova
+    suggestionsCtrl?.abort()
+    suggestionsCtrl = new AbortController()
+    const { signal } = suggestionsCtrl
+
     try {
       const resp = props.guestMode
-        ? await searchPublicEvents(query, 1, 6)
-        : await searchByEvents(query, 1, 6)
+        ? await searchPublicEvents(query, 1, 6, signal)
+        : await searchByEvents(query, 1, 6, signal)
 
       const events = resp.data.events || resp.data || []
       suggestions.value = (Array.isArray(events) ? events : []).map((event: any) => ({
@@ -74,10 +84,12 @@
         location: event.location || event.address || '',
         schedule: resolveSchedule(event),
       }))
+      isLoadingSuggestions.value = false
     } catch (error) {
+      // Requisição substituída por outra mais recente: mantém o loading do request atual
+      if (isRequestCanceled(error)) return
       logger.error('Erro ao buscar sugestões de autocomplete:', error)
       suggestions.value = []
-    } finally {
       isLoadingSuggestions.value = false
     }
   }
@@ -90,6 +102,7 @@
     if (debounceTimer) clearTimeout(debounceTimer)
 
     if (!value.trim()) {
+      suggestionsCtrl?.abort()
       suggestions.value = []
       isOpen.value = false
       isLoadingSuggestions.value = false
@@ -141,6 +154,7 @@
     suggestions.value = []
     isOpen.value = false
     if (debounceTimer) clearTimeout(debounceTimer)
+    suggestionsCtrl?.abort()
     emit('update:modelValue', '')
     emit('clear')
     inputRef.value?.focus()
@@ -148,6 +162,7 @@
 
   onBeforeUnmount(() => {
     if (debounceTimer) clearTimeout(debounceTimer)
+    suggestionsCtrl?.abort()
   })
 
   defineExpose({

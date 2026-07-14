@@ -38,8 +38,8 @@ export function getRecommendedInterests (limit = 10) {
  * Rota autenticada.
  * @param query - O termo de busca para filtrar interesses por nome.
  */
-export function searchInterestsByName (query: string) {
-  return callApi('GET', `/interest/search-by-name?q=${encodeURIComponent(query)}`, undefined, true)
+export function searchInterestsByName (query: string, signal?: AbortSignal) {
+  return callApi('GET', `/interest/search-by-name?q=${encodeURIComponent(query)}`, undefined, true, undefined, signal)
 }
 
 /**

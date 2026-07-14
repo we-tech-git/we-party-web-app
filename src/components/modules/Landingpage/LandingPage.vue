@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { useWindowScroll, useWindowSize } from '@vueuse/core'
+  import { useThrottleFn, useWindowScroll, useWindowSize } from '@vueuse/core'
   import gsap from 'gsap'
 
   import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -9,6 +9,7 @@
   import LoginRequiredDialog from '@/components/UI/LoginRequiredDialog/LoginRequiredDialog.vue'
   import { useGuestMode } from '@/composables/useGuestMode'
   import { usePwaInstall } from '@/composables/usePwaInstall'
+  import { RESIZE_THROTTLE_MS } from '@/constants/timing'
   import { logger } from '@/utils/logger'
 
   gsap.registerPlugin(ScrollTrigger)
@@ -32,6 +33,8 @@
   let animationFrameId: number
   let mouseX = 0
   let mouseY = 0
+  let mouseMoveListener: ((e: MouseEvent) => void) | null = null
+  let resizeListener: (() => void) | null = null
 
   // Animation refs
   const isLoaded = ref(false)
@@ -339,21 +342,21 @@
       }
       animate()
 
-      const handleMouseMove = (e: MouseEvent) => {
+      mouseMoveListener = (e: MouseEvent) => {
         mouseX = e.clientX - window.innerWidth / 2
         mouseY = e.clientY - window.innerHeight / 2
       }
-      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mousemove', mouseMoveListener)
 
-      const handleResize = () => {
+      resizeListener = useThrottleFn(() => {
         if (!canvasContainer.value) return
         const w = canvasContainer.value.clientWidth
         const h = canvasContainer.value.clientHeight
         camera.aspect = w / h
         camera.updateProjectionMatrix()
         renderer.setSize(w, h)
-      }
-      window.addEventListener('resize', handleResize)
+      }, RESIZE_THROTTLE_MS)
+      window.addEventListener('resize', resizeListener)
     } catch (error) {
       logger.error('Erro ao inicializar Three.js:', error)
     // Continúa funcionando sem o canvas 3D
@@ -362,6 +365,14 @@
 
   function destroyThreeJS () {
     if (animationFrameId) cancelAnimationFrame(animationFrameId)
+    if (mouseMoveListener) {
+      window.removeEventListener('mousemove', mouseMoveListener)
+      mouseMoveListener = null
+    }
+    if (resizeListener) {
+      window.removeEventListener('resize', resizeListener)
+      resizeListener = null
+    }
     if (renderer) {
       renderer.dispose()
       if (canvasContainer.value && renderer.domElement.parentNode) {

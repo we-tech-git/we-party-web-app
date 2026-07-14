@@ -137,13 +137,15 @@ export async function getUserRecomendations () {
  * @param page - Página de resultados (padrão: 1)
  * @param limit - Limite de resultados por página (padrão: 20)
  */
-export async function searchUsers (query: string, page = 1, limit = 20) {
+export async function searchUsers (query: string, page = 1, limit = 20, signal?: AbortSignal) {
   try {
     const response = await callApi(
       'GET',
       `/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
       {},
       true,
+      undefined,
+      signal,
     )
     return response
   } catch (error: any) {

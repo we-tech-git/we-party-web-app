@@ -11,7 +11,7 @@ import Components from 'unplugin-vue-components/vite'
 import { VueRouterAutoImports } from 'unplugin-vue-router'
 import VueRouter from 'unplugin-vue-router/vite'
 // Utilities
-import { defineConfig } from 'vite'
+import { defineConfig, type HtmlTagDescriptor } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import Layouts from 'vite-plugin-vue-layouts-next'
 import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
@@ -140,6 +140,25 @@ export default defineConfig({
             styles: 'wght@400;500;600;700',
           },
         ],
+      },
+      // O unplugin-fonts injeta <link rel="preload"> para TODOS os formatos de
+      // fonte encontrados no build. A fonte de ícones (Material Design Icons)
+      // vem com 4 formatos — eot, woff2, woff, ttf (~3,5 MB no total) — mas
+      // navegadores modernos usam apenas o woff2 (~403 KB). Este filtro remove
+      // os preloads redundantes (eot/ttf/woff), evitando ~3,1 MB de download
+      // desnecessário. O woff2 é mantido para os ícones aparecerem sem atraso
+      // (a fonte usa font-display: auto). Não altera nenhum template nem o
+      // funcionamento dos ícones.
+      custom: {
+        // Sem fontes locais próprias; usamos `custom` apenas para o linkFilter.
+        families: [],
+        linkFilter: (tags: HtmlTagDescriptor[]) =>
+          tags.filter((tag) => {
+            const href = String(tag?.attrs?.href ?? '')
+            const isMdiIconFont = /materialdesignicons/i.test(href)
+            const isRedundantFormat = /\.(eot|ttf|woff)$/i.test(href)
+            return !(isMdiIconFont && isRedundantFormat)
+          }),
       },
     }),
   ],

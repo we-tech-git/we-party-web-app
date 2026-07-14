@@ -6,6 +6,7 @@
 
   import { useRoute, useRouter } from 'vue-router'
 
+  import { isRequestCanceled } from '@/api'
   import {
     getAllEvents,
     getAllPublicEvents,
@@ -65,6 +66,22 @@
   const { loggedUser, userDisplayName } = useAuth()
   const { requireLogin } = useGuestMode()
   const { getCoords } = useGeolocation()
+
+  // Valores aceitos para o query param `tab`; qualquer outro valor é uma URL inválida
+  const VALID_TABS = new Set(['top-events', 'favorites'])
+
+  function isValidTab (tab: string | undefined): boolean {
+    return tab === undefined || VALID_TABS.has(tab)
+  }
+
+  // Redireciona para o catch-all de 404, igual ao que já acontece em rotas inválidas (home/perfil)
+  function redirectToNotFound () {
+    router.replace({ path: '/pagina-nao-encontrada', query: {} })
+  }
+
+  if (!isValidTab(route.query.tab as string | undefined)) {
+    redirectToNotFound()
+  }
 
   // Coordenadas do usuário enviadas ao backend nas recomendações (headers x-user-latitude/longitude)
   const userCoords = ref<{ lat: number, lng: number } | null>(null)
@@ -659,6 +676,9 @@
   }
 
   onMounted(async () => {
+    // Redirecionamento para 404 já disparado (tab inválido) — evita disparar fetches à toa
+    if (!isValidTab(route.query.tab as string | undefined)) return
+
     // Busca os interesses do usuário primeiro (se autenticado)
     if (!props.guestMode) {
       await Promise.all([
@@ -855,11 +875,14 @@
     }
   }
 
-  async function requestSearchEvents (normalizedSearch: string) {
+  // Cancela a busca anterior quando uma nova é disparada (evita respostas fora de ordem)
+  let searchCtrl: AbortController | null = null
+
+  async function requestSearchEvents (normalizedSearch: string, signal?: AbortSignal) {
     // Usa versão pública no modo guest
     const resp = props.guestMode
-      ? await searchPublicEvents(normalizedSearch, 1, 20)
-      : await searchByEvents(normalizedSearch, 1, 20)
+      ? await searchPublicEvents(normalizedSearch, 1, 20, signal)
+      : await searchByEvents(normalizedSearch, 1, 20, signal)
     return resp.data.events || resp.data || []
   }
 
@@ -868,20 +891,28 @@
     const normalized = query.trim()
 
     if (!normalized) {
+      searchCtrl?.abort()
       isSearching.value = false
       searchResults.value = null
       return
     }
 
+    // Aborta a busca anterior antes de disparar a nova
+    searchCtrl?.abort()
+    searchCtrl = new AbortController()
+    const { signal } = searchCtrl
+
     isSearching.value = true
 
     try {
-      const events = await requestSearchEvents(normalized)
+      const events = await requestSearchEvents(normalized, signal)
       searchResults.value = (events || []).map((event: any) => mapEventToFeedItem(event))
+      isSearching.value = false
     } catch (error) {
+      // Requisição substituída por outra mais recente: mantém o loading do request atual
+      if (isRequestCanceled(error)) return
       logger.error(error)
       searchResults.value = []
-    } finally {
       isSearching.value = false
     }
   }
@@ -894,8 +925,13 @@
 
   // Mantém activeNav em sincronia quando o query param muda externamente
   // (back/forward do browser, navegação direta pela URL, links externos)
-  watch(() => route.query.tab as string | undefined, (newTab = 'home') => {
-    const navId = newTab
+  watch(() => route.query.tab as string | undefined, newTab => {
+    if (!isValidTab(newTab)) {
+      redirectToNotFound()
+      return
+    }
+
+    const navId = newTab || 'home'
     if (activeNav.value !== navId) {
       activeNav.value = navId
     }

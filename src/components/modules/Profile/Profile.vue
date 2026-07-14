@@ -3,6 +3,7 @@ import type { NavItem } from '@/types/navigation'
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import { isRequestCanceled } from '@/api'
 import { followUserById, getFollowStats, getMyFollowers, getMyFollowing, unfollowUserById } from '@/api/follows'
 import { addUserInterest, getInterests, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
 import { deleteUser, getUserInterests, getUserProfile, getUserRecomendations, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
@@ -31,7 +32,6 @@ const CONFIG = {
   MAX_USERNAME_LENGTH: 30,
   MAX_BIO_LENGTH: 160,
   MAX_LOCATION_LENGTH: 60,
-  SEARCH_DEBOUNCE_MS: 500,
   MAX_SEARCH_RESULTS: 10,
   MAX_SUGGESTED_INTERESTS: 20,
 } as const
@@ -1007,9 +1007,13 @@ watch(interestsSearchQuery, newValue => {
   }
 })
 
+// Cancela a busca anterior quando uma nova é disparada (evita respostas fora de ordem)
+let interestsSearchCtrl: AbortController | null = null
+
 // ── Handler para busca de interesses (chamado pelo SearchInput com debounce) ──
 async function handleInterestsSearch(query: string) {
   if (!query.trim()) {
+    interestsSearchCtrl?.abort()
     searchedInterests.value = []
     isSearchingInterests.value = false
     return
@@ -1018,8 +1022,13 @@ async function handleInterestsSearch(query: string) {
   // Ativa loading (caso ainda não esteja ativo pelo watcher)
   isSearchingInterests.value = true
 
+  // Aborta a busca anterior antes de disparar a nova
+  interestsSearchCtrl?.abort()
+  interestsSearchCtrl = new AbortController()
+  const { signal } = interestsSearchCtrl
+
   try {
-    const response = await searchInterestsByName(query.trim())
+    const response = await searchInterestsByName(query.trim(), signal)
     const data = response?.data
 
     let interests: UserInterest[] = []
@@ -1036,10 +1045,12 @@ async function handleInterestsSearch(query: string) {
     // Filtra interesses que o usuário já possui (usa tempUserInterests)
     const userInterestIds = new Set(tempUserInterests.value.map(i => i.id))
     searchedInterests.value = interests.filter(i => !userInterestIds.has(i.id)).slice(0, 10)
+    isSearchingInterests.value = false
   } catch (error) {
+    // Requisição substituída por outra mais recente: mantém o loading do request atual
+    if (isRequestCanceled(error)) return
     console.error('Erro ao buscar interesses:', error)
     searchedInterests.value = []
-  } finally {
     isSearchingInterests.value = false
   }
 }
@@ -1299,7 +1310,10 @@ const navItems = computed<NavItem[]>(() => [
 
 function handleNavSelect(id: string) {
   if (id === 'home' || id === 'top-events' || id === 'favorites') {
-    router.push({ path: '/private/feed', query: { tab: id } })
+    router.push({
+      path: '/private/feed',
+      query: id === 'home' ? {} : { tab: id },
+    })
   }
 }
 

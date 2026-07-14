@@ -1050,6 +1050,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useThrottleFn } from '@vueuse/core'
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import { addEventComment, deleteEventComment, getEventComments } from '@/api/comments'
@@ -1061,6 +1062,7 @@
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useGeolocation } from '@/composables/useGeolocation'
+  import { SCROLL_THROTTLE_MS } from '@/constants/timing'
   import { useEventsStore } from '@/stores/events'
   import { useShareStore } from '@/stores/share'
 
@@ -1109,6 +1111,7 @@
   function onScroll () {
     navSolid.value = window.scrollY > 40
   }
+  const throttledOnScroll = useThrottleFn(onScroll, SCROLL_THROTTLE_MS)
 
   // ── Snackbar ─────────────────────────────────────────────────
   const SNACKBAR_COLORS = { success: '#22c55e', error: '#ef4444' } as const
@@ -1932,7 +1935,7 @@
 
   let timer: ReturnType<typeof setInterval> | undefined
   onMounted(() => {
-    window.addEventListener('scroll', onScroll)
+    window.addEventListener('scroll', throttledOnScroll, { passive: true })
     window.addEventListener('resize', measureDescription)
     onScroll()
     // Captura a localização (cacheada por sessão) para a "Distância de você"
@@ -1948,7 +1951,7 @@
     if (!eventsStore.isInitialized.favorites) eventsStore.syncFavoritesWithServer()
   })
   onUnmounted(() => {
-    window.removeEventListener('scroll', onScroll)
+    window.removeEventListener('scroll', throttledOnScroll)
     window.removeEventListener('resize', measureDescription)
     if (timer) clearInterval(timer)
   })
