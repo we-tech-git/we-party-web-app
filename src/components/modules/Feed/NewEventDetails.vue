@@ -862,7 +862,7 @@
                 </button>
               </div>
 
-              <div class="flex items-center gap-3 mt-5 pt-4 border-t border-black/5">
+              <div v-if="goingCount > 0" class="flex items-center gap-3 mt-5 pt-4 border-t border-black/5">
                 <div class="flex items-center">
                   <div
                     v-for="(av, i) in attendeeAvatars.slice(0, 3)"
@@ -880,8 +880,9 @@
                     <template v-else>{{ av.initial }}</template>
                   </div>
                 </div>
-                <div class="text-sm font-bold">{{ userName }} e <b class="text-weparty-pink">{{ goingCount - 1
+                <div v-if="leadGoingName" class="text-sm font-bold">{{ leadGoingName }} e <b class="text-weparty-pink">{{ Math.max(goingCount - 1, 0)
                 }}</b> outros vão</div>
+                <div v-else class="text-sm font-bold"><b class="text-weparty-pink">{{ goingCount }}</b> pessoas vão</div>
               </div>
             </div>
           </div>
@@ -1359,7 +1360,7 @@
   // Avatares da barra "pessoas vão" — conectados a dados reais.
   // Prioriza a lista de presenças vinda no payload do evento; quando indisponível,
   // recai sobre os autores dos comentários (usuários reais já carregados na página).
-  interface AvatarVM { initial: string, color: string, image: string }
+  interface AvatarVM { initial: string, color: string, image: string, name: string }
   const payloadAvatars = ref<AvatarVM[]>([])
 
   function extractAttendees (data: any): any[] {
@@ -1379,6 +1380,7 @@
       initial: name.charAt(0).toUpperCase(),
       color: colorForName(name),
       image: resolveAsset(user?.profileImage || user?.avatar || user?.photo || ''),
+      name,
     }
   }
 
@@ -1396,7 +1398,14 @@
     if (payloadAvatars.value.length > 0) return payloadAvatars.value
     return comments.value
       .slice(0, 5)
-      .map(c => ({ initial: c.initial, color: c.color, image: c.image }))
+      .map(c => ({ initial: c.initial, color: c.color, image: c.image, name: c.name }))
+  })
+
+  // Nome exibido em "X e N outros vão": só usa o nome do usuário logado quando
+  // ele de fato confirmou presença; caso contrário, usa um participante real.
+  const leadGoingName = computed(() => {
+    if (rsvped.value) return userName.value
+    return attendeeAvatars.value[0]?.name || ''
   })
 
   // ── Estado social (via store de eventos, com optimistic update) ──
@@ -1600,11 +1609,6 @@
     confirming.value = true
     try {
       await eventsStore.toggleConfirm(event.value.id)
-      const nowConfirmed = eventsStore.isConfirmed(event.value.id)
-      showSnackbar(
-        nowConfirmed ? 'Presença confirmada com sucesso!' : 'Presença cancelada com sucesso!',
-        SNACKBAR_COLORS.success,
-      )
     } catch {
       showSnackbar('Não foi possível atualizar sua presença. Tente novamente.', SNACKBAR_COLORS.error)
     } finally {
@@ -1774,6 +1778,7 @@
     try {
       await deleteEventComment(currentId.value, commentId)
       comments.value = comments.value.filter(c => c.id !== commentId)
+      showSnackbar('Comentário removido com sucesso!', SNACKBAR_COLORS.success)
     } catch {
       showSnackbar('Não foi possível excluir o comentário.', SNACKBAR_COLORS.error)
     } finally {
