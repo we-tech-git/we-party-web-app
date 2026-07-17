@@ -3,6 +3,7 @@ import type { NavItem } from '@/types/navigation'
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import { isRequestCanceled, unwrapItem, unwrapList } from '@/api'
 import { followUserById, getFollowStats, getMyFollowers, getMyFollowing, unfollowUserById } from '@/api/follows'
 import { addUserInterest, getInterests, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
 import { deleteUser, getUserInterests, getUserProfile, getUserRecomendations, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
@@ -31,7 +32,6 @@ const CONFIG = {
   MAX_USERNAME_LENGTH: 30,
   MAX_BIO_LENGTH: 160,
   MAX_LOCATION_LENGTH: 60,
-  SEARCH_DEBOUNCE_MS: 500,
   MAX_SEARCH_RESULTS: 10,
   MAX_SUGGESTED_INTERESTS: 20,
 } as const
@@ -655,7 +655,7 @@ async function fetchUserProfile() {
 
     const response = await getUserProfile(loggedUser.value.id)
     // A API retorna { success, data: { ...camposDoUsuario } }
-    const userData = response.data?.data ?? response.data
+    const userData = unwrapItem(response) ?? {}
 
     // Armazena os dados em cache para evitar chamadas duplicadas
     cachedUserProfileData.value = userData
@@ -706,20 +706,8 @@ async function fetchUserInterests() {
   loadingInterests.value = true
   try {
     const response = await getUserInterests()
-    const data = response.data
-
-    // Tenta extrair interesses de diferentes estruturas
-    if (data?.data?.interests) {
-      userInterests.value = data.data.interests
-    } else if (data?.interests) {
-      userInterests.value = data.interests
-    } else if (Array.isArray(data?.data)) {
-      userInterests.value = data.data
-    } else if (Array.isArray(data)) {
-      userInterests.value = data
-    } else {
-      userInterests.value = []
-    }
+    // unwrapList aceita todos os envelopes conhecidos da API
+    userInterests.value = unwrapList(response, 'interests')
   } catch {
     userInterests.value = []
   } finally {
@@ -734,7 +722,7 @@ async function fetchFollowStats() {
   try {
     loadingFollowStats.value = true
     const response = await getFollowStats(loggedUser.value.id)
-    const data = response.data?.data ?? response.data
+    const data = unwrapItem(response)
 
     followStats.value = {
       followers: data?.followersCount ?? data?.followers ?? 0,
@@ -753,16 +741,7 @@ async function fetchFollowersList() {
   try {
     loadingFollowers.value = true
     const response = await getMyFollowers()
-    const data = response.data?.data ?? response.data
-
-    let users: any[] = []
-    if (data?.followers) {
-      users = data.followers
-    } else if (data?.users) {
-      users = data.users
-    } else if (Array.isArray(data)) {
-      users = data
-    }
+    const users = unwrapList<any>(response, 'followers', 'users')
 
     followersList.value = users.map((u: any) => ({
       id: u.id || u._id,
@@ -784,16 +763,7 @@ async function fetchFollowingList() {
   try {
     loadingFollowing.value = true
     const response = await getMyFollowing()
-    const data = response.data?.data ?? response.data
-
-    let users: any[] = []
-    if (data?.following) {
-      users = data.following
-    } else if (data?.users) {
-      users = data.users
-    } else if (Array.isArray(data)) {
-      users = data
-    }
+    const users = unwrapList<any>(response, 'following', 'users')
 
     followingList.value = users.map((u: any) => ({
       id: u.id || u._id,
@@ -821,14 +791,7 @@ async function fetchRecommendedUsers() {
   try {
     loadingRecommendations.value = true
     const response = await getUserRecomendations()
-    const data = response.data?.data ?? response.data
-
-    let users: any[] = []
-    if (data?.users) {
-      users = data.users
-    } else if (Array.isArray(data)) {
-      users = data
-    }
+    const users = unwrapList<any>(response, 'users')
 
     // Armazena todos os usuários recomendados
     allRecommendedUsers.value = users.map((u: any) => ({
@@ -898,17 +861,17 @@ async function toggleFollowUser(user: FollowUser) {
     if (previousState) {
       await unfollowUserById(user.id)
       followStats.value.following = Math.max(0, followStats.value.following - 1)
-      showSnackbar(`Você deixou de seguir ${user.name}`, '#6b7280')
+      showSnackbar(t('profile.messages.unfollowSuccess', { name: user.name }), '#6b7280')
     } else {
       await followUserById(user.id)
       followStats.value.following++
-      showSnackbar(`Você começou a seguir ${user.name}`, SNACKBAR_COLORS.success)
+      showSnackbar(t('profile.messages.followSuccess', { name: user.name }), SNACKBAR_COLORS.success)
     }
   } catch (error_) {
     // Reverte em caso de erro
     user.isFollowing = previousState
     console.error('Erro ao alterar follow:', error_)
-    showSnackbar('Erro ao atualizar. Tente novamente.', SNACKBAR_COLORS.error)
+    showSnackbar(t('profile.messages.followUpdateError'), SNACKBAR_COLORS.error)
   }
 }
 
@@ -960,18 +923,7 @@ async function loadSuggestedInterests() {
   try {
     isLoadingSuggestions.value = true
     const response = await getInterests()
-    const data = response?.data
-
-    let interests: UserInterest[] = []
-    if (data?.data?.interests) {
-      interests = data.data.interests
-    } else if (data?.interests) {
-      interests = data.interests
-    } else if (Array.isArray(data?.data)) {
-      interests = data.data
-    } else if (Array.isArray(data)) {
-      interests = data
-    }
+    const interests: UserInterest[] = unwrapList(response, 'interests')
 
     // Filtra interesses que o usuário já possui (usa tempUserInterests) e limita a 20 sugestões
     const userInterestIds = new Set(tempUserInterests.value.map(i => i.id))
@@ -1007,9 +959,13 @@ watch(interestsSearchQuery, newValue => {
   }
 })
 
+// Cancela a busca anterior quando uma nova é disparada (evita respostas fora de ordem)
+let interestsSearchCtrl: AbortController | null = null
+
 // ── Handler para busca de interesses (chamado pelo SearchInput com debounce) ──
 async function handleInterestsSearch(query: string) {
   if (!query.trim()) {
+    interestsSearchCtrl?.abort()
     searchedInterests.value = []
     isSearchingInterests.value = false
     return
@@ -1018,28 +974,24 @@ async function handleInterestsSearch(query: string) {
   // Ativa loading (caso ainda não esteja ativo pelo watcher)
   isSearchingInterests.value = true
 
-  try {
-    const response = await searchInterestsByName(query.trim())
-    const data = response?.data
+  // Aborta a busca anterior antes de disparar a nova
+  interestsSearchCtrl?.abort()
+  interestsSearchCtrl = new AbortController()
+  const { signal } = interestsSearchCtrl
 
-    let interests: UserInterest[] = []
-    if (data?.data?.interests) {
-      interests = data.data.interests
-    } else if (data?.interests) {
-      interests = data.interests
-    } else if (Array.isArray(data?.data)) {
-      interests = data.data
-    } else if (Array.isArray(data)) {
-      interests = data
-    }
+  try {
+    const response = await searchInterestsByName(query.trim(), signal)
+    const interests: UserInterest[] = unwrapList(response, 'interests')
 
     // Filtra interesses que o usuário já possui (usa tempUserInterests)
     const userInterestIds = new Set(tempUserInterests.value.map(i => i.id))
     searchedInterests.value = interests.filter(i => !userInterestIds.has(i.id)).slice(0, 10)
+    isSearchingInterests.value = false
   } catch (error) {
+    // Requisição substituída por outra mais recente: mantém o loading do request atual
+    if (isRequestCanceled(error)) return
     console.error('Erro ao buscar interesses:', error)
     searchedInterests.value = []
-  } finally {
     isSearchingInterests.value = false
   }
 }
@@ -1299,7 +1251,10 @@ const navItems = computed<NavItem[]>(() => [
 
 function handleNavSelect(id: string) {
   if (id === 'home' || id === 'top-events' || id === 'favorites') {
-    router.push({ path: '/private/feed', query: { tab: id } })
+    router.push({
+      path: '/private/feed',
+      query: id === 'home' ? {} : { tab: id },
+    })
   }
 }
 
@@ -1562,7 +1517,7 @@ async function fetchLikedEvents() {
 
     if (!userData) {
       const response = await getUserProfile(loggedUser.value.id)
-      userData = response.data?.data ?? response.data
+      userData = unwrapItem(response) ?? {}
       cachedUserProfileData.value = userData
     }
 
@@ -1652,7 +1607,7 @@ async function fetchConfirmedEvents() {
   try {
     // Usa o mesmo endpoint de getUserProfile que já retorna eventAttendances corretamente
     const response = await getUserProfile(loggedUser.value.id)
-    const userData = response.data?.data ?? response.data
+    const userData = unwrapItem(response) ?? {}
 
     if (userData?.eventAttendances && Array.isArray(userData.eventAttendances)) {
       confirmedEventsItems.value = userData.eventAttendances
@@ -1691,10 +1646,10 @@ async function handleCancelAttendance(eventId: string | number, event: Event) {
       confirmedEventsItems.value.splice(index, 1)
     }
 
-    showSnackbar('Presença cancelada com sucesso!', SNACKBAR_COLORS.success)
+    showSnackbar(t('profile.messages.cancelAttendanceSuccess'), SNACKBAR_COLORS.success)
   } catch (error_) {
     console.error('Erro ao cancelar presença:', error_)
-    showSnackbar('Erro ao cancelar presença', SNACKBAR_COLORS.error)
+    showSnackbar(t('profile.messages.cancelAttendanceError'), SNACKBAR_COLORS.error)
   }
 }
 

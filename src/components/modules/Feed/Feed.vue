@@ -6,6 +6,7 @@
 
   import { useRoute, useRouter } from 'vue-router'
 
+  import { isRequestCanceled, unwrapItem, unwrapList } from '@/api'
   import {
     getAllEvents,
     getAllPublicEvents,
@@ -65,6 +66,22 @@
   const { loggedUser, userDisplayName } = useAuth()
   const { requireLogin } = useGuestMode()
   const { getCoords } = useGeolocation()
+
+  // Valores aceitos para o query param `tab`; qualquer outro valor é uma URL inválida
+  const VALID_TABS = new Set(['top-events', 'favorites'])
+
+  function isValidTab (tab: string | undefined): boolean {
+    return tab === undefined || VALID_TABS.has(tab)
+  }
+
+  // Redireciona para o catch-all de 404, igual ao que já acontece em rotas inválidas (home/perfil)
+  function redirectToNotFound () {
+    router.replace({ path: '/pagina-nao-encontrada', query: {} })
+  }
+
+  if (!isValidTab(route.query.tab as string | undefined)) {
+    redirectToNotFound()
+  }
 
   // Coordenadas do usuário enviadas ao backend nas recomendações (headers x-user-latitude/longitude)
   const userCoords = ref<{ lat: number, lng: number } | null>(null)
@@ -154,24 +171,12 @@
 
     try {
       const response = await getUserInterests()
-      const data = response?.data
 
       // Extrai os nomes dos interesses e normaliza para comparação
-      let interests: string[] = []
-
-      if (Array.isArray(data)) {
-        interests = data.map((item: any) =>
-          (item.interest?.name || item.name || '').toLowerCase(),
-        ).filter(Boolean)
-      } else if (data?.interests && Array.isArray(data.interests)) {
-        interests = data.interests.map((item: any) =>
-          (item.interest?.name || item.name || '').toLowerCase(),
-        ).filter(Boolean)
-      } else if (data?.data && Array.isArray(data.data)) {
-        interests = data.data.map((item: any) =>
-          (item.interest?.name || item.name || '').toLowerCase(),
-        ).filter(Boolean)
-      }
+      // (unwrapList aceita todos os envelopes conhecidos da API)
+      const interests = unwrapList(response, 'interests')
+        .map((item: any) => (item.interest?.name || item.name || '').toLowerCase())
+        .filter(Boolean)
 
       userInterests.value = interests
       logger.log('📋 Interesses do usuário carregados:', interests)
@@ -189,7 +194,7 @@
 
     try {
       const response = await getUserProfile(loggedUser.value.id)
-      const userData = response.data?.data ?? response.data
+      const userData = unwrapItem(response) ?? {}
 
       userBio.value = userData.bio || ''
       userStats.value = {
@@ -298,43 +303,6 @@
     return ''
   }
 
-  /**
-   * Força parâmetros de alta qualidade na URL da imagem
-   */
-  function enhanceImageUrl (url: string): string {
-    if (!url) return ''
-
-    try {
-      // Se já é uma URL completa, tenta adicionar parâmetros de qualidade
-      if (/^https?:\/\//i.test(url)) {
-        const urlObj = new URL(url)
-
-        // Remove parâmetros de baixa qualidade comuns
-        urlObj.searchParams.delete('w')
-        urlObj.searchParams.delete('h')
-        urlObj.searchParams.delete('width')
-        urlObj.searchParams.delete('height')
-        urlObj.searchParams.delete('q')
-        urlObj.searchParams.delete('quality')
-        urlObj.searchParams.delete('fit')
-        urlObj.searchParams.delete('crop')
-
-        // Adiciona parâmetros de alta qualidade (funcionam em muitos CDNs)
-        // Estes parâmetros são ignorados se o CDN não os suportar
-        urlObj.searchParams.set('quality', '100')
-        urlObj.searchParams.set('fm', 'jpg') // formato
-        urlObj.searchParams.set('auto', 'format') // formato automático otimizado
-
-        return urlObj.toString()
-      }
-    } catch (error) {
-      // Se falhar ao parsear URL, retorna original
-      logger.warn('Erro ao processar URL de imagem:', error)
-    }
-
-    return url
-  }
-
   function resolveLikesCount (event: any): number {
     if (typeof event.likesCount === 'number') return event.likesCount
     if (typeof event.likes === 'number') return event.likes
@@ -382,7 +350,7 @@
     const bestImageFromImages = extractBestImage(event.images)
     const bestPhotoUrl = extractPhotoUrl(event.photos)
 
-    let rawBanner = bestImageFromImages || bestPhotoUrl || getFirstValidString(
+    const rawBanner = bestImageFromImages || bestPhotoUrl || getFirstValidString(
       event.bannerUrl,
       event.banner,
       event.image,
@@ -390,9 +358,6 @@
       event.cover,
       event.thumbnail,
     )
-
-    // Melhora a qualidade da URL de imagem quando possível
-    rawBanner = enhanceImageUrl(rawBanner)
 
     const calculatedHostName = event.organizer?.name || event.hostName || event.creator?.name || 'Organizador'
 
@@ -496,14 +461,9 @@
         isArray: Array.isArray(response.data),
       })
 
-      // Extrai eventos da resposta garantindo que seja sempre um array
-      let events = response.data.events || response.data.content || response.data || []
-
-      // Validação: garante que events é um array
-      if (!Array.isArray(events)) {
-        logger.warn('Resposta da API não é um array, ajustando...', events)
-        events = []
-      }
+      // Extrai eventos da resposta (unwrapList aceita os envelopes conhecidos
+      // e garante que o retorno seja sempre um array)
+      let events = unwrapList<any>(response, 'events', 'content')
 
       logger.info('📊 Events extracted from API:', {
         total: events.length,
@@ -585,7 +545,7 @@
         try {
           // Busca eventos públicos para complementar
           const publicResponse = await getPublicEventRecomendations(page.value, limit, userCoords.value?.lat, userCoords.value?.lng)
-          const publicEvents = publicResponse.data.events || publicResponse.data.content || publicResponse.data || []
+          const publicEvents = unwrapList<any>(publicResponse, 'events', 'content')
 
           if (Array.isArray(publicEvents) && publicEvents.length > 0) {
             // Cria Set com chaves dos eventos já existentes
@@ -659,6 +619,9 @@
   }
 
   onMounted(async () => {
+    // Redirecionamento para 404 já disparado (tab inválido) — evita disparar fetches à toa
+    if (!isValidTab(route.query.tab as string | undefined)) return
+
     // Busca os interesses do usuário primeiro (se autenticado)
     if (!props.guestMode) {
       await Promise.all([
@@ -696,7 +659,7 @@
       const response = props.guestMode
         ? await getPublicTrendingEvents()
         : await getTrendingEvents()
-      const data = response.data.events || response.data || []
+      const data = unwrapList<any>(response, 'events')
 
       trends.value = data.map((evt: any) => ({
         id: evt.id,
@@ -855,12 +818,15 @@
     }
   }
 
-  async function requestSearchEvents (normalizedSearch: string) {
+  // Cancela a busca anterior quando uma nova é disparada (evita respostas fora de ordem)
+  let searchCtrl: AbortController | null = null
+
+  async function requestSearchEvents (normalizedSearch: string, signal?: AbortSignal) {
     // Usa versão pública no modo guest
     const resp = props.guestMode
-      ? await searchPublicEvents(normalizedSearch, 1, 20)
-      : await searchByEvents(normalizedSearch, 1, 20)
-    return resp.data.events || resp.data || []
+      ? await searchPublicEvents(normalizedSearch, 1, 20, signal)
+      : await searchByEvents(normalizedSearch, 1, 20, signal)
+    return unwrapList<any>(resp, 'events')
   }
 
   // Handler para o evento search do SearchInput (já com debounce)
@@ -868,20 +834,28 @@
     const normalized = query.trim()
 
     if (!normalized) {
+      searchCtrl?.abort()
       isSearching.value = false
       searchResults.value = null
       return
     }
 
+    // Aborta a busca anterior antes de disparar a nova
+    searchCtrl?.abort()
+    searchCtrl = new AbortController()
+    const { signal } = searchCtrl
+
     isSearching.value = true
 
     try {
-      const events = await requestSearchEvents(normalized)
+      const events = await requestSearchEvents(normalized, signal)
       searchResults.value = (events || []).map((event: any) => mapEventToFeedItem(event))
+      isSearching.value = false
     } catch (error) {
+      // Requisição substituída por outra mais recente: mantém o loading do request atual
+      if (isRequestCanceled(error)) return
       logger.error(error)
       searchResults.value = []
-    } finally {
       isSearching.value = false
     }
   }
@@ -894,8 +868,13 @@
 
   // Mantém activeNav em sincronia quando o query param muda externamente
   // (back/forward do browser, navegação direta pela URL, links externos)
-  watch(() => route.query.tab as string | undefined, (newTab = 'home') => {
-    const navId = newTab
+  watch(() => route.query.tab as string | undefined, newTab => {
+    if (!isValidTab(newTab)) {
+      redirectToNotFound()
+      return
+    }
+
+    const navId = newTab || 'home'
     if (activeNav.value !== navId) {
       activeNav.value = navId
     }
@@ -952,19 +931,9 @@
       }
 
       const response = await getFavoriteEvents(page.value, limit)
-      const data = response.data
 
-      // Tenta extrair eventos de diferentes estruturas de resposta
-      let events: any[] = []
-      if (data?.data?.events) {
-        events = data.data.events
-      } else if (data?.events) {
-        events = data.events
-      } else if (Array.isArray(data?.data)) {
-        events = data.data
-      } else if (Array.isArray(data)) {
-        events = data
-      }
+      // Extrai eventos da resposta (unwrapList aceita os envelopes conhecidos)
+      const events = unwrapList<any>(response, 'events')
 
       hasMore.value = events.length >= limit
 
@@ -1316,6 +1285,7 @@
             :likes="(item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0)"
             :location="item.location"
             :matched-interests="item.matchedInterests"
+            :priority="index < 2"
             :rank="activeNav === 'top-events' ? index + 1 : undefined"
             :schedule="item.schedule"
             :show-remove-button="activeNav === 'favorites'"

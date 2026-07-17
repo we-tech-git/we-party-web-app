@@ -2,7 +2,10 @@
   import { computed, onBeforeUnmount, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
 
+  import { isRequestCanceled, unwrapList } from '@/api'
   import { searchByEvents, searchPublicEvents } from '@/api/event'
+  import { useGuestMode } from '@/composables/useGuestMode'
+  import { SEARCH_DEBOUNCE_MS } from '@/constants/timing'
   import { logger } from '@/utils/logger'
 
   interface Props {
@@ -31,6 +34,7 @@
   }>()
 
   const router = useRouter()
+  const { requireLogin } = useGuestMode()
 
   const inputRef = ref<HTMLInputElement | null>(null)
   const inputValue = ref(props.modelValue)
@@ -39,7 +43,10 @@
   const isOpen = ref(false)
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
-  const DEBOUNCE_DELAY = 300
+  const DEBOUNCE_DELAY = SEARCH_DEBOUNCE_MS
+
+  // Cancela a busca anterior quando uma nova é disparada (evita respostas fora de ordem)
+  let suggestionsCtrl: AbortController | null = null
 
   watch(() => props.modelValue, val => {
     if (val !== inputValue.value) inputValue.value = val
@@ -62,22 +69,29 @@
   }
 
   async function fetchSuggestions (query: string) {
+    // Aborta a busca anterior antes de disparar a nova
+    suggestionsCtrl?.abort()
+    suggestionsCtrl = new AbortController()
+    const { signal } = suggestionsCtrl
+
     try {
       const resp = props.guestMode
-        ? await searchPublicEvents(query, 1, 6)
-        : await searchByEvents(query, 1, 6)
+        ? await searchPublicEvents(query, 1, 6, signal)
+        : await searchByEvents(query, 1, 6, signal)
 
-      const events = resp.data.events || resp.data || []
-      suggestions.value = (Array.isArray(events) ? events : []).map((event: any) => ({
+      const events = unwrapList<any>(resp, 'events')
+      suggestions.value = events.map((event: any) => ({
         id: event.id,
         title: event.name || event.title || '',
         location: event.location || event.address || '',
         schedule: resolveSchedule(event),
       }))
+      isLoadingSuggestions.value = false
     } catch (error) {
+      // Requisição substituída por outra mais recente: mantém o loading do request atual
+      if (isRequestCanceled(error)) return
       logger.error('Erro ao buscar sugestões de autocomplete:', error)
       suggestions.value = []
-    } finally {
       isLoadingSuggestions.value = false
     }
   }
@@ -90,6 +104,7 @@
     if (debounceTimer) clearTimeout(debounceTimer)
 
     if (!value.trim()) {
+      suggestionsCtrl?.abort()
       suggestions.value = []
       isOpen.value = false
       isLoadingSuggestions.value = false
@@ -109,6 +124,14 @@
     emit('update:modelValue', suggestion.title)
     isOpen.value = false
     suggestions.value = []
+
+    // Visitante: explica por que precisa logar, em vez de mandar
+    // silenciosamente para /public/Login sem contexto (P29)
+    if (props.guestMode) {
+      requireLogin('ver os detalhes deste evento')
+      return
+    }
+
     router.push({ path: `/private/event/${suggestion.id}` })
   }
 
@@ -141,6 +164,7 @@
     suggestions.value = []
     isOpen.value = false
     if (debounceTimer) clearTimeout(debounceTimer)
+    suggestionsCtrl?.abort()
     emit('update:modelValue', '')
     emit('clear')
     inputRef.value?.focus()
@@ -148,6 +172,7 @@
 
   onBeforeUnmount(() => {
     if (debounceTimer) clearTimeout(debounceTimer)
+    suggestionsCtrl?.abort()
   })
 
   defineExpose({

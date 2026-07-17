@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import { isRequestCanceled, unwrapList } from '@/api'
 import { requestFollowUser, requestUnFollowUser } from '@/api/follows'
 import { getUserRecomendations, searchUsers } from '@/api/users'
 import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
@@ -113,17 +114,8 @@ async function requestUserRecomendations() {
 
     const response = await getUserRecomendations()
 
-    // Tenta extrair os usuários de diferentes estruturas de resposta
-    let userData: any[] = []
-    if (response?.data?.data?.users) {
-      userData = response.data.data.users
-    } else if (response?.data?.users) {
-      userData = response.data.users
-    } else if (Array.isArray(response?.data?.data)) {
-      userData = response.data.data
-    } else if (Array.isArray(response?.data)) {
-      userData = response.data
-    }
+    // Extrai os usuários da resposta (unwrapList aceita os envelopes conhecidos)
+    const userData = unwrapList<any>(response, 'users')
 
     // Mapeia para o formato esperado
     users.value = userData.map((u: any) => ({
@@ -151,9 +143,13 @@ async function requestUserRecomendations() {
   }
 }
 
+// Cancela a busca anterior quando uma nova é disparada (evita respostas fora de ordem)
+let userSearchCtrl: AbortController | null = null
+
 async function performSearch(query: string) {
   if (!query.trim()) {
     // Quando limpar a busca, restaura as recomendações iniciais (sem nova requisição)
+    userSearchCtrl?.abort()
     users.value = [...recommendedUsers.value]
     isSearching.value = false
     hasError.value = false
@@ -167,20 +163,16 @@ async function performSearch(query: string) {
   hasError.value = false
   errorMessage.value = ''
 
-  try {
-    const response = await searchUsers(query.trim())
+  // Aborta a busca anterior antes de disparar a nova
+  userSearchCtrl?.abort()
+  userSearchCtrl = new AbortController()
+  const { signal } = userSearchCtrl
 
-    // Tenta extrair os usuários
-    let userData: any[] = []
-    if (response?.data?.data?.users) {
-      userData = response.data.data.users
-    } else if (response?.data?.users) {
-      userData = response.data.users
-    } else if (Array.isArray(response?.data?.data)) {
-      userData = response.data.data
-    } else if (Array.isArray(response?.data)) {
-      userData = response.data
-    }
+  try {
+    const response = await searchUsers(query.trim(), 1, 20, signal)
+
+    // Extrai os usuários da resposta (unwrapList aceita os envelopes conhecidos)
+    const userData = unwrapList<any>(response, 'users')
 
     users.value = userData.map((u: any) => ({
       id: u.id || u._id,
@@ -194,7 +186,11 @@ async function performSearch(query: string) {
     if (users.value.length === 0) {
       errorMessage.value = `Nenhum usuário encontrado para "${query}"`
     }
+    isSearching.value = false
   } catch (error: any) {
+    // Requisição substituída por outra mais recente: mantém o loading do request atual
+    if (isRequestCanceled(error)) return
+
     console.error('❌ Erro ao buscar usuários:', error)
     hasError.value = true
     users.value = []
@@ -204,7 +200,6 @@ async function performSearch(query: string) {
       ? 'Endpoint de busca não disponível. Aguarde implementação no backend.'
       : error?.response?.data?.message || 'Erro ao buscar usuários'
     showSnackbar(errorMessage.value, '#ef4444')
-  } finally {
     isSearching.value = false
   }
 }

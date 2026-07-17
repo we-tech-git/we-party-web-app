@@ -31,7 +31,15 @@
     // const emailFromQuery = route.query.email as string
     const emailFromStorage = localStorage?.getItem(STORAGE_KEYS.RESET_PASSWORD_EMAIL)
 
-    userEmail.value = JSON.parse(emailFromStorage || '') || 'usuario@exemplo.com'
+    // JSON.parse lança exceção se o storage estiver vazio/corrompido
+    // (ex.: acesso direto à rota sem passar pelo RequestPassword)
+    let storedEmail = ''
+    try {
+      storedEmail = emailFromStorage ? JSON.parse(emailFromStorage) : ''
+    } catch {
+      storedEmail = ''
+    }
+    userEmail.value = (typeof storedEmail === 'string' && storedEmail) || 'usuario@exemplo.com'
   })
 </script>
 
@@ -62,7 +70,16 @@
           📧
         </div>
         <h1 class="confirm-title">{{ $t('confirmEmail.title') }}</h1>
-        <p class="confirm-subtitle" v-html="$t('verifyPin.subtitle', { email: userEmail })" />
+        <!-- i18n-t com slots substitui o v-html: o e-mail (vindo do storage)
+             é renderizado como texto, nunca como HTML -->
+        <i18n-t class="confirm-subtitle" keypath="verifyPin.subtitle" tag="p">
+          <template #email>
+            <b>{{ userEmail }}</b>
+          </template>
+          <template #lineBreak>
+            <br><br>
+          </template>
+        </i18n-t>
 
         <!-- Verify Button -->
         <button class="verify-button active flex items-center justify-center gap-2" type="button" @click="backToLogin">

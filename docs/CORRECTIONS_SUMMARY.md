@@ -56,6 +56,13 @@
 
 **Benefício:** Previne spam, reduz custos de API, melhora UX e performance.
 
+> ⚠️ **Superado (auditoria jul/2026):** este arquivo nunca chegou a ser
+> importado em nenhum componente e foi removido. O padrão atual usa
+> `@vueuse/core` + `src/constants/timing.ts` + guards de reentrância manuais.
+> Ver **[RATE_LIMITING_GUIDE.md](./RATE_LIMITING_GUIDE.md)**. Os exemplos de
+> código abaixo (`useButtonCooldown`) são históricos e não devem mais ser
+> copiados — use o guard `if (isSubmitting.value) return` mostrado no guia.
+
 ---
 
 ### ✅ Item 9: Lazy Loading de Rotas Implementado
@@ -142,6 +149,12 @@ O `unplugin-vue-router` já faz lazy loading automaticamente! As páginas em `sr
 ## 🎯 Como Usar as Melhorias
 
 ### Exemplo Completo - Formulário com Todas as Melhorias
+
+> ⚠️ **Nota (jul/2026):** o exemplo abaixo usa `useButtonCooldown`, que foi
+> removido (ver aviso no Item 7). Para um exemplo atualizado, use o guard
+> `if (isSubmitting.value) return` — ver **[RATE_LIMITING_GUIDE.md](./RATE_LIMITING_GUIDE.md)**
+> ou o exemplo corrigido em **[IMPROVEMENTS_GUIDE.md](./IMPROVEMENTS_GUIDE.md)**.
+
 ```vue
 <template>
   <ErrorBoundary>

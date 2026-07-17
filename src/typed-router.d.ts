@@ -19,14 +19,11 @@ declare module 'vue-router/auto-routes' {
    */
   export interface RouteNamedMap {
     '/[...all]': RouteRecordInfo<'/[...all]', '/:all(.*)', { all: ParamValue<true> }, { all: ParamValue<false> }>,
-    '/home/': RouteRecordInfo<'/home/', '/home', Record<never, never>, Record<never, never>>,
     '/landing': RouteRecordInfo<'/landing', '/landing', Record<never, never>, Record<never, never>>,
     '/private/AddFriends': RouteRecordInfo<'/private/AddFriends', '/private/AddFriends', Record<never, never>, Record<never, never>>,
     '/private/event/[id]': RouteRecordInfo<'/private/event/[id]', '/private/event/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
-    '/private/event-new/[id]': RouteRecordInfo<'/private/event-new/[id]', '/private/event-new/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     '/private/feed': RouteRecordInfo<'/private/feed', '/private/feed', Record<never, never>, Record<never, never>>,
     '/private/profile': RouteRecordInfo<'/private/profile', '/private/profile', Record<never, never>, Record<never, never>>,
-    '/private/test-auth': RouteRecordInfo<'/private/test-auth', '/private/test-auth', Record<never, never>, Record<never, never>>,
     '/public/AddFriends': RouteRecordInfo<'/public/AddFriends', '/public/AddFriends', Record<never, never>, Record<never, never>>,
     '/public/ConfirmEmail': RouteRecordInfo<'/public/ConfirmEmail', '/public/ConfirmEmail', Record<never, never>, Record<never, never>>,
     '/public/Congratulations': RouteRecordInfo<'/public/Congratulations', '/public/Congratulations', Record<never, never>, Record<never, never>>,
@@ -55,10 +52,6 @@ declare module 'vue-router/auto-routes' {
       routes: '/[...all]'
       views: never
     }
-    'src/pages/home/index.vue': {
-      routes: '/home/'
-      views: never
-    }
     'src/pages/landing.vue': {
       routes: '/landing'
       views: never
@@ -71,20 +64,12 @@ declare module 'vue-router/auto-routes' {
       routes: '/private/event/[id]'
       views: never
     }
-    'src/pages/private/event-new/[id].vue': {
-      routes: '/private/event-new/[id]'
-      views: never
-    }
     'src/pages/private/feed.vue': {
       routes: '/private/feed'
       views: never
     }
     'src/pages/private/profile.vue': {
       routes: '/private/profile'
-      views: never
-    }
-    'src/pages/private/test-auth.vue': {
-      routes: '/private/test-auth'
       views: never
     }
     'src/pages/public/AddFriends.vue': {

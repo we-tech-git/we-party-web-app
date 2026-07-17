@@ -36,12 +36,12 @@
         <span class="copyright"><span class="notranslate" translate="no">we party</span> © Copyright {{ currentYear
         }}</span>
         <div class="social-icons">
-          <a aria-label="Facebook" href="#" rel="noopener noreferrer" target="_blank">
-            <svg fill="currentColor" height="24" viewBox="0 0 24 24" width="24">
-              <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-            </svg>
-          </a>
-          <a aria-label="Instagram" href="#" rel="noopener noreferrer" target="_blank">
+          <a
+            aria-label="Instagram"
+            href="https://www.instagram.com/weparty.br?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw=="
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             <svg
               fill="none"
               height="24"
@@ -64,14 +64,12 @@
               <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
             </svg>
           </a>
-          <a aria-label="X (Twitter)" href="#" rel="noopener noreferrer" target="_blank">
-            <svg fill="currentColor" height="24" viewBox="0 0 24 24" width="24">
-              <path
-                d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"
-              />
-            </svg>
-          </a>
-          <a aria-label="LinkedIn" href="#" rel="noopener noreferrer" target="_blank">
+          <a
+            aria-label="LinkedIn"
+            href="https://www.linkedin.com/company/we-tech-hub"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             <svg fill="currentColor" height="24" viewBox="0 0 24 24" width="24">
               <path
                 d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2zM4 2a2 2 0 1 1-2 2 2 2 0 0 1 2-2z"

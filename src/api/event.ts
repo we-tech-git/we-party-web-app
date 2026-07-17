@@ -88,13 +88,15 @@ export async function getPublicEventsToday (page = 1, limit = 10) {
 /**
  * Pesquisa eventos por nome (público - sem autenticação)
  */
-export async function searchPublicEvents (search: string, page = 1, limit = 10) {
+export async function searchPublicEvents (search: string, page = 1, limit = 10, signal?: AbortSignal) {
   try {
     const response = await callApi(
       'GET',
       `/events/search/name?query=${search}&page=${page}&limit=${limit}`,
       {},
       false, // Sem autenticação
+      undefined,
+      signal,
     )
     return response
   } catch (error) {
@@ -164,13 +166,15 @@ export async function getEventRecomendations (page = 1, limit = 10, lat?: number
   }
 }
 
-export async function searchByEvents (search: string, page = 1, limit = 10) {
+export async function searchByEvents (search: string, page = 1, limit = 10, signal?: AbortSignal) {
   try {
     const response = await callApi(
       'GET',
       `/events/search/name?query=${search}&page=${page}&limit=${limit}`,
       {},
       true,
+      undefined,
+      signal,
     )
     return response
   } catch (error) {

@@ -62,7 +62,7 @@
             <span aria-hidden="true" class="nf-card__arrow">→</span>
           </router-link>
 
-          <router-link class="nf-card nf-card--accent" to="/public/Login">
+          <router-link class="nf-card nf-card--accent" :to="{ path: '/public/Login', query: { force: 'true' } }">
             <span class="nf-card__icon">🔑</span>
             <div class="nf-card__body">
               <span class="nf-card__title">Fazer Login</span>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import { nextTick, ref, watch } from 'vue'
+  import { unwrapList } from '@/api'
   import {
     addEventComment,
     deleteEventComment,
@@ -47,9 +48,9 @@
   const _replyText = ref('')
   const _sendingReply = ref(false)
 
-  // Optimistic like state (unused - kept for potential future use)
-  const _localLiked = ref<Record<string, boolean>>({})
-  const _localLikeDelta = ref<Record<string, number>>({})
+  // Optimistic like state
+  const localLiked = ref<Record<string, boolean>>({})
+  const localLikeDelta = ref<Record<string, number>>({})
 
   function formatDate (dateStr: string): string {
     const d = new Date(dateStr)
@@ -96,14 +97,14 @@
     return loggedUser.value?.id === comment.user?.id
   }
 
-  function _isCommentLiked (comment: Comment): boolean {
-    if (comment.id in _localLiked.value) return _localLiked.value[comment.id] ?? false
+  function isCommentLiked (comment: Comment): boolean {
+    if (comment.id in localLiked.value) return localLiked.value[comment.id] ?? false
     return comment.isLikedByMe ?? false
   }
 
-  function _commentLikesCount (comment: Comment): number {
+  function commentLikesCount (comment: Comment): number {
     const base = comment.likesCount || 0
-    const delta = _localLikeDelta.value[comment.id] || 0
+    const delta = localLikeDelta.value[comment.id] || 0
     return Math.max(0, base + delta)
   }
 
@@ -111,8 +112,8 @@
     loading.value = true
     try {
       const res = await getEventComments(props.eventId)
-      const raw = res?.data?.data || res?.data?.comments || res?.data?.content || res?.data || []
-      const dataArr: any[] = Array.isArray(raw) ? raw : []
+      // unwrapList aceita os envelopes conhecidos e retorna sempre um array
+      const dataArr: any[] = unwrapList(res, 'comments', 'content')
 
       function mapComment (c: any): Comment {
         return {
@@ -158,8 +159,8 @@
         }
       }
       comments.value = topLevel
-      _localLiked.value = {}
-      _localLikeDelta.value = {}
+      localLiked.value = {}
+      localLikeDelta.value = {}
       emit('update:count', topLevel.length)
     } catch (error) {
       console.error('Erro ao buscar comentários:', error)
@@ -256,17 +257,17 @@
     }
   }
 
-  async function _handleToggleLike (comment: Comment) {
+  async function handleToggleLike (comment: Comment) {
     if (likingId.value === comment.id) return
     likingId.value = comment.id
-    const wasLiked = _isCommentLiked(comment)
-    _localLiked.value[comment.id] = !wasLiked
-    _localLikeDelta.value[comment.id] = (_localLikeDelta.value[comment.id] || 0) + (wasLiked ? -1 : 1)
+    const wasLiked = isCommentLiked(comment)
+    localLiked.value[comment.id] = !wasLiked
+    localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? -1 : 1)
     try {
       await toggleLikeComment(props.eventId, comment.id)
     } catch {
-      _localLiked.value[comment.id] = wasLiked
-      _localLikeDelta.value[comment.id] = (_localLikeDelta.value[comment.id] || 0) + (wasLiked ? 1 : -1)
+      localLiked.value[comment.id] = wasLiked
+      localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? 1 : -1)
     } finally {
       likingId.value = null
     }
@@ -331,6 +332,34 @@
               </div>
 
               <div class="ic-actions">
+                <button
+                  class="ic-action-btn like"
+                  :class="{ active: isCommentLiked(comment) }"
+                  :disabled="likingId === comment.id"
+                  type="button"
+                  @click.stop="handleToggleLike(comment)"
+                >
+                  <svg
+                    aria-hidden="true"
+                    :fill="isCommentLiked(comment) ? 'currentColor' : 'none'"
+                    height="12"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="12"
+                  >
+                    <path
+                      d="M12 21s-6.6-4.35-9-8.4C1 8.67 3.42 5 7.2 5c1.9 0 3.45 1.17 4.8 2.6C13.35 6.17 14.9 5 16.8 5 20.58 5 23 8.67 21 12.6c-2.4 4.05-9 8.4-9 8.4Z"
+                    />
+                  </svg>
+                  <span v-if="commentLikesCount(comment) > 0" class="ic-like-count">
+                    {{ commentLikesCount(comment) }}
+                  </span>
+                  <span v-else>Curtir</span>
+                </button>
+
                 <button
                   v-if="isMyComment(comment)"
                   class="ic-action-btn delete"
@@ -583,6 +612,15 @@
 
 .ic-action-btn.active:hover {
   color: #ff78b5;
+}
+
+.ic-action-btn.like:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.ic-like-count {
+  font-variant-numeric: tabular-nums;
 }
 
 .ic-action-btn.delete:hover:not(:disabled) {

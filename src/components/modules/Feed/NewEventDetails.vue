@@ -862,7 +862,7 @@
                 </button>
               </div>
 
-              <div class="flex items-center gap-3 mt-5 pt-4 border-t border-black/5">
+              <div v-if="goingCount > 0" class="flex items-center gap-3 mt-5 pt-4 border-t border-black/5">
                 <div class="flex items-center">
                   <div
                     v-for="(av, i) in attendeeAvatars.slice(0, 3)"
@@ -880,8 +880,9 @@
                     <template v-else>{{ av.initial }}</template>
                   </div>
                 </div>
-                <div class="text-sm font-bold">{{ userName }} e <b class="text-weparty-pink">{{ goingCount - 1
+                <div v-if="leadGoingName" class="text-sm font-bold">{{ leadGoingName }} e <b class="text-weparty-pink">{{ Math.max(goingCount - 1, 0)
                 }}</b> outros vão</div>
+                <div v-else class="text-sm font-bold"><b class="text-weparty-pink">{{ goingCount }}</b> pessoas vão</div>
               </div>
             </div>
           </div>
@@ -1050,8 +1051,10 @@
 </template>
 
 <script setup lang="ts">
+  import { useThrottleFn } from '@vueuse/core'
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
+  import { unwrapList } from '@/api'
   import { addEventComment, deleteEventComment, getEventComments } from '@/api/comments'
   import { getEventById, getMyAttendance, getTrendingEvents } from '@/api/event'
   import { checkIsFollowing, followUserById, unfollowUserById } from '@/api/follows'
@@ -1061,6 +1064,7 @@
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useGeolocation } from '@/composables/useGeolocation'
+  import { SCROLL_THROTTLE_MS } from '@/constants/timing'
   import { useEventsStore } from '@/stores/events'
   import { useShareStore } from '@/stores/share'
 
@@ -1109,6 +1113,7 @@
   function onScroll () {
     navSolid.value = window.scrollY > 40
   }
+  const throttledOnScroll = useThrottleFn(onScroll, SCROLL_THROTTLE_MS)
 
   // ── Snackbar ─────────────────────────────────────────────────
   const SNACKBAR_COLORS = { success: '#22c55e', error: '#ef4444' } as const
@@ -1355,7 +1360,7 @@
   // Avatares da barra "pessoas vão" — conectados a dados reais.
   // Prioriza a lista de presenças vinda no payload do evento; quando indisponível,
   // recai sobre os autores dos comentários (usuários reais já carregados na página).
-  interface AvatarVM { initial: string, color: string, image: string }
+  interface AvatarVM { initial: string, color: string, image: string, name: string }
   const payloadAvatars = ref<AvatarVM[]>([])
 
   function extractAttendees (data: any): any[] {
@@ -1375,6 +1380,7 @@
       initial: name.charAt(0).toUpperCase(),
       color: colorForName(name),
       image: resolveAsset(user?.profileImage || user?.avatar || user?.photo || ''),
+      name,
     }
   }
 
@@ -1392,7 +1398,14 @@
     if (payloadAvatars.value.length > 0) return payloadAvatars.value
     return comments.value
       .slice(0, 5)
-      .map(c => ({ initial: c.initial, color: c.color, image: c.image }))
+      .map(c => ({ initial: c.initial, color: c.color, image: c.image, name: c.name }))
+  })
+
+  // Nome exibido em "X e N outros vão": só usa o nome do usuário logado quando
+  // ele de fato confirmou presença; caso contrário, usa um participante real.
+  const leadGoingName = computed(() => {
+    if (rsvped.value) return userName.value
+    return attendeeAvatars.value[0]?.name || ''
   })
 
   // ── Estado social (via store de eventos, com optimistic update) ──
@@ -1596,11 +1609,6 @@
     confirming.value = true
     try {
       await eventsStore.toggleConfirm(event.value.id)
-      const nowConfirmed = eventsStore.isConfirmed(event.value.id)
-      showSnackbar(
-        nowConfirmed ? 'Presença confirmada com sucesso!' : 'Presença cancelada com sucesso!',
-        SNACKBAR_COLORS.success,
-      )
     } catch {
       showSnackbar('Não foi possível atualizar sua presença. Tente novamente.', SNACKBAR_COLORS.error)
     } finally {
@@ -1728,8 +1736,8 @@
     commentsLoading.value = true
     try {
       const res: any = await getEventComments(currentId.value)
-      const raw = res?.data?.data || res?.data?.comments || res?.data?.content || res?.data || []
-      const arr: any[] = Array.isArray(raw) ? raw : []
+      // unwrapList aceita os envelopes conhecidos e retorna sempre um array
+      const arr: any[] = unwrapList(res, 'comments', 'content')
       comments.value = arr.map((c: any) => ({
         id: c.id,
         userId: c.user?.id || '',
@@ -1770,6 +1778,7 @@
     try {
       await deleteEventComment(currentId.value, commentId)
       comments.value = comments.value.filter(c => c.id !== commentId)
+      showSnackbar('Comentário removido com sucesso!', SNACKBAR_COLORS.success)
     } catch {
       showSnackbar('Não foi possível excluir o comentário.', SNACKBAR_COLORS.error)
     } finally {
@@ -1826,8 +1835,8 @@
     trendLoading.value = true
     try {
       const res: any = await getTrendingEvents(1, TREND_FETCH_SIZE)
-      const data = res?.data?.events || res?.data || []
-      const arr: any[] = Array.isArray(data) ? data : []
+      // unwrapList aceita os envelopes conhecidos e retorna sempre um array
+      const arr: any[] = unwrapList(res, 'events')
       trending.value = arr
         .filter((e: any) => String(e.id) !== String(currentId.value))
         .map((e: any, i: number) => mapTrend(e, i))
@@ -1932,7 +1941,7 @@
 
   let timer: ReturnType<typeof setInterval> | undefined
   onMounted(() => {
-    window.addEventListener('scroll', onScroll)
+    window.addEventListener('scroll', throttledOnScroll, { passive: true })
     window.addEventListener('resize', measureDescription)
     onScroll()
     // Captura a localização (cacheada por sessão) para a "Distância de você"
@@ -1948,7 +1957,7 @@
     if (!eventsStore.isInitialized.favorites) eventsStore.syncFavoritesWithServer()
   })
   onUnmounted(() => {
-    window.removeEventListener('scroll', onScroll)
+    window.removeEventListener('scroll', throttledOnScroll)
     window.removeEventListener('resize', measureDescription)
     if (timer) clearInterval(timer)
   })

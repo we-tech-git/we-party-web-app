@@ -48,7 +48,8 @@ router.beforeEach((to, from, next) => {
   // Verifica se é uma rota pública de autenticação e usuário já está logado
   const path = to.path.toLowerCase()
   if (path.startsWith('/public') && (path.includes('login') || path.includes('signup'))) {
-    const shouldRedirect = publicRouteGuard()
+    const forceAccess = to.query.force === 'true'
+    const shouldRedirect = publicRouteGuard(forceAccess)
     if (typeof shouldRedirect === 'string') {
       next(shouldRedirect)
       return

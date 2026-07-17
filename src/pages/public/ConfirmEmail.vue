@@ -256,7 +256,7 @@
     if (userEmail.value) {
       resendPin()
     } else {
-      showSnackbar('Email não identificado.', '#ef4444')
+      showSnackbar(t('confirmEmail.emailNotIdentified'), '#ef4444')
     }
   })
 </script>

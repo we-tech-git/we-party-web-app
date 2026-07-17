@@ -208,6 +208,9 @@ export const AuthService = {
 
   /**
    * Remove todos os dados de autenticação (logout)
+   * Dispara 'weparty:auth-changed' para que o estado reativo do useAuth
+   * (compartilhado entre toda a UI) seja atualizado, mesmo quando chamado
+   * fora do composable (ex.: interceptor de 401, exclusão de conta).
    */
   logout (): void {
     localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN)
@@ -216,6 +219,7 @@ export const AuthService = {
     localStorage.removeItem(STORAGE_KEYS.SESSION_ID)
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
     localStorage.removeItem(STORAGE_KEYS.USER_ID)
+    window.dispatchEvent(new CustomEvent('weparty:auth-changed'))
   },
 
   /**

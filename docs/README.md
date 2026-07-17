@@ -27,6 +27,11 @@ Esta pasta contém toda a documentação técnica, guias e especificações do p
   - Error Boundary component
   - Validação centralizada
 
+- **[RATE_LIMITING_GUIDE.md](./RATE_LIMITING_GUIDE.md)**  
+  Guia técnico dedicado: debounce, throttle, cancelamento de requisições
+  (AbortController), guards de reentrância e rate limiting — critério de
+  escolha, tabela de tempos e histórico da auditoria
+
 ### ⚡ Otimização
 
 - **[OPTIMIZATION_GUIDE.md](./OPTIMIZATION_GUIDE.md)**  
@@ -63,6 +68,7 @@ docs/
 ├── BACKEND_NEW_INTERESTS_SPEC.md
 ├── CORRECTIONS_SUMMARY.md
 ├── IMPROVEMENTS_GUIDE.md
+├── RATE_LIMITING_GUIDE.md
 ├── OPTIMIZATION_GUIDE.md
 ├── SCREENSHOTS_GUIDE.md
 ├── SCREENSHOTS_OPTIONS.md

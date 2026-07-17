@@ -122,73 +122,87 @@ onError((error) => {
 
 ## ✅ 4. Rate Limiting / Debounce / Throttle
 
-**Implementado em:** `src/composables/useThrottle.ts`
+> ⚠️ **Atualizado após auditoria (jul/2026):** o antigo `src/composables/useThrottle.ts`
+> era código morto (nunca importado em lugar nenhum) e foi **removido**. O padrão
+> atual usa `@vueuse/core` (já é dependência do projeto) para throttle, debounce
+> manual centralizado em constantes, e guards de reentrância simples para
+> prevenir cliques/submits duplicados. Guia completo, tabela de tempos e
+> critério de escolha: **[RATE_LIMITING_GUIDE.md](./RATE_LIMITING_GUIDE.md)**.
 
 ### Como Usar:
 
-#### Debounce (para busca, auto-save):
+#### Debounce (para busca ao digitar):
 ```typescript
-import { useDebounce } from '@/composables/useThrottle'
+import { SEARCH_DEBOUNCE_MS } from '@/constants/timing'
 
-const searchQuery = ref('')
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-const debouncedSearch = useDebounce(async (query: string) => {
-  await api.search(query)
-}, 500) // aguarda 500ms sem novas chamadas
-
-watch(searchQuery, (newQuery) => {
-  debouncedSearch(newQuery)
-})
+function handleInput(value: string) {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    fetchSuggestions(value)
+  }, SEARCH_DEBOUNCE_MS)
+}
 ```
+Exemplo real: `src/components/UI/SearchInput/SearchInput.vue`.
 
 #### Throttle (para scroll, resize):
 ```typescript
-import { useThrottle } from '@/composables/useThrottle'
+import { useThrottleFn } from '@vueuse/core'
+import { SCROLL_THROTTLE_MS } from '@/constants/timing'
 
-const handleScroll = useThrottle(() => {
+const throttledOnScroll = useThrottleFn(() => {
   console.log('Scroll event')
-}, 200) // executa no máximo a cada 200ms
+}, SCROLL_THROTTLE_MS)
 
-window.addEventListener('scroll', handleScroll)
+window.addEventListener('scroll', throttledOnScroll, { passive: true })
 ```
+Exemplo real: `src/components/modules/Feed/NewEventDetails.vue`.
 
-#### Button Cooldown (prevenir spam):
+#### Guard de reentrância (prevenir clique/submit duplicado):
 ```typescript
-import { useButtonCooldown } from '@/composables/useThrottle'
+const isSubmitting = ref(false)
 
-const { executeWithCooldown, isOnCooldown } = useButtonCooldown(2000)
-
-async function followUser() {
-  const result = await executeWithCooldown(async () => {
-    return await api.followUser(userId)
-  })
-  
-  if (result === null) {
-    // Ainda em cooldown
-    return
+async function handleSubmit() {
+  if (isSubmitting.value) return
+  isSubmitting.value = true
+  try {
+    await api.submit()
+  } finally {
+    isSubmitting.value = false
   }
 }
 ```
+Exemplo real: `src/components/modules/Login/Login.vue`,
+`src/components/modules/Signup/Signup.vue`.
 
-#### Rate Limiter (limitar requests):
+#### Cancelamento de busca (evita respostas fora de ordem):
 ```typescript
-import { useRateLimiter } from '@/composables/useThrottle'
+let ctrl: AbortController | null = null
 
-// Máximo 5 chamadas a cada 10 segundos
-const limiter = useRateLimiter(5, 10000)
-
-async function makeRequest() {
-  const result = await limiter.execute(async () => {
-    return await api.request()
-  })
-  
-  if (result === null) {
-    console.log('Rate limit excedido')
-  }
+async function fetchSuggestions(query: string) {
+  ctrl?.abort()
+  ctrl = new AbortController()
+  const resp = await searchByEvents(query, 1, 6, ctrl.signal)
+  // ...
 }
 ```
+Exemplo real: `src/components/modules/Feed/EventSearchAutocomplete.vue`.
 
-**Benefício:** Previne spam, reduz custos de API, melhora UX.
+#### Rate Limiter anti-brute-force (disponível, não ativado):
+```typescript
+import { useRateLimit } from '@/composables/useRateLimit'
+
+const loginRateLimit = useRateLimit('login', {
+  maxAttempts: 5,
+  windowMs: 15 * 60 * 1000,
+})
+```
+⚠️ Rate limit client-side (localStorage) é só UX/dissuasão — burlável, não
+substitui proteção no backend. Por isso não está plugado ao login hoje. Ver
+`src/composables/useRateLimit.ts`.
+
+**Benefício:** Previne spam, reduz respostas de busca fora de ordem, melhora UX.
 
 ---
 
@@ -364,7 +378,7 @@ const results = await searchUsers('john', 1, 20)
       <span v-if="errors.password" class="error">{{ errors.password }}</span>
       
       <button 
-        :disabled="!isFormValid || isOnCooldown" 
+        :disabled="!isFormValid || isSubmitting" 
         type="submit"
       >
         <span v-if="globalLoading">Entrando...</span>
@@ -379,17 +393,16 @@ import { ref } from 'vue'
 import { useValidation, validationRules } from '@/composables/useValidation'
 import { useLoading } from '@/composables/useLoading'
 import { useErrorHandler } from '@/utils/errorHandler'
-import { useButtonCooldown } from '@/composables/useThrottle'
 import ErrorBoundary from '@/components/UI/ErrorBoundary/ErrorBoundary.vue'
 import { loginUser } from '@/api/users'
 
 const email = ref('')
 const password = ref('')
+const isSubmitting = ref(false)
 
 const { registerField, validateAll, isFormValid, errors } = useValidation()
 const { withLoading, globalLoading } = useLoading()
 const { handleApiError, showSuccess } = useErrorHandler()
-const { executeWithCooldown, isOnCooldown } = useButtonCooldown(2000)
 
 registerField('email', email, [
   validationRules.required(),
@@ -401,18 +414,19 @@ registerField('password', password, [
 ])
 
 async function handleLogin() {
-  if (!validateAll()) return
-  
-  await executeWithCooldown(async () => {
+  if (isSubmitting.value || !validateAll()) return
+
+  isSubmitting.value = true
+  try {
     await withLoading(async () => {
-      try {
-        await loginUser({ email: email.value, password: password.value })
-        showSuccess('Login realizado com sucesso!')
-      } catch (error) {
-        handleApiError(error, 'Erro ao fazer login')
-      }
+      await loginUser({ email: email.value, password: password.value })
+      showSuccess('Login realizado com sucesso!')
     }, 'login', 1000)
-  })
+  } catch (error) {
+    handleApiError(error, 'Erro ao fazer login')
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 ```

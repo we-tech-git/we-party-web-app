@@ -137,29 +137,20 @@ export async function getUserRecomendations () {
  * @param page - Página de resultados (padrão: 1)
  * @param limit - Limite de resultados por página (padrão: 20)
  */
-export async function searchUsers (query: string, page = 1, limit = 20) {
+export async function searchUsers (query: string, page = 1, limit = 20, signal?: AbortSignal) {
   try {
     const response = await callApi(
       'GET',
       `/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
       {},
       true,
+      undefined,
+      signal,
     )
     return response
   } catch (error: any) {
-    // Tratamento específico para endpoint não implementado
-    if (error.response?.status === 404) {
-      logger.warn('Endpoint de busca de usuários não implementado no backend')
-      // Retorna resposta vazia ao invés de quebrar
-      return {
-        data: {
-          success: false,
-          message: 'Funcionalidade de busca temporariamente indisponível',
-          data: [],
-        },
-        status: 200,
-      }
-    }
+    // Propaga o erro real (inclui 404) em vez de fabricar uma resposta 200
+    // falsa — quem consome já trata 404 com uma mensagem específica.
     logger.error('Erro ao buscar usuários:', error)
     throw error
   }
@@ -255,8 +246,6 @@ export async function uploadProfileImage (file: File) {
       },
       withCredentials: true,
       timeout: 30_000,
-      httpAgent: { keepAlive: true },
-      httpsAgent: { keepAlive: true },
     })
 
     logger.log('✅ Foto de perfil enviada com sucesso')
@@ -291,8 +280,6 @@ export async function uploadBannerImage (file: File) {
       },
       withCredentials: true,
       timeout: 30_000,
-      httpAgent: { keepAlive: true },
-      httpsAgent: { keepAlive: true },
     })
 
     logger.log('✅ Foto de capa enviada com sucesso')

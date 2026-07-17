@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="/logoweparty.png" />
@@ -8,6 +8,27 @@
     <!-- PWA -->
     <meta name="theme-color" content="#FFB74D" />
     <meta name="description" content="Descubra eventos perto de você e conecte-se com pessoas que também vão." />
+
+    <!--
+      Open Graph / Twitter Card — prévia ao compartilhar links (WhatsApp,
+      Telegram, Facebook, X). São tags estáticas (mesmo conteúdo em toda
+      rota): este é um SPA client-side puro, sem SSR/prerender, então
+      crawlers sociais (que não executam JS) sempre leem este HTML — meta
+      tags dinâmicas por evento/perfil não seriam vistas por eles.
+      TODO: trocar og:image/twitter:image por URL ABSOLUTA (com domínio de
+      produção) quando definida — caminho relativo funciona na maioria das
+      plataformas, mas não é garantido pela especificação OG.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="We Party" />
+    <meta property="og:title" content="We Party" />
+    <meta property="og:description" content="Descubra eventos perto de você e conecte-se com pessoas que também vão." />
+    <meta property="og:image" content="/pwa-512x512.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="We Party" />
+    <meta name="twitter:description" content="Descubra eventos perto de você e conecte-se com pessoas que também vão." />
+    <meta name="twitter:image" content="/pwa-512x512.png" />
+
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -35,12 +56,15 @@
     <!-- X-Frame-Options MUST be set as an HTTP header — not supported as a meta tag -->
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
+    <!--
+      Preconnect para acelerar a conexão com o Google Fonts.
+      A folha de estilo da fonte "Baloo Thambi 2" (e "Poppins") é injetada
+      automaticamente pelo unplugin-fonts de forma NÃO bloqueante
+      (rel="preload" + display=swap), então não há <link rel="stylesheet">
+      manual aqui para evitar requisição que bloqueia a renderização.
+    -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@400..800&display=swap"
-      rel="stylesheet"
-    />
     <title>We Party</title>
   </head>
   <body>

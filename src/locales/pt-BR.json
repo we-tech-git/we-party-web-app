@@ -23,6 +23,16 @@
       "invalid": {
         "email": "E-mail inválido"
       }
+    },
+    "snackbar": {
+      "invalidEmail": "Por favor, insira um email válido",
+      "missingFieldsPrefix": "Campos obrigatórios: {fields}",
+      "missingFields": "Por favor, preencha todos os campos obrigatórios",
+      "success": "Login realizado com sucesso! 🎉",
+      "genericError": "Erro ao fazer login. Verifique suas credenciais.",
+      "googleSuccess": "✅ Login com Google realizado! 🎉",
+      "googleProcessError": "Erro ao processar resposta do login",
+      "googleGenericError": "Erro ao fazer login com Google"
     }
   },
   "signup": {
@@ -40,7 +50,8 @@
       "lowercase": "Pelo menos uma letra minúscula",
       "uppercase": "Pelo menos uma letra maiúscula",
       "minChars": "Pelo menos 10 caracteres",
-      "specialChar": "Pelo menos um caractere especial"
+      "specialChar": "Pelo menos um caractere especial",
+      "number": "Pelo menos um número"
     },
     "errors": {
       "required": {
@@ -59,7 +70,11 @@
       },
       "invalidForm": "Revise os campos obrigatórios antes de continuar",
       "success": "Cadastro realizado! Redirecionando para o login...",
-      "failure": "Não foi possível concluir o cadastro. Tente novamente."
+      "failure": "Não foi possível concluir o cadastro. Tente novamente.",
+      "termsRequired": "Você precisa aceitar os Termos de Uso para continuar.",
+      "googleAuthenticating": "Cadastrando com Google...",
+      "googleSuccess": "Cadastro com Google realizado com sucesso! 🎉",
+      "googleGenericError": "Erro ao fazer cadastro com Google"
     }
   },
   "feed": {
@@ -161,7 +176,8 @@
     "invalidPin": "Código inválido. Tente novamente.",
     "verifyError": "Erro ao verificar código. Tente novamente.",
     "pinSent": "Código enviado com sucesso!",
-    "resendError": "Erro ao reenviar código. Tente novamente."
+    "resendError": "Erro ao reenviar código. Tente novamente.",
+    "emailNotIdentified": "Email não identificado."
   },
   "form": {
     "loading": "Carregando...",
@@ -182,7 +198,7 @@
   },
   "verifyPin": {
     "title": "Verificar Código",
-    "subtitle": "Enviamos o link de redefinição para o email <b>{email}</b>. <br/><br/> Basta clicar no link do email para criar uma nova senha.",
+    "subtitle": "Enviamos o link de redefinição para o email {email}.{lineBreak}Basta clicar no link do email para criar uma nova senha.",
     "button": "Verificar",
     "btn_back_to_login": "Voltar ao login",
     "errors": {
@@ -336,7 +352,12 @@
       "requestError": "Erro ao enviar solicitação. Tente novamente.",
       "fileSizeError": "A imagem deve ter no máximo 5MB",
       "fileTypeError": "Por favor, selecione apenas arquivos de imagem",
-      "loadProfileError": "Erro ao carregar dados do perfil"
+      "loadProfileError": "Erro ao carregar dados do perfil",
+      "unfollowSuccess": "Você deixou de seguir {name}",
+      "followSuccess": "Você começou a seguir {name}",
+      "followUpdateError": "Erro ao atualizar. Tente novamente.",
+      "cancelAttendanceSuccess": "Presença cancelada com sucesso!",
+      "cancelAttendanceError": "Erro ao cancelar presença"
     },
     "months": {
       "january": "Janeiro",
@@ -384,6 +405,13 @@
       "loading": "Carregando...",
       "empty": "Você ainda não segue ninguém",
       "unfollow": "Deixar de seguir"
+    }
+  },
+  "loginRequiredDialog": {
+    "snackbar": {
+      "googleAuthenticating": "Autenticando com Google...",
+      "googleSuccess": "Login com Google realizado com sucesso! 🎉",
+      "googleGenericError": "Erro ao fazer login com Google"
     }
   }
 }

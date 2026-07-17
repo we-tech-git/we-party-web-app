@@ -1,6 +1,6 @@
 <!--
   Componente: SocialAuthButtons.vue
-  Descrição: Botões de autenticação social (Google, Facebook, Email)
+  Descrição: Botões de autenticação social (Google, Email)
   OAuth: Google usa SDK nativo com ID Token flow para máxima segurança
 -->
 <script setup lang="ts">
@@ -24,7 +24,6 @@
 
   const emit = defineEmits<{
     'google-auth': []
-    'facebook-auth': []
     'email-auth': []
     'google-success': [data: any]
     'google-error': [error: any]
@@ -32,7 +31,6 @@
 
   const isLoading = ref({
     google: false,
-    facebook: false,
   })
 
   const { login } = useAuth()
@@ -210,19 +208,6 @@
     }
   }
 
-  async function _handleFacebookAuth () {
-    if (isLoading.value.facebook) return
-    isLoading.value.facebook = true
-
-    try {
-      emit('facebook-auth')
-    } finally {
-      setTimeout(() => {
-        isLoading.value.facebook = false
-      }, 1000)
-    }
-  }
-
   function _handleEmailAuth () {
     emit('email-auth')
   }
@@ -372,11 +357,6 @@
   background: #f8f9ff;
 }
 
-.facebook-btn:hover {
-  border-color: #1877F2;
-  background: #f0f7ff;
-}
-
 .email-btn {
   color: #ff5fa6;
 }
@@ -385,8 +365,6 @@
   border-color: #ff5fa6;
   background: #fff5f9;
 }
-
-
 
 /* Responsivo */
 @media (max-width: 640px) {

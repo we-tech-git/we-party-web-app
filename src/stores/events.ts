@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { unwrapList } from '@/api'
 import {
   cancelAttendance,
   confirmAttendance,
@@ -37,6 +38,31 @@ export interface FeedItem {
   commentsCount?: number
   sourceUrl?: string
   images?: ImageOption[]
+}
+
+/**
+ * Resolve a data/horário de exibição do evento a partir dos possíveis
+ * campos retornados pela API. Mesma lógica usada em Feed.vue (P19: o
+ * mapeador de favoritos não calculava esse campo, ficava sempre vazio).
+ */
+function resolveSchedule (event: any): string {
+  const candidates = [
+    event.date,
+    event.startDate,
+    event.dateTime,
+    event.startAt,
+    event.eventDate,
+    event.start_date,
+    event.schedule,
+  ]
+  for (const val of candidates) {
+    if (!val) continue
+    const parsed = new Date(val)
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+    }
+  }
+  return 'Data a definir'
 }
 
 function sanitizeSavedEvents (items: FeedItem[]) {
@@ -200,19 +226,9 @@ export const useEventsStore = defineStore('events', () => {
   async function syncFavoritesWithServer () {
     try {
       const response = await getFavoriteEvents(1, 100)
-      const data = response.data
 
-      // Tenta extrair eventos de diferentes estruturas de resposta
-      let events: any[] = []
-      if (data?.data?.events) {
-        events = data.data.events
-      } else if (data?.events) {
-        events = data.events
-      } else if (Array.isArray(data?.data)) {
-        events = data.data
-      } else if (Array.isArray(data)) {
-        events = data
-      }
+      // Extrai eventos da resposta (unwrapList aceita os envelopes conhecidos)
+      const events = unwrapList<any>(response, 'events')
 
       // Mapeia os eventos da API para o formato FeedItem
       const mappedEvents: FeedItem[] = events.map((evt: any) => ({
@@ -230,14 +246,16 @@ export const useEventsStore = defineStore('events', () => {
           || evt.hostAvatar
           || evt.creator?.profileImage
           || '',
-        schedule: '',
+        schedule: resolveSchedule(evt),
         location: evt.location || evt.address || '',
         title: evt.name || evt.title || '',
         description: evt.description || '',
         confirmed: evt.confirmedCount || evt._count?.attendances || 0,
         interested: evt.interestedCount || 0,
         likes: evt.likesCount || evt.likes || 0,
-        interests: [],
+        interests: (evt.eventInterests || evt.interests || evt.categories || evt.tags || [])
+          .map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name)
+          .filter(Boolean),
         commentsCount: evt.commentsCount ?? evt._count?.comments ?? 0,
       }))
 
@@ -256,19 +274,9 @@ export const useEventsStore = defineStore('events', () => {
   async function syncLikedEventsWithServer () {
     try {
       const response = await getLikedEvents(1, 100)
-      const data = response.data
 
-      // Tenta extrair eventos de diferentes estruturas de resposta
-      let events: any[] = []
-      if (data?.data?.events) {
-        events = data.data.events
-      } else if (data?.events) {
-        events = data.events
-      } else if (Array.isArray(data?.data)) {
-        events = data.data
-      } else if (Array.isArray(data)) {
-        events = data
-      }
+      // Extrai eventos da resposta (unwrapList aceita os envelopes conhecidos)
+      const events = unwrapList<any>(response, 'events')
 
       // Extrai apenas os IDs dos eventos curtidos
       likedEvents.value = events.map((evt: any) => String(evt.id))

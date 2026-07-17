@@ -1,3 +1,14 @@
+/**
+ * STATUS: utilitário disponível, porém NÃO ativado (auditoria 2026-07).
+ *
+ * Rate limiting client-side (localStorage) serve apenas como UX/dissuasão —
+ * é facilmente burlável e NÃO substitui proteção anti-brute-force no backend.
+ * Por isso não está plugado ao fluxo de login: evita bloquear indevidamente
+ * usuários legítimos. Mantido para uso futuro consciente. O antigo
+ * useThrottle.ts foi removido em favor de @vueuse/core (useThrottleFn);
+ * ver a política central de tempos em constants/timing.ts.
+ */
+
 import { computed, ref } from 'vue'
 
 interface RateLimitConfig {

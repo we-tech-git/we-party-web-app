@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import { ref } from 'vue'
+  import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
@@ -7,6 +8,7 @@
   import { socialAuthService } from '@/services/socialAuth'
   import { logger } from '@/utils/logger'
 
+  const { t } = useI18n()
   const router = useRouter()
   const {
     showLoginRequiredDialog,
@@ -37,43 +39,24 @@
 
   async function handleGoogleAuth () {
     try {
-      showSnackbar('Autenticando com Google...', '#4285F4')
+      showSnackbar(t('loginRequiredDialog.snackbar.googleAuthenticating'), '#4285F4')
       const result = await socialAuthService.loginWithGoogle()
 
       if (result.success) {
-        showSnackbar('Login com Google realizado com sucesso! 🎉', '#22c55e')
+        showSnackbar(t('loginRequiredDialog.snackbar.googleSuccess'), '#22c55e')
         closeDialog()
         setTimeout(() => {
           router.push('/private/feed')
         }, 1500)
       } else {
-        showSnackbar(result.message || 'Erro ao fazer login com Google', '#ef4444')
+        showSnackbar(result.message || t('loginRequiredDialog.snackbar.googleGenericError'), '#ef4444')
       }
     } catch (error: any) {
       logger.error('Erro na autenticação Google:', error)
-      showSnackbar(error.message || 'Erro ao fazer login com Google', '#ef4444')
+      showSnackbar(error.message || t('loginRequiredDialog.snackbar.googleGenericError'), '#ef4444')
     }
   }
 
-  async function handleFacebookAuth () {
-    try {
-      showSnackbar('Autenticando com Facebook...', '#1877F2')
-      const result = await socialAuthService.loginWithFacebook()
-
-      if (result.success) {
-        showSnackbar('Login com Facebook realizado com sucesso! 🎉', '#22c55e')
-        closeDialog()
-        setTimeout(() => {
-          router.push('/private/feed')
-        }, 1500)
-      } else {
-        showSnackbar(result.message || 'Erro ao fazer login com Facebook', '#ef4444')
-      }
-    } catch (error: any) {
-      logger.error('Erro na autenticação Facebook:', error)
-      showSnackbar(error.message || 'Erro ao fazer login com Facebook', '#ef4444')
-    }
-  }
 </script>
 
 <template>
@@ -144,7 +127,6 @@
           <SocialAuthButtons
             mode="login"
             :show-email="false"
-            @facebook-auth="handleFacebookAuth"
             @google-auth="handleGoogleAuth"
           />
 
