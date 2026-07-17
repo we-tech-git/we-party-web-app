@@ -977,6 +977,7 @@
           </div>
           <div class="footer-links">
             <a href="#sobre">Sobre</a>
+            <button class="footer-link-btn" type="button" @click="router.push('/public/updates')">Novidades</button>
             <button class="footer-link-btn" type="button" @click="openTermsModal('terms')">Termos de Uso</button>
             <button class="footer-link-btn" type="button" @click="openTermsModal('privacy')">Privacidade</button>
           </div>
