@@ -14,7 +14,9 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(awk '/interface FontsourceFonts|interface BaseFontsourceFontFamily|interface GoogleFonts/{flag=1} flag{print} /^}/{if\\(flag\\)c++; if\\(c>=1 && flag && /^}/\\){flag=0}}' node_modules/unplugin-fonts/dist/types.d.ts)",
-      "Bash(yarn build *)"
+      "Bash(yarn build *)",
+      "WebFetch(domain:pagespeed.web.dev)",
+      "Bash(sort -k5 -rn)"
     ]
   }
 }
