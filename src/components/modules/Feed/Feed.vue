@@ -362,6 +362,10 @@
     const calculatedHostName = event.organizer?.name || event.hostName || event.creator?.name || 'Organizador'
 
     const likesCount = resolveLikesCount(event)
+    // Registra a contagem apenas uma vez (fonte única de verdade no store),
+    // evitando recalcular "+1 se curtido" sobre um valor que já pode incluir
+    // a curtida do próprio usuário.
+    eventsStore.registerLikeCount(event.id, likesCount)
 
     // Extrai interesses do evento
     const eventInterests = (event.eventInterests || event.interests || event.categories || event.tags || [])
@@ -661,12 +665,16 @@
         : await getTrendingEvents()
       const data = unwrapList<any>(response, 'events')
 
-      trends.value = data.map((evt: any) => ({
-        id: evt.id,
-        title: evt.name || evt.title || 'Evento sem nome',
-        highlight: evt.location || evt.city || t('feed.trending.cityHighlight'),
-        baseCount: evt.likesCount || evt.likes || evt._count?.likes || evt.confirmedCount || 0,
-      }))
+      trends.value = data.map((evt: any) => {
+        const baseCount = evt.likesCount || evt.likes || evt._count?.likes || evt.confirmedCount || 0
+        eventsStore.registerLikeCount(evt.id, baseCount)
+        return {
+          id: evt.id,
+          title: evt.name || evt.title || 'Evento sem nome',
+          highlight: evt.location || evt.city || t('feed.trending.cityHighlight'),
+          baseCount,
+        }
+      })
     } catch (error) {
       logger.error('Error fetching trends', error)
     } finally {
@@ -677,8 +685,7 @@
 
   const displayedTrends = computed(() => {
     return trends.value.map(item => {
-      const isLiked = eventsStore.isLiked(item.id)
-      const total = item.baseCount + (isLiked ? 1 : 0)
+      const total = eventsStore.getLikeCount(item.id, item.baseCount)
       return {
         id: item.id,
         title: item.title,
@@ -1282,7 +1289,7 @@
             :interests="item.interests"
             :is-saved="eventsStore.isSaved(item.id)"
             :liked="eventsStore.isLiked(item.id)"
-            :likes="(item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0)"
+            :likes="eventsStore.getLikeCount(item.id, item.likes || 0)"
             :location="item.location"
             :matched-interests="item.matchedInterests"
             :priority="index < 2"

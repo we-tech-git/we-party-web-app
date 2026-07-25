@@ -15,6 +15,7 @@ declare module 'vue' {
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     AppLoader: typeof import('./components/UI/AppLoader/AppLoader.vue')['default']
     AuthLayout: typeof import('./components/UI/AuthLayout/AuthLayout.vue')['default']
+    CommentNode: typeof import('./components/modules/Feed/CommentNode.vue')['default']
     CommentsDrawer: typeof import('./components/modules/Feed/CommentsDrawer.vue')['default']
     Congratulations: typeof import('./components/modules/Congratulations/Congratulations.vue')['default']
     ErrorBoundary: typeof import('./components/UI/ErrorBoundary/ErrorBoundary.vue')['default']

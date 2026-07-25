@@ -147,7 +147,9 @@
         }
 
         showSnackbar(t('login.snackbar.success'), '#22c55e')
-        router.push('/private/feed')
+        setTimeout(() => {
+          router.push('/private/feed')
+        }, 1500)
       } else {
         // Extrai a mensagem de erro da resposta, como "Email não verificado"
         // (falha lógica: HTTP 200 com success=false — o corpo está em response.data)
@@ -225,7 +227,9 @@
       // Mostra sucesso e redireciona
       showSnackbar(t('login.snackbar.googleSuccess'), '#22c55e')
       logger.log('[GOOGLE AUTH] 🎉 Redirecionando para /private/feed')
-      router.push('/private/feed')
+      setTimeout(() => {
+        router.push('/private/feed')
+      }, 1500)
     } catch (error: any) {
       logger.error('[GOOGLE AUTH] ❌ Erro ao processar sucesso:', error)
       showSnackbar(t('login.snackbar.googleProcessError'), '#ef4444')

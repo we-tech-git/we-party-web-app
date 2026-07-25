@@ -23,7 +23,11 @@ export function getEventComments (eventId: string | number) {
 }
 
 /**
- * Adiciona um comentário a um evento.
+ * Adiciona um comentário raiz a um evento.
+ *
+ * @param parentCommentId - forma legada de responder, mantida para
+ * CommentsDrawer/EventDetails, que ainda não migraram. Para respostas
+ * aninhadas prefira `replyToComment`.
  */
 export function addEventComment (eventId: string | number, content: string, parentCommentId?: string) {
   const body: Record<string, any> = { content }
@@ -34,6 +38,14 @@ export function addEventComment (eventId: string | number, content: string, pare
 }
 
 /**
+ * Responde a um comentário existente, criando um nó filho na árvore.
+ * O backend rejeita com 400 se o pai já estiver no nível MAX_COMMENT_DEPTH.
+ */
+export function replyToComment (eventId: string | number, commentId: string, content: string) {
+  return callApi('POST', `/events/${eventId}/comments/${commentId}/reply`, { content }, true)
+}
+
+/**
  * Exclui um comentário de um evento.
  */
 export function deleteEventComment (eventId: string | number, commentId: string) {
@@ -41,8 +53,16 @@ export function deleteEventComment (eventId: string | number, commentId: string)
 }
 
 /**
- * Curtir / descurtir um comentário.
+ * Curtir / descurtir um comentário (toggle).
  */
 export function toggleLikeComment (eventId: string | number, commentId: string) {
   return callApi('POST', `/events/${eventId}/comments/${commentId}/like`, undefined, true)
+}
+
+/**
+ * Lista os likes de um comentário, paginado. A resposta traz também a
+ * contagem total e se o usuário logado curtiu.
+ */
+export function getCommentLikes (eventId: string | number, commentId: string, page = 1, limit = 10) {
+  return callApi('GET', `/events/${eventId}/comments/${commentId}/likes?page=${page}&limit=${limit}`, undefined, true)
 }

@@ -1479,7 +1479,9 @@
 
   const baseLikes = ref(0)
   const baseGoing = ref(0)
-  const likeCount = computed(() => baseLikes.value + (liked.value ? 1 : 0))
+  // Contagem canônica compartilhada com o Feed via store — evita somar
+  // "+1 se curtido" sobre um valor que a API pode já incluir a própria curtida.
+  const likeCount = computed(() => eventsStore.getLikeCount(event.value.id, baseLikes.value))
   const goingCount = computed(() => baseGoing.value + (rsvped.value ? 1 : 0))
 
   // ── Localização do usuário (mesmo composable do Feed) ────────
@@ -1815,6 +1817,8 @@
   const trendIsExpanded = computed(() => visibleCount.value > TREND_INITIAL_COUNT)
 
   function mapTrend (e: any, i: number): TrendVM {
+    const likes = e.likesCount || e.likes || e._count?.likes || 0
+    eventsStore.registerLikeCount(e.id, likes)
     return {
       id: e.id,
       initial: (e.name || e.title || 'E').charAt(0).toUpperCase(),
@@ -1824,7 +1828,7 @@
       ),
       venue: e.location || e.city || 'Em alta',
       title: e.name || e.title || 'Evento',
-      likes: e.likesCount || e.likes || e._count?.likes || 0,
+      likes: eventsStore.getLikeCount(e.id, likes),
     }
   }
 
@@ -1866,6 +1870,8 @@
   // ── Carregamento do evento ───────────────────────────────────
   function applyCounters (data: any) {
     baseLikes.value = data?.likesCount || data?._count?.likes || data?.likes || 0
+    const id = data?.id ?? event.value.id
+    if (id) eventsStore.registerLikeCount(id, baseLikes.value)
     baseGoing.value = data?.confirmedCount || data?._count?.attendances || data?.confirmed || 0
   }
 
@@ -1874,7 +1880,9 @@
     try {
       const res: any = await getMyAttendance(event.value.id)
       const data = res?.data || res
-      const attending = data?.status === 'CONFIRMED' || data?.status === 'INTERESTED' || data?.isAttending || false
+      // O status é o mesmo enum aceito pelo PUT /attendance: GOING, INTERESTED
+      // ou NOT_GOING (mantemos "CONFIRMED" também por segurança/compat).
+      const attending = data?.status === 'GOING' || data?.status === 'CONFIRMED' || data?.status === 'INTERESTED' || data?.isAttending || false
       eventsStore.setConfirmed(event.value.id, attending)
     } catch (error) {
       console.warn('Não foi possível sincronizar presença:', error)
