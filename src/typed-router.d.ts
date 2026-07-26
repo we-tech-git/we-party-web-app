@@ -34,6 +34,7 @@ declare module 'vue-router/auto-routes' {
     '/public/RequestPassword': RouteRecordInfo<'/public/RequestPassword', '/public/RequestPassword', Record<never, never>, Record<never, never>>,
     '/public/ResetPassword': RouteRecordInfo<'/public/ResetPassword', '/public/ResetPassword', Record<never, never>, Record<never, never>>,
     '/public/Signup': RouteRecordInfo<'/public/Signup', '/public/Signup', Record<never, never>, Record<never, never>>,
+    '/public/updates': RouteRecordInfo<'/public/updates', '/public/updates', Record<never, never>, Record<never, never>>,
     '/public/VerifyPin': RouteRecordInfo<'/public/VerifyPin', '/public/VerifyPin', Record<never, never>, Record<never, never>>,
   }
 
@@ -110,6 +111,10 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/public/Signup.vue': {
       routes: '/public/Signup'
+      views: never
+    }
+    'src/pages/public/updates.vue': {
+      routes: '/public/updates'
       views: never
     }
     'src/pages/public/VerifyPin.vue': {

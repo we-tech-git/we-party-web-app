@@ -35,6 +35,7 @@ declare module 'vue' {
     Login: typeof import('./components/modules/Login/Login.vue')['default']
     LoginRequiredDialog: typeof import('./components/UI/LoginRequiredDialog/LoginRequiredDialog.vue')['default']
     NewEventDetails: typeof import('./components/modules/Feed/NewEventDetails.vue')['default']
+    NewsUpdates: typeof import('./components/modules/NewsUpdates/NewsUpdates.vue')['default']
     NotFound: typeof import('./components/modules/NotFound/NotFound.vue')['default']
     Profile: typeof import('./components/modules/Profile/Profile.vue')['default']
     RequestPassword: typeof import('./components/modules/PasswordRecovery/RequestPassword.vue')['default']
