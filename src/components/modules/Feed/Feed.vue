@@ -632,6 +632,10 @@
         fetchUserInterests(),
         fetchUserProfileData(),
       ])
+      // Restaura quais eventos o usuário já curtiu (o estado de likes é
+      // em memória e some ao recarregar a página, então precisa ser
+      // resincronizado com o servidor a cada montagem do feed)
+      if (!eventsStore.isInitialized.liked) eventsStore.syncLikedEventsWithServer()
     }
 
     // Captura a localização uma vez por sessão antes de buscar eventos
@@ -666,8 +670,14 @@
       const data = unwrapList<any>(response, 'events')
 
       trends.value = data.map((evt: any) => {
+        // NÃO registra no store compartilhado: o endpoint de trending é só leitura
+        // (sem botão de curtir) e usa um fallback mais fraco que o da listagem
+        // principal. Registrar aqui fazia os dois fetches (feed x trends) competirem
+        // por qual valor "vence" no cache compartilhado — quem respondesse primeiro
+        // travava um número que podia divergir do real, variando a cada refresh.
+        // `getLikeCount` abaixo já usa `baseCount` como fallback quando o feed
+        // principal ainda não registrou o evento.
         const baseCount = evt.likesCount || evt.likes || evt._count?.likes || evt.confirmedCount || 0
-        eventsStore.registerLikeCount(evt.id, baseCount)
         return {
           id: evt.id,
           title: evt.name || evt.title || 'Evento sem nome',

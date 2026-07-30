@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import type { CommentNodeData, CommentTreeContext } from './commentTree'
-  import { computed, nextTick, provide, ref, watch } from 'vue'
+  import { computed, nextTick, onMounted, provide, ref, watch } from 'vue'
   import { unwrapList } from '@/api'
   import {
     addEventComment,
@@ -222,6 +222,13 @@
 
   watch(() => props.visible, val => {
     if (val) fetchComments()
+  })
+
+  // Busca a contagem real assim que o card monta no feed, sem esperar o
+  // usuário abrir o painel — o `commentsCount` que vem da listagem de
+  // eventos é só um valor inicial e pode estar desatualizado.
+  onMounted(() => {
+    if (!props.visible) fetchComments()
   })
 </script>
 

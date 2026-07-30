@@ -307,8 +307,15 @@ export const useEventsStore = defineStore('events', () => {
       // Extrai eventos da resposta (unwrapList aceita os envelopes conhecidos)
       const events = unwrapList<any>(response, 'events')
 
-      // Extrai apenas os IDs dos eventos curtidos
-      likedEvents.value = events.map((evt: any) => String(evt.id))
+      // Mescla em vez de substituir: essa chamada não é aguardada por quem a
+      // invoca, então o usuário pode clicar em curtir (optimistic update)
+      // enquanto o GET ainda está em voo. Sobrescrever likedEvents.value
+      // diretamente derrubava esse clique assim que a resposta (mais antiga
+      // que o clique) chegasse — a curtida sumia da tela mesmo tendo sido
+      // enviada ao servidor.
+      const serverLikedIds = events.map((evt: any) => String(evt.id))
+      const merged = new Set([...likedEvents.value.map(String), ...serverLikedIds])
+      likedEvents.value = [...merged]
       isInitialized.value.liked = true
     } catch (error: any) {
       // Falha silenciosamente se o endpoint não existir (404)
