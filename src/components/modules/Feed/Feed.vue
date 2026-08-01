@@ -362,6 +362,10 @@
     const calculatedHostName = event.organizer?.name || event.hostName || event.creator?.name || 'Organizador'
 
     const likesCount = resolveLikesCount(event)
+    // Registra a contagem apenas uma vez (fonte única de verdade no store),
+    // evitando recalcular "+1 se curtido" sobre um valor que já pode incluir
+    // a curtida do próprio usuário.
+    eventsStore.registerLikeCount(event.id, likesCount)
 
     // Extrai interesses do evento
     const eventInterests = (event.eventInterests || event.interests || event.categories || event.tags || [])
@@ -628,6 +632,10 @@
         fetchUserInterests(),
         fetchUserProfileData(),
       ])
+      // Restaura quais eventos o usuário já curtiu (o estado de likes é
+      // em memória e some ao recarregar a página, então precisa ser
+      // resincronizado com o servidor a cada montagem do feed)
+      if (!eventsStore.isInitialized.liked) eventsStore.syncLikedEventsWithServer()
     }
 
     // Captura a localização uma vez por sessão antes de buscar eventos
@@ -661,12 +669,22 @@
         : await getTrendingEvents()
       const data = unwrapList<any>(response, 'events')
 
-      trends.value = data.map((evt: any) => ({
-        id: evt.id,
-        title: evt.name || evt.title || 'Evento sem nome',
-        highlight: evt.location || evt.city || t('feed.trending.cityHighlight'),
-        baseCount: evt.likesCount || evt.likes || evt._count?.likes || evt.confirmedCount || 0,
-      }))
+      trends.value = data.map((evt: any) => {
+        // NÃO registra no store compartilhado: o endpoint de trending é só leitura
+        // (sem botão de curtir) e usa um fallback mais fraco que o da listagem
+        // principal. Registrar aqui fazia os dois fetches (feed x trends) competirem
+        // por qual valor "vence" no cache compartilhado — quem respondesse primeiro
+        // travava um número que podia divergir do real, variando a cada refresh.
+        // `getLikeCount` abaixo já usa `baseCount` como fallback quando o feed
+        // principal ainda não registrou o evento.
+        const baseCount = evt.likesCount || evt.likes || evt._count?.likes || evt.confirmedCount || 0
+        return {
+          id: evt.id,
+          title: evt.name || evt.title || 'Evento sem nome',
+          highlight: evt.location || evt.city || t('feed.trending.cityHighlight'),
+          baseCount,
+        }
+      })
     } catch (error) {
       logger.error('Error fetching trends', error)
     } finally {
@@ -677,8 +695,7 @@
 
   const displayedTrends = computed(() => {
     return trends.value.map(item => {
-      const isLiked = eventsStore.isLiked(item.id)
-      const total = item.baseCount + (isLiked ? 1 : 0)
+      const total = eventsStore.getLikeCount(item.id, item.baseCount)
       return {
         id: item.id,
         title: item.title,
@@ -1282,7 +1299,7 @@
             :interests="item.interests"
             :is-saved="eventsStore.isSaved(item.id)"
             :liked="eventsStore.isLiked(item.id)"
-            :likes="(item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0)"
+            :likes="eventsStore.getLikeCount(item.id, item.likes || 0)"
             :location="item.location"
             :matched-interests="item.matchedInterests"
             :priority="index < 2"

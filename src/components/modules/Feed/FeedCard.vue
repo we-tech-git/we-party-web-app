@@ -194,7 +194,7 @@
       <span>#</span>{{ rank }}
     </div>
 
-    <figure class="media" :class="{ 'comments-open': showComments }">
+    <figure class="media">
       <!-- Banner Image -->
       <img
         v-if="eventImages.desktop || bannerSrc"
@@ -697,13 +697,6 @@
   overflow: hidden;
   transform: translateZ(0);
   background: #07091a;
-  transition: border-radius 0.3s ease;
-}
-
-/* Quando os comentários estão abertos, os cantos de baixo ficam retos
-   para emendar com o painel de comentários e parecer um card único */
-.media.comments-open {
-  border-radius: 22px 22px 0 0;
 }
 
 .banner {

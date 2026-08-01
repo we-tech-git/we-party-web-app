@@ -85,6 +85,10 @@ export const useEventsStore = defineStore('events', () => {
   const savedEvents = ref<FeedItem[]>([])
   const likedEvents = ref<EventId[]>([])
   const confirmedEvents = ref<EventId[]>([])
+  // Contagem canônica de curtidas por evento, compartilhada entre feed/detalhes
+  // para evitar que cada tela some "+1 se curtido" sobre um valor que a API
+  // de origem pode ou não já incluir a curtida do próprio usuário.
+  const likeCounts = ref<Record<string, number>>({})
 
   // Limpa localStorage legado (se houver)
   if (typeof localStorage !== 'undefined') {
@@ -147,6 +151,10 @@ export const useEventsStore = defineStore('events', () => {
       likedEvents.value.splice(index, 1)
     }
 
+    // Ajusta a contagem canônica na mesma direção do toggle
+    const currentCount = likeCounts.value[normalizedId] ?? 0
+    likeCounts.value[normalizedId] = Math.max(0, currentCount + (isAdding ? 1 : -1))
+
     try {
       await toggleLikeEvent(id)
     } catch (error) {
@@ -160,6 +168,9 @@ export const useEventsStore = defineStore('events', () => {
       } else if (!isAdding && revertIndex === -1) {
         likedEvents.value.push(normalizedId)
       }
+
+      const revertedCount = likeCounts.value[normalizedId] ?? 0
+      likeCounts.value[normalizedId] = Math.max(0, revertedCount + (isAdding ? -1 : 1))
     }
   }
 
@@ -168,6 +179,24 @@ export const useEventsStore = defineStore('events', () => {
     return likedEvents.value.some(
       likedId => String(likedId) === normalizedId,
     )
+  }
+
+  /**
+   * Registra a contagem "base" de curtidas vinda da API para um evento,
+   * apenas se ainda não houver uma contagem conhecida. Isso garante uma
+   * única fonte de verdade compartilhada entre feed e telas de detalhe,
+   * em vez de cada tela recalcular "+1 se curtido" sobre o próprio valor.
+   */
+  function registerLikeCount (id: EventId, count: number) {
+    const normalizedId = String(id)
+    if (likeCounts.value[normalizedId] === undefined) {
+      likeCounts.value[normalizedId] = count
+    }
+  }
+
+  function getLikeCount (id: EventId, fallback = 0) {
+    const normalizedId = String(id)
+    return likeCounts.value[normalizedId] ?? fallback
   }
 
   async function toggleConfirm (id: EventId) {
@@ -278,8 +307,15 @@ export const useEventsStore = defineStore('events', () => {
       // Extrai eventos da resposta (unwrapList aceita os envelopes conhecidos)
       const events = unwrapList<any>(response, 'events')
 
-      // Extrai apenas os IDs dos eventos curtidos
-      likedEvents.value = events.map((evt: any) => String(evt.id))
+      // Mescla em vez de substituir: essa chamada não é aguardada por quem a
+      // invoca, então o usuário pode clicar em curtir (optimistic update)
+      // enquanto o GET ainda está em voo. Sobrescrever likedEvents.value
+      // diretamente derrubava esse clique assim que a resposta (mais antiga
+      // que o clique) chegasse — a curtida sumia da tela mesmo tendo sido
+      // enviada ao servidor.
+      const serverLikedIds = events.map((evt: any) => String(evt.id))
+      const merged = new Set([...likedEvents.value.map(String), ...serverLikedIds])
+      likedEvents.value = [...merged]
       isInitialized.value.liked = true
     } catch (error: any) {
       // Falha silenciosamente se o endpoint não existir (404)
@@ -299,6 +335,7 @@ export const useEventsStore = defineStore('events', () => {
     savedEvents.value = []
     likedEvents.value = []
     confirmedEvents.value = []
+    likeCounts.value = {}
     // Limpa localStorage legado se existir
     localStorage.removeItem('weparty_confirmed_events')
     isInitialized.value = {
@@ -315,6 +352,9 @@ export const useEventsStore = defineStore('events', () => {
     likedEvents,
     toggleLike,
     isLiked,
+    likeCounts,
+    registerLikeCount,
+    getLikeCount,
     confirmedEvents,
     toggleConfirm,
     setConfirmed,

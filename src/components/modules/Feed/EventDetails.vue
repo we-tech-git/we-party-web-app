@@ -318,7 +318,7 @@
     return comment.isLikedByMe ?? false
   }
 
-  function _commentLikesCount (comment: Comment): number {
+  function commentLikesCount (comment: Comment): number {
     const base = comment.likesCount || 0
     const delta = localLikeDelta.value[comment.id] || 0
     return Math.max(0, base + delta)
@@ -479,7 +479,7 @@
     }
   }
 
-  async function _handleToggleLikeComment (comment: Comment) {
+  async function handleToggleLikeComment (comment: Comment) {
     if (likingCommentId.value === comment.id) return
 
     const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
@@ -673,7 +673,11 @@
       contactInfo: data?.contactInfo || 'Informações de contato não disponíveis.',
       categories: data?.categories || data?.tags || (data?.eventInterests || []).map((i: any) => i.interest?.name).filter(Boolean) || [],
       confirmedCount: data?.confirmedCount || data?.confirmed || 0,
-      likes: data?.likes || data?._count?.likes || 0,
+      likes: (() => {
+        const likes = data?.likes || data?._count?.likes || 0
+        if (data?.id) eventsStore.registerLikeCount(data.id, likes)
+        return likes
+      })(),
       organizer: {
         name: data?.organizer?.name || data?.hostName || data?.creator?.name || 'Organizador',
         avatar: data?.organizer?.avatar || data?.hostAvatar || data?.creator?.profileImage || '',
@@ -688,7 +692,7 @@
   const isSaved = computed(() => eventsStore.isSaved(event.value.id))
   const isConfirmed = computed(() => eventsStore.isConfirmed(event.value.id))
   const displayLikes = computed(() => {
-    return (event.value.likes || 0) + (isLiked.value ? 1 : 0)
+    return eventsStore.getLikeCount(event.value.id, event.value.likes || 0)
   })
 
   const displayConfirmed = computed(() => {
@@ -837,9 +841,10 @@
       const response = await getMyAttendance(eventId)
       const data = response?.data || response
 
-      // Verifica se há dados de presença retornados
-      // O endpoint retorna status: "INTERESTED" ou "CONFIRMED"
-      const isAttending = data?.status === 'CONFIRMED' || data?.status === 'INTERESTED' || data?.isAttending || false
+      // Verifica se há dados de presença retornados.
+      // O status é o mesmo enum aceito pelo PUT /attendance: GOING, INTERESTED
+      // ou NOT_GOING (mantemos "CONFIRMED" também por segurança/compat).
+      const isAttending = data?.status === 'GOING' || data?.status === 'CONFIRMED' || data?.status === 'INTERESTED' || data?.isAttending || false
       eventsStore.setConfirmed(eventId, isAttending)
     } catch (error) {
       console.warn('Não foi possível sincronizar status de presença:', error)
@@ -1334,6 +1339,17 @@
 
                   <!-- Actions -->
                   <div class="comment-actions">
+                    <button
+                      class="comment-action-btn like-btn"
+                      :class="{ active: isCommentLiked(comment) }"
+                      :disabled="likingCommentId === comment.id"
+                      type="button"
+                      @click="handleToggleLikeComment(comment)"
+                    >
+                      <i :class="isCommentLiked(comment) ? 'mdi mdi-heart' : 'mdi mdi-heart-outline'" />
+                      <span>{{ commentLikesCount(comment) }}</span>
+                    </button>
+
                     <button
                       v-if="isMyComment(comment)"
                       class="comment-action-btn delete-btn"

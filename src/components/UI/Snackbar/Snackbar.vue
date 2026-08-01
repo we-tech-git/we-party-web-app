@@ -58,16 +58,18 @@
 </script>
 
 <template>
-  <transition name="snackbar-fade">
-    <div v-if="modelValue" class="snackbar-container">
-      <div class="snackbar-content" :style="{ backgroundColor: color }">
-        <span>{{ message }}</span>
-        <button aria-label="Fechar" class="close-btn" type="button" @click="close">
-          &times;
-        </button>
+  <Teleport to="body">
+    <transition name="snackbar-fade">
+      <div v-if="modelValue" class="snackbar-container">
+        <div class="snackbar-content" :style="{ backgroundColor: color }">
+          <span class="snackbar-message">{{ message }}</span>
+          <button aria-label="Fechar" class="close-btn" type="button" @click="close">
+            &times;
+          </button>
+        </div>
       </div>
-    </div>
-  </transition>
+    </transition>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -77,8 +79,8 @@
     left: 50%;
     transform: translateX(-50%);
     z-index: 2000;
-    width: auto;
-    max-width: 500px;
+    width: max-content;
+    max-width: min(500px, calc(100vw - 2rem));
     padding: 0 1rem;
 }
 
@@ -92,6 +94,14 @@
     justify-content: space-between;
     font-family: 'Baloo Thambi 2', sans-serif;
     font-weight: 500;
+}
+
+.snackbar-message {
+    /*
+     * With the container sized to `max-content`, short messages stay on a
+     * single line; only text that would overflow the screen wraps.
+     */
+    line-height: 1.35;
 }
 
 .close-btn {

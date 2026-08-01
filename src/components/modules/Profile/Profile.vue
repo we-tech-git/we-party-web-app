@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { isRequestCanceled, unwrapItem, unwrapList } from '@/api'
 import { followUserById, getFollowStats, getMyFollowers, getMyFollowing, unfollowUserById } from '@/api/follows'
 import { addUserInterest, getInterests, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
-import { deleteUser, getUserInterests, getUserProfile, getUserRecomendations, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
+import { getUserInterests, getUserProfile, getUserRecomendations, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
 import AppFooter from '@/components/AppFooter.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
@@ -1352,36 +1352,13 @@ async function saveProfile() {
   } catch (error: any) {
     // Em caso de erro, não atualiza nada e mantém os valores originais
     showSnackbar(t('profile.messages.profileUpdateError'), '#ef4444')
-    console.error('Erro ao atualizar perfil:', error)
+    console.error('Erro ao atualizar perfil:', {
+      status: error?.response?.status,
+      data: error?.response?.data,
+      message: error?.message,
+    })
   } finally {
     saving.value = false
-  }
-}
-
-// ── Delete Account ──
-const showDeleteModal = ref(false)
-const isDeletingAccount = ref(false)
-
-function openDeleteModal() {
-  showDeleteModal.value = true
-}
-
-function closeDeleteModal() {
-  if (isDeletingAccount.value) return
-  showDeleteModal.value = false
-}
-
-async function handleDeleteAccount() {
-  try {
-    isDeletingAccount.value = true
-    await deleteUser()
-    AuthService.logout()
-    showDeleteModal.value = false
-    showSnackbar(t('profile.deleteAccount.goodbye'), SNACKBAR_COLORS.success)
-    setTimeout(() => router.push('/public/Login'), 1500)
-  } catch {
-    showSnackbar(t('profile.deleteAccount.error'), SNACKBAR_COLORS.error)
-    isDeletingAccount.value = false
   }
 }
 
@@ -2080,18 +2057,6 @@ function handleShareProfile() {
                 <i class="mdi mdi-chevron-right setting-arrow" />
               </div>
             </div>
-
-            <div class="danger-zone-group">
-              <div class="danger-zone-header">
-                <i class="mdi mdi-alert-octagon-outline" />
-                <h4>{{ t('profile.deleteAccount.dangerZone') }}</h4>
-              </div>
-              <p class="danger-zone-desc">{{ t('profile.deleteAccount.dangerZoneDesc') }}</p>
-              <button class="delete-account-btn" type="button" @click="openDeleteModal">
-                <i class="mdi mdi-delete-forever-outline" />
-                {{ t('profile.deleteAccount.button') }}
-              </button>
-            </div>
           </div>
         </div>
       </main>
@@ -2593,43 +2558,6 @@ function handleShareProfile() {
                 <i class="mdi mdi-account-search-outline" />
                 <p>{{ t('profile.followingModal.empty') }}</p>
               </div>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
-    <!-- Delete Account Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showDeleteModal" class="modal-overlay" @click.self="closeDeleteModal">
-          <div class="modal-container delete-modal-container">
-            <div class="delete-modal-icon-wrap">
-              <i class="mdi mdi-alert-circle-outline delete-modal-icon" />
-            </div>
-            <div class="modal-header delete-modal-header">
-              <h2>{{ t('profile.deleteAccount.modalTitle') }}</h2>
-              <button class="modal-close" :disabled="isDeletingAccount" @click="closeDeleteModal">
-                <i class="mdi mdi-close" />
-              </button>
-            </div>
-            <div class="modal-body delete-modal-body">
-              <p class="delete-warning-text">{{ t('profile.deleteAccount.warningText') }}</p>
-              <ul class="delete-consequences">
-                <li><i class="mdi mdi-close-circle" />{{ t('profile.deleteAccount.consequence1') }}</li>
-                <li><i class="mdi mdi-close-circle" />{{ t('profile.deleteAccount.consequence2') }}</li>
-                <li><i class="mdi mdi-close-circle" />{{ t('profile.deleteAccount.consequence3') }}</li>
-              </ul>
-            </div>
-            <div class="modal-footer delete-modal-footer">
-              <button class="btn-cancel" :disabled="isDeletingAccount" @click="closeDeleteModal">
-                {{ t('profile.deleteAccount.cancel') }}
-              </button>
-              <button class="btn-delete-confirm" :disabled="isDeletingAccount" @click="handleDeleteAccount">
-                <i v-if="isDeletingAccount" class="mdi mdi-loading mdi-spin" />
-                <i v-else class="mdi mdi-delete-forever-outline" />
-                {{ isDeletingAccount ? t('profile.deleteAccount.deleting') : t('profile.deleteAccount.confirm') }}
-              </button>
             </div>
           </div>
         </div>
@@ -6136,169 +6064,4 @@ a:focus-visible {
   padding: 0.75rem 0;
 }
 
-/* ── Danger Zone ── */
-.danger-zone-group {
-  margin-top: 1.25rem;
-  border: 1.5px solid rgba(244, 63, 94, 0.25);
-  border-radius: var(--radius-md);
-  padding: 1.25rem 1.5rem;
-  background: rgba(244, 63, 94, 0.03);
-}
-
-.danger-zone-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.danger-zone-header i {
-  font-size: 1.1rem;
-  color: #f43f5e;
-}
-
-.danger-zone-header h4 {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #f43f5e;
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.danger-zone-desc {
-  font-size: 0.82rem;
-  color: #9aa0b8;
-  margin: 0 0 1rem;
-  line-height: 1.5;
-}
-
-.delete-account-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.55rem 1.25rem;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid #f43f5e;
-  background: transparent;
-  color: #f43f5e;
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.delete-account-btn:hover {
-  background: #f43f5e;
-  color: #fff;
-}
-
-/* ── Delete Account Modal ── */
-.delete-modal-container {
-  max-width: 440px;
-  text-align: center;
-  padding: 2rem;
-}
-
-.delete-modal-icon-wrap {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 1rem;
-}
-
-.delete-modal-icon {
-  font-size: 3rem;
-  color: #f43f5e;
-  background: rgba(244, 63, 94, 0.08);
-  border-radius: 50%;
-  padding: 0.6rem;
-  line-height: 1;
-}
-
-.delete-modal-header {
-  justify-content: center;
-  border-bottom: none;
-  padding-bottom: 0;
-  position: relative;
-}
-
-.delete-modal-header h2 {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #1a1c2e;
-}
-
-.delete-modal-header .modal-close {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.delete-modal-body {
-  padding: 1rem 0 0.5rem;
-}
-
-.delete-warning-text {
-  font-size: 0.9rem;
-  color: #555b77;
-  line-height: 1.6;
-  margin-bottom: 1rem;
-}
-
-.delete-consequences {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.delete-consequences li {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.82rem;
-  color: #9aa0b8;
-}
-
-.delete-consequences li i {
-  color: #f43f5e;
-  font-size: 0.85rem;
-  flex-shrink: 0;
-}
-
-.delete-modal-footer {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: center;
-  padding-top: 1.25rem;
-  border-top: 1px solid #f0f1f7;
-}
-
-.btn-delete-confirm {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem 1.5rem;
-  border-radius: var(--radius-sm);
-  border: none;
-  background: #f43f5e;
-  color: #fff;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s ease, opacity 0.15s ease;
-}
-
-.btn-delete-confirm:hover:not(:disabled) {
-  background: #e11d48;
-}
-
-.btn-delete-confirm:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
 </style>

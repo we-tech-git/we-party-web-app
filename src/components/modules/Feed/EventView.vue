@@ -114,12 +114,16 @@
           const response = await getTrendingEvents()
           const data = response.data.events || response.data || []
 
-          trends.value = data.map((evt: any) => ({
-            id: evt.id,
-            title: evt.name || evt.title || 'Evento sem nome',
-            highlight: evt.location || evt.city || t('feed.trending.cityHighlight'),
-            baseCount: evt.likesCount || evt.likes || evt._count?.likes || evt.confirmedCount || 0,
-          }))
+          trends.value = data.map((evt: any) => {
+            const baseCount = evt.likesCount || evt.likes || evt._count?.likes || evt.confirmedCount || 0
+            eventsStore.registerLikeCount(evt.id, baseCount)
+            return {
+              id: evt.id,
+              title: evt.name || evt.title || 'Evento sem nome',
+              highlight: evt.location || evt.city || t('feed.trending.cityHighlight'),
+              baseCount,
+            }
+          })
         } catch (error) {
           console.error('Error fetching trends', error)
         }
@@ -131,8 +135,7 @@
 
   const displayedTrends = computed(() => {
     return trends.value.map(item => {
-      const isLiked = eventsStore.isLiked(item.id)
-      const total = item.baseCount + (isLiked ? 1 : 0)
+      const total = eventsStore.getLikeCount(item.id, item.baseCount)
       return {
         id: item.id,
         title: item.title,
