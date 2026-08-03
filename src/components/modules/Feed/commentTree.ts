@@ -79,8 +79,12 @@ function flatten (raw: any[], parentId: string | null, out: CommentNodeData[]): 
  * Um nó vira raiz quando não tem pai, quando o pai não veio na resposta
  * (página parcial) ou quando anexá-lo ultrapassaria MAX_COMMENT_DEPTH —
  * assim nada some da tela mesmo se o backend devolver mais níveis do que o
- * contrato promete. Ciclos são impossíveis porque cada nó é anexado uma
- * única vez e só a nós já posicionados.
+ * contrato promete.
+ *
+ * A profundidade é resolvida subindo pela cadeia de pais, com memo, então o
+ * resultado **não depende da ordem** em que a API devolveu os nós: uma lista
+ * plana com o filho antes do pai (o que uma CTE recursiva produz naturalmente)
+ * monta a mesma árvore que a versão aninhada.
  */
 export function normalizeCommentTree (raw: any[]): CommentNodeData[] {
   const flat: CommentNodeData[] = []
@@ -92,23 +96,93 @@ export function normalizeCommentTree (raw: any[]): CommentNodeData[] {
   }
 
   const depthOf = new Map<string, number>()
-  const roots: CommentNodeData[] = []
 
+  /** `guard` carrega a cadeia em resolução, para cortar ciclos vindos da API. */
+  function resolveDepth (node: CommentNodeData, guard: Set<string>): number {
+    const cached = depthOf.get(node.id)
+    if (cached !== undefined) {
+      return cached
+    }
+
+    const parent = node.parentCommentId ? byId.get(node.parentCommentId) : undefined
+    // Sem pai na resposta, auto-referência ou ciclo → promove a raiz.
+    if (!parent || parent === node || guard.has(node.id)) {
+      node.parentCommentId = null
+      depthOf.set(node.id, 1)
+      return 1
+    }
+
+    guard.add(node.id)
+    const depth = resolveDepth(parent, guard) + 1
+    guard.delete(node.id)
+
+    if (depth > MAX_COMMENT_DEPTH) {
+      node.parentCommentId = null
+      depthOf.set(node.id, 1)
+      return 1
+    }
+
+    depthOf.set(node.id, depth)
+    return depth
+  }
+
+  // Duas passadas: resolver a profundidade de todos antes de anexar, porque
+  // resolveDepth pode zerar o `parentCommentId` de um ancestral no caminho.
+  for (const node of flat) {
+    resolveDepth(node, new Set())
+  }
+
+  const roots: CommentNodeData[] = []
   for (const node of flat) {
     const parent = node.parentCommentId ? byId.get(node.parentCommentId) : undefined
-    const parentDepth = parent ? depthOf.get(parent.id) : undefined
-
-    if (parent && parent !== node && parentDepth !== undefined && parentDepth < MAX_COMMENT_DEPTH) {
+    if (parent && depthOf.get(node.id)! > 1) {
       parent.replies.push(node)
-      depthOf.set(node.id, parentDepth + 1)
     } else {
       node.parentCommentId = null
       roots.push(node)
-      depthOf.set(node.id, 1)
     }
   }
 
   return roots
+}
+
+export type CommentSortMode = 'best' | 'new' | 'old'
+
+function timeOf (node: CommentNodeData): number {
+  const t = new Date(node.createdAt).getTime()
+  return Number.isNaN(t) ? 0 : t
+}
+
+/**
+ * Ordena a árvore **in place**, em todos os níveis. Mutar em vez de projetar
+ * uma cópia preserva a identidade dos nós, então o insert otimista de uma
+ * resposta (que acha o pai por id na árvore original) continua funcionando.
+ */
+export function sortCommentTree (nodes: CommentNodeData[], mode: CommentSortMode): void {
+  nodes.sort((a, b) => {
+    if (mode === 'new') {
+      return timeOf(b) - timeOf(a)
+    }
+    if (mode === 'old') {
+      return timeOf(a) - timeOf(b)
+    }
+    // 'best': mais curtidos primeiro, empate desfeito pelo mais recente
+    return (b.likesCount - a.likesCount) || (timeOf(b) - timeOf(a))
+  })
+  for (const node of nodes) {
+    sortCommentTree(node.replies, mode)
+  }
+}
+
+/** Ids de todos os nós que têm respostas — usado pelo "recolher tudo". */
+export function collectParentIds (nodes: CommentNodeData[], out: string[] = []): string[] {
+  for (const node of nodes) {
+    if (node.replies.length > 0) {
+      out.push(node.id)
+      collectParentIds(node.replies, out)
+    }
+  }
+  return out
 }
 
 /** Total de nós da árvore, incluindo todas as respostas aninhadas. */
@@ -163,11 +237,15 @@ export interface CommentTreeContext {
   isLiking: (id: string) => boolean
   isDeleting: (id: string) => boolean
   isReplyingTo: (id: string) => boolean
+  isCollapsed: (id: string) => boolean
+  /** Nó recém-enviado, para o realce temporário de "acabou de chegar". */
+  isFresh: (id: string) => boolean
   toggleLike: (comment: CommentNodeData) => void
   startReply: (comment: CommentNodeData) => void
   cancelReply: () => void
   submitReply: () => void
   remove: (comment: CommentNodeData) => void
+  toggleCollapse: (comment: CommentNodeData) => void
   replyText: { value: string }
   sendingReply: { value: boolean }
   replyToName: { value: string }

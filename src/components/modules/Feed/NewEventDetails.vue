@@ -665,101 +665,13 @@
 
           <!-- PANEL: Comentários -->
           <Transition name="fade">
-            <div v-show="activeTab === 'cmt'" class="card">
-              <div class="card-header">
-                <span class="card-icon bg-blue-50 text-blue-500">
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M21 15a4 4 0 01-4 4H8l-5 4V7a4 4 0 014-4h10a4 4 0 014 4z" />
-                  </svg>
-                </span>
-                <h3>Comentários <span class="text-gray-400 font-semibold text-sm">· {{ comments.length
-                }}</span></h3>
-              </div>
-
-              <!-- Loading dos comentários -->
-              <div
-                v-if="commentsLoading"
-                class="flex flex-col items-center justify-center gap-3 py-10"
-              >
-                <AppLoader size="sm" text="Carregando comentários..." />
-              </div>
-
-              <template v-else>
-                <div
-                  v-for="cmt in comments"
-                  :key="cmt.id"
-                  class="flex gap-3 py-3.5 border-b border-black/5"
-                >
-                  <span
-                    class="w-10 h-10 rounded-xl grid place-items-center text-white font-extrabold flex-none overflow-hidden"
-                    :style="{ background: cmt.color }"
-                  >
-                    <img
-                      v-if="cmt.image"
-                      alt=""
-                      class="w-full h-full object-cover"
-                      loading="lazy"
-                      :src="cmt.image"
-                    >
-                    <template v-else>{{ cmt.initial }}</template>
-                  </span>
-                  <div class="flex-1 min-w-0">
-                    <b class="text-sm">{{ cmt.name }}</b>
-                    <span class="ml-2 text-xs text-gray-400 font-semibold">{{ cmt.time }}</span>
-                    <p class="text-gray-500 font-medium mt-0.5 text-sm">{{ cmt.text }}</p>
-                    <!-- Ações do comentário -->
-                    <div class="flex items-center gap-3 mt-1.5">
-                      <!-- Excluir (apenas o próprio comentário) -->
-                      <button
-                        v-if="cmt.userId && cmt.userId === loggedUser?.id"
-                        :class="[
-                          'flex items-center gap-1 text-xs font-extrabold transition-colors',
-                          deletingCommentId === cmt.id ? 'text-gray-300' : 'text-gray-400 hover:text-red-500'
-                        ]"
-                        :disabled="deletingCommentId === cmt.id"
-                        @click="deleteComment(cmt.id)"
-                      >
-                        <svg
-                          class="w-3.5 h-3.5"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2.2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
-                        </svg>
-                        {{ deletingCommentId === cmt.id ? '...' : 'Excluir' }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div v-if="comments.length === 0" class="text-center text-gray-400 font-semibold text-sm py-6">
-                  Seja o primeiro a comentar neste evento! 🎉
-                </div>
-              </template>
-
-              <div class="flex gap-2 sm:gap-3 mt-4">
-                <input
-                  v-model="newComment"
-                  class="flex-1 min-w-0 border border-black/10 rounded-2xl px-4 py-3 font-medium outline-none text-sm transition-colors focus:border-weparty-pink"
-                  :disabled="sendingComment"
-                  maxlength="500"
-                  placeholder="Escreva um comentário..."
-                  @keyup.enter="postComment"
-                >
-                <button
-                  class="flex-none bg-grad-main text-white font-extrabold rounded-2xl px-4 sm:px-5 py-3 text-sm disabled:opacity-60"
-                  :disabled="!newComment.trim() || sendingComment"
-                  @click="postComment"
-                >{{ sendingComment ? 'Enviando...' : 'Enviar' }}</button>
-              </div>
+            <div v-show="activeTab === 'cmt'" class="card card--comments">
+              <InlineComments
+                :key="currentId"
+                :event-id="currentId"
+                :visible="activeTab === 'cmt'"
+                @update:count="commentsCount = $event"
+              />
             </div>
           </Transition>
         </div>
@@ -1055,11 +967,11 @@
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import { unwrapList } from '@/api'
-  import { addEventComment, deleteEventComment, getEventComments } from '@/api/comments'
+  import { getEventComments } from '@/api/comments'
   import { getEventById, getMyAttendance, getTrendingEvents } from '@/api/event'
   import { checkIsFollowing, followUserById, unfollowUserById } from '@/api/follows'
   import EventSearchAutocomplete from '@/components/modules/Feed/EventSearchAutocomplete.vue'
-  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import InlineComments from '@/components/modules/Feed/InlineComments.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
@@ -1684,21 +1596,20 @@
       icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 21s-7-5.5-7-11a7 7 0 0114 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
     },
     {
-      id: 'cmt', label: 'Comentários', badge: comments.value.length > 0 ? comments.value.length : undefined,
+      id: 'cmt', label: 'Comentários', badge: commentsCount.value > 0 ? commentsCount.value : undefined,
       icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M21 15a4 4 0 01-4 4H8l-5 4V7a4 4 0 014-4h10a4 4 0 014 4z"/></svg>',
     },
   ])
 
   // ── Comentários (endpoint real /events/:id/comments) ─────────
+  // A dinâmica completa (threads, curtidas, respostas) fica a cargo do
+  // InlineComments; aqui só mantemos uma lista achatada leve, usada como
+  // fallback de avatares em "attendeeAvatars" e para o contador do badge.
   interface CommentVM {
-    id: string
-    userId: string
     name: string
     initial: string
     color: string
     image: string
-    time: string
-    text: string
   }
   const COMMENT_COLORS = [
     'linear-gradient(135deg,#7b5cff,#c54bff)',
@@ -1714,77 +1625,25 @@
     }
     return COMMENT_COLORS[Math.abs(hash) % COMMENT_COLORS.length] ?? COMMENT_COLORS[0]!
   }
-  function relativeTime (dateStr: string): string {
-    const d = new Date(dateStr)
-    if (Number.isNaN(d.getTime())) return ''
-    const diffMin = Math.floor((Date.now() - d.getTime()) / 60_000)
-    if (diffMin < 1) return 'agora mesmo'
-    if (diffMin < 60) return `há ${diffMin}min`
-    const diffH = Math.floor(diffMin / 60)
-    if (diffH < 24) return `há ${diffH}h`
-    const diffD = Math.floor(diffH / 24)
-    if (diffD < 7) return `há ${diffD}d`
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-  }
 
   const comments = ref<CommentVM[]>([])
-  const newComment = ref('')
-  const sendingComment = ref(false)
-  const commentsLoading = ref(false)
-  const deletingCommentId = ref<string | null>(null)
+  const commentsCount = ref(0)
 
   async function fetchComments () {
     if (!currentId.value) return
-    commentsLoading.value = true
     try {
       const res: any = await getEventComments(currentId.value)
       // unwrapList aceita os envelopes conhecidos e retorna sempre um array
       const arr: any[] = unwrapList(res, 'comments', 'content')
       comments.value = arr.map((c: any) => ({
-        id: c.id,
-        userId: c.user?.id || '',
         name: c.user?.name || 'Usuário',
         initial: (c.user?.name || 'U').charAt(0).toUpperCase(),
         color: colorForName(c.user?.name || ''),
         image: resolveAsset(c.user?.profileImage || c.user?.avatar || ''),
-        time: relativeTime(c.createdAt),
-        text: c.content,
       }))
     } catch (error) {
       console.error('Erro ao buscar comentários:', error)
       comments.value = []
-    } finally {
-      commentsLoading.value = false
-    }
-  }
-
-  async function postComment () {
-    const text = newComment.value.trim()
-    if (!text || sendingComment.value || !currentId.value) return
-    sendingComment.value = true
-    try {
-      await addEventComment(currentId.value, text)
-      newComment.value = ''
-      await fetchComments()
-    } catch (error) {
-      console.error('Erro ao enviar comentário:', error)
-      showSnackbar('Não foi possível enviar o comentário. Tente novamente.', SNACKBAR_COLORS.error)
-    } finally {
-      sendingComment.value = false
-    }
-  }
-
-  async function deleteComment (commentId: string) {
-    if (deletingCommentId.value || !currentId.value) return
-    deletingCommentId.value = commentId
-    try {
-      await deleteEventComment(currentId.value, commentId)
-      comments.value = comments.value.filter(c => c.id !== commentId)
-      showSnackbar('Comentário removido com sucesso!', SNACKBAR_COLORS.success)
-    } catch {
-      showSnackbar('Não foi possível excluir o comentário.', SNACKBAR_COLORS.error)
-    } finally {
-      deletingCommentId.value = null
     }
   }
 
@@ -2266,6 +2125,15 @@
     border-radius: 22px;
     padding: 22px 24px;
     box-shadow: 0 6px 20px -12px rgba(123, 38, 96, .3);
+}
+
+/* InlineComments já traz seu próprio cartão (borda, sombra, header) —
+   aqui viramos só um container transparente para não dobrar a caixa. */
+.card--comments {
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    background: transparent;
 }
 
 .card-header {

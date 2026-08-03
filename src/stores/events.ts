@@ -137,6 +137,41 @@ export const useEventsStore = defineStore('events', () => {
     return savedEvents.value.some(e => String(e.id) === normalizedId)
   }
 
+  /**
+   * Reconcilia o estado local com o que o servidor respondeu ao toggle.
+   *
+   * O ±1 otimista é só um palpite sobre uma base que veio de outro request;
+   * se as duas coisas discordarem (ou o backend gravar algo diferente do que
+   * pedimos), a diferença ficava presa no cache até o próximo reload — que é
+   * exatamente o "curti uma vez e apareceram duas". Quando a resposta traz o
+   * número real, ele substitui o palpite em vez de somar por cima.
+   *
+   * Se a resposta não trouxer nada reconhecível, o otimista permanece.
+   */
+  function applyServerLikeState (normalizedId: string, response: any) {
+    const payload = response?.data?.data ?? response?.data ?? response
+    if (!payload || typeof payload !== 'object') {
+      return
+    }
+
+    const count = payload.likesCount ?? payload.likes_count ?? payload.totalLikes ?? payload._count?.likes
+    if (typeof count === 'number' && Number.isFinite(count)) {
+      likeCounts.value[normalizedId] = Math.max(0, count)
+    }
+
+    const liked = payload.liked ?? payload.isLiked ?? payload.isLikedByMe
+    if (typeof liked === 'boolean') {
+      const index = likedEvents.value.findIndex(
+        likedId => String(likedId) === normalizedId,
+      )
+      if (liked && index === -1) {
+        likedEvents.value.push(normalizedId)
+      } else if (!liked && index !== -1) {
+        likedEvents.value.splice(index, 1)
+      }
+    }
+  }
+
   async function toggleLike (id: EventId) {
     const normalizedId = String(id)
     // Optimistic update
@@ -156,7 +191,8 @@ export const useEventsStore = defineStore('events', () => {
     likeCounts.value[normalizedId] = Math.max(0, currentCount + (isAdding ? 1 : -1))
 
     try {
-      await toggleLikeEvent(id)
+      const response = await toggleLikeEvent(id)
+      applyServerLikeState(normalizedId, response)
     } catch (error) {
       // Revert if API fails
       console.error('Failed to toggle like on server', error)

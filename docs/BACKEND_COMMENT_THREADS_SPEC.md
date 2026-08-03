@@ -151,6 +151,31 @@ Passa a retornar a árvore aninhada, até 5 níveis.
 - `replies` deve vir sempre presente (array vazio quando não há filhos), para o cliente não precisar checar `undefined`.
 - `total` deve contar a **árvore inteira**, não só as raízes — é o número exibido no badge de contagem.
 
+#### 🐞 Bug aberto em produção: árvore truncada no nível 2
+
+**Sintoma:** responder a uma resposta (criar um nó de **nível 3**) retorna `201` normalmente e o nó aparece na tela pelo insert otimista, mas **some ao recarregar a página**. Respostas de nível 2 persistem.
+
+**Causa provável:** o `include` do Prisma está aninhado só duas vezes, algo como:
+
+```ts
+include: { user: true, replies: { include: { user: true, replies: { include: { user: true } } } } }
+//                              nível 2 ──────────────────────────┘  nível 3 vem, nível 4+ não
+```
+
+Cada nível a mais exige mais um `include` literal — é por isso que a abordagem não escala e é justamente o que a seção [Pontos de atenção — performance](#-pontos-de-atenção--performance) desaconselha.
+
+**Correção recomendada** (resolve o truncamento e o N+1 de uma vez): parar de aninhar `include` e devolver a subárvore inteira numa query só.
+
+1. Paginar as raízes: `WHERE eventId = $1 AND parentId IS NULL`.
+2. Buscar **todos** os descendentes dessas raízes numa query — via coluna denormalizada `rootId` (`WHERE rootId IN (...)`) ou CTE recursiva.
+3. Montar a árvore em memória a partir do `parentId`.
+
+O cliente aceita a resposta **plana**, em qualquer ordem — não é preciso ordenar por profundidade nem aninhar antes de responder. Basta que todo nó traga `id`, `parentId`, `likesCount`, `isLikedByMe` e `user`.
+
+**Teste de regressão:** criar nós de nível 3, 4 e 5; um `GET /events/:id/comments` seguinte deve devolver os cinco.
+
+> Enquanto o bug existir, `InlineComments.vue` mantém o insert otimista **sem refetch** após responder (ver comentário em `handleSendReply`), porque refazer o GET apagaria da tela a resposta recém-criada. Depois da correção, esse refetch pode voltar.
+
 ### 2. Responder a um comentário (novo)
 
 ```
@@ -184,7 +209,7 @@ O pai vem da URL (`:commentId`), não do body.
 ### 3. Curtir/descurtir um comentário (novo, toggle)
 
 ```
-POST /events/:eventId/comments/:commentId/like
+POST /events/:eventId/comments/:commentId/likes
 ```
 
 Sem body. Mesmo padrão dos likes de evento: primeira chamada curte, segunda descurte.

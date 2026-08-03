@@ -115,7 +115,9 @@
           const data = response.data.events || response.data || []
 
           trends.value = data.map((evt: any) => {
-            const baseCount = evt.likesCount || evt.likes || evt._count?.likes || evt.confirmedCount || 0
+            // confirmedCount é presença confirmada, não curtida — não usar como fallback
+            // (mesmo bug já corrigido no Feed.vue).
+            const baseCount = evt.likesCount || evt.likes || evt._count?.likes || 0
             eventsStore.registerLikeCount(evt.id, baseCount)
             return {
               id: evt.id,

@@ -56,7 +56,7 @@ export function deleteEventComment (eventId: string | number, commentId: string)
  * Curtir / descurtir um comentário (toggle).
  */
 export function toggleLikeComment (eventId: string | number, commentId: string) {
-  return callApi('POST', `/events/${eventId}/comments/${commentId}/like`, undefined, true)
+  return callApi('POST', `/events/${eventId}/comments/${commentId}/likes`, undefined, true)
 }
 
 /**
