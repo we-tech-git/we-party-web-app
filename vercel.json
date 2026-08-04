@@ -49,7 +49,7 @@
       ]
     },
     {
-      "source": "/:file(([^/]+)\\.(png|jpg|jpeg|gif|svg|ico|webp))",
+      "source": "/:path*.(png|jpg|jpeg|gif|svg|ico|webp)",
       "headers": [
         {
           "key": "Cache-Control",
