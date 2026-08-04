@@ -1483,7 +1483,7 @@ function mapConfirmedAttendance(evt: any): LikedEventItem {
  */
 function mapLikedEventItem(evt: any): LikedEventItem {
   const mapped = mapLikedEvent(evt)
-  return { ...mapped, likes: Math.max(1, mapped.likes) }
+  return { ...mapped, likes: Math.max(1, mapped.likes ?? 0) }
 }
 
 function mapLikedEvent(evt: any): LikedEventItem {
