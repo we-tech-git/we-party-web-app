@@ -144,7 +144,7 @@
         createdAt: created?.createdAt ?? new Date().toISOString(),
         likesCount: 0,
         isLikedByMe: false,
-        parentCommentId: undefined,
+        parentCommentId: null,
         replies: [],
         user: {
           id: loggedUser.value?.id ?? '',
