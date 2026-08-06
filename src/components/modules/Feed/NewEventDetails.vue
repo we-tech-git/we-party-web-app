@@ -684,7 +684,7 @@
             <div class="h-1.5 bg-grad-main" />
             <div class="p-6">
               <!-- Termômetro do evento: "calor"/lotação derivado de confirmações + curtidas -->
-              <div class="mb-5">
+              <div v-if="false" class="mb-5">
                 <div class="flex items-center justify-between gap-2 mb-2.5">
                   <span class="font-extrabold text-[15px]">Termômetro</span>
                   <span class="heat-badge flex-none">{{ eventHeat.emoji }} {{ eventHeat.label }}</span>
@@ -774,7 +774,7 @@
                 </button>
               </div>
 
-              <div v-if="goingCount > 0" class="flex items-center gap-3 mt-5 pt-4 border-t border-black/5">
+              <div v-if="false" class="flex items-center gap-3 mt-5 pt-4 border-t border-black/5">
                 <div class="flex items-center">
                   <div
                     v-for="(av, i) in attendeeAvatars.slice(0, 3)"
@@ -880,7 +880,7 @@
   >
     <div>
       <b class="text-[15px]">Eu vou?</b>
-      <small class="block text-gray-400 font-semibold text-xs">{{ userName }} e +{{ goingCount - 1 }} vão</small>
+      <small class="block text-gray-400 font-semibold text-xs">{{ goingCount }} pessoas vão</small>
     </div>
     <button
       :class="[
@@ -966,7 +966,7 @@
   import { useThrottleFn } from '@vueuse/core'
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
-  import { unwrapList } from '@/api'
+  import { unwrapItem, unwrapList } from '@/api'
   import { getEventComments } from '@/api/comments'
   import { getEventById, getMyAttendance, getTrendingEvents } from '@/api/event'
   import { checkIsFollowing, followUserById, unfollowUserById } from '@/api/follows'
@@ -1272,16 +1272,25 @@
   // Avatares da barra "pessoas vão" — conectados a dados reais.
   // Prioriza a lista de presenças vinda no payload do evento; quando indisponível,
   // recai sobre os autores dos comentários (usuários reais já carregados na página).
-  interface AvatarVM { initial: string, color: string, image: string, name: string }
+  interface AvatarVM { initial: string, color: string, image: string, name: string, rawUser?: any }
   const payloadAvatars = ref<AvatarVM[]>([])
+  const payloadAttendeeUsers = ref<any[]>([])
+
+  function isGoingAttendance (entry: any): boolean {
+    const status = String(entry?.status || entry?.attendanceStatus || entry?.type || '').toUpperCase()
+    return !status || status === 'GOING' || status === 'CONFIRMED'
+  }
 
   function extractAttendees (data: any): any[] {
     const sources = [
       data?.attendances, data?.attendees, data?.confirmedUsers,
-      data?.guests, data?.participants, data?.goingUsers, data?.users,
+      data?.confirmedAttendees, data?.confirmed_attendees,
+      data?.attendanceUsers, data?.attendance_users, data?.eventAttendances,
+      data?.event_attendances, data?.guests, data?.participants,
+      data?.goingUsers, data?.going_users, data?.rsvps, data?.users,
     ]
     for (const s of sources) {
-      if (Array.isArray(s) && s.length > 0) return s
+      if (Array.isArray(s) && s.length > 0) return s.filter(isGoingAttendance)
     }
     return []
   }
@@ -1293,24 +1302,34 @@
       color: colorForName(name),
       image: resolveAsset(user?.profileImage || user?.avatar || user?.photo || ''),
       name,
+      rawUser: user,
     }
   }
 
   function buildAttendeeAvatars (data: any) {
     const raw = extractAttendees(data)
-    payloadAvatars.value = raw
+    payloadAttendeeUsers.value = raw
       .map((a: any) => a?.user || a)
       .filter(Boolean)
+    payloadAvatars.value = payloadAttendeeUsers.value
       .slice(0, 5)
       .map((u: any) => buildAvatar(u))
   }
 
   // Avatares exibidos: presenças reais ou, na ausência, autores de comentários.
   const attendeeAvatars = computed<AvatarVM[]>(() => {
-    if (payloadAvatars.value.length > 0) return payloadAvatars.value
-    return comments.value
-      .slice(0, 5)
-      .map(c => ({ initial: c.initial, color: c.color, image: c.image, name: c.name }))
+    const avatars = [...payloadAvatars.value]
+    if (rsvped.value && !viewerIsInPayload.value) {
+      avatars.unshift(buildAvatar({
+        id: (loggedUser.value as any)?.id,
+        userId: (loggedUser.value as any)?.userId,
+        email: loggedUser.value?.email,
+        username: (loggedUser.value as any)?.username,
+        name: userName.value,
+        profileImage: userAvatar.value,
+      }))
+    }
+    return avatars.slice(0, 5)
   })
 
   // Nome exibido em "X e N outros vão": só usa o nome do usuário logado quando
@@ -1394,7 +1413,29 @@
   // Contagem canônica compartilhada com o Feed via store — evita somar
   // "+1 se curtido" sobre um valor que a API pode já incluir a própria curtida.
   const likeCount = computed(() => eventsStore.getLikeCount(event.value.id, baseLikes.value))
-  const goingCount = computed(() => baseGoing.value + (rsvped.value ? 1 : 0))
+  const viewerIsInPayload = computed(() => {
+    const currentUser = loggedUser.value as any
+    const currentKeys = [
+      currentUser?.id,
+      currentUser?.userId,
+      currentUser?.email,
+      currentUser?.username,
+    ].filter(Boolean).map(String)
+
+    if (currentKeys.length === 0) return false
+
+    return payloadAttendeeUsers.value.some(source => {
+      const sourceKeys = [
+        source?.id,
+        source?.userId,
+        source?.email,
+        source?.username,
+      ].filter(Boolean).map(String)
+
+      return sourceKeys.some(key => currentKeys.includes(key))
+    })
+  })
+  const goingCount = computed(() => baseGoing.value + (rsvped.value && !viewerIsInPayload.value ? 1 : 0))
 
   // ── Localização do usuário (mesmo composable do Feed) ────────
   const { getCoords } = useGeolocation()
@@ -1727,21 +1768,47 @@
   }
 
   // ── Carregamento do evento ───────────────────────────────────
+  function toCount (value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return Math.max(0, value)
+    }
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value)
+      if (Number.isFinite(parsed)) return Math.max(0, parsed)
+    }
+    return null
+  }
+
+  function isConfirmedAttendancePayload (data: any): boolean {
+    const status = String(data?.status || data?.attendanceStatus || data?.type || '').toUpperCase()
+    if (status) return status === 'GOING' || status === 'CONFIRMED'
+    return data?.isGoing === true || data?.isConfirmed === true || data?.confirmed === true
+  }
+
   function applyCounters (data: any) {
-    baseLikes.value = data?.likesCount || data?._count?.likes || data?.likes || 0
+    baseLikes.value = toCount(data?.likesCount)
+      ?? toCount(data?._count?.likes)
+      ?? toCount(data?.likes)
+      ?? (Array.isArray(data?.likes) ? data.likes.length : 0)
     const id = data?.id ?? event.value.id
     if (id) eventsStore.registerLikeCount(id, baseLikes.value)
-    baseGoing.value = data?.confirmedCount || data?._count?.attendances || data?.confirmed || 0
+    // Se não temos contagem direta, usa o comprimento do array de attendees
+    const attendeeArray = extractAttendees(data)
+    const directGoingCount = toCount(data?.confirmedCount)
+      ?? toCount(data?.confirmed)
+      ?? toCount(data?.goingCount)
+      ?? toCount(data?.totalGoing)
+      ?? 0
+    baseGoing.value = Math.max(directGoingCount, attendeeArray.length)
   }
 
   async function syncAttendance () {
     if (!event.value.id) return
     try {
       const res: any = await getMyAttendance(event.value.id)
-      const data = res?.data || res
-      // O status é o mesmo enum aceito pelo PUT /attendance: GOING, INTERESTED
-      // ou NOT_GOING (mantemos "CONFIRMED" também por segurança/compat).
-      const attending = data?.status === 'GOING' || data?.status === 'CONFIRMED' || data?.status === 'INTERESTED' || data?.isAttending || false
+      const data = unwrapItem(res) || res
+      // Somente GOING/CONFIRMED contam como presenca confirmada.
+      const attending = isConfirmedAttendancePayload(data)
       eventsStore.setConfirmed(event.value.id, attending)
     } catch (error) {
       console.warn('Não foi possível sincronizar presença:', error)

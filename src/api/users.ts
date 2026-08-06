@@ -209,18 +209,45 @@ export async function updateUserProfile (userId: string, data: {
   bio?: string
   location?: string
 }) {
+  const formData = new FormData()
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      formData.append(key, value)
+    }
+  }
+
   try {
-    const response = await callApi(
-      'PUT',
-      `/users/${userId}`,
-      data,
-      true,
-    )
-    return response
-  } catch (error) {
+    return await patchUserProfileFormData(formData)
+  } catch (error: any) {
+    if (error?.response?.status === 404 || error?.response?.status === 405) {
+      return await callApi('PUT', `/users/${userId}`, data, true)
+    }
+
     console.error('Erro ao atualizar perfil:', error)
     throw error
   }
+}
+
+async function patchUserProfileFormData (formData: FormData) {
+  const token = localStorage.getItem('ACCESS_TOKEN')
+  const baseUrl = import.meta.env.VITE__BASE_URL
+
+  if (!token) {
+    throw new Error('Token de autenticaÃ§Ã£o nÃ£o encontrado')
+  }
+
+  const response = await axios({
+    method: 'PATCH',
+    url: `${baseUrl}/users/profile`,
+    data: formData,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    withCredentials: true,
+    timeout: 30_000,
+  })
+
+  return response.data
 }
 
 /** Upload de foto de perfil */
@@ -242,7 +269,6 @@ export async function uploadProfileImage (file: File) {
       data: formData,
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data',
       },
       withCredentials: true,
       timeout: 30_000,
@@ -276,7 +302,6 @@ export async function uploadBannerImage (file: File) {
       data: formData,
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data',
       },
       withCredentials: true,
       timeout: 30_000,

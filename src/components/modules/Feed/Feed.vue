@@ -642,7 +642,8 @@
       // Restaura quais eventos o usuário já curtiu (o estado de likes é
       // em memória e some ao recarregar a página, então precisa ser
       // resincronizado com o servidor a cada montagem do feed)
-      if (!eventsStore.isInitialized.liked) eventsStore.syncLikedEventsWithServer()
+      // Sempre sincroniza para garantir que likes recém-adicionados sejam restaurados
+      eventsStore.syncLikedEventsWithServer()
     }
 
     // Captura a localização uma vez por sessão antes de buscar eventos

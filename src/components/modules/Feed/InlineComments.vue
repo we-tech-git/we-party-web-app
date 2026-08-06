@@ -134,10 +134,31 @@
     errorMessage.value = ''
     try {
       const res = await addEventComment(props.eventId, text)
-      const createdId = (res?.data?.data ?? res?.data)?.id
+      const created = res?.data?.data ?? res?.data
+      const newId = created?.id ?? `temp-${Date.now()}`
+
+      // Inserção otimista: adiciona o comentário à árvore imediatamente
+      comments.value.push({
+        id: newId,
+        content: text,
+        createdAt: created?.createdAt ?? new Date().toISOString(),
+        likesCount: 0,
+        isLikedByMe: false,
+        parentCommentId: undefined,
+        replies: [],
+        user: {
+          id: loggedUser.value?.id ?? '',
+          name: loggedUser.value?.name ?? 'Você',
+          profileImage: loggedUser.value?.profileImage,
+          role: null,
+        },
+      })
+
       newComment.value = ''
-      await fetchComments()
-      if (createdId) markFresh(String(createdId))
+      applySort()
+      markFresh(newId)
+      syncCount()
+
       await nextTick()
       // Com ordenação por "Melhores" o comentário novo não cai necessariamente
       // no fim da lista, então rolamos até ele e não até o fundo.

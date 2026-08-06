@@ -343,6 +343,16 @@ export const useEventsStore = defineStore('events', () => {
       // Extrai eventos da resposta (unwrapList aceita os envelopes conhecidos)
       const events = unwrapList<any>(response, 'events')
 
+      // Registra os like counts dos eventos curtidos para restaurar após reload
+      for (const evt of events) {
+        if (evt && evt.id) {
+          const count = evt.likesCount ?? evt.likes_count ?? evt.totalLikes ?? evt._count?.likes ?? 0
+          if (typeof count === 'number') {
+            likeCounts.value[String(evt.id)] = count
+          }
+        }
+      }
+
       // Mescla em vez de substituir: essa chamada não é aguardada por quem a
       // invoca, então o usuário pode clicar em curtir (optimistic update)
       // enquanto o GET ainda está em voo. Sobrescrever likedEvents.value
