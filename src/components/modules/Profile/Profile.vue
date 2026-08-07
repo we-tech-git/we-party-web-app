@@ -20,6 +20,7 @@ import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
 import { AuthService } from '@/services/auth'
 import { useEventsStore } from '@/stores/events'
 import { useShareStore } from '@/stores/share'
+import { logger } from '@/utils/logger'
 
 // ── Constantes (evita magic numbers) ──
 const CONFIG = {
@@ -1325,19 +1326,32 @@ async function saveProfile() {
     }
 
     // Envia para o backend
-    await updateUserProfile(userId, {
+    const response = await updateUserProfile(userId, {
       name: editForm.name,
       username: editForm.username.replace('@', ''),
       bio: editForm.bio,
       location: editForm.location,
     })
 
-    // Só atualiza localmente após sucesso do backend
-    user.name = editForm.name
-    user.username = `@${editForm.username.replace('@', '')}`
-    user.bio = editForm.bio
-    user.location = editForm.location
+    // Usa o que o backend efetivamente confirmou salvar, não o que foi digitado —
+    // se a API silenciosamente não persistir bio/location, isso fica visível na hora
+    // em vez de só aparecer depois de um reload.
+    // Usa 'in' (não ??) para diferenciar "campo ausente na resposta" (mantém o
+    // valor digitado) de "campo presente mas vazio/null" (backend confirmou que
+    // não salvou — reflete isso na hora em vez de mascarar com o valor digitado).
+    const savedData: Record<string, any> = unwrapItem(response) ?? {}
+    user.name = 'name' in savedData ? (savedData.name || editForm.name) : editForm.name
+    user.username = 'username' in savedData && savedData.username ? `@${savedData.username}` : `@${editForm.username.replace('@', '')}`
+    user.bio = 'bio' in savedData ? (savedData.bio ?? '') : editForm.bio
+    user.location = 'location' in savedData ? (savedData.location ?? '') : editForm.location
     showEditModal.value = false
+
+    if ('bio' in savedData && (savedData.bio ?? '') !== editForm.bio) {
+      logger.warn('[Profile] Backend não persistiu a bio enviada:', { enviado: editForm.bio, salvo: savedData.bio })
+    }
+    if ('location' in savedData && (savedData.location ?? '') !== editForm.location) {
+      logger.warn('[Profile] Backend não persistiu a localização enviada:', { enviado: editForm.location, salvo: savedData.location })
+    }
 
     // Invalida o cache para forçar reload na próxima vez
     cachedUserProfileData.value = null
