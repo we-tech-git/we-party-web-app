@@ -30,7 +30,7 @@
   import { useGeolocation } from '@/composables/useGeolocation'
   import { useGuestMode } from '@/composables/useGuestMode'
   import { useLoading } from '@/composables/useLoading'
-  import { useEventsStore } from '@/stores/events'
+  import { readLikeCount, useEventsStore } from '@/stores/events'
   import { logger } from '@/utils/logger'
   import FeedCard from './FeedCard.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
@@ -303,17 +303,13 @@
     return ''
   }
 
+  /**
+   * Só aceita campos que realmente contam **curtidas** — nunca `confirmedCount`
+   * ou `_count.attendances`, que são presenças confirmadas. A leitura em si vive
+   * no store, para feed, detalhe e favoritos concordarem sobre o que é um like.
+   */
   function resolveLikesCount (event: any): number {
-    if (typeof event.likesCount === 'number') return event.likesCount
-    if (typeof event.likes === 'number') return event.likes
-    if (Array.isArray(event.likes)) return event.likes.length
-    if (typeof event._count?.likes === 'number') return event._count.likes
-    if (typeof event.likes_count === 'number') return event.likes_count
-    if (typeof event.totalLikes === 'number') return event.totalLikes
-    if (typeof event.likeCount === 'number') return event.likeCount
-    if (typeof event.confirmedCount === 'number') return event.confirmedCount
-    if (typeof event._count?.attendances === 'number') return event._count.attendances
-    return 0
+    return readLikeCount(event) ?? 0
   }
 
   function resolveSchedule (event: any): string {
@@ -362,10 +358,11 @@
     const calculatedHostName = event.organizer?.name || event.hostName || event.creator?.name || 'Organizador'
 
     const likesCount = resolveLikesCount(event)
-    // Registra a contagem apenas uma vez (fonte única de verdade no store),
-    // evitando recalcular "+1 se curtido" sobre um valor que já pode incluir
-    // a curtida do próprio usuário.
-    eventsStore.registerLikeCount(event.id, likesCount)
+    // Registra contagem **e** estado de curtida no store (fonte única de
+    // verdade). Quando o payload traz `isLiked`, o coração já nasce correto
+    // sem depender do GET /events/likes — que é justamente o que fazia a
+    // curtida sumir no reload quando aquele endpoint falhava ou demorava.
+    eventsStore.registerEventLikeState(event)
 
     // Extrai interesses do evento
     const eventInterests = (event.eventInterests || event.interests || event.categories || event.tags || [])
@@ -635,7 +632,8 @@
       // Restaura quais eventos o usuário já curtiu (o estado de likes é
       // em memória e some ao recarregar a página, então precisa ser
       // resincronizado com o servidor a cada montagem do feed)
-      if (!eventsStore.isInitialized.liked) eventsStore.syncLikedEventsWithServer()
+      // Sempre sincroniza para garantir que likes recém-adicionados sejam restaurados
+      eventsStore.syncLikedEventsWithServer()
     }
 
     // Captura a localização uma vez por sessão antes de buscar eventos
@@ -677,7 +675,8 @@
         // travava um número que podia divergir do real, variando a cada refresh.
         // `getLikeCount` abaixo já usa `baseCount` como fallback quando o feed
         // principal ainda não registrou o evento.
-        const baseCount = evt.likesCount || evt.likes || evt._count?.likes || evt.confirmedCount || 0
+        // Mesma regra do feed: `confirmedCount` é presença, não curtida.
+        const baseCount = resolveLikesCount(evt)
         return {
           id: evt.id,
           title: evt.name || evt.title || 'Evento sem nome',
@@ -826,6 +825,26 @@
   }
 
   const feedMainRef = ref<HTMLElement | null>(null)
+
+  /**
+   * Sidebar e trends têm scroll próprio, mas quando o conteúdo deles é mais
+   * curto que a coluna (caso comum) não sobra nada pra rolar ali — e como o
+   * shell em volta é `overflow: hidden`, o wheel não tinha pra onde ir e a
+   * página parecia travada. Aqui a gente só deixa a coluna rolar sozinha
+   * enquanto ainda tem para onde ir; do contrário, repassa o wheel pro feed.
+   */
+  function forwardWheelToFeed (event: WheelEvent) {
+    const column = event.currentTarget as HTMLElement
+    const atTop = column.scrollTop <= 0
+    const atBottom = column.scrollTop + column.clientHeight >= column.scrollHeight - 1
+
+    if ((event.deltaY < 0 && !atTop) || (event.deltaY > 0 && !atBottom)) {
+      return
+    }
+
+    event.preventDefault()
+    feedMainRef.value?.scrollBy({ top: event.deltaY })
+  }
 
   function scrollToTop () {
     if (feedMainRef.value) {
@@ -1222,6 +1241,7 @@
         class="feed-sidebar"
         :items="navItems"
         @select="handleNavSelect"
+        @wheel="forwardWheelToFeed"
       />
 
       <main ref="feedMainRef" class="feed-main">
@@ -1356,7 +1376,13 @@
         </p>
       </main>
 
-      <FeedTrendsPanel class="feed-trends" :items="displayedTrends" :loading="checkLoading('feed:trends')" :guest-mode="props.guestMode" />
+      <FeedTrendsPanel
+        class="feed-trends"
+        :guest-mode="props.guestMode"
+        :items="displayedTrends"
+        :loading="checkLoading('feed:trends')"
+        @wheel="forwardWheelToFeed"
+      />
     </section>
 
     <!-- Mobile Trending FAB Button -->
@@ -1557,6 +1583,26 @@
   gap: 1.5rem;
   padding-left: 0;
   width: 100%;
+}
+
+/* Desktop: `.feed-main` é o elemento que rola, então as tabs grudam no topo
+   dele e os cards passam por baixo. No mobile o scroll é o da janela e o topo
+   já é ocupado pelo header sticky, por isso a regra fica restrita aqui. */
+@media (min-width: 961px) {
+  .tabs {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    /* Sai do padding lateral do .feed-main para a faixa cobrir a largura toda */
+    margin: 0 -10px;
+    width: calc(100% + 20px);
+    padding: 0.85rem 10px 0.75rem;
+    /* Mesmo gradiente do .feed-page, sobre a mesma base sólida — em vez de
+       uma cor lisa "no chute", que destacava a faixa como um retângulo por
+       cima do fundo. Opaco (sem blur) porque é isso que garante ocultar de
+       verdade os cards que passam por baixo ao rolar. */
+    background: linear-gradient(142.35deg, rgba(252, 162, 89, 0.07) -1.66%, rgba(255, 98, 159, 0.11) 100.44%), #fff5f7;
+  }
 }
 
 .tabs button {

@@ -1,23 +1,25 @@
 <script setup lang="ts">
-  import type { CommentNodeData, CommentTreeContext } from './commentTree'
-  import { computed, nextTick, onMounted, provide, ref, watch } from 'vue'
+  import type { CommentNodeData, CommentSortMode, CommentTreeContext } from './commentTree'
+  import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue'
   import { unwrapList } from '@/api'
   import {
     addEventComment,
     deleteEventComment,
     getEventComments,
     replyToComment,
-    toggleLikeComment,
   } from '@/api/comments'
   import { useAuth } from '@/composables/useAuth'
+  import { useCommentLikes } from '@/composables/useCommentLikes'
   import { getAvatarColor, getInitial, resolveAsset } from './commentDisplay'
   import CommentNode from './CommentNode.vue'
   import {
+    collectParentIds,
     commentTreeKey,
     countComments,
     findCommentById,
     normalizeCommentTree,
     removeCommentById,
+    sortCommentTree,
   } from './commentTree'
 
   const props = defineProps<{
@@ -36,7 +38,6 @@
   const loading = ref(false)
   const sending = ref(false)
   const deletingId = ref<string | null>(null)
-  const likingId = ref<string | null>(null)
   const listEl = ref<HTMLElement | null>(null)
   const errorMessage = ref('')
 
@@ -46,11 +47,46 @@
   const replyText = ref('')
   const sendingReply = ref(false)
 
-  // Like otimista: chaveado por id, então vale para qualquer nível
-  const localLiked = ref<Record<string, boolean>>({})
-  const localLikeDelta = ref<Record<string, number>>({})
+  // Like de comentário: implementação única, compartilhada com as demais telas
+  const commentLikes = useCommentLikes(() => props.eventId)
+
+  // Threads recolhidas (estilo Reddit) — chaveado por id, vale para qualquer nível
+  const collapsedIds = ref<Set<string>>(new Set())
+
+  const sortMode = ref<CommentSortMode>('best')
+  const SORT_OPTIONS: { value: CommentSortMode, label: string }[] = [
+    { value: 'best', label: 'Melhores' },
+    { value: 'new', label: 'Recentes' },
+    { value: 'old', label: 'Antigos' },
+  ]
+
+  // Realce temporário do nó recém-enviado, para o olho achar onde ele caiu
+  // na árvore — especialmente útil em thread funda, que rola fora da vista.
+  const freshIds = ref<Set<string>>(new Set())
+  let freshTimer: ReturnType<typeof setTimeout> | null = null
+
+  function markFresh (id: string) {
+    freshIds.value = new Set(freshIds.value).add(id)
+    if (freshTimer) clearTimeout(freshTimer)
+    freshTimer = setTimeout(() => {
+      freshIds.value = new Set()
+    }, 2600)
+  }
 
   const totalCount = computed(() => countComments(comments.value))
+  const hasCollapsible = computed(() => collectParentIds(comments.value).length > 0)
+  const allCollapsed = computed(() => {
+    const ids = collectParentIds(comments.value)
+    return ids.length > 0 && ids.every(id => collapsedIds.value.has(id))
+  })
+
+  function applySort () {
+    sortCommentTree(comments.value, sortMode.value)
+  }
+
+  function toggleCollapseAll () {
+    collapsedIds.value = allCollapsed.value ? new Set() : new Set(collectParentIds(comments.value))
+  }
 
   function syncCount () {
     emit('update:count', totalCount.value)
@@ -60,21 +96,22 @@
     return !!loggedUser.value?.id && loggedUser.value.id === comment.user.id
   }
 
-  function isCommentLiked (comment: CommentNodeData): boolean {
-    return localLiked.value[comment.id] ?? comment.isLikedByMe
-  }
-
-  function commentLikesCount (comment: CommentNodeData): number {
-    return Math.max(0, comment.likesCount + (localLikeDelta.value[comment.id] || 0))
-  }
+  const isCommentLiked = commentLikes.isLiked
+  const commentLikesCount = commentLikes.likesCount
 
   async function fetchComments () {
     loading.value = true
     try {
       const res = await getEventComments(props.eventId)
       comments.value = normalizeCommentTree(unwrapList(res, 'comments', 'content'))
-      localLiked.value = {}
-      localLikeDelta.value = {}
+      applySort()
+      // Os overrides de curtida NÃO são zerados aqui de propósito: a listagem
+      // nem sempre traz `isLikedByMe`, e o campo ausente vira `false` no
+      // mapeamento. Zerar apagava o coração após o refetch, o usuário clicava
+      // de novo e o backend (toggle) descurtia. Ver useCommentLikes.
+      // Toda thread nasce recolhida: só as raízes aparecem de cara, e cada
+      // nível de resposta se abre sob demanda pelo botão "Ver respostas".
+      collapsedIds.value = new Set(collectParentIds(comments.value))
       syncCount()
     } catch (error) {
       console.error('Erro ao buscar comentários:', error)
@@ -91,11 +128,39 @@
     sending.value = true
     errorMessage.value = ''
     try {
-      await addEventComment(props.eventId, text)
+      const res = await addEventComment(props.eventId, text)
+      const created = res?.data?.data ?? res?.data
+      const newId = created?.id ?? `temp-${Date.now()}`
+
+      // Inserção otimista: adiciona o comentário à árvore imediatamente
+      comments.value.push({
+        id: newId,
+        content: text,
+        createdAt: created?.createdAt ?? new Date().toISOString(),
+        likesCount: 0,
+        isLikedByMe: false,
+        parentCommentId: null,
+        replies: [],
+        user: {
+          id: loggedUser.value?.id ?? '',
+          name: loggedUser.value?.name ?? 'Você',
+          profileImage: loggedUser.value?.profileImage,
+          role: null,
+        },
+      })
+
       newComment.value = ''
-      await fetchComments()
+      applySort()
+      markFresh(newId)
+      syncCount()
+
       await nextTick()
-      if (listEl.value) {
+      // Com ordenação por "Melhores" o comentário novo não cai necessariamente
+      // no fim da lista, então rolamos até ele e não até o fundo.
+      const fresh = listEl.value?.querySelector('.cn-node--fresh')
+      if (fresh) {
+        fresh.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } else if (listEl.value) {
         listEl.value.scrollTop = listEl.value.scrollHeight
       }
     } catch (error) {
@@ -134,8 +199,9 @@
       // antes do refetch; se o pai sumiu, o refetch corrige.
       const parent = findCommentById(comments.value, parentId)
       if (parent) {
+        const newId = created?.id ?? `temp-${Date.now()}`
         parent.replies.push({
-          id: created?.id ?? `temp-${Date.now()}`,
+          id: newId,
           content: text,
           createdAt: created?.createdAt ?? new Date().toISOString(),
           likesCount: 0,
@@ -149,11 +215,24 @@
             role: null,
           },
         })
+        // A thread do pai precisa estar aberta, senão a resposta nasce escondida
+        if (collapsedIds.value.has(parentId)) {
+          const next = new Set(collapsedIds.value)
+          next.delete(parentId)
+          collapsedIds.value = next
+        }
+        applySort()
+        markFresh(newId)
         syncCount()
       }
 
+      // Sem refetch aqui de propósito: o GET da árvore, em alguns backends,
+      // monta o include aninhado sem cobrir todos os 5 níveis (ver
+      // docs/BACKEND_COMMENT_THREADS_SPEC.md), então buscar de novo pode
+      // devolver uma árvore truncada e apagar a resposta que acabou de
+      // aparecer certinha. O POST já devolveu o nó completo — o insert
+      // otimista acima é a fonte de verdade até a próxima abertura do painel.
       cancelReply()
-      await fetchComments()
     } catch (error: any) {
       console.error('Erro ao enviar resposta:', error)
       errorMessage.value = error?.response?.status === 400
@@ -183,21 +262,21 @@
     }
   }
 
-  async function handleToggleLike (comment: CommentNodeData) {
-    if (likingId.value === comment.id) return
-    likingId.value = comment.id
-    const wasLiked = isCommentLiked(comment)
-    localLiked.value[comment.id] = !wasLiked
-    localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? -1 : 1)
-    try {
-      await toggleLikeComment(props.eventId, comment.id)
-    } catch (error) {
-      console.error('Erro ao curtir comentário:', error)
-      localLiked.value[comment.id] = wasLiked
-      localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? 1 : -1)
-    } finally {
-      likingId.value = null
+  const handleToggleLike = commentLikes.toggle
+
+  function toggleCollapse (comment: CommentNodeData) {
+    const next = new Set(collapsedIds.value)
+    if (next.has(comment.id)) {
+      next.delete(comment.id)
+    } else {
+      next.add(comment.id)
+      // Fechar uma thread cancela uma resposta em andamento dentro dela,
+      // senão o campo de resposta fica "vivo" mas invisível.
+      if (replyingToId.value && findCommentById(comment.replies, replyingToId.value)) {
+        cancelReply()
+      }
     }
+    collapsedIds.value = next
   }
 
   // provide/inject evita repassar 10 props e re-emitir eventos em cada um
@@ -206,14 +285,17 @@
     isLiked: isCommentLiked,
     likesCount: commentLikesCount,
     isMine: isMyComment,
-    isLiking: (id: string) => likingId.value === id,
+    isLiking: (id: string) => commentLikes.isPending({ id, likesCount: 0 }),
     isDeleting: (id: string) => deletingId.value === id,
     isReplyingTo: (id: string) => replyingToId.value === id,
+    isCollapsed: (id: string) => collapsedIds.value.has(id),
+    isFresh: (id: string) => freshIds.value.has(id),
     toggleLike: handleToggleLike,
     startReply,
     cancelReply,
     submitReply: handleSendReply,
     remove: handleDelete,
+    toggleCollapse,
     replyText,
     sendingReply,
     replyToName,
@@ -222,6 +304,20 @@
 
   watch(() => props.visible, val => {
     if (val) fetchComments()
+  })
+
+  // Trocar de evento é o único caso em que os overrides devem ser descartados:
+  // eles são chaveados por id de comentário, que não se repete entre eventos,
+  // mas manter o mapa crescendo à toa não tem propósito.
+  watch(() => props.eventId, () => {
+    commentLikes.reset()
+    if (props.visible) fetchComments()
+  })
+
+  watch(sortMode, applySort)
+
+  onUnmounted(() => {
+    if (freshTimer) clearTimeout(freshTimer)
   })
 
   // Busca a contagem real assim que o card monta no feed, sem esperar o
@@ -237,8 +333,49 @@
     <div class="inner">
       <!-- Header -->
       <div class="ic-header">
-        <h4 class="ic-title">Comentários</h4>
-        <span v-if="!loading" class="ic-count-badge">{{ totalCount }}</span>
+        <div class="ic-title-group">
+          <h4 class="ic-title">Comentários</h4>
+          <span v-if="!loading" class="ic-count-badge">{{ totalCount }}</span>
+        </div>
+
+        <div v-if="!loading && comments.length > 0" class="ic-tools">
+          <div class="ic-sort" role="group">
+            <button
+              v-for="opt in SORT_OPTIONS"
+              :key="opt.value"
+              class="ic-sort-btn"
+              :class="{ 'is-active': sortMode === opt.value }"
+              type="button"
+              @click="sortMode = opt.value"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+
+          <button
+            v-if="hasCollapsible"
+            class="ic-collapse-all"
+            :title="allCollapsed ? 'Expandir todas as threads' : 'Recolher todas as threads'"
+            type="button"
+            @click="toggleCollapseAll"
+          >
+            <svg
+              aria-hidden="true"
+              fill="none"
+              height="13"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.2"
+              viewBox="0 0 24 24"
+              width="13"
+            >
+              <path v-if="allCollapsed" d="M7 13l5 5 5-5M7 6l5 5 5-5" />
+              <path v-else d="M17 11l-5-5-5 5M17 18l-5-5-5 5" />
+            </svg>
+            {{ allCollapsed ? 'Expandir' : 'Recolher' }}
+          </button>
+        </div>
       </div>
 
       <div v-if="errorMessage" class="ic-error">{{ errorMessage }}</div>
@@ -352,8 +489,72 @@
 .ic-header {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 1rem 1.1rem 0.35rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 1rem 1.1rem 0.6rem;
+}
+
+.ic-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ic-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Segmentado de ordenação: compacto, sem virar um dropdown a mais */
+.ic-sort {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 999px;
+  background: #f1f2f7;
+}
+
+.ic-sort-btn {
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.24rem 0.6rem;
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: #8b8fa1;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.ic-sort-btn:hover {
+  color: #4a4d5c;
+}
+
+.ic-sort-btn.is-active {
+  background: #fff;
+  color: #ff2f92;
+  box-shadow: 0 1px 3px rgba(20, 20, 40, 0.14);
+}
+
+.ic-collapse-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: #8b8fa1;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.ic-collapse-all:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #4a4d5c;
 }
 
 .ic-title {
@@ -390,13 +591,14 @@
 
 /* ─── Lista ─── */
 .ic-list {
-  /* Herdado pelo CommentNode recursivo para o recuo por nível */
-  --cn-indent: 1.4rem;
-  --cn-indent-sm: 0.7rem;
-  max-height: 420px;
+  max-height: 460px;
   overflow-y: auto;
-  padding: 0.25rem 1.1rem 0.25rem;
+  padding: 0.25rem 1.1rem;
   scroll-behavior: smooth;
+  /* Esmaece o conteúdo cortado nas bordas em vez de fatiá-lo no meio,
+     deixando claro que a lista rola. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
 }
 
 .ic-list::-webkit-scrollbar {
@@ -429,11 +631,11 @@
 }
 
 .ic-thread {
-  padding: 0.9rem 0;
+  padding: 0.85rem 0;
 }
 
 .ic-thread + .ic-thread {
-  border-top: 1px solid rgba(0, 0, 0, 0.07);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 /* ─── Input area ─── */

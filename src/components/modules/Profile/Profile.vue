@@ -688,7 +688,7 @@ async function fetchUserProfile() {
         .map((evt: any) => {
           // Se eventAttendances contém o objeto do evento completo ou apenas referência
           const eventData = evt.event || evt
-          return mapLikedEvent(eventData)
+          return mapConfirmedAttendance(eventData)
         })
     } else {
       confirmedEventsItems.value = []
@@ -1439,6 +1439,53 @@ function collapseEvents() {
 }
 
 // ── Helpers para eventos curtidos ──
+// O payload de confirmados varia conforme a origem: /events traz `confirmedCount`,
+// enquanto o `event` aninhado em `eventAttendances` do perfil vem só com `_count`
+// (ou com a própria lista de presenças). Tenta todas as formas antes de cair em 0.
+function resolveConfirmedCount(evt: any): number {
+  const candidates = [
+    evt?.confirmedCount,
+    evt?.attendancesCount,
+    evt?.attendeesCount,
+    evt?._count?.attendances,
+    evt?._count?.eventAttendances,
+    evt?._count?.attendees,
+    Array.isArray(evt?.attendances) ? evt.attendances.length : undefined,
+    Array.isArray(evt?.eventAttendances) ? evt.eventAttendances.length : undefined,
+    Array.isArray(evt?.attendees) ? evt.attendees.length : undefined,
+  ]
+  for (const value of candidates) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+  }
+  return 0
+}
+
+/**
+ * A listagem de perfil (`GET /users/:id`) traz o evento aninhado em
+ * `eventAttendances` num formato enxuto, sem os campos de contagem que o
+ * endpoint de detalhe do evento tem (`confirmedCount`, `_count.attendances`
+ * etc.) — então `resolveConfirmedCount` cai em 0 mesmo quando existe
+ * confirmação. Mas o próprio fato do evento estar em `eventAttendances` já
+ * prova que há pelo menos 1 confirmado: o usuário logado. Piso o valor aqui
+ * em vez de em `resolveConfirmedCount`, que também serve a aba de curtidos —
+ * lá 0 pode ser o valor real.
+ */
+function mapConfirmedAttendance(evt: any): LikedEventItem {
+  const mapped = mapLikedEvent(evt)
+  return { ...mapped, confirmed: Math.max(1, mapped.confirmed) }
+}
+
+/**
+ * Mesmo raciocínio de `mapConfirmedAttendance`, aplicado à aba "Curtidos":
+ * o evento só está em `userData.likedEvents` porque o usuário logado o
+ * curtiu, então `likes` é comprovadamente >= 1 mesmo quando o payload enxuto
+ * do perfil não traz nenhum campo de contagem.
+ */
+function mapLikedEventItem(evt: any): LikedEventItem {
+  const mapped = mapLikedEvent(evt)
+  return { ...mapped, likes: Math.max(1, mapped.likes ?? 0) }
+}
+
 function mapLikedEvent(evt: any): LikedEventItem {
   const rawBanner = evt.bannerUrl || evt.banner || (Array.isArray(evt.photos) ? evt.photos[0] : '') || ''
   const hostName = evt.organizer?.name || evt.hostName || evt.creator?.name || 'Organizador'
@@ -1462,7 +1509,7 @@ function mapLikedEvent(evt: any): LikedEventItem {
     location: evt.location || evt.address || t('profile.likedEvents.locationUndefined'),
     title: evt.name || evt.title || t('profile.likedEvents.eventTitle'),
     description: evt.description || '',
-    confirmed: evt.confirmedCount || evt._count?.attendances || 0,
+    confirmed: resolveConfirmedCount(evt),
     interested: evt.interestedCount || 0,
     likes: evt.likesCount || evt.likes || evt._count?.likes || 0,
     interests: (evt.eventInterests || evt.interests || evt.categories || []).map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name).filter(Boolean),
@@ -1511,11 +1558,14 @@ async function fetchLikedEvents() {
     // Mapeia para o formato de exibição
     likedEventsItems.value = events
       .filter((e: any) => e && e.id)
-      .map((evt: any) => mapLikedEvent(evt))
+      .map((evt: any) => mapLikedEventItem(evt))
 
-    // Sincroniza os IDs com o store para manter consistência do optimistic update
-    const likedIds = events.map((evt: any) => String(evt.id))
-    eventsStore.likedEvents.splice(0, eventsStore.likedEvents.length, ...likedIds)
+    // Registra contagem e estado pelo store, e não escrevendo em likedEvents
+    // direto: a escrita direta atropelava um clique em voo (o store guarda
+    // esses ids) e zerava a contagem que outras telas já tinham resolvido.
+    for (const evt of events) {
+      if (evt?.id) eventsStore.registerEventLikeState({ ...evt, isLiked: true })
+    }
 
     // Se a lista está vazia, aguarda o timeout de 3 segundos antes de mostrar empty state
     if (events.length === 0) {
@@ -1589,7 +1639,7 @@ async function fetchConfirmedEvents() {
     if (userData?.eventAttendances && Array.isArray(userData.eventAttendances)) {
       confirmedEventsItems.value = userData.eventAttendances
         .filter((e: any) => e && (e.id || e.eventId))
-        .map((evt: any) => mapLikedEvent(evt.event || evt))
+        .map((evt: any) => mapConfirmedAttendance(evt.event || evt))
     } else {
       confirmedEventsItems.value = []
     }
@@ -1609,26 +1659,7 @@ async function fetchConfirmedEvents() {
   }
 }
 
-async function handleCancelAttendance(eventId: string | number, event: Event) {
-  // Previne a navegação para a página do evento
-  event.stopPropagation()
-
-  try {
-    // Toggle confirm no store (vai cancelar já que está confirmado)
-    await eventsStore.toggleConfirm(eventId)
-
-    // Remove o item da lista de eventos confirmados
-    const index = confirmedEventsItems.value.findIndex(item => String(item.id) === String(eventId))
-    if (index !== -1) {
-      confirmedEventsItems.value.splice(index, 1)
-    }
-
-    showSnackbar(t('profile.messages.cancelAttendanceSuccess'), SNACKBAR_COLORS.success)
-  } catch (error_) {
-    console.error('Erro ao cancelar presença:', error_)
-    showSnackbar(t('profile.messages.cancelAttendanceError'), SNACKBAR_COLORS.error)
-  }
-}
+// Cancelar presença foi movido para a página do evento — o card do perfil é só leitura.
 
 // Removido - não é mais usado com mini cards
 // async function handleToggleSaveLiked (item: LikedEventItem) {
@@ -1880,7 +1911,7 @@ function handleShareProfile() {
                           <path
                             d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                         </svg>
-                        {{ (item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0) }}
+                        {{ eventsStore.getLikeCount(item.id, item.likes || 0) }}
                       </button>
                     </div>
                   </div>
@@ -1954,17 +1985,6 @@ function handleShareProfile() {
                     <div class="mini-card-location">
                       <i class="mdi mdi-map-marker" />
                       {{ item.location || 'Local não definido' }}
-                    </div>
-                    <div class="mini-card-stats">
-                      <span class="mini-stat confirmed-stat">
-                        <i class="mdi mdi-account-check" />
-                        {{ item.confirmed }} confirmados
-                      </span>
-                      <button class="mini-stat mini-stat-btn cancel-btn" title="Cancelar presença"
-                        @click="handleCancelAttendance(item.id, $event)">
-                        <i class="mdi mdi-close-circle-outline" />
-                        Cancelar
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -2968,19 +2988,36 @@ function handleShareProfile() {
 }
 
 .follow-stat {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  background: transparent;
-  border: none;
+  background: rgba(255, 95, 166, 0.06);
+  border: 1px solid rgba(255, 95, 166, 0.28);
   cursor: pointer;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius-md);
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
   transition: all var(--transition-fast);
 }
 
+.follow-stat::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--color-primary, #ff5fa6);
+  border-bottom: 1.5px solid var(--color-primary, #ff5fa6);
+  transform: rotate(-45deg);
+  margin-left: 0.15rem;
+  opacity: 0.7;
+}
+
 .follow-stat:hover {
-  background: rgba(255, 95, 166, 0.08);
+  background: rgba(255, 95, 166, 0.14);
+  border-color: rgba(255, 95, 166, 0.55);
+  transform: translateY(-1px);
+}
+
+.follow-stat:active {
+  transform: translateY(0);
 }
 
 .follow-stat-count {
@@ -3292,12 +3329,14 @@ function handleShareProfile() {
 }
 
 .mini-stat {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   font-size: 0.85rem;
   color: #555b77;
   font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .mini-stat-btn {
@@ -3378,25 +3417,6 @@ function handleShareProfile() {
 
 .confirmed-stat i {
   color: #4CAF50 !important;
-}
-
-.cancel-btn {
-  color: #9aa0b8 !important;
-  font-size: 0.75rem;
-  transition: all 0.2s ease;
-}
-
-.cancel-btn:hover {
-  color: #ef4444 !important;
-  transform: scale(1.05);
-}
-
-.cancel-btn:hover i {
-  color: #ef4444 !important;
-}
-
-.cancel-btn i {
-  font-size: 1rem;
 }
 
 .confirmed-empty-icon {
@@ -4282,11 +4302,19 @@ function handleShareProfile() {
   font-weight: 600;
   font-size: 1rem;
   color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .follow-modal-username {
   font-size: 0.85rem;
   color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .follow-modal-btn {
@@ -4299,6 +4327,8 @@ function handleShareProfile() {
   background: linear-gradient(135deg, #ffba4b, #ff5fa6);
   color: white;
   border: none;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .follow-modal-btn:hover {
@@ -5029,7 +5059,8 @@ function handleShareProfile() {
   align-items: stretch;
   gap: 1rem;
   padding: var(--spacing-sm);
-  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  /* A folga da bottom nav fixa fica no footer, que é o último elemento da página */
+  padding-bottom: var(--spacing-sm);
 }
 
 /* Mobile: main não precisa forçar 100vh (evita lacuna antes da coluna extras) */
@@ -5045,6 +5076,12 @@ function handleShareProfile() {
   right: 0;
   top: auto;
   z-index: 1000;
+}
+
+/* O footer vem depois da .layout-shell, então precisa da sua própria folga
+   para não ficar por baixo da bottom nav fixa. */
+:deep(.app-footer) {
+  padding-bottom: calc(2rem + 5rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* Mobile: mostra Interesses + Quem seguir empilhados abaixo do conteúdo principal.
@@ -5080,8 +5117,8 @@ function handleShareProfile() {
 }
 
 .tab-btn {
-  padding: 0.35rem 0.5rem;
-  font-size: 0.72rem;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.9rem;
 }
 
 .tab-icon {
@@ -5113,7 +5150,7 @@ function handleShareProfile() {
 
 .liked-mini-cards-grid,
 .skeleton-event-grid {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 0.75rem;
 }
 
@@ -5164,8 +5201,8 @@ function handleShareProfile() {
   }
 
   .tab-btn {
-    padding: 0.4rem 0.6rem;
-    font-size: 0.78rem;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.95rem;
   }
 }
 
@@ -5194,8 +5231,8 @@ function handleShareProfile() {
   }
 
   .tab-btn {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.82rem;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.98rem;
   }
 
   .tab-icon {
@@ -5268,6 +5305,11 @@ function handleShareProfile() {
     min-height: 100vh;
   }
 
+  /* A sidebar volta a ser sticky, então o footer não precisa mais da folga */
+  :deep(.app-footer) {
+    padding-bottom: 2rem;
+  }
+
   .layout-sidebar {
     position: sticky;
     top: 100px;
@@ -5304,8 +5346,8 @@ function handleShareProfile() {
   }
 
   .tab-btn {
-    padding: 0.6rem 1rem;
-    font-size: 0.9rem;
+    padding: 0.65rem 1.1rem;
+    font-size: 1rem;
   }
 
   .header-info h1 {

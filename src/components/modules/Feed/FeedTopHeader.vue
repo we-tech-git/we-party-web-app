@@ -570,12 +570,13 @@
 }
 
 @media (max-width: 960px) {
+  /* Logo | busca | avatar numa única linha */
   .header-inner {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.6rem;
     padding: 0 0.75rem;
   }
 
@@ -589,7 +590,8 @@
   }
 
   .user-summary {
-    order: 2;
+    order: 3;
+    flex: 0 0 auto;
     position: relative;
     top: auto;
     right: auto;
@@ -634,26 +636,31 @@
   }
 
   .center-container {
-    order: 3;
-    flex: 1 1 100%;
-    width: 100%;
-    padding-top: 0.25rem;
+    order: 2;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    padding-top: 0;
+  }
+
+  .brand-logo-img {
+    width: 34px;
+    height: 34px;
   }
 
   .feed-top-header {
     padding: calc(0.5rem + env(safe-area-inset-top, 0px)) 1rem 0.75rem;
     /* Mantém sticky em todas as resoluções */
   }
-
-  .center-container {
-    width: 100%;
-    padding-top: 0.25rem;
-  }
 }
 
 @media (max-width: 480px) {
   .feed-top-header {
     padding: calc(0.4rem + env(safe-area-inset-top, 0px)) 0.5rem 0.6rem;
+  }
+
+  .header-inner {
+    gap: 0.45rem;
   }
 
   .user-summary {
@@ -663,6 +670,16 @@
   .user-avatar-section .avatar {
     width: 38px;
     height: 38px;
+  }
+
+  .brand-logo-img {
+    width: 30px;
+    height: 30px;
+  }
+
+  .default-search-wrapper :deep(.search-input-container),
+  .default-search-wrapper :deep(.search-input-field) {
+    border-radius: 16px;
   }
 }
 </style>
