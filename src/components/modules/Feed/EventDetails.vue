@@ -1,11 +1,12 @@
 <script setup lang="ts">
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
-  import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
-  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-  import { addEventComment, deleteEventComment, getEventComments, toggleLikeComment } from '@/api/comments'
+  import { addEventComment, deleteEventComment, getEventComments } from '@/api/comments'
   import { getEventById, getMyAttendance } from '@/api/event'
+  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
+  import { useCommentLikes } from '@/composables/useCommentLikes'
   import { useEventsStore } from '@/stores/events'
   import { useShareStore } from '@/stores/share'
 
@@ -257,7 +258,6 @@
   const commentsLoading = ref(false)
   const sendingComment = ref(false)
   const deletingCommentId = ref<string | null>(null)
-  const likingCommentId = ref<string | null>(null)
   const commentsContainer = ref<HTMLElement | null>(null)
 
   // Reply state
@@ -265,9 +265,10 @@
   const replyText = ref('')
   const sendingReply = ref(false)
 
-  // Local liked state (optimistic)
-  const localLiked = ref<Record<string, boolean>>({})
-  const localLikeDelta = ref<Record<string, number>>({})
+  // Like de comentário: implementação única, compartilhada com as demais telas
+  const commentLikes = useCommentLikes(
+    () => (Array.isArray(props.eventId) ? props.eventId[0] : props.eventId) ?? '',
+  )
 
   // Replies expandidas
   const expandedReplies = ref<Record<string, boolean>>({})
@@ -313,16 +314,8 @@
     return loggedUser.value?.id === comment.user?.id
   }
 
-  function isCommentLiked (comment: Comment): boolean {
-    if (comment.id in localLiked.value) return localLiked.value[comment.id] ?? false
-    return comment.isLikedByMe ?? false
-  }
-
-  function commentLikesCount (comment: Comment): number {
-    const base = comment.likesCount || 0
-    const delta = localLikeDelta.value[comment.id] || 0
-    return Math.max(0, base + delta)
-  }
+  const isCommentLiked = commentLikes.isLiked
+  const commentLikesCount = commentLikes.likesCount
 
   async function fetchComments () {
     const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
@@ -374,8 +367,9 @@
         }
       }
       comments.value = topLevel
-      localLiked.value = {}
-      localLikeDelta.value = {}
+      // Os overrides de curtida NÃO são zerados aqui: a listagem nem sempre
+      // traz `isLikedByMe`, e zerar apagava o coração após o refetch. Ver
+      // useCommentLikes.
     } catch (error) {
       console.error('Erro ao buscar comentários:', error)
       comments.value = []
@@ -479,28 +473,7 @@
     }
   }
 
-  async function handleToggleLikeComment (comment: Comment) {
-    if (likingCommentId.value === comment.id) return
-
-    const id = Array.isArray(props.eventId) ? props.eventId[0] : props.eventId
-    if (!id) return
-
-    likingCommentId.value = comment.id
-
-    const wasLiked = isCommentLiked(comment)
-    localLiked.value[comment.id] = !wasLiked
-    localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? -1 : 1)
-
-    try {
-      await toggleLikeComment(id, comment.id)
-    } catch (error) {
-      localLiked.value[comment.id] = wasLiked
-      localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? 1 : -1)
-      console.error('Erro ao curtir comentário:', error)
-    } finally {
-      likingCommentId.value = null
-    }
-  }
+  const handleToggleLikeComment = commentLikes.toggle
 
   // Carrega comentários quando a aba é selecionada
   watch(activeTab, tab => {
@@ -1342,7 +1315,7 @@
                     <button
                       class="comment-action-btn like-btn"
                       :class="{ active: isCommentLiked(comment) }"
-                      :disabled="likingCommentId === comment.id"
+                      :disabled="commentLikes.isPending(comment)"
                       type="button"
                       @click="handleToggleLikeComment(comment)"
                     >

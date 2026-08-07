@@ -1791,7 +1791,11 @@
       ?? toCount(data?.likes)
       ?? (Array.isArray(data?.likes) ? data.likes.length : 0)
     const id = data?.id ?? event.value.id
-    if (id) eventsStore.registerLikeCount(id, baseLikes.value)
+    // Registra contagem e estado de curtida juntos: entrando direto nesta URL
+    // (F5 ou link compartilhado) o `likedEvents` do store está vazio, e sem o
+    // estado vindo daqui o coração aparecia apagado num evento já curtido —
+    // o clique seguinte virava um toggle que **descurtia**.
+    if (id) eventsStore.registerEventLikeState({ ...data, id })
     // Se não temos contagem direta, usa o comprimento do array de attendees
     const attendeeArray = extractAttendees(data)
     const directGoingCount = toCount(data?.confirmedCount)

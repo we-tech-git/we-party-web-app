@@ -1560,9 +1560,12 @@ async function fetchLikedEvents() {
       .filter((e: any) => e && e.id)
       .map((evt: any) => mapLikedEventItem(evt))
 
-    // Sincroniza os IDs com o store para manter consistência do optimistic update
-    const likedIds = events.map((evt: any) => String(evt.id))
-    eventsStore.likedEvents.splice(0, eventsStore.likedEvents.length, ...likedIds)
+    // Registra contagem e estado pelo store, e não escrevendo em likedEvents
+    // direto: a escrita direta atropelava um clique em voo (o store guarda
+    // esses ids) e zerava a contagem que outras telas já tinham resolvido.
+    for (const evt of events) {
+      if (evt?.id) eventsStore.registerEventLikeState({ ...evt, isLiked: true })
+    }
 
     // Se a lista está vazia, aguarda o timeout de 3 segundos antes de mostrar empty state
     if (events.length === 0) {
@@ -1908,7 +1911,7 @@ function handleShareProfile() {
                           <path
                             d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                         </svg>
-                        {{ (item.likes || 0) + (eventsStore.isLiked(item.id) ? 1 : 0) }}
+                        {{ eventsStore.getLikeCount(item.id, item.likes || 0) }}
                       </button>
                     </div>
                   </div>

@@ -5,9 +5,9 @@
     addEventComment,
     deleteEventComment,
     getEventComments,
-    toggleLikeComment,
   } from '@/api/comments'
   import { useAuth } from '@/composables/useAuth'
+  import { useCommentLikes } from '@/composables/useCommentLikes'
 
   const props = defineProps<{
     eventId: string | number
@@ -40,7 +40,6 @@
   const loading = ref(false)
   const sending = ref(false)
   const deletingId = ref<string | null>(null)
-  const likingId = ref<string | null>(null)
   const commentsContainer = ref<HTMLElement | null>(null)
 
   // Reply state
@@ -48,9 +47,8 @@
   const replyText = ref('')
   const sendingReply = ref(false)
 
-  // Local liked state (optimistic)
-  const localLiked = ref<Record<string, boolean>>({})
-  const localLikeDelta = ref<Record<string, number>>({})
+  // Like de comentário: implementação única, compartilhada com as demais telas
+  const commentLikes = useCommentLikes(() => props.eventId)
 
   // Replies expandidas por comentário
   const expandedReplies = ref<Record<string, boolean>>({})
@@ -104,16 +102,8 @@
     return loggedUser.value?.id === comment.user?.id
   }
 
-  function isCommentLiked (comment: Comment): boolean {
-    if (comment.id in localLiked.value) return localLiked.value[comment.id] ?? false
-    return comment.isLikedByMe ?? false
-  }
-
-  function commentLikesCount (comment: Comment): number {
-    const base = comment.likesCount || 0
-    const delta = localLikeDelta.value[comment.id] || 0
-    return Math.max(0, base + delta)
-  }
+  const isCommentLiked = commentLikes.isLiked
+  const commentLikesCount = commentLikes.likesCount
 
   async function fetchComments () {
     loading.value = true
@@ -164,9 +154,9 @@
         }
       }
       comments.value = topLevel
-      // Reset local state (mantém replies expandidas)
-      localLiked.value = {}
-      localLikeDelta.value = {}
+      // Os overrides de curtida NÃO são zerados aqui: a listagem nem sempre
+      // traz `isLikedByMe`, e zerar apagava o coração após o refetch. Ver
+      // useCommentLikes.
     } catch (error) {
       console.error('Erro ao buscar comentários:', error)
       comments.value = []
@@ -261,26 +251,7 @@
     }
   }
 
-  async function handleToggleLike (comment: Comment) {
-    if (likingId.value === comment.id) return
-    likingId.value = comment.id
-
-    // Optimistic update
-    const wasLiked = isCommentLiked(comment)
-    localLiked.value[comment.id] = !wasLiked
-    localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? -1 : 1)
-
-    try {
-      await toggleLikeComment(props.eventId, comment.id)
-    } catch (error) {
-      // Revert on failure
-      localLiked.value[comment.id] = wasLiked
-      localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? 1 : -1)
-      console.error('Erro ao curtir comentário:', error)
-    } finally {
-      likingId.value = null
-    }
-  }
+  const handleToggleLike = commentLikes.toggle
 
   function close () {
     emit('update:modelValue', false)
@@ -391,6 +362,7 @@
                     <button
                       class="action-btn like-btn"
                       :class="{ active: isCommentLiked(comment) }"
+                      :disabled="commentLikes.isPending(comment)"
                       type="button"
                       @click.stop="handleToggleLike(comment)"
                     >
@@ -571,6 +543,7 @@
                           <button
                             class="action-btn like-btn"
                             :class="{ active: isCommentLiked(reply) }"
+                            :disabled="commentLikes.isPending(reply)"
                             type="button"
                             @click.stop="handleToggleLike(reply)"
                           >

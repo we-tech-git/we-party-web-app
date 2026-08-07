@@ -7,9 +7,9 @@
     deleteEventComment,
     getEventComments,
     replyToComment,
-    toggleLikeComment,
   } from '@/api/comments'
   import { useAuth } from '@/composables/useAuth'
+  import { useCommentLikes } from '@/composables/useCommentLikes'
   import { getAvatarColor, getInitial, resolveAsset } from './commentDisplay'
   import CommentNode from './CommentNode.vue'
   import {
@@ -38,7 +38,6 @@
   const loading = ref(false)
   const sending = ref(false)
   const deletingId = ref<string | null>(null)
-  const likingId = ref<string | null>(null)
   const listEl = ref<HTMLElement | null>(null)
   const errorMessage = ref('')
 
@@ -48,9 +47,8 @@
   const replyText = ref('')
   const sendingReply = ref(false)
 
-  // Like otimista: chaveado por id, então vale para qualquer nível
-  const localLiked = ref<Record<string, boolean>>({})
-  const localLikeDelta = ref<Record<string, number>>({})
+  // Like de comentário: implementação única, compartilhada com as demais telas
+  const commentLikes = useCommentLikes(() => props.eventId)
 
   // Threads recolhidas (estilo Reddit) — chaveado por id, vale para qualquer nível
   const collapsedIds = ref<Set<string>>(new Set())
@@ -98,13 +96,8 @@
     return !!loggedUser.value?.id && loggedUser.value.id === comment.user.id
   }
 
-  function isCommentLiked (comment: CommentNodeData): boolean {
-    return localLiked.value[comment.id] ?? comment.isLikedByMe
-  }
-
-  function commentLikesCount (comment: CommentNodeData): number {
-    return Math.max(0, comment.likesCount + (localLikeDelta.value[comment.id] || 0))
-  }
+  const isCommentLiked = commentLikes.isLiked
+  const commentLikesCount = commentLikes.likesCount
 
   async function fetchComments () {
     loading.value = true
@@ -112,8 +105,10 @@
       const res = await getEventComments(props.eventId)
       comments.value = normalizeCommentTree(unwrapList(res, 'comments', 'content'))
       applySort()
-      localLiked.value = {}
-      localLikeDelta.value = {}
+      // Os overrides de curtida NÃO são zerados aqui de propósito: a listagem
+      // nem sempre traz `isLikedByMe`, e o campo ausente vira `false` no
+      // mapeamento. Zerar apagava o coração após o refetch, o usuário clicava
+      // de novo e o backend (toggle) descurtia. Ver useCommentLikes.
       // Toda thread nasce recolhida: só as raízes aparecem de cara, e cada
       // nível de resposta se abre sob demanda pelo botão "Ver respostas".
       collapsedIds.value = new Set(collectParentIds(comments.value))
@@ -267,38 +262,7 @@
     }
   }
 
-  async function handleToggleLike (comment: CommentNodeData) {
-    if (likingId.value === comment.id) return
-    likingId.value = comment.id
-    const wasLiked = isCommentLiked(comment)
-    localLiked.value[comment.id] = !wasLiked
-    localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? -1 : 1)
-    try {
-      const res = await toggleLikeComment(props.eventId, comment.id)
-
-      // O toggle devolve `{ liked, likesCount }` (ver spec). Usar esse número
-      // como verdade — em vez de manter o ±1 otimista empilhado sobre o
-      // `likesCount` que veio do GET — é o que impede a contagem de divergir
-      // do banco e "dobrar" a própria curtida no reload seguinte.
-      const payload = res?.data?.data ?? res?.data
-      const serverCount = payload?.likesCount ?? payload?._count?.likes
-      const serverLiked = payload?.liked ?? payload?.isLikedByMe
-
-      if (typeof serverCount === 'number' && Number.isFinite(serverCount)) {
-        comment.likesCount = Math.max(0, serverCount)
-        localLikeDelta.value[comment.id] = 0
-      }
-      if (typeof serverLiked === 'boolean') {
-        localLiked.value[comment.id] = serverLiked
-      }
-    } catch (error) {
-      console.error('Erro ao curtir comentário:', error)
-      localLiked.value[comment.id] = wasLiked
-      localLikeDelta.value[comment.id] = (localLikeDelta.value[comment.id] || 0) + (wasLiked ? 1 : -1)
-    } finally {
-      likingId.value = null
-    }
-  }
+  const handleToggleLike = commentLikes.toggle
 
   function toggleCollapse (comment: CommentNodeData) {
     const next = new Set(collapsedIds.value)
@@ -321,7 +285,7 @@
     isLiked: isCommentLiked,
     likesCount: commentLikesCount,
     isMine: isMyComment,
-    isLiking: (id: string) => likingId.value === id,
+    isLiking: (id: string) => commentLikes.isPending({ id, likesCount: 0 }),
     isDeleting: (id: string) => deletingId.value === id,
     isReplyingTo: (id: string) => replyingToId.value === id,
     isCollapsed: (id: string) => collapsedIds.value.has(id),
@@ -340,6 +304,14 @@
 
   watch(() => props.visible, val => {
     if (val) fetchComments()
+  })
+
+  // Trocar de evento é o único caso em que os overrides devem ser descartados:
+  // eles são chaveados por id de comentário, que não se repete entre eventos,
+  // mas manter o mapa crescendo à toa não tem propósito.
+  watch(() => props.eventId, () => {
+    commentLikes.reset()
+    if (props.visible) fetchComments()
   })
 
   watch(sortMode, applySort)

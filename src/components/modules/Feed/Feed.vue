@@ -30,7 +30,7 @@
   import { useGeolocation } from '@/composables/useGeolocation'
   import { useGuestMode } from '@/composables/useGuestMode'
   import { useLoading } from '@/composables/useLoading'
-  import { useEventsStore } from '@/stores/events'
+  import { readLikeCount, useEventsStore } from '@/stores/events'
   import { logger } from '@/utils/logger'
   import FeedCard from './FeedCard.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
@@ -304,23 +304,12 @@
   }
 
   /**
-   * Só aceita campos que realmente contam **curtidas**.
-   *
-   * Antes havia fallback para `confirmedCount` / `_count.attendances`, que são
-   * presenças confirmadas — coisa completamente diferente. Quando a listagem
-   * vinha sem campo de like, o card exibia o número de presenças no lugar das
-   * curtidas; bastava o próximo request trazer o campo certo (ou o usuário
-   * curtir, somando +1 sobre a base errada) para o número mudar sozinho.
+   * Só aceita campos que realmente contam **curtidas** — nunca `confirmedCount`
+   * ou `_count.attendances`, que são presenças confirmadas. A leitura em si vive
+   * no store, para feed, detalhe e favoritos concordarem sobre o que é um like.
    */
   function resolveLikesCount (event: any): number {
-    if (typeof event.likesCount === 'number') return event.likesCount
-    if (typeof event.likes === 'number') return event.likes
-    if (Array.isArray(event.likes)) return event.likes.length
-    if (typeof event._count?.likes === 'number') return event._count.likes
-    if (typeof event.likes_count === 'number') return event.likes_count
-    if (typeof event.totalLikes === 'number') return event.totalLikes
-    if (typeof event.likeCount === 'number') return event.likeCount
-    return 0
+    return readLikeCount(event) ?? 0
   }
 
   function resolveSchedule (event: any): string {
@@ -369,10 +358,11 @@
     const calculatedHostName = event.organizer?.name || event.hostName || event.creator?.name || 'Organizador'
 
     const likesCount = resolveLikesCount(event)
-    // Registra a contagem apenas uma vez (fonte única de verdade no store),
-    // evitando recalcular "+1 se curtido" sobre um valor que já pode incluir
-    // a curtida do próprio usuário.
-    eventsStore.registerLikeCount(event.id, likesCount)
+    // Registra contagem **e** estado de curtida no store (fonte única de
+    // verdade). Quando o payload traz `isLiked`, o coração já nasce correto
+    // sem depender do GET /events/likes — que é justamente o que fazia a
+    // curtida sumir no reload quando aquele endpoint falhava ou demorava.
+    eventsStore.registerEventLikeState(event)
 
     // Extrai interesses do evento
     const eventInterests = (event.eventInterests || event.interests || event.categories || event.tags || [])
@@ -1386,7 +1376,13 @@
         </p>
       </main>
 
-      <FeedTrendsPanel class="feed-trends" :items="displayedTrends" :loading="checkLoading('feed:trends')" :guest-mode="props.guestMode" @wheel="forwardWheelToFeed" />
+      <FeedTrendsPanel
+        class="feed-trends"
+        :guest-mode="props.guestMode"
+        :items="displayedTrends"
+        :loading="checkLoading('feed:trends')"
+        @wheel="forwardWheelToFeed"
+      />
     </section>
 
     <!-- Mobile Trending FAB Button -->

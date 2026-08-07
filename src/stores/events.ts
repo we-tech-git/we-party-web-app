@@ -56,13 +56,79 @@ function resolveSchedule (event: any): string {
     event.schedule,
   ]
   for (const val of candidates) {
-    if (!val) continue
+    if (!val) {
+      continue
+    }
     const parsed = new Date(val)
     if (!Number.isNaN(parsed.getTime())) {
       return parsed.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
     }
   }
   return 'Data a definir'
+}
+
+/**
+ * Lê a contagem de curtidas de um payload cru de evento.
+ *
+ * Devolve `undefined` — e não `0` — quando nenhum campo reconhecível existe.
+ * A diferença importa: `0` afirma "este evento tem zero curtidas" e deve
+ * sobrescrever o valor conhecido; a *ausência* do campo não afirma nada.
+ * Tratar os dois casos como iguais era o que zerava a contagem correta que o
+ * feed já havia trazido, deixando o coração aceso com o número errado.
+ */
+export function readLikeCount (raw: any): number | undefined {
+  if (!raw || typeof raw !== 'object') {
+    return undefined
+  }
+
+  const aliases = [
+    raw.likesCount,
+    raw.likes_count,
+    raw.totalLikes,
+    raw.likeCount,
+    raw._count?.likes,
+  ]
+  for (const value of aliases) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return Math.max(0, value)
+    }
+  }
+
+  // `likes` é ambíguo entre endpoints: número em uns, array de usuários em outros.
+  if (typeof raw.likes === 'number' && Number.isFinite(raw.likes)) {
+    return Math.max(0, raw.likes)
+  }
+  if (Array.isArray(raw.likes)) {
+    return raw.likes.length
+  }
+
+  return undefined
+}
+
+/**
+ * Lê se o usuário logado curtiu, aceitando os apelidos usados pelos diferentes
+ * endpoints. `undefined` significa "este endpoint não informa", caso em que o
+ * estado já conhecido é preservado em vez de virar `false`.
+ *
+ * Nunca conte presenças aqui: `confirmedCount`/`attendances` são outra coisa.
+ */
+export function readLikedFlag (raw: any): boolean | undefined {
+  if (!raw || typeof raw !== 'object') {
+    return undefined
+  }
+
+  const aliases = [raw.isLiked, raw.liked, raw.isLikedByMe, raw.likedByMe, raw.hasLiked]
+  for (const value of aliases) {
+    if (typeof value === 'boolean') {
+      return value
+    }
+  }
+  return undefined
+}
+
+/** Desembrulha `{ data: { data: X } }`, `{ data: X }` ou `X`. */
+function unwrapPayload (response: any): any {
+  return response?.data?.data ?? response?.data ?? response
 }
 
 function sanitizeSavedEvents (items: FeedItem[]) {
@@ -80,6 +146,10 @@ function sanitizeSavedEvents (items: FeedItem[]) {
   })
 }
 
+/** Tamanho de página e teto de varredura usados por `syncLikedEventsWithServer`. */
+const LIKED_SYNC_PAGE_SIZE = 100
+const LIKED_SYNC_MAX_PAGES = 20
+
 export const useEventsStore = defineStore('events', () => {
   // Estado em memória - sem localStorage
   const savedEvents = ref<FeedItem[]>([])
@@ -89,6 +159,10 @@ export const useEventsStore = defineStore('events', () => {
   // para evitar que cada tela some "+1 se curtido" sobre um valor que a API
   // de origem pode ou não já incluir a curtida do próprio usuário.
   const likeCounts = ref<Record<string, number>>({})
+  // Ids com um POST de curtida em voo. Uma resposta de listagem disparada
+  // ANTES do clique não pode desfazer o clique ao chegar depois dele — era
+  // isso que fazia a curtida recém-dada sumir sozinha da tela.
+  const pendingLikes = ref(new Set<string>())
 
   // Limpa localStorage legado (se houver)
   if (typeof localStorage !== 'undefined') {
@@ -137,76 +211,94 @@ export const useEventsStore = defineStore('events', () => {
     return savedEvents.value.some(e => String(e.id) === normalizedId)
   }
 
-  /**
-   * Reconcilia o estado local com o que o servidor respondeu ao toggle.
-   *
-   * O ±1 otimista é só um palpite sobre uma base que veio de outro request;
-   * se as duas coisas discordarem (ou o backend gravar algo diferente do que
-   * pedimos), a diferença ficava presa no cache até o próximo reload — que é
-   * exatamente o "curti uma vez e apareceram duas". Quando a resposta traz o
-   * número real, ele substitui o palpite em vez de somar por cima.
-   *
-   * Se a resposta não trouxer nada reconhecível, o otimista permanece.
-   */
-  function applyServerLikeState (normalizedId: string, response: any) {
-    const payload = response?.data?.data ?? response?.data ?? response
-    if (!payload || typeof payload !== 'object') {
-      return
-    }
-
-    const count = payload.likesCount ?? payload.likes_count ?? payload.totalLikes ?? payload._count?.likes
-    if (typeof count === 'number' && Number.isFinite(count)) {
-      likeCounts.value[normalizedId] = Math.max(0, count)
-    }
-
-    const liked = payload.liked ?? payload.isLiked ?? payload.isLikedByMe
-    if (typeof liked === 'boolean') {
-      const index = likedEvents.value.findIndex(
-        likedId => String(likedId) === normalizedId,
-      )
-      if (liked && index === -1) {
-        likedEvents.value.push(normalizedId)
-      } else if (!liked && index !== -1) {
-        likedEvents.value.splice(index, 1)
-      }
+  function applyLiked (key: string, liked: boolean) {
+    const index = likedEvents.value.findIndex(likedId => String(likedId) === key)
+    if (liked && index === -1) {
+      likedEvents.value.push(key)
+    } else if (!liked && index !== -1) {
+      likedEvents.value.splice(index, 1)
     }
   }
 
-  async function toggleLike (id: EventId) {
-    const normalizedId = String(id)
-    // Optimistic update
-    const index = likedEvents.value.findIndex(
-      likedId => String(likedId) === normalizedId,
-    )
-    const isAdding = index === -1
+  /**
+   * Grava o que o servidor disse sobre um evento. Campos `undefined` preservam
+   * o valor atual, e nada é gravado enquanto houver um toggle em voo para
+   * aquele id — a resposta em voo é mais recente do que qualquer listagem.
+   */
+  function applyLikeState (id: EventId, count?: number, liked?: boolean) {
+    const key = String(id)
+    if (pendingLikes.value.has(key)) {
+      return
+    }
+    if (count !== undefined) {
+      likeCounts.value[key] = Math.max(0, count)
+    }
+    if (liked !== undefined) {
+      applyLiked(key, liked)
+    }
+  }
 
-    if (isAdding) {
-      likedEvents.value.push(normalizedId)
-    } else {
-      likedEvents.value.splice(index, 1)
+  /**
+   * Registra contagem **e** estado de curtida a partir de um payload cru de
+   * evento (item do feed, detalhe, favorito…).
+   *
+   * É o caminho preferido: o estado chega junto do próprio evento, sem depender
+   * do endpoint separado `/events/likes`. Quando o backend não manda o campo,
+   * `readLikedFlag` devolve `undefined` e o fallback daquele endpoint continua
+   * valendo — nada regride.
+   */
+  function registerEventLikeState (raw: any) {
+    const id = raw?.id
+    if (id === undefined || id === null) {
+      return
+    }
+    applyLikeState(id, readLikeCount(raw), readLikedFlag(raw))
+  }
+
+  async function toggleLike (id: EventId) {
+    const key = String(id)
+    // O endpoint é um toggle: dois POSTs seguidos no mesmo evento se anulam.
+    // Ignorar o clique enquanto o anterior não respondeu é o que impede um
+    // duplo clique (ou a impaciência do usuário) de desfazer a própria curtida.
+    if (pendingLikes.value.has(key)) {
+      return
     }
 
-    // Ajusta a contagem canônica na mesma direção do toggle
-    const currentCount = likeCounts.value[normalizedId] ?? 0
-    likeCounts.value[normalizedId] = Math.max(0, currentCount + (isAdding ? 1 : -1))
+    const wasLiked = isLiked(key)
+    const previousCount = likeCounts.value[key]
+
+    pendingLikes.value.add(key)
+
+    // Optimistic update
+    applyLiked(key, !wasLiked)
+    likeCounts.value[key] = Math.max(0, (previousCount ?? 0) + (wasLiked ? -1 : 1))
 
     try {
-      const response = await toggleLikeEvent(id)
-      applyServerLikeState(normalizedId, response)
-    } catch (error) {
-      // Revert if API fails
-      console.error('Failed to toggle like on server', error)
-      const revertIndex = likedEvents.value.findIndex(
-        likedId => String(likedId) === normalizedId,
-      )
-      if (isAdding && revertIndex !== -1) {
-        likedEvents.value.splice(revertIndex, 1)
-      } else if (!isAdding && revertIndex === -1) {
-        likedEvents.value.push(normalizedId)
-      }
+      const payload = unwrapPayload(await toggleLikeEvent(id))
+      const serverCount = readLikeCount(payload)
+      const serverLiked = readLikedFlag(payload)
 
-      const revertedCount = likeCounts.value[normalizedId] ?? 0
-      likeCounts.value[normalizedId] = Math.max(0, revertedCount + (isAdding ? -1 : 1))
+      // A resposta do toggle é a informação mais recente que existe: ela
+      // substitui o palpite otimista em vez de somar por cima dele. Somar era
+      // o que produzia o "curti uma vez e contou duas".
+      if (serverLiked !== undefined) {
+        applyLiked(key, serverLiked)
+      }
+      if (serverCount !== undefined) {
+        likeCounts.value[key] = Math.max(0, serverCount)
+      }
+    } catch (error) {
+      console.error('Falha ao curtir evento no servidor', error)
+      // Restaura o estado exato de antes do clique. Desfazer por aritmética
+      // (±1) acumulava erro quando duas reversões caíam sobre o mesmo id.
+      applyLiked(key, wasLiked)
+      if (previousCount === undefined) {
+        delete likeCounts.value[key]
+      } else {
+        likeCounts.value[key] = previousCount
+      }
+    } finally {
+      pendingLikes.value.delete(key)
     }
   }
 
@@ -218,16 +310,17 @@ export const useEventsStore = defineStore('events', () => {
   }
 
   /**
-   * Registra a contagem "base" de curtidas vinda da API para um evento,
-   * apenas se ainda não houver uma contagem conhecida. Isso garante uma
-   * única fonte de verdade compartilhada entre feed e telas de detalhe,
-   * em vez de cada tela recalcular "+1 se curtido" sobre o próprio valor.
+   * Registra a contagem de curtidas vinda da API para um evento.
+   *
+   * Antes isto só gravava quando ainda não havia valor, para evitar que telas
+   * diferentes brigassem pelo mesmo número. O efeito colateral era a contagem
+   * congelar no primeiro valor da sessão e nunca mais refletir o banco: ir ao
+   * detalhe e voltar mostrava o número velho. Agora a resposta mais recente
+   * vence, e a proteção contra atropelo fica com `pendingLikes` — que é quem
+   * de fato sabe se existe um clique do usuário em voo.
    */
-  function registerLikeCount (id: EventId, count: number) {
-    const normalizedId = String(id)
-    if (likeCounts.value[normalizedId] === undefined) {
-      likeCounts.value[normalizedId] = count
-    }
+  function registerLikeCount (id: EventId, count: number, liked?: boolean) {
+    applyLikeState(id, Number.isFinite(count) ? count : undefined, liked)
   }
 
   function getLikeCount (id: EventId, fallback = 0) {
@@ -296,33 +389,38 @@ export const useEventsStore = defineStore('events', () => {
       const events = unwrapList<any>(response, 'events')
 
       // Mapeia os eventos da API para o formato FeedItem
-      const mappedEvents: FeedItem[] = events.map((evt: any) => ({
-        id: evt.id,
-        banner: evt.bannerUrl || evt.banner || '',
-        creator: {
-          name:
+      const mappedEvents: FeedItem[] = events.map((evt: any) => {
+        // Favoritos também carregam contagem/estado de curtida: registrar aqui
+        // mantém a mesma fonte de verdade das outras telas.
+        registerEventLikeState(evt)
+        return ({
+          id: evt.id,
+          banner: evt.bannerUrl || evt.banner || '',
+          creator: {
+            name:
             evt.organizer?.name
             || evt.hostName
             || evt.creator?.name
             || 'Organizador',
-        },
-        hostAvatar:
+          },
+          hostAvatar:
           evt.organizer?.avatar
           || evt.hostAvatar
           || evt.creator?.profileImage
           || '',
-        schedule: resolveSchedule(evt),
-        location: evt.location || evt.address || '',
-        title: evt.name || evt.title || '',
-        description: evt.description || '',
-        confirmed: evt.confirmedCount || evt._count?.attendances || 0,
-        interested: evt.interestedCount || 0,
-        likes: evt.likesCount || evt.likes || 0,
-        interests: (evt.eventInterests || evt.interests || evt.categories || evt.tags || [])
-          .map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name)
-          .filter(Boolean),
-        commentsCount: evt.commentsCount ?? evt._count?.comments ?? 0,
-      }))
+          schedule: resolveSchedule(evt),
+          location: evt.location || evt.address || '',
+          title: evt.name || evt.title || '',
+          description: evt.description || '',
+          confirmed: evt.confirmedCount || evt._count?.attendances || 0,
+          interested: evt.interestedCount || 0,
+          likes: readLikeCount(evt) ?? 0,
+          interests: (evt.eventInterests || evt.interests || evt.categories || evt.tags || [])
+            .map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name)
+            .filter(Boolean),
+          commentsCount: evt.commentsCount ?? evt._count?.comments ?? 0,
+        })
+      })
 
       savedEvents.value = sanitizeSavedEvents(mappedEvents)
       isInitialized.value.favorites = true
@@ -338,35 +436,60 @@ export const useEventsStore = defineStore('events', () => {
    */
   async function syncLikedEventsWithServer () {
     try {
-      const response = await getLikedEvents(1, 100)
+      const serverLiked = new Set<string>()
+      let enumeratedEverything = false
 
-      // Extrai eventos da resposta (unwrapList aceita os envelopes conhecidos)
-      const events = unwrapList<any>(response, 'events')
+      // Varre todas as páginas: parar na primeira significaria tratar como
+      // "não curtido" tudo o que ficou de fora, apagando corações sozinho.
+      for (let page = 1; page <= LIKED_SYNC_MAX_PAGES; page++) {
+        const response = await getLikedEvents(page, LIKED_SYNC_PAGE_SIZE)
+        const events = unwrapList<any>(response, 'events')
 
-      // Registra os like counts dos eventos curtidos para restaurar após reload
-      for (const evt of events) {
-        if (evt && evt.id) {
-          const count = evt.likesCount ?? evt.likes_count ?? evt.totalLikes ?? evt._count?.likes ?? 0
-          if (typeof count === 'number') {
-            likeCounts.value[String(evt.id)] = count
+        for (const evt of events) {
+          if (!evt?.id) {
+            continue
           }
+          const key = String(evt.id)
+          serverLiked.add(key)
+          // Só grava quando o item traz contagem de verdade. Antes havia um
+          // `?? 0` aqui que zerava o número correto já trazido pelo feed.
+          const count = readLikeCount(evt)
+          if (count !== undefined && !pendingLikes.value.has(key)) {
+            likeCounts.value[key] = count
+          }
+        }
+
+        if (events.length < LIKED_SYNC_PAGE_SIZE) {
+          enumeratedEverything = true
+          break
         }
       }
 
-      // Mescla em vez de substituir: essa chamada não é aguardada por quem a
-      // invoca, então o usuário pode clicar em curtir (optimistic update)
-      // enquanto o GET ainda está em voo. Sobrescrever likedEvents.value
-      // diretamente derrubava esse clique assim que a resposta (mais antiga
-      // que o clique) chegasse — a curtida sumia da tela mesmo tendo sido
-      // enviada ao servidor.
-      const serverLikedIds = events.map((evt: any) => String(evt.id))
-      const merged = new Set([...likedEvents.value.map(String), ...serverLikedIds])
-      likedEvents.value = [...merged]
+      if (enumeratedEverything) {
+        // Cliques em voo são mais recentes que esta resposta e sobrevivem a ela.
+        for (const key of pendingLikes.value) {
+          if (isLiked(key)) {
+            serverLiked.add(key)
+          } else {
+            serverLiked.delete(key)
+          }
+        }
+        // Substitui o conjunto conhecido. Mesclar (o comportamento anterior)
+        // fazia o estado só crescer: uma curtida desfeita em outra aba, ou um
+        // POST que o servidor recusou, ficava presa na tela para sempre.
+        likedEvents.value = [...serverLiked]
+      } else {
+        // Não deu para enumerar tudo, então a ausência de um id aqui não prova
+        // que ele foi descurtido: mesclar é a opção segura.
+        console.warn('Lista de curtidas excedeu o limite de varredura; mesclando em vez de substituir.')
+        likedEvents.value = [...new Set([...likedEvents.value.map(String), ...serverLiked])]
+      }
+
       isInitialized.value.liked = true
     } catch (error: any) {
       // Falha silenciosamente se o endpoint não existir (404)
       if (error?.status === 404 || error?.response?.status === 404) {
-        console.warn('Endpoint de eventos curtidos não disponível (404). Usando apenas optimistic updates.')
+        console.warn('Endpoint de eventos curtidos não disponível (404). Usando o estado que vier nos próprios eventos.')
       } else {
         console.error('Erro ao sincronizar eventos curtidos com servidor:', error)
       }
@@ -382,6 +505,7 @@ export const useEventsStore = defineStore('events', () => {
     likedEvents.value = []
     confirmedEvents.value = []
     likeCounts.value = {}
+    pendingLikes.value.clear()
     // Limpa localStorage legado se existir
     localStorage.removeItem('weparty_confirmed_events')
     isInitialized.value = {
@@ -400,6 +524,7 @@ export const useEventsStore = defineStore('events', () => {
     isLiked,
     likeCounts,
     registerLikeCount,
+    registerEventLikeState,
     getLikeCount,
     confirmedEvents,
     toggleConfirm,
