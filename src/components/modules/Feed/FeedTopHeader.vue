@@ -348,7 +348,7 @@
 }
 
 .default-search-wrapper :deep(.search-input-field) {
-  border-radius: 20px;
+  border-radius: 8px;
   background: #ffffff;
   border-color: transparent;
 }

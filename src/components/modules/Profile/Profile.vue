@@ -6,15 +6,17 @@
   import { isRequestCanceled, unwrapItem, unwrapList } from '@/api'
   import { followUserById, getFollowStats, getMyFollowers, getMyFollowing, unfollowUserById } from '@/api/follows'
   import { addUserInterest, getInterests, getUnownedInterestSuggestions, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
-  import { getUserInterests, getUserProfile, getUserRecomendations, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
+  import { getUserInterests, getUserProfile, getUserRecomendations, searchUsers, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
   import AppFooter from '@/components/AppFooter.vue'
   import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
   import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
   import FeedTopHeader from '@/components/modules/Feed/FeedTopHeader.vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import ConfirmDialog from '@/components/UI/ConfirmDialog/ConfirmDialog.vue'
+  import FollowButton from '@/components/UI/FollowButton/FollowButton.vue'
   import ImageCropper from '@/components/UI/ImageCropper/ImageCropper.vue'
   import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
+  import SelectableChip from '@/components/UI/SelectableChip/SelectableChip.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
@@ -160,6 +162,10 @@
     if (confirmedEventsTimeout) {
       clearTimeout(confirmedEventsTimeout)
       confirmedEventsTimeout = null
+    }
+    if (userSearchCtrl) {
+      userSearchCtrl.abort()
+      userSearchCtrl = null
     }
   })
 
@@ -454,6 +460,7 @@
   const filteredRecommendedUsers = ref<FollowUser[]>([])
   const allRecommendedUsers = ref<FollowUser[]>([])
   const searchingUsers = ref(false)
+  let userSearchCtrl: AbortController | null = null
 
   // ── Fetch User Recommendations ──
   async function fetchRecommendedUsers () {
@@ -497,24 +504,47 @@
   })
 
   // ── Handler para busca de usuários (chamado pelo SearchInput com debounce) ──
-  function handleUserSearch (query: string) {
+  // Mesmo comportamento da página /public/AddFriends: busca real no backend
+  // (GET /social/search), com cancelamento da requisição anterior para evitar
+  // respostas fora de ordem.
+  async function handleUserSearch (query: string) {
     if (!query.trim()) {
+      userSearchCtrl?.abort()
       filteredRecommendedUsers.value = [...allRecommendedUsers.value]
       searchingUsers.value = false
       return
     }
 
-    // Filtro local (síncrono)
-    const lowerQuery = query.toLowerCase()
-    filteredRecommendedUsers.value = allRecommendedUsers.value.filter(user =>
-      user.name.toLowerCase().includes(lowerQuery)
-      || (user.username && user.username.toLowerCase().includes(lowerQuery)),
-    )
-    searchingUsers.value = false
+    // Aborta a busca anterior antes de disparar a nova
+    userSearchCtrl?.abort()
+    userSearchCtrl = new AbortController()
+    const { signal } = userSearchCtrl
+
+    try {
+      const response = await searchUsers(query.trim(), 1, 20, signal)
+      const userData = unwrapList<any>(response, 'users')
+      filteredRecommendedUsers.value = userData.map((u: any) => ({
+        id: u.id || u._id,
+        name: u.name || u.username || 'Usuário',
+        username: u.username,
+        profileImage: u.profileImage || u.profilePhoto || u.avatar,
+        isFollowing: u.isFollowing ?? false,
+      }))
+    } catch (error_: any) {
+      // Requisição substituída por outra mais recente: mantém o loading da atual
+      if (isRequestCanceled(error_)) return
+
+      console.error('Erro ao buscar usuários:', error_)
+      filteredRecommendedUsers.value = []
+      showSnackbar(error_?.response?.data?.message || 'Erro ao buscar usuários', SNACKBAR_COLORS.error)
+    } finally {
+      searchingUsers.value = false
+    }
   }
 
   // ── Handler para limpar busca de usuários ──
   function handleClearUserSearch () {
+    userSearchCtrl?.abort()
     filteredRecommendedUsers.value = [...allRecommendedUsers.value]
     searchingUsers.value = false
   }
@@ -1948,19 +1978,15 @@
             <AppLoader v-if="isLoadingInlineSuggestions" size="sm" :text="t('profile.interests.loadingSuggestions')" />
 
             <div v-else class="interests-suggestions-list">
-              <button
+              <SelectableChip
                 v-for="interest in inlineSuggestions"
                 :key="interest.id"
-                :aria-label="`${t('profile.interests.add')}: ${interest.name}`"
-                class="suggestion-chip"
                 :disabled="addingInterestId !== null"
-                type="button"
-                @click="addInterestDirectly(interest)"
-              >
-                <i v-if="addingInterestId === interest.id" class="mdi mdi-loading mdi-spin" />
-                <i v-else class="mdi mdi-plus" />
-                {{ interest.name }}
-              </button>
+                :is-selected="false"
+                :label="interest.name"
+                :loading="addingInterestId === interest.id"
+                @toggle="addInterestDirectly(interest)"
+              />
             </div>
           </div>
         </div>
@@ -2001,14 +2027,12 @@
                   <span class="recommendation-name">{{ recUser.name }}</span>
                   <span v-if="recUser.username" class="recommendation-username">@{{ recUser.username }}</span>
                 </div>
-                <button
-                  class="recommendation-follow-btn"
-                  :class="{ following: recUser.isFollowing }"
-                  type="button"
-                  @click="toggleFollowUser(recUser)"
-                >
-                  <i :class="recUser.isFollowing ? 'mdi mdi-check' : 'mdi mdi-plus'" />
-                </button>
+                <FollowButton
+                  :following="!!recUser.isFollowing"
+                  :following-label="t('profile.followersModal.following')"
+                  :label="t('profile.followersModal.follow')"
+                  @toggle="toggleFollowUser(recUser)"
+                />
               </li>
             </ul>
           </div>
@@ -3856,37 +3880,6 @@
   gap: 0.45rem;
 }
 
-.suggestion-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.4rem 0.8rem;
-  border: 1px dashed rgba(255, 95, 166, 0.45);
-  border-radius: 999px;
-  background: transparent;
-  color: #6b7194;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
-}
-
-.suggestion-chip:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.12), rgba(255, 95, 166, 0.12));
-  border-color: rgba(255, 95, 166, 0.75);
-  color: #d63384;
-  transform: translateY(-1px);
-}
-
-.suggestion-chip:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
-.suggestion-chip i {
-  font-size: 0.9rem;
-}
-
 .tag {
   padding: 0.4rem 0.85rem;
   background: linear-gradient(135deg, rgba(255, 186, 75, 0.08), rgba(255, 95, 166, 0.08));
@@ -4093,40 +4086,6 @@
 .recommendation-username {
   font-size: 0.8rem;
   color: var(--color-text-muted);
-}
-
-.recommendation-follow-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
-  color: white;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.recommendation-follow-btn:hover {
-  transform: scale(1.1);
-  box-shadow: var(--shadow-primary);
-}
-
-.recommendation-follow-btn.following {
-  background: #e5e7eb;
-  color: #6b7280;
-}
-
-.recommendation-follow-btn.following:hover {
-  background: #d1d5db;
-  box-shadow: none;
-}
-
-.recommendation-follow-btn i {
-  font-size: 1rem;
 }
 
 .recommendations-empty {

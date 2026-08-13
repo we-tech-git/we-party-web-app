@@ -139,9 +139,10 @@ export async function getUserRecomendations () {
  */
 export async function searchUsers (query: string, page = 1, limit = 20, signal?: AbortSignal) {
   try {
+    const offset = (page - 1) * limit
     const response = await callApi(
       'GET',
-      `/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
+      `/social/search?q=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`,
       {},
       true,
       undefined,

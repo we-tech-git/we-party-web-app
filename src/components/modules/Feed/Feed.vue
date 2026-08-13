@@ -364,9 +364,20 @@
     // curtida sumir no reload quando aquele endpoint falhava ou demorava.
     eventsStore.registerEventLikeState(event)
 
-    // Extrai interesses do evento
-    const eventInterests = (event.eventInterests || event.interests || event.categories || event.tags || [])
+    // Extrai interesses do evento. `eventInterests` fica só com os nomes
+    // (contagem, tags e ordenação por afinidade); `interestRefs` preserva o id,
+    // que é o que permite adicionar o interesse ao perfil pelo card.
+    const rawInterests = event.eventInterests || event.interests || event.categories || event.tags || []
+    const eventInterests = rawInterests
       .map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name)
+      .filter(Boolean)
+    const interestRefs = rawInterests
+      .map((i: any) => {
+        const source = typeof i === 'string' ? null : (i.interest ?? i)
+        const id = source?.id ?? source?.interestId
+        const name = source?.name
+        return id && name ? { id: String(id), name: String(name) } : null
+      })
       .filter(Boolean)
 
     // Calcula quais interesses do evento correspondem aos do usuário
@@ -387,6 +398,7 @@
       interested: event.interestedCount || 0,
       likes: likesCount,
       interests: eventInterests,
+      interestRefs,
       matchedInterests,
       commentsCount: event.commentsCount ?? event._count?.comments ?? 0,
       sourceUrl: event.sourceUrl || event.source_url || event.externalUrl || event.external_url || undefined,
@@ -1315,6 +1327,7 @@
             :highlight="activeNav === 'top-events'"
             :host-avatar="item.hostAvatar"
             :host-name="item.creator.name"
+            :interest-refs="item.interestRefs"
             :interested="item.interested"
             :interests="item.interests"
             :is-saved="eventsStore.isSaved(item.id)"
@@ -1567,7 +1580,7 @@
 }
 
 .search-wrapper :deep(.search-input-field) {
-  border-radius: 20px;
+  border-radius: 14px;
   background: #ffffff;
   border-color: transparent;
 }

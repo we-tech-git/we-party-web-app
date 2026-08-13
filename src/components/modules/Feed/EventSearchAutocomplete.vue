@@ -325,9 +325,9 @@
 
 .search-input-field {
   width: 100%;
-  padding: 1rem 3.25rem 1rem 3.5rem;
+  padding: 0.5rem 2.25rem 0.5rem 3rem;
   border: 2px solid #d1d5e0;
-  border-radius: 16px;
+  border-radius: 8px;
   font-size: 1rem;
   font-family: inherit;
   /* Dupla declaração necessária: 'color' para Firefox; '-webkit-text-fill-color'

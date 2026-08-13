@@ -110,6 +110,11 @@
       "changePicture": "Change profile picture",
       "profile": "My Profile",
       "logout": "Logout"
+    },
+    "interests": {
+      "title": "Event interests",
+      "hint": "Tap the ones that match you to add them to your profile.",
+      "empty": "This event has no interests yet."
     }
   },
   "addFriends": {

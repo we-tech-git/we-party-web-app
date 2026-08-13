@@ -110,6 +110,11 @@
       "changePicture": "Trocar foto de perfil",
       "profile": "Meu Perfil",
       "logout": "Sair"
+    },
+    "interests": {
+      "title": "Interesses do evento",
+      "hint": "Toque nos que combinam com você para adicionar ao seu perfil.",
+      "empty": "Este evento ainda não tem interesses."
     }
   },
   "addFriends": {

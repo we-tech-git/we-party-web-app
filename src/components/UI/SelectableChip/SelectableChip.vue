@@ -1,21 +1,32 @@
 <script setup lang="ts">
 /**
- * SelectableChip Component
+ * SelectableChip — tag de interesse padrão do produto.
  *
- * Este componente renderiza um botão de "chip" ou "tag" que pode ser selecionado.
- * Ele é utilizado para exibir categorias, interesses ou filtros que o usuário pode ativar/desativar.
+ * O visual é o do fluxo de cadastro (`modules/interest/Interest.vue`), que é a
+ * referência: contorno rosa quando não selecionado, gradiente preenchido quando
+ * selecionado. Qualquer lista de interesses (feed, perfil, cadastro) deve usar
+ * este componente em vez de recriar o chip.
  *
- * Props:
- * - label: O texto a ser exibido no chip.
- * - isSelected: Booleano que define se o chip está no estado selecionado (ativo) ou não.
+ * O clique **alterna**: chip em contorno (+) adiciona, chip preenchido (✓, que
+ * vira × no hover) remove. Quem consome decide o que cada lado significa.
  *
- * Emits:
- * - toggle: Evento disparado quando o usuário clica no chip.
+ * Estados:
+ * - `isSelected` — o usuário já tem esse interesse (preenchido).
+ * - `loading` — ação em andamento; bloqueia o clique e mostra spinner.
+ * - `readonly` — apenas exibição, sem interação (ex.: listar tags de um evento
+ *   para quem não está logado).
  */
-  defineProps<{
+  withDefaults(defineProps<{
     label: string
     isSelected: boolean
-  }>()
+    loading?: boolean
+    disabled?: boolean
+    readonly?: boolean
+  }>(), {
+    loading: false,
+    disabled: false,
+    readonly: false,
+  })
 
   const emit = defineEmits<{
     (e: 'toggle'): void
@@ -23,12 +34,28 @@
 </script>
 
 <template>
-  <button :class="['category-chip', { 'selected': isSelected }]" type="button" @click="emit('toggle')">
+  <component
+    :is="readonly ? 'span' : 'button'"
+    :aria-pressed="readonly ? undefined : isSelected"
+    :class="['category-chip', { selected: isSelected, 'is-readonly': readonly, 'is-loading': loading }]"
+    :disabled="readonly ? undefined : (disabled || loading)"
+    :title="label"
+    :type="readonly ? undefined : 'button'"
+    @click="!readonly && !disabled && !loading && emit('toggle')"
+  >
+    <i v-if="loading" aria-hidden="true" class="mdi mdi-loading mdi-spin chip-icon" />
+    <template v-else-if="!readonly">
+      <!-- Selecionado: check por padrão, × no hover para sinalizar que clicar remove. -->
+      <i v-if="isSelected" aria-hidden="true" class="mdi mdi-check chip-icon chip-icon--idle" />
+      <i v-if="isSelected" aria-hidden="true" class="mdi mdi-close chip-icon chip-icon--hover" />
+      <i v-else aria-hidden="true" class="mdi mdi-plus chip-icon" />
+    </template>
     {{ label }}
-  </button>
+  </component>
 </template>
 
 <style scoped>
+/* Medidas e cores espelham `.chip` de modules/interest/Interest.vue. */
 .category-chip {
   height: 40px;
   padding: 0 16px;
@@ -41,13 +68,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   white-space: nowrap;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
   box-shadow: 0 2px 0 rgba(0, 0, 0, .05);
 }
 
-.category-chip:hover {
+.category-chip:hover:not(:disabled):not(.is-readonly) {
   transform: translateY(-1px);
 }
 
@@ -57,5 +85,37 @@
   color: #fff;
   border: 1.5px solid transparent;
   box-shadow: 0 10px 20px rgba(255, 95, 166, .2);
+}
+
+.category-chip:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Somente leitura: mantém o visual, remove a affordance de clique. */
+.category-chip.is-readonly {
+  cursor: default;
+}
+
+.chip-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* Chip selecionado: check por padrão, × no hover/foco para sinalizar que clicar
+   remove. Os dois ícones são da mesma fonte e largura, então a troca não muda a
+   largura do chip. */
+.chip-icon--hover {
+  display: none;
+}
+
+.category-chip:hover:not(:disabled):not(.is-readonly) .chip-icon--idle,
+.category-chip:focus-visible:not(:disabled):not(.is-readonly) .chip-icon--idle {
+  display: none;
+}
+
+.category-chip:hover:not(:disabled):not(.is-readonly) .chip-icon--hover,
+.category-chip:focus-visible:not(:disabled):not(.is-readonly) .chip-icon--hover {
+  display: inline-block;
 }
 </style>

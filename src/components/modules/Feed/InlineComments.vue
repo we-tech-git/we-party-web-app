@@ -8,6 +8,7 @@
     getEventComments,
     replyToComment,
   } from '@/api/comments'
+  import InlinePanel from '@/components/UI/InlinePanel/InlinePanel.vue'
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useCommentLikes } from '@/composables/useCommentLikes'
@@ -329,153 +330,127 @@
 </script>
 
 <template>
-  <div class="inline-comments-wrapper" :class="{ expanded: visible }">
-    <div class="inner">
-      <!-- Header -->
-      <div class="ic-header">
-        <div class="ic-title-group">
-          <h4 class="ic-title">Comentários</h4>
-          <span v-if="!loading" class="ic-count-badge">{{ totalCount }}</span>
-        </div>
+  <InlinePanel :visible="visible">
+    <!-- Header -->
+    <div class="ic-header">
+      <div class="ic-title-group">
+        <h4 class="ic-title">Comentários</h4>
+        <span v-if="!loading" class="ic-count-badge">{{ totalCount }}</span>
+      </div>
 
-        <div v-if="!loading && comments.length > 0" class="ic-tools">
-          <div class="ic-sort" role="group">
-            <button
-              v-for="opt in SORT_OPTIONS"
-              :key="opt.value"
-              class="ic-sort-btn"
-              :class="{ 'is-active': sortMode === opt.value }"
-              type="button"
-              @click="sortMode = opt.value"
-            >
-              {{ opt.label }}
-            </button>
-          </div>
-
+      <div v-if="!loading && comments.length > 0" class="ic-tools">
+        <div class="ic-sort" role="group">
           <button
-            v-if="hasCollapsible"
-            class="ic-collapse-all"
-            :title="allCollapsed ? 'Expandir todas as threads' : 'Recolher todas as threads'"
+            v-for="opt in SORT_OPTIONS"
+            :key="opt.value"
+            class="ic-sort-btn"
+            :class="{ 'is-active': sortMode === opt.value }"
             type="button"
-            @click="toggleCollapseAll"
+            @click="sortMode = opt.value"
           >
-            <svg
-              aria-hidden="true"
-              fill="none"
-              height="13"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2.2"
-              viewBox="0 0 24 24"
-              width="13"
-            >
-              <path v-if="allCollapsed" d="M7 13l5 5 5-5M7 6l5 5 5-5" />
-              <path v-else d="M17 11l-5-5-5 5M17 18l-5-5-5 5" />
-            </svg>
-            {{ allCollapsed ? 'Expandir' : 'Recolher' }}
+            {{ opt.label }}
           </button>
-        </div>
-      </div>
-
-      <div v-if="errorMessage" class="ic-error">{{ errorMessage }}</div>
-
-      <!-- Lista -->
-      <div ref="listEl" class="ic-list">
-        <div v-if="loading" class="ic-loading">
-          <v-progress-circular color="#ff5fa6" indeterminate size="28" />
-        </div>
-
-        <div v-else-if="comments.length === 0" class="ic-empty">
-          <svg
-            fill="none"
-            height="28"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="1.5"
-            viewBox="0 0 24 24"
-            width="28"
-          >
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-          <span>Seja o primeiro a comentar!</span>
-        </div>
-
-        <TransitionGroup v-else name="ic-item">
-          <div v-for="comment in comments" :key="comment.id" class="ic-thread">
-            <CommentNode :comment="comment" :depth="1" />
-          </div>
-        </TransitionGroup>
-      </div>
-
-      <!-- Input -->
-      <div class="ic-input-area">
-        <div class="ic-input-avatar-wrap">
-          <UserAvatar
-            :image="loggedUser?.profileImage"
-            :name="loggedUser?.name || ''"
-            :size="44"
-          />
-        </div>
-
-        <div class="ic-input-pill">
-          <input
-            v-model="newComment"
-            :disabled="sending"
-            maxlength="500"
-            placeholder="Escreva um comentário..."
-            type="text"
-            @keyup.enter="handleSend"
-          >
         </div>
 
         <button
-          class="ic-comment-btn"
-          :disabled="!newComment.trim() || sending"
+          v-if="hasCollapsible"
+          class="ic-collapse-all"
+          :title="allCollapsed ? 'Expandir todas as threads' : 'Recolher todas as threads'"
           type="button"
-          @click="handleSend"
+          @click="toggleCollapseAll"
         >
-          <v-progress-circular
-            v-if="sending"
-            color="#fff"
-            indeterminate
-            size="16"
-            :width="2"
-          />
-          <span v-else>Comentar</span>
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="13"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2.2"
+            viewBox="0 0 24 24"
+            width="13"
+          >
+            <path v-if="allCollapsed" d="M7 13l5 5 5-5M7 6l5 5 5-5" />
+            <path v-else d="M17 11l-5-5-5 5M17 18l-5-5-5 5" />
+          </svg>
+          {{ allCollapsed ? 'Expandir' : 'Recolher' }}
         </button>
       </div>
     </div>
-  </div>
+
+    <div v-if="errorMessage" class="ic-error">{{ errorMessage }}</div>
+
+    <!-- Lista -->
+    <div ref="listEl" class="ic-list">
+      <div v-if="loading" class="ic-loading">
+        <v-progress-circular color="#ff5fa6" indeterminate size="28" />
+      </div>
+
+      <div v-else-if="comments.length === 0" class="ic-empty">
+        <svg
+          fill="none"
+          height="28"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.5"
+          viewBox="0 0 24 24"
+          width="28"
+        >
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+        <span>Seja o primeiro a comentar!</span>
+      </div>
+
+      <TransitionGroup v-else name="ic-item">
+        <div v-for="comment in comments" :key="comment.id" class="ic-thread">
+          <CommentNode :comment="comment" :depth="1" />
+        </div>
+      </TransitionGroup>
+    </div>
+
+    <!-- Input -->
+    <div class="ic-input-area">
+      <div class="ic-input-avatar-wrap">
+        <UserAvatar
+          :image="loggedUser?.profileImage"
+          :name="loggedUser?.name || ''"
+          :size="44"
+        />
+      </div>
+
+      <div class="ic-input-pill">
+        <input
+          v-model="newComment"
+          :disabled="sending"
+          maxlength="500"
+          placeholder="Escreva um comentário..."
+          type="text"
+          @keyup.enter="handleSend"
+        >
+      </div>
+
+      <button
+        class="ic-comment-btn"
+        :disabled="!newComment.trim() || sending"
+        type="button"
+        @click="handleSend"
+      >
+        <v-progress-circular
+          v-if="sending"
+          color="#fff"
+          indeterminate
+          size="16"
+          :width="2"
+        />
+        <span v-else>Comentar</span>
+      </button>
+    </div>
+  </InlinePanel>
 </template>
 
 <style scoped>
 /* ─── Expand / Collapse wrapper ─── */
-.inline-comments-wrapper {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.inline-comments-wrapper.expanded {
-  grid-template-rows: 1fr;
-  margin-top: 0.85rem;
-}
-
-.inner {
-  overflow: hidden;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.inline-comments-wrapper.expanded .inner {
-  opacity: 1;
-  background: #ffffff;
-  border-radius: 22px;
-  border: 1px solid rgba(0, 0, 0, 0.07);
-  box-shadow: 0 10px 28px rgba(20, 20, 40, 0.1);
-}
 
 /* ─── Header ─── */
 .ic-header {

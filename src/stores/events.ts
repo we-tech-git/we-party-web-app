@@ -33,7 +33,10 @@ export interface FeedItem {
   confirmed: number
   interested: number
   likes?: number
+  /** Nomes dos interesses — usados na contagem, nas tags e na ordenação. */
   interests?: string[]
+  /** Mesmos interesses com id, necessários para adicioná-los ao perfil. */
+  interestRefs?: { id: string, name: string }[]
   matchedInterests?: string[]
   commentsCount?: number
   sourceUrl?: string

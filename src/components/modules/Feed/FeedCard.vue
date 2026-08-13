@@ -8,6 +8,7 @@
   import { useShareStore } from '@/stores/share'
   import { svgIcons } from '@/utils/svgSet'
   import InlineComments from './InlineComments.vue'
+  import InlineInterests from './InlineInterests.vue'
 
   const props = defineProps<{
     id: string | number
@@ -27,6 +28,8 @@
     highlight?: boolean
     rank?: number
     interests?: string[]
+    /** Interesses do evento com id — habilita adicionar direto do card. */
+    interestRefs?: { id: string, name: string }[]
     commentsCount?: number
     matchedInterests?: string[]
     guestMode?: boolean
@@ -255,42 +258,6 @@
         </v-tooltip>
       </button>
 
-      <!-- Interests slide-up panel -->
-      <Transition name="interests-slide">
-        <div v-if="showInterests && interests && interests.length > 0" class="interests-panel" @click.stop>
-          <div class="interests-panel-header">
-            <span class="interests-panel-title">Interesses do evento</span>
-            <button
-              aria-label="Fechar painel de interesses"
-              class="interests-close"
-              type="button"
-              @click.stop="showInterests = false"
-            >
-              <svg
-                aria-hidden="true"
-                fill="none"
-                focusable="false"
-                height="14"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2.5"
-                viewBox="0 0 24 24"
-                width="14"
-              >
-                <line x1="18" x2="6" y1="6" y2="18" />
-                <line x1="6" x2="18" y1="6" y2="18" />
-              </svg>
-            </button>
-          </div>
-          <div class="interests-chips-grid">
-            <span v-for="tag in interests" :key="tag" class="interest-chip">
-              {{ tag }}
-            </span>
-          </div>
-        </div>
-      </Transition>
-
       <!-- Main overlay content -->
       <figcaption class="overlay">
 
@@ -497,6 +464,13 @@
     </figure>
 
     <InlineComments :event-id="id" :visible="showComments" @update:count="handleUpdateCommentsCount" />
+
+    <InlineInterests
+      :guest-mode="guestMode"
+      :interest-refs="interestRefs"
+      :matched-interests="matchedInterests"
+      :visible="showInterests"
+    />
   </article>
 </template>
 
@@ -858,92 +832,8 @@
 }
 
 /* ─── Interests panel (slide-up) ─────────────────────────────────────────── */
-.interests-panel {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 20;
-  padding: 1rem 1.2rem 1.35rem;
-  background: rgba(6, 7, 20, 0.88);
-  backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.interests-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.7rem;
-}
-
-.interests-panel-title {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.interests-close {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.07);
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-}
-
-.interests-close:hover {
-  background: rgba(var(--accent-rgb), 0.25);
-  color: var(--accent-light);
-  border-color: rgba(var(--accent-rgb), 0.4);
-}
-
-.interests-chips-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-/* ─── Transition: interests slide up ─────────────────────────────────────── */
-.interests-slide-enter-active,
-.interests-slide-leave-active {
-  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease;
-}
-
-.interests-slide-enter-from,
-.interests-slide-leave-to {
-  transform: translateY(100%);
-  opacity: 0;
-}
 
 /* ─── Interest chip ──────────────────────────────────────────────────────── */
-.interest-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  background: rgba(var(--accent-rgb), 0.15);
-  border: 1px solid rgba(var(--accent-rgb), 0.4);
-  color: var(--accent-light);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.055em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  transition: background 0.2s ease, transform 0.15s ease;
-  transform: translateZ(0);
-}
-
-.interest-chip:hover {
-  background: rgba(var(--accent-rgb), 0.28);
-  transform: translateY(-1px);
-}
 
 /* ─── Overlay (figcaption) ───────────────────────────────────────────────── */
 .overlay {
@@ -1260,7 +1150,6 @@
   .host-tag,
   .bookmark,
   .remove-favorite-btn,
-  .interests-panel,
   .interest-tag,
   .meta-wrapper,
   .icon-button {
@@ -1425,10 +1314,6 @@
     padding: 0.22rem 0.5rem;
   }
 
-  .interest-chip {
-    font-size: 0.63rem;
-    padding: 0.18rem 0.55rem;
-  }
 }
 
 /* ─── Banner Placeholder ─────────────────────────────────────────────────── */

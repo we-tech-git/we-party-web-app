@@ -7,6 +7,7 @@
   import { getUserRecomendations, searchUsers } from '@/api/users'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import FollowButton from '@/components/UI/FollowButton/FollowButton.vue'
   import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
@@ -311,44 +312,12 @@
             <span class="name">{{ user.name }}</span>
             <span v-if="user.username" class="username">@{{ user.username }}</span>
           </div>
-          <button :class="['invite-btn', user.isFollowing ? 'sent' : 'send']" type="button" @click="toggleInvite(user)">
-            <svg
-              v-if="!user.isFollowing"
-              class="follow-icon"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-            >
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke-linecap="round" stroke-linejoin="round" />
-              <circle cx="9" cy="7" r="4" />
-              <line
-                stroke-linecap="round"
-                x1="19"
-                x2="19"
-                y1="8"
-                y2="14"
-              />
-              <line
-                stroke-linecap="round"
-                x1="22"
-                x2="16"
-                y1="11"
-                y2="11"
-              />
-            </svg>
-            <svg
-              v-else
-              class="follow-icon"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              viewBox="0 0 24 24"
-            >
-              <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            {{ user.isFollowing ? t('addFriends.sent') : t('addFriends.send') }}
-          </button>
+          <FollowButton
+            :following="user.isFollowing"
+            :following-label="t('addFriends.sent')"
+            :label="t('addFriends.send')"
+            @toggle="toggleInvite(user)"
+          />
         </li>
       </ul>
 
@@ -588,54 +557,6 @@
   text-overflow: ellipsis;
 }
 
-.invite-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  padding: 0.5rem 1.2rem;
-  min-width: 120px;
-  border-radius: 12px;
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.follow-icon {
-  width: 0.95rem;
-  height: 0.95rem;
-  color: inherit;
-  flex-shrink: 0;
-}
-
-.invite-btn.send {
-  color: #F978A3;
-  border: 1.5px solid transparent;
-  background:
-    linear-gradient(#fff, #fff) padding-box,
-    linear-gradient(90deg, #FFC947 0%, #F978A3 100%) border-box;
-}
-
-.invite-btn.send:hover {
-  box-shadow: none;
-}
-
-.invite-btn.sent {
-  border: none;
-  background: linear-gradient(90deg, #FFC947 0%, #F978A3 100%);
-  background-size: 100% 100%;
-  color: #fff;
-  box-shadow: 0 10px 18px rgba(249, 120, 163, 0.25);
-}
-
-.invite-btn.sent:hover {
-  box-shadow: 0 12px 22px rgba(249, 120, 163, 0.3);
-}
-
 .btn-primary {
   width: 100%;
   padding: 1rem;
@@ -825,11 +746,6 @@
     font-weight: 600;
     color: #111827;
   }
-
-  .invite-btn {
-    min-width: 140px;
-    padding: 0.55rem 1.25rem;
-  }
 }
 
 @media (max-width: 480px) {
@@ -854,12 +770,6 @@
   .avatar {
     width: 48px;
     height: 48px;
-  }
-
-  .invite-btn {
-    min-width: 120px;
-    padding: 0.5rem 1.1rem;
-    font-size: 0.82rem;
   }
 }
 
