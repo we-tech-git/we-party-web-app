@@ -1,11 +1,11 @@
 <script setup lang="ts">
-  import { useThrottleFn, useWindowScroll, useWindowSize } from '@vueuse/core'
-  import gsap from 'gsap'
-
-  import { ScrollTrigger } from 'gsap/ScrollTrigger'
   // Import só de tipos: custo zero em runtime, não entra no bundle.
   // O módulo real (~630KB) é carregado sob demanda dentro de initThreeJS (P11).
   import type * as THREE from 'three'
+  import { useThrottleFn, useWindowScroll, useWindowSize } from '@vueuse/core'
+
+  import gsap from 'gsap'
+  import { ScrollTrigger } from 'gsap/ScrollTrigger'
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import LoginRequiredDialog from '@/components/UI/LoginRequiredDialog/LoginRequiredDialog.vue'
@@ -544,8 +544,8 @@
             <button
               v-if="canInstall"
               class="btn-install"
-              type="button"
               title="Instalar o app da We Party"
+              type="button"
               @click="installApp"
             >
               <v-icon icon="mdi-download" size="20" />
@@ -558,19 +558,19 @@
           </div>
           <button
             v-if="canInstall"
+            aria-label="Instalar o app da We Party"
             class="btn-install-mobile"
             type="button"
-            aria-label="Instalar o app da We Party"
             @click="installApp"
           >
             <v-icon icon="mdi-download" size="22" />
           </button>
           <button
+            aria-controls="mobile-menu"
+            :aria-expanded="isMobileMenuOpen"
+            :aria-label="isMobileMenuOpen ? 'Fechar menu' : 'Abrir menu'"
             class="mobile-menu-btn"
             type="button"
-            :aria-label="isMobileMenuOpen ? 'Fechar menu' : 'Abrir menu'"
-            :aria-expanded="isMobileMenuOpen"
-            aria-controls="mobile-menu"
             @click="toggleMobileMenu"
           >
             <v-icon :icon="isMobileMenuOpen ? 'mdi-close' : 'mdi-menu'" size="26" />
@@ -582,7 +582,7 @@
     <!-- Mobile Menu -->
     <Transition name="mobile-menu-fade">
       <div v-if="isMobileMenuOpen" class="mobile-menu-overlay" @click.self="closeMobileMenu">
-        <nav id="mobile-menu" class="mobile-menu-panel" aria-label="Menu principal">
+        <nav id="mobile-menu" aria-label="Menu principal" class="mobile-menu-panel">
           <a class="mobile-nav-link" href="#como-funciona" @click.prevent="goToSection('#como-funciona')">
             <v-icon icon="mdi-information-outline" size="20" />
             <span>Como funciona</span>
@@ -958,7 +958,13 @@
 
               <button class="btn-submit" :disabled="sendingEmail" type="submit">
                 <v-icon v-if="!sendingEmail" icon="mdi-send" size="20" />
-                <v-progress-circular v-else :size="20" :width="2" color="#fff" indeterminate />
+                <v-progress-circular
+                  v-else
+                  color="#fff"
+                  indeterminate
+                  :size="20"
+                  :width="2"
+                />
                 <span>{{ sendingEmail ? 'Enviando...' : 'Enviar mensagem' }}</span>
               </button>
             </form>
@@ -1048,7 +1054,7 @@
             <div class="ios-modal-header">
               <img alt="We Party" class="ios-modal-logo" src="/logoweparty.png">
               <h3 class="ios-modal-title">Instalar o app We Party</h3>
-              <button class="ios-modal-close" type="button" aria-label="Fechar" @click="showIOSInstructions = false">
+              <button aria-label="Fechar" class="ios-modal-close" type="button" @click="showIOSInstructions = false">
                 <v-icon icon="mdi-close" size="20" />
               </button>
             </div>

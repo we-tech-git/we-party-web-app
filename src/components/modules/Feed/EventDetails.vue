@@ -4,6 +4,7 @@
   import { getEventById, getMyAttendance } from '@/api/event'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useCommentLikes } from '@/composables/useCommentLikes'
@@ -290,24 +291,6 @@
     const diffD = Math.floor(diffH / 24)
     if (diffD < 7) return `${diffD}d`
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-  }
-
-  function getCommentInitial (name: string): string {
-    return (name || 'U').charAt(0).toUpperCase()
-  }
-
-  const commentAvatarColors = [
-    '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
-    '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
-  ]
-
-  function getCommentAvatarColor (name: string): string {
-    if (!name) return commentAvatarColors[0] ?? '#F44336'
-    let hash = 0
-    for (let i = 0; i < name.length; i++) {
-      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
-    }
-    return commentAvatarColors[Math.abs(hash % commentAvatarColors.length)] ?? '#F44336'
   }
 
   function isMyComment (comment: Comment): boolean {
@@ -689,25 +672,6 @@
     return { show: false, type: '', text: '', icon: '' }
   })
 
-  // Avatar color logic
-  const avatarColors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-  ]
-
-  const organizerAvatarColor = computed(() => {
-    const name = event.value.organizer?.name || ''
-    let hash = 0
-    for (let i = 0; i < name.length; i++) {
-      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
-    }
-    return avatarColors[Math.abs(hash) % avatarColors.length]
-  })
-
-  const organizerInitial = computed(() => {
-    return (event.value.organizer?.name || 'O').charAt(0).toUpperCase()
-  })
-
   const isEventPast = computed(() => eventStatus.value === 'past')
 
   function toggleLike () {
@@ -1072,14 +1036,7 @@
 
       <!-- Organizer Card -->
       <div class="organizer-card">
-        <div class="organizer-avatar" :style="{ backgroundColor: organizerAvatarColor }">
-          <template v-if="event.organizer?.avatar">
-            <img :alt="event.organizer.name" :src="event.organizer.avatar">
-          </template>
-          <template v-else>
-            {{ organizerInitial }}
-          </template>
-        </div>
+        <UserAvatar class="organizer-avatar" :image="event.organizer?.avatar" :name="event.organizer?.name || ''" :size="50" />
         <div class="organizer-info">
           <span class="organizer-label">Organizado por</span>
           <span class="organizer-name">{{ event.organizer?.name }}</span>
@@ -1285,19 +1242,11 @@
             <div v-else class="comments-list">
               <div v-for="comment in comments" :key="comment.id" class="comment-item">
                 <div class="comment-avatar-wrapper">
-                  <img
-                    v-if="comment.user?.profileImage"
-                    :alt="comment.user?.name"
-                    class="comment-avatar"
-                    :src="resolveAsset(comment.user?.profileImage)"
-                  >
-                  <div
-                    v-else
-                    class="comment-avatar placeholder"
-                    :style="{ backgroundColor: getCommentAvatarColor(comment.user?.name || '') }"
-                  >
-                    {{ getCommentInitial(comment.user?.name || '') }}
-                  </div>
+                  <UserAvatar
+                    :image="comment.user?.profileImage"
+                    :name="comment.user?.name || ''"
+                    :size="40"
+                  />
                 </div>
 
                 <div class="comment-content">

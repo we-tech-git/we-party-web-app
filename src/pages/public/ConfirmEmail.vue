@@ -11,8 +11,8 @@
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-  import router from '@/router'
   import { useAuth } from '@/composables/useAuth'
+  import router from '@/router'
   import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
   const { login } = useAuth()
@@ -265,7 +265,13 @@
   <AuthLayout>
     <template #form-content>
       <button class="btn-back" type="button" @click="router.back()">
-        <svg class="btn-back__arrow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <svg
+          class="btn-back__arrow"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          viewBox="0 0 24 24"
+        >
           <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
         <span>Voltar</span>
@@ -333,7 +339,7 @@
           type="button"
           @click="verifyPin"
         >
-          <AppLoader v-if="isVerifying" size="sm" variant="text" :text="$t('confirmEmail.verifying')" />
+          <AppLoader v-if="isVerifying" size="sm" :text="$t('confirmEmail.verifying')" variant="text" />
           <span v-else>{{ $t('confirmEmail.verify') }}</span>
         </button>
       </div>

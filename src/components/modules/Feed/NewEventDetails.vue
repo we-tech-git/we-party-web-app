@@ -57,33 +57,19 @@
             navSolid ? 'bg-white border-black/8 shadow-pink-sm text-ink' : 'bg-white/16 border-white/25 text-white'
           ]"
         >
-          <img
-            v-if="userAvatar"
-            :alt="userName"
-            class="w-8 h-8 rounded-xl object-cover"
-            loading="lazy"
-            :src="userAvatar"
-          >
-          <span
-            v-else
-            class="w-8 h-8 rounded-xl text-white grid place-items-center font-extrabold text-sm"
-            :style="{ background: userAvatarColor }"
-          >{{ userInitial }}</span>
+          <UserAvatar
+            :image="userAvatar"
+            :name="userName"
+            :radius="12"
+            :size="32"
+          />
           <span>{{ userName }}</span>
         </div>
       </template>
 
       <v-list class="user-dropdown-list" density="compact" :lines="false">
         <div class="user-dropdown-header">
-          <div class="dropdown-avatar" :style="{ background: userAvatarColor }">
-            <img
-              v-if="userAvatar"
-              :alt="userName"
-              :src="userAvatar"
-              style="width:100%;height:100%;border-radius:50%;object-fit:cover;"
-            >
-            <span v-else>{{ userInitial }}</span>
-          </div>
+          <UserAvatar class="dropdown-avatar" :image="userAvatar" :name="userName" :size="44" />
           <div class="dropdown-user-info">
             <p class="dropdown-user-name">{{ userName }}</p>
             <p v-if="loggedUser?.email" class="dropdown-user-email">{{ loggedUser.email }}</p>
@@ -246,17 +232,14 @@
             <div
               v-for="(av, i) in attendeeAvatars"
               :key="i"
-              class="w-10 h-10 sm:w-11 sm:h-11 rounded-full grid place-items-center text-white font-extrabold text-sm shadow-sm overflow-hidden"
-              :style="{ background: av.color, border: '2.5px solid white', marginLeft: i > 0 ? '-12px' : '0', zIndex: attendeeAvatars.length - i }"
+              :style="{ marginLeft: i > 0 ? '-12px' : '0', zIndex: attendeeAvatars.length - i }"
             >
-              <img
-                v-if="av.image"
-                alt=""
-                class="w-full h-full object-cover"
-                loading="lazy"
-                :src="av.image"
-              >
-              <template v-else>{{ av.initial }}</template>
+              <UserAvatar
+                :image="av.image"
+                :name="av.name"
+                :size="40"
+                :style="{ border: '2.5px solid white', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }"
+              />
             </div>
           </div>
 
@@ -973,6 +956,7 @@
   import EventSearchAutocomplete from '@/components/modules/Feed/EventSearchAutocomplete.vue'
   import InlineComments from '@/components/modules/Feed/InlineComments.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useGeolocation } from '@/composables/useGeolocation'
@@ -998,22 +982,7 @@
 
   // Usuário logado (substitui o mock "Igor")
   const userName = computed(() => userDisplayName.value)
-  const userInitial = computed(() => (userDisplayName.value || 'U').charAt(0).toUpperCase())
   const userAvatar = computed(() => loggedUser.value?.profileImage || '')
-
-  // Cor de fallback do avatar — mesma paleta do FeedTopHeader
-  const AVATAR_COLORS = [
-    '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
-    '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
-  ]
-  const userAvatarColor = computed(() => {
-    const name = userDisplayName.value || 'U'
-    let hash = 0
-    for (let i = 0; i < name.length; i++) {
-      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
-    }
-    return AVATAR_COLORS[Math.abs(hash % AVATAR_COLORS.length)] ?? '#F44336'
-  })
 
   function logout () {
     authLogout()

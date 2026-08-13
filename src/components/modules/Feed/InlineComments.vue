@@ -8,9 +8,9 @@
     getEventComments,
     replyToComment,
   } from '@/api/comments'
+  import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useCommentLikes } from '@/composables/useCommentLikes'
-  import { getAvatarColor, getInitial, resolveAsset } from './commentDisplay'
   import CommentNode from './CommentNode.vue'
   import {
     collectParentIds,
@@ -412,19 +412,11 @@
       <!-- Input -->
       <div class="ic-input-area">
         <div class="ic-input-avatar-wrap">
-          <img
-            v-if="resolveAsset(loggedUser?.profileImage)"
-            alt="Você"
-            class="ic-avatar"
-            :src="resolveAsset(loggedUser?.profileImage)"
-          >
-          <div
-            v-else
-            class="ic-avatar placeholder"
-            :style="{ backgroundColor: getAvatarColor(loggedUser?.name || '') }"
-          >
-            {{ getInitial(loggedUser?.name || '') }}
-          </div>
+          <UserAvatar
+            :image="loggedUser?.profileImage"
+            :name="loggedUser?.name || ''"
+            :size="44"
+          />
         </div>
 
         <div class="ic-input-pill">

@@ -1,7 +1,8 @@
 <script setup lang="ts">
   import type { CommentNodeData } from './commentTree'
   import { computed, inject, ref } from 'vue'
-  import { formatDate, getAvatarColor, getHandle, getInitial, resolveAsset } from './commentDisplay'
+  import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
+  import { formatDate, getHandle } from './commentDisplay'
   import { commentTreeKey, countComments, MAX_COMMENT_DEPTH } from './commentTree'
 
   const props = defineProps<{
@@ -42,21 +43,11 @@
   >
     <div class="cn-head">
       <div class="cn-avatar-col">
-        <img
-          v-if="resolveAsset(comment.user.profileImage)"
-          :alt="comment.user.name"
-          class="cn-avatar"
-          :class="{ 'cn-avatar--sm': isCompact }"
-          :src="resolveAsset(comment.user.profileImage)"
-        >
-        <div
-          v-else
-          class="cn-avatar placeholder"
-          :class="{ 'cn-avatar--sm': isCompact }"
-          :style="{ backgroundColor: getAvatarColor(comment.user.name) }"
-        >
-          {{ getInitial(comment.user.name) }}
-        </div>
+        <UserAvatar
+          :image="comment.user.profileImage"
+          :name="comment.user.name"
+          :size="isCompact ? 30 : 40"
+        />
       </div>
 
       <div class="cn-content">
@@ -227,7 +218,7 @@
             </button>
           </div>
         </div>
-        </div>
+      </div>
     </div>
 
     <!-- ── Galho: só monta quando aberto; recolhido vira o botão "Ver respostas" acima ── -->

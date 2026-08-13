@@ -5,332 +5,332 @@
   Data: 13/10/2025
 -->
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
-import { addUserInterest, getRecommendedInterests, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
-import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
-import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
-import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
+  import { computed, onMounted, ref, watch } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import { useRouter } from 'vue-router'
+  import { addUserInterest, getRecommendedInterests, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
+  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
-const { t } = useI18n()
-const router = useRouter()
+  const { t } = useI18n()
+  const router = useRouter()
 
-const STORAGE_KEY = 'weparty_selected_interests'
-const PENDING_STORAGE_KEY = 'weparty_pending_interests'
+  const STORAGE_KEY = 'weparty_selected_interests'
+  const PENDING_STORAGE_KEY = 'weparty_pending_interests'
 
-interface IInterest {
-  name: string
-  createdBy: string
-  id: string
-  hasInterest: boolean
-}
+  interface IInterest {
+    name: string
+    createdBy: string
+    id: string
+    hasInterest: boolean
+  }
 
-const allChips = ref<IInterest[]>([])
-const selected = ref<Set<string>>(new Set())
-const isLoading = ref(false)
-const hasError = ref(false)
-const isFinishing = ref(false)
-const isSearching = ref(false)
+  const allChips = ref<IInterest[]>([])
+  const selected = ref<Set<string>>(new Set())
+  const isLoading = ref(false)
+  const hasError = ref(false)
+  const isFinishing = ref(false)
+  const isSearching = ref(false)
 
-const query = ref('')
-const searchResults = ref<IInterest[]>([])
+  const query = ref('')
+  const searchResults = ref<IInterest[]>([])
 
-// Ativa o loading imediatamente ao digitar, antes do debounce do SearchInput disparar,
-// para evitar que "não encontrado" apareça durante a janela de debounce.
-watch(query, (newValue) => {
-  if (newValue.trim()) {
+  // Ativa o loading imediatamente ao digitar, antes do debounce do SearchInput disparar,
+  // para evitar que "não encontrado" apareça durante a janela de debounce.
+  watch(query, newValue => {
+    if (newValue.trim()) {
+      searchResults.value = []
+      isSearching.value = true
+    } else {
+      searchResults.value = []
+      isSearching.value = false
+    }
+  })
+
+  // Máximo de interesses exibidos para não quebrar o layout
+  const MAX_DISPLAYED_INTERESTS = 9
+
+  // Computed para mostrar os chips no grid (máximo 9)
+  const displayedChips = computed(() => {
+    // Se não tem query, mostra os interesses (limitado a 9)
+    if (query.value.trim().length === 0) {
+      return allChips.value.slice(0, MAX_DISPLAYED_INTERESTS)
+    }
+
+    // Se tem query, mostra os resultados da busca (limitado a 9)
+    return searchResults.value.slice(0, MAX_DISPLAYED_INTERESTS)
+  })
+
+  const showNoResults = computed(() => {
+    return !isSearching.value && query.value.trim().length > 0 && searchResults.value.length === 0
+  })
+
+  async function fetchInterests () {
+    try {
+      isLoading.value = true
+      hasError.value = false
+      const response = await getRecommendedInterests(9)
+
+      // Tenta extrair os interesses de diferentes estruturas de resposta
+      const responseData = response?.data
+      let interests: IInterest[] = []
+
+      if (responseData?.data?.interests) {
+        // Estrutura: { data: { interests: [...] } }
+        interests = responseData.data.interests
+      } else if (responseData?.interests) {
+        // Estrutura: { interests: [...] }
+        interests = responseData.interests
+      } else if (Array.isArray(responseData?.data)) {
+        // Estrutura: { data: [...] }
+        interests = responseData.data
+      } else if (Array.isArray(responseData)) {
+        // Estrutura: [...]
+        interests = responseData
+      }
+
+      allChips.value = interests
+
+      // Inicializa o Set de selecionados com base nos dados vindos da API
+      for (const chip of allChips.value) {
+        if (chip.hasInterest) {
+          selected.value.add(chip.name.toUpperCase())
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar interesses:', error)
+      hasError.value = true
+      allChips.value = []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function searchInterests (searchQuery: string) {
+    if (!searchQuery.trim()) {
+      searchResults.value = []
+      return
+    }
+
+    // Limpa resultados anteriores e ativa loading ao iniciar nova busca
     searchResults.value = []
     isSearching.value = true
-  } else {
-    searchResults.value = []
-    isSearching.value = false
+
+    try {
+      const response = await searchInterestsByName(searchQuery.trim())
+
+      // Tenta extrair os interesses de diferentes estruturas de resposta
+      const responseData = response?.data
+      let interests: IInterest[] = []
+
+      if (responseData?.data?.interests) {
+        interests = responseData.data.interests
+      } else if (responseData?.interests) {
+        interests = responseData.interests
+      } else if (Array.isArray(responseData?.data)) {
+        interests = responseData.data
+      } else if (Array.isArray(responseData)) {
+        interests = responseData
+      }
+
+      // Limita a 9 resultados para não quebrar o layout
+      searchResults.value = interests.slice(0, MAX_DISPLAYED_INTERESTS)
+    } catch (error) {
+      console.error('Erro ao buscar interesses:', error)
+      searchResults.value = []
+    } finally {
+      isSearching.value = false
+      isLoading.value = false
+    }
   }
-})
 
-// Máximo de interesses exibidos para não quebrar o layout
-const MAX_DISPLAYED_INTERESTS = 9
-
-// Computed para mostrar os chips no grid (máximo 9)
-const displayedChips = computed(() => {
-  // Se não tem query, mostra os interesses (limitado a 9)
-  if (query.value.trim().length === 0) {
-    return allChips.value.slice(0, MAX_DISPLAYED_INTERESTS)
-  }
-
-  // Se tem query, mostra os resultados da busca (limitado a 9)
-  return searchResults.value.slice(0, MAX_DISPLAYED_INTERESTS)
-})
-
-const showNoResults = computed(() => {
-  return !isSearching.value && query.value.trim().length > 0 && searchResults.value.length === 0
-})
-
-async function fetchInterests() {
-  try {
-    isLoading.value = true
-    hasError.value = false
-    const response = await getRecommendedInterests(9)
-
-    // Tenta extrair os interesses de diferentes estruturas de resposta
-    const responseData = response?.data
-    let interests: IInterest[] = []
-
-    if (responseData?.data?.interests) {
-      // Estrutura: { data: { interests: [...] } }
-      interests = responseData.data.interests
-    } else if (responseData?.interests) {
-      // Estrutura: { interests: [...] }
-      interests = responseData.interests
-    } else if (Array.isArray(responseData?.data)) {
-      // Estrutura: { data: [...] }
-      interests = responseData.data
-    } else if (Array.isArray(responseData)) {
-      // Estrutura: [...]
-      interests = responseData
+  // Handler para o evento search do SearchInput (já com debounce)
+  function handleSearch (searchQuery: string) {
+    // Se a query estiver vazia, limpa os resultados imediatamente
+    if (!searchQuery.trim()) {
+      searchResults.value = []
+      isLoading.value = false
+      isSearching.value = false
+      return
     }
 
-    allChips.value = interests
+    isLoading.value = true
+    searchInterests(searchQuery)
+  }
 
-    // Inicializa o Set de selecionados com base nos dados vindos da API
-    for (const chip of allChips.value) {
-      if (chip.hasInterest) {
-        selected.value.add(chip.name.toUpperCase())
+  // Handler para limpar a busca
+  function handleClearSearch () {
+    searchResults.value = []
+    isLoading.value = false
+    isSearching.value = false
+  }
+
+  async function addFromSuggestion (selectedInterest: IInterest) {
+    // Atualização otimista na UI
+    const previousState = selectedInterest.hasInterest
+    selectedInterest.hasInterest = !previousState
+
+    try {
+      if (previousState) {
+        // Estava selecionado, então remove
+        selected.value.delete(selectedInterest.name.toUpperCase())
+        await removeUserInterest(selectedInterest.id)
+      } else {
+        // Não estava selecionado, então adiciona
+        selected.value.add(selectedInterest.name.toUpperCase())
+        await addUserInterest(selectedInterest.id)
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar interesse:', error)
+      // Reverte estado em caso de erro
+      selectedInterest.hasInterest = previousState
+      if (previousState) {
+        selected.value.add(selectedInterest.name.toUpperCase())
+      } else {
+        selected.value.delete(selectedInterest.name.toUpperCase())
       }
     }
-  } catch (error) {
-    console.error('Erro ao buscar interesses:', error)
-    hasError.value = true
-    allChips.value = []
-  } finally {
-    isLoading.value = false
-  }
-}
-
-async function searchInterests(searchQuery: string) {
-  if (!searchQuery.trim()) {
-    searchResults.value = []
-    return
   }
 
-  // Limpa resultados anteriores e ativa loading ao iniciar nova busca
-  searchResults.value = []
-  isSearching.value = true
+  onMounted(() => {
+    fetchInterests()
+  })
 
-  try {
-    const response = await searchInterestsByName(searchQuery.trim())
+  const showModal = ref(false)
+  const showRequestModal = ref(false)
+  const newInterestName = ref('')
+  const pendingInterests = ref<string[]>([])
+  const isSubmittingRequest = ref(false)
 
-    // Tenta extrair os interesses de diferentes estruturas de resposta
-    const responseData = response?.data
-    let interests: IInterest[] = []
+  // Snackbar para feedback de sucesso/erro
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
 
-    if (responseData?.data?.interests) {
-      interests = responseData.data.interests
-    } else if (responseData?.interests) {
-      interests = responseData.interests
-    } else if (Array.isArray(responseData?.data)) {
-      interests = responseData.data
-    } else if (Array.isArray(responseData)) {
-      interests = responseData
-    }
-
-    // Limita a 9 resultados para não quebrar o layout
-    searchResults.value = interests.slice(0, MAX_DISPLAYED_INTERESTS)
-  } catch (error) {
-    console.error('Erro ao buscar interesses:', error)
-    searchResults.value = []
-  } finally {
-    isSearching.value = false
-    isLoading.value = false
-  }
-}
-
-// Handler para o evento search do SearchInput (já com debounce)
-function handleSearch(searchQuery: string) {
-  // Se a query estiver vazia, limpa os resultados imediatamente
-  if (!searchQuery.trim()) {
-    searchResults.value = []
-    isLoading.value = false
-    isSearching.value = false
-    return
+  function showSnackbar (message: string, color = '#ff9800') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+    snackbarVisible.value = true
   }
 
-  isLoading.value = true
-  searchInterests(searchQuery)
-}
-
-// Handler para limpar a busca
-function handleClearSearch() {
-  searchResults.value = []
-  isLoading.value = false
-  isSearching.value = false
-}
-
-async function addFromSuggestion(selectedInterest: IInterest) {
-  // Atualização otimista na UI
-  const previousState = selectedInterest.hasInterest
-  selectedInterest.hasInterest = !previousState
-
-  try {
-    if (previousState) {
-      // Estava selecionado, então remove
-      selected.value.delete(selectedInterest.name.toUpperCase())
-      await removeUserInterest(selectedInterest.id)
-    } else {
-      // Não estava selecionado, então adiciona
-      selected.value.add(selectedInterest.name.toUpperCase())
-      await addUserInterest(selectedInterest.id)
-    }
-  } catch (error) {
-    console.error('Erro ao atualizar interesse:', error)
-    // Reverte estado em caso de erro
-    selectedInterest.hasInterest = previousState
-    if (previousState) {
-      selected.value.add(selectedInterest.name.toUpperCase())
-    } else {
-      selected.value.delete(selectedInterest.name.toUpperCase())
-    }
-  }
-}
-
-onMounted(() => {
-  fetchInterests()
-})
-
-const showModal = ref(false)
-const showRequestModal = ref(false)
-const newInterestName = ref('')
-const pendingInterests = ref<string[]>([])
-const isSubmittingRequest = ref(false)
-
-// Snackbar para feedback de sucesso/erro
-const snackbarVisible = ref(false)
-const snackbarMessage = ref('')
-const snackbarColor = ref('#ff9800')
-
-function showSnackbar(message: string, color = '#ff9800') {
-  snackbarMessage.value = message
-  snackbarColor.value = color
-  snackbarVisible.value = true
-}
-
-// Persiste automaticamente pendingInterests no localStorage
-watch(pendingInterests, val => {
-  try {
-    localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(val || []))
-  } catch (error) {
-    console.error('Erro ao salvar pendingInterests no localStorage:', error)
-  }
-}, { deep: true })
-
-function finish() {
-  isFinishing.value = true
-  const interestsToSave = Array.from(selected.value).map(name => {
-    const chip = allChips.value.find(c => c.name.toUpperCase() === name)
-    return chip ? { id: chip.id, name: chip.name } : null
-  }).filter(Boolean)
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(interestsToSave))
-    router.push('/public/AddFriends')
-  } catch (error) {
-    console.error('Erro ao salvar interesses:', error)
-  } finally {
-    isFinishing.value = false
-  }
-}
-
-function skipStep() {
-  router.push('/public/AddFriends')
-}
-
-function closeModal() {
-  showModal.value = false
-}
-
-function openRequestModal() {
-  newInterestName.value = query.value.trim()
-  // Carrega pendentes previamente salvos (se houver)
-  try {
-    const stored = localStorage.getItem(PENDING_STORAGE_KEY)
-    pendingInterests.value = stored ? JSON.parse(stored) : []
-  } catch (error) {
-    pendingInterests.value = []
-    console.error('Erro ao ler pendingInterests do localStorage:', error)
-  }
-  showRequestModal.value = true
-}
-
-function closeRequestModal() {
-  showRequestModal.value = false
-  newInterestName.value = ''
-  // Não limpamos pendingInterests aqui para manter a persistência caso o usuário feche sem querer
-  // pendingInterests.value = []
-  isSubmittingRequest.value = false
-}
-
-function addToPending() {
-  const name = newInterestName.value.trim()
-  if (name && !pendingInterests.value.includes(name)) {
-    pendingInterests.value.push(name)
-    newInterestName.value = ''
-  }
-}
-
-function removePending(index: number) {
-  pendingInterests.value.splice(index, 1)
-}
-
-async function submitNewInterestRequest() {
-  // Adiciona o que estiver no input se o usuário esqueceu de clicar no +
-  addToPending()
-
-  if (pendingInterests.value.length === 0) {
-    showSnackbar(t('interest.requestModal.noInterests') || 'Adicione pelo menos um interesse', '#ef4444')
-    return
-  }
-
-  try {
-    isSubmittingRequest.value = true
-
-    // Cria uma cópia dos interesses antes de limpar
-    const interestsToSubmit = [...pendingInterests.value]
-
-    // Envia a solicitação para o backend via POST /interest/request
-    await requestNewInterests(interestsToSubmit)
-
-    // Limpa pendentes salvos após envio bem-sucedido
+  // Persiste automaticamente pendingInterests no localStorage
+  watch(pendingInterests, val => {
     try {
-      localStorage.removeItem(PENDING_STORAGE_KEY)
-      pendingInterests.value = [] // Limpa a lista da memória também
+      localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(val || []))
     } catch (error) {
-      console.error('Erro ao limpar pendingInterests do localStorage:', error)
+      console.error('Erro ao salvar pendingInterests no localStorage:', error)
     }
+  }, { deep: true })
 
-    // Fecha o modal e mostra mensagem de sucesso
-    closeRequestModal()
-    showSnackbar(
-      t('interest.requestModal.successMessage') || 'Solicitação enviada com sucesso! Aguarde aprovação.',
-      '#22c55e',
-    )
+  function finish () {
+    isFinishing.value = true
+    const interestsToSave = Array.from(selected.value).map(name => {
+      const chip = allChips.value.find(c => c.name.toUpperCase() === name)
+      return chip ? { id: chip.id, name: chip.name } : null
+    }).filter(Boolean)
 
-    // Limpa a busca
-    query.value = ''
-  } catch (error: any) {
-    console.error('❌ Erro ao solicitar novo interesse:', error)
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(interestsToSave))
+      router.push('/public/AddFriends')
+    } catch (error) {
+      console.error('Erro ao salvar interesses:', error)
+    } finally {
+      isFinishing.value = false
+    }
+  }
 
-    // Mostra mensagem de erro apropriada
-    const errorMessage = error?.response?.data?.message
-      || t('interest.requestModal.errorMessage')
-      || 'Erro ao enviar solicitação. Tente novamente.'
+  function skipStep () {
+    router.push('/public/AddFriends')
+  }
 
-    showSnackbar(errorMessage, '#ef4444')
-  } finally {
+  function closeModal () {
+    showModal.value = false
+  }
+
+  function openRequestModal () {
+    newInterestName.value = query.value.trim()
+    // Carrega pendentes previamente salvos (se houver)
+    try {
+      const stored = localStorage.getItem(PENDING_STORAGE_KEY)
+      pendingInterests.value = stored ? JSON.parse(stored) : []
+    } catch (error) {
+      pendingInterests.value = []
+      console.error('Erro ao ler pendingInterests do localStorage:', error)
+    }
+    showRequestModal.value = true
+  }
+
+  function closeRequestModal () {
+    showRequestModal.value = false
+    newInterestName.value = ''
+    // Não limpamos pendingInterests aqui para manter a persistência caso o usuário feche sem querer
+    // pendingInterests.value = []
     isSubmittingRequest.value = false
   }
-}
+
+  function addToPending () {
+    const name = newInterestName.value.trim()
+    if (name && !pendingInterests.value.includes(name)) {
+      pendingInterests.value.push(name)
+      newInterestName.value = ''
+    }
+  }
+
+  function removePending (index: number) {
+    pendingInterests.value.splice(index, 1)
+  }
+
+  async function submitNewInterestRequest () {
+    // Adiciona o que estiver no input se o usuário esqueceu de clicar no +
+    addToPending()
+
+    if (pendingInterests.value.length === 0) {
+      showSnackbar(t('interest.requestModal.noInterests') || 'Adicione pelo menos um interesse', '#ef4444')
+      return
+    }
+
+    try {
+      isSubmittingRequest.value = true
+
+      // Cria uma cópia dos interesses antes de limpar
+      const interestsToSubmit = [...pendingInterests.value]
+
+      // Envia a solicitação para o backend via POST /interest/request
+      await requestNewInterests(interestsToSubmit)
+
+      // Limpa pendentes salvos após envio bem-sucedido
+      try {
+        localStorage.removeItem(PENDING_STORAGE_KEY)
+        pendingInterests.value = [] // Limpa a lista da memória também
+      } catch (error) {
+        console.error('Erro ao limpar pendingInterests do localStorage:', error)
+      }
+
+      // Fecha o modal e mostra mensagem de sucesso
+      closeRequestModal()
+      showSnackbar(
+        t('interest.requestModal.successMessage') || 'Solicitação enviada com sucesso! Aguarde aprovação.',
+        '#22c55e',
+      )
+
+      // Limpa a busca
+      query.value = ''
+    } catch (error: any) {
+      console.error('❌ Erro ao solicitar novo interesse:', error)
+
+      // Mostra mensagem de erro apropriada
+      const errorMessage = error?.response?.data?.message
+        || t('interest.requestModal.errorMessage')
+        || 'Erro ao enviar solicitação. Tente novamente.'
+
+      showSnackbar(errorMessage, '#ef4444')
+    } finally {
+      isSubmittingRequest.value = false
+    }
+  }
 
 </script>
 
@@ -339,7 +339,13 @@ async function submitNewInterestRequest() {
     <template #form-content>
       <!-- Botão de Voltar -->
       <button class="btn-back" type="button" @click="router.back()">
-        <svg class="btn-back__arrow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <svg
+          class="btn-back__arrow"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          viewBox="0 0 24 24"
+        >
           <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
         <span>Voltar</span>
@@ -350,8 +356,13 @@ async function submitNewInterestRequest() {
 
       <!-- Campo de busca -->
       <div class="search-wrapper">
-        <SearchInput v-model="query" :loading="isSearching" :placeholder="t('interest.searchPlaceholder')"
-          @clear="handleClearSearch" @search="handleSearch" />
+        <SearchInput
+          v-model="query"
+          :loading="isSearching"
+          :placeholder="t('interest.searchPlaceholder')"
+          @clear="handleClearSearch"
+          @search="handleSearch"
+        />
       </div>
 
       <!-- Grid de chips -->
@@ -370,17 +381,34 @@ async function submitNewInterestRequest() {
         <h3 class="no-results-title">{{ t('interest.noResultsTitle') }}</h3>
         <p class="no-results-text">{{ t('interest.noResultsDescription') }}</p>
         <button class="btn-request-interest" type="button" @click="openRequestModal">
-          <svg v-if="svgIcons.plusIcon" class="plus-icon-btn" fill="none" stroke="currentColor"
-            :viewBox="svgIcons.plusIcon.viewBox">
-            <path v-for="(p, i) in svgIcons.plusIcon.paths" :key="i" :d="p.d" stroke-linecap="round"
-              stroke-linejoin="round" stroke-width="2" />
+          <svg
+            v-if="svgIcons.plusIcon"
+            class="plus-icon-btn"
+            fill="none"
+            stroke="currentColor"
+            :viewBox="svgIcons.plusIcon.viewBox"
+          >
+            <path
+              v-for="(p, i) in svgIcons.plusIcon.paths"
+              :key="i"
+              :d="p.d"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+            />
           </svg>
           {{ t('interest.requestNewInterest') }}
         </button>
       </div>
       <div v-else class="chips-grid">
-        <button v-for="chip in displayedChips" :key="chip.id" :class="['chip', chip.hasInterest ? 'selected' : '']"
-          :title="chip.name" type="button" @click="addFromSuggestion(chip)">
+        <button
+          v-for="chip in displayedChips"
+          :key="chip.id"
+          :class="['chip', chip.hasInterest ? 'selected' : '']"
+          :title="chip.name"
+          type="button"
+          @click="addFromSuggestion(chip)"
+        >
           {{ chip.name }}
         </button>
       </div>
@@ -428,8 +456,14 @@ async function submitNewInterestRequest() {
             <div class="input-wrapper">
               <label class="input-label" for="newInterest">{{ t('interest.requestModal.label') }}</label>
               <div class="input-group">
-                <input id="newInterest" v-model="newInterestName" class="modal-input"
-                  :placeholder="t('interest.requestModal.placeholder')" type="text" @keyup.enter="addToPending">
+                <input
+                  id="newInterest"
+                  v-model="newInterestName"
+                  class="modal-input"
+                  :placeholder="t('interest.requestModal.placeholder')"
+                  type="text"
+                  @keyup.enter="addToPending"
+                >
                 <button class="add-btn" type="button" @click="addToPending">
                   +
                 </button>
@@ -447,9 +481,12 @@ async function submitNewInterestRequest() {
             <button class="btn-secondary" type="button" @click="closeRequestModal">
               {{ t('interest.requestModal.cancel') }}
             </button>
-            <button class="finish-btn"
+            <button
+              class="finish-btn"
               :disabled="(pendingInterests.length === 0 && !newInterestName.trim()) || isSubmittingRequest"
-              type="button" @click="submitNewInterestRequest">
+              type="button"
+              @click="submitNewInterestRequest"
+            >
               <span v-if="isSubmittingRequest">{{ t('interest.requestModal.submitting') }}</span>
               <span v-else>{{ t('interest.requestModal.submit') }}</span>
             </button>

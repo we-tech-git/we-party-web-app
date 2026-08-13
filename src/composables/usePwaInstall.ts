@@ -27,7 +27,9 @@ const isInstalled = ref(false)
 let listenersReady = false
 
 function detectStandalone (): boolean {
-  if (typeof window === 'undefined') return false
+  if (typeof window === 'undefined') {
+    return false
+  }
   const displayStandalone = window.matchMedia?.('(display-mode: standalone)').matches ?? false
   // iOS Safari usa a flag proprietária navigator.standalone
   const iosStandalone = (window.navigator as Navigator & { standalone?: boolean }).standalone === true
@@ -35,7 +37,9 @@ function detectStandalone (): boolean {
 }
 
 function detectIOS (): boolean {
-  if (typeof navigator === 'undefined') return false
+  if (typeof navigator === 'undefined') {
+    return false
+  }
   const ua = navigator.userAgent || ''
   const isIOSDevice = /ipad|iphone|ipod/i.test(ua)
   // iPadOS moderno se apresenta como "Macintosh" com touch
@@ -44,7 +48,9 @@ function detectIOS (): boolean {
 }
 
 function initListeners () {
-  if (listenersReady || typeof window === 'undefined') return
+  if (listenersReady || typeof window === 'undefined') {
+    return
+  }
   listenersReady = true
 
   isInstalled.value = detectStandalone()
@@ -70,7 +76,9 @@ export function usePwaInstall () {
   onMounted(() => {
     initListeners()
     // Reavalia caso o composable seja montado após o app já estar em standalone
-    if (detectStandalone()) isInstalled.value = true
+    if (detectStandalone()) {
+      isInstalled.value = true
+    }
   })
 
   // Pode instalar via prompt nativo (Android/Chrome/Edge/desktop)
@@ -89,7 +97,9 @@ export function usePwaInstall () {
     }
 
     const promptEvent = deferredPrompt.value
-    if (!promptEvent) return 'unavailable'
+    if (!promptEvent) {
+      return 'unavailable'
+    }
 
     try {
       await promptEvent.prompt()
@@ -97,7 +107,9 @@ export function usePwaInstall () {
       logger.log('[PWA] escolha do usuário:', outcome)
       // O evento só pode ser usado uma vez
       deferredPrompt.value = null
-      if (outcome === 'accepted') isInstalled.value = true
+      if (outcome === 'accepted') {
+        isInstalled.value = true
+      }
       return outcome
     } catch (error) {
       logger.error('[PWA] erro ao instalar:', error)

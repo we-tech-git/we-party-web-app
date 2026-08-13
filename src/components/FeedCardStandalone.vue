@@ -114,6 +114,7 @@
 
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
+  import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
 
   // ============================================================================
   // PROPS & EMITS
@@ -230,28 +231,6 @@
     return src || fallbackBanner
   })
 
-  const hostAvatarSrc = computed(() => resolveAsset(props.hostAvatar))
-
-  const hostInitial = computed(() => (props.hostName || 'U').charAt(0).toUpperCase())
-
-  const avatarColors = [
-    '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
-    '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
-    '#8BC34A', '#CDDC39', '#FFC107', '#FF9800', '#FF5722',
-  ]
-
-  /**
-   * Gera uma cor de avatar baseada no hash do nome
-   */
-  const avatarColor = computed(() => {
-    if (!props.hostName) return avatarColors[0]
-    let hash = 0
-    for (let i = 0; i < props.hostName.length; i++) {
-      hash = (props.hostName.codePointAt(i) || 0) + ((hash << 5) - hash)
-    }
-    return avatarColors[Math.abs(hash % avatarColors.length)]
-  })
-
   /**
    * Tags de interesses visíveis no card (max 3 + overflow)
    * Prioriza interesses que correspondem ao perfil do usuário
@@ -300,14 +279,7 @@
 
       <!-- Host tag -->
       <div class="host-tag">
-        <template v-if="hostAvatarSrc">
-          <img :alt="hostName" class="host-avatar" loading="lazy" :src="hostAvatarSrc">
-        </template>
-        <template v-else>
-          <div class="host-avatar placeholder" :style="{ backgroundColor: avatarColor }">
-            {{ hostInitial }}
-          </div>
-        </template>
+        <UserAvatar class="host-avatar" :image="hostAvatar" :name="hostName" :size="26" />
         <span>{{ hostName }}</span>
       </div>
 

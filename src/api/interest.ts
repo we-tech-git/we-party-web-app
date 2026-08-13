@@ -34,6 +34,17 @@ export function getRecommendedInterests (limit = 10) {
 }
 
 /**
+ * Busca interesses recomendados que o usuário AINDA NÃO possui.
+ * O filtro é feito no backend (`excludeOwned=true`) para não depender de trazer
+ * a lista inteira e filtrar no cliente.
+ * Rota autenticada.
+ * @param limit - Quantidade de sugestões (1..50).
+ */
+export function getUnownedInterestSuggestions (limit = 5) {
+  return callApi('GET', `/interest/recommendations?limit=${limit}&excludeOwned=true`, undefined, true)
+}
+
+/**
  * Busca interesses por nome.
  * Rota autenticada.
  * @param query - O termo de busca para filtrar interesses por nome.

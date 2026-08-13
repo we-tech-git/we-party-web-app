@@ -153,7 +153,7 @@ export default defineConfig({
         // Sem fontes locais próprias; usamos `custom` apenas para o linkFilter.
         families: [],
         linkFilter: (tags: HtmlTagDescriptor[]) =>
-          tags.filter((tag) => {
+          tags.filter(tag => {
             const href = String(tag?.attrs?.href ?? '')
             const isMdiIconFont = /materialdesignicons/i.test(href)
             const isRedundantFormat = /\.(eot|ttf|woff)$/i.test(href)

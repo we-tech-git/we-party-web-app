@@ -91,7 +91,6 @@
       "favorites": "Saved events",
       "notifications": "Notifications",
       "profile": "Profile"
-      
     },
     "tabs": {
       "forYou": "For you",
@@ -124,14 +123,16 @@
     "infoPoint1": "Connections for every moment",
     "infoPoint2": "Events just for friends",
     "infoPoint3": "Share stories and moments"
-  }
-  ,
+  },
   "interest": {
     "title": "Interests",
     "subtitle": "Add interests to your profile so we can show events that fit you best.",
     "searchPlaceholder": "Search interests (e.g: Rock, Jazz, Yoga...)",
     "finishButton": "FINISH",
-    "brandTitle": { "part1": "Why add", "part2": "interests" },
+    "brandTitle": {
+      "part1": "Why add",
+      "part2": "interests"
+    },
     "benefit1": "Events that match you better",
     "benefit2": "Personalized events will appear",
     "modal": {
@@ -296,7 +297,8 @@
       "noResults": "No interests found",
       "searching": "Searching interests...",
       "requestNew": "Request new interest",
-      "emptyMessage": "You haven't added any interests yet."
+      "emptyMessage": "You haven't added any interests yet.",
+      "suggestionsHint": "How about starting with these?"
     },
     "editModal": {
       "title": "Edit Profile",
@@ -306,8 +308,6 @@
       "usernamePlaceholder": "yourname",
       "bio": "Bio",
       "bioPlaceholder": "Tell us a bit about yourself...",
-      "location": "Location",
-      "locationPlaceholder": "Your city",
       "cancel": "Cancel",
       "save": "Save",
       "saving": "Saving...",
@@ -358,7 +358,9 @@
       "followSuccess": "You started following {name}",
       "followUpdateError": "Error updating. Please try again.",
       "cancelAttendanceSuccess": "Attendance cancelled successfully!",
-      "cancelAttendanceError": "Error cancelling attendance"
+      "cancelAttendanceError": "Error cancelling attendance",
+      "interestAddSuccess": "Interest added!",
+      "interestAddError": "Couldn't add the interest. Please try again."
     },
     "months": {
       "january": "January",
@@ -406,6 +408,12 @@
       "loading": "Loading...",
       "empty": "You're not following anyone yet",
       "unfollow": "Unfollow"
+    },
+    "discardModal": {
+      "title": "Discard changes?",
+      "message": "You have unsaved changes. If you close now, they'll be lost.",
+      "discard": "Discard",
+      "keepEditing": "Keep editing"
     }
   },
   "loginRequiredDialog": {

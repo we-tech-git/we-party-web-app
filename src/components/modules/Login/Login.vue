@@ -16,9 +16,9 @@
   import InputLabel from '@/components/UI/inputLabel/InputLabel.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
-  import router from '@/router'
   import { useAuth } from '@/composables/useAuth'
   import { validationRules } from '@/composables/useValidation'
+  import router from '@/router'
   import { logger } from '@/utils/logger'
 
   const { t } = useI18n()

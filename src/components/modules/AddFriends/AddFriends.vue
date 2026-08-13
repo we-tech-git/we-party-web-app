@@ -1,284 +1,248 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
-import { isRequestCanceled, unwrapList } from '@/api'
-import { requestFollowUser, requestUnFollowUser } from '@/api/follows'
-import { getUserRecomendations, searchUsers } from '@/api/users'
-import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
-import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
-import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
-import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
+  import { computed, onMounted, ref, watch } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import { useRouter } from 'vue-router'
+  import { isRequestCanceled, unwrapList } from '@/api'
+  import { requestFollowUser, requestUnFollowUser } from '@/api/follows'
+  import { getUserRecomendations, searchUsers } from '@/api/users'
+  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
+  import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
+  import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
-// i18n
-const { t } = useI18n()
-const router = useRouter()
+  // i18n
+  const { t } = useI18n()
+  const router = useRouter()
 
-// Modelo de dados do usuário listado para convite
-export interface User {
-  id: number | string
-  name: string
-  username?: string
-  profileImage?: string
-  isFollowing: boolean
-  currentStatus?: string
-}
+  // Modelo de dados do usuário listado para convite
+  export interface User {
+    id: number | string
+    name: string
+    username?: string
+    profileImage?: string
+    isFollowing: boolean
+    currentStatus?: string
+  }
 
-// Estado reativo
-const searchQuery = ref('')
-const users = ref<User[]>([])
-const recommendedUsers = ref<User[]>([]) // Cache das recomendações iniciais
-const isLoading = ref(false)
-const isSearching = ref(false)
-const hasError = ref(false)
-const errorMessage = ref('')
+  // Estado reativo
+  const searchQuery = ref('')
+  const users = ref<User[]>([])
+  const recommendedUsers = ref<User[]>([]) // Cache das recomendações iniciais
+  const isLoading = ref(false)
+  const isSearching = ref(false)
+  const hasError = ref(false)
+  const errorMessage = ref('')
 
-// Snackbar
-const snackbarVisible = ref(false)
-const snackbarMessage = ref('')
-const snackbarColor = ref('#ff9800')
+  // Snackbar
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
 
-function showSnackbar(message: string, color = '#ff9800') {
-  snackbarMessage.value = message
-  snackbarColor.value = color
-  snackbarVisible.value = true
-}
+  function showSnackbar (message: string, color = '#ff9800') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+    snackbarVisible.value = true
+  }
 
-// Gera avatar placeholder com iniciais
-function getAvatarUrl(user: User): string {
-  if (user.profileImage) {
-    // Se começa com http ou https, usa direto
-    if (user.profileImage.startsWith('http')) {
-      return user.profileImage
+  async function followUser (user: User) {
+    try {
+      await requestFollowUser(user)
+      showSnackbar(`Você começou a seguir ${user.name}`, '#22c55e')
+    } catch (error: any) {
+      console.error('Erro ao seguir usuário:', error)
+      showSnackbar(error?.response?.data?.message || 'Erro ao seguir usuário', '#ef4444')
+      // Reverte o estado em caso de erro
+      user.isFollowing = false
     }
-    // Se não, assume que é relativo ao baseURL da API
-    const baseUrl = import.meta.env.VITE__BASE_URL || ''
-    return `${baseUrl}${user.profileImage}`
   }
-  // Retorna URL vazia para usar o placeholder CSS
-  return ''
-}
 
-// Pega as iniciais do nome do usuário
-function getUserInitials(user: User): string {
-  const name = user.name || user.username || '?'
-  const parts = name.trim().split(' ')
-  if (parts.length >= 2 && parts[0] && parts.at(-1)) {
-    const first = parts[0][0] || ''
-    const last = parts.at(-1)?.[0] || ''
-    return (first + last).toUpperCase()
-  }
-  return name.slice(0, 2).toUpperCase()
-}
-
-// Cor do avatar baseado no ID
-function getAvatarColor(user: User): string {
-  const colors = [
-    '#FF5FA6', '#FFC25B', '#A78BFA', '#60A5FA', '#34D399',
-    '#F87171', '#FBBF24', '#A3E635', '#2DD4BF', '#818CF8',
-  ]
-  const id = typeof user.id === 'string' ? Number.parseInt(user.id) : user.id
-  return colors[id % colors.length] ?? '#FF5FA6'
-}
-
-async function followUser(user: User) {
-  try {
-    await requestFollowUser(user)
-    showSnackbar(`Você começou a seguir ${user.name}`, '#22c55e')
-  } catch (error: any) {
-    console.error('Erro ao seguir usuário:', error)
-    showSnackbar(error?.response?.data?.message || 'Erro ao seguir usuário', '#ef4444')
-    // Reverte o estado em caso de erro
-    user.isFollowing = false
-  }
-}
-
-async function unFollowUser(user: User) {
-  try {
-    await requestUnFollowUser(user)
-    showSnackbar(`Você deixou de seguir ${user.name}`, '#6b7280')
-  } catch (error: any) {
-    console.error('Erro ao deixar de seguir usuário:', error)
-    showSnackbar(error?.response?.data?.message || 'Erro ao deixar de seguir', '#ef4444')
-    // Reverte o estado em caso de erro
-    user.isFollowing = true
-  }
-}
-
-async function requestUserRecomendations() {
-  try {
-    isLoading.value = true
-    hasError.value = false
-    errorMessage.value = ''
-
-    const response = await getUserRecomendations()
-
-    // Extrai os usuários da resposta (unwrapList aceita os envelopes conhecidos)
-    const userData = unwrapList<any>(response, 'users')
-
-    // Mapeia para o formato esperado
-    users.value = userData.map((u: any) => ({
-      id: u.id || u._id,
-      name: u.name || u.username || 'Usuário',
-      username: u.username,
-      profileImage: u.profileImage || u.profilePhoto || u.avatar || u.photo,
-      isFollowing: u.isFollowing || u.following || false,
-      currentStatus: u.currentStatus || u.status,
-    }))
-
-    // Salva as recomendações para restaurar quando limpar a busca
-    recommendedUsers.value = [...users.value]
-
-    if (users.value.length === 0) {
-      errorMessage.value = 'Nenhum usuário encontrado no momento'
+  async function unFollowUser (user: User) {
+    try {
+      await requestUnFollowUser(user)
+      showSnackbar(`Você deixou de seguir ${user.name}`, '#6b7280')
+    } catch (error: any) {
+      console.error('Erro ao deixar de seguir usuário:', error)
+      showSnackbar(error?.response?.data?.message || 'Erro ao deixar de seguir', '#ef4444')
+      // Reverte o estado em caso de erro
+      user.isFollowing = true
     }
-  } catch (error: any) {
-    console.error('❌ Erro ao buscar recomendações de usuários:', error)
-    hasError.value = true
-    errorMessage.value = error?.response?.data?.message || 'Erro ao carregar usuários'
-    showSnackbar(errorMessage.value, '#ef4444')
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Cancela a busca anterior quando uma nova é disparada (evita respostas fora de ordem)
-let userSearchCtrl: AbortController | null = null
-
-async function performSearch(query: string) {
-  if (!query.trim()) {
-    // Quando limpar a busca, restaura as recomendações iniciais (sem nova requisição)
-    userSearchCtrl?.abort()
-    users.value = [...recommendedUsers.value]
-    isSearching.value = false
-    hasError.value = false
-    errorMessage.value = ''
-    return
   }
 
-  // Limpa resultados anteriores e ativa loading ao iniciar nova busca
-  users.value = []
-  isSearching.value = true
-  hasError.value = false
-  errorMessage.value = ''
+  async function requestUserRecomendations () {
+    try {
+      isLoading.value = true
+      hasError.value = false
+      errorMessage.value = ''
 
-  // Aborta a busca anterior antes de disparar a nova
-  userSearchCtrl?.abort()
-  userSearchCtrl = new AbortController()
-  const { signal } = userSearchCtrl
+      const response = await getUserRecomendations()
 
-  try {
-    const response = await searchUsers(query.trim(), 1, 20, signal)
+      // Extrai os usuários da resposta (unwrapList aceita os envelopes conhecidos)
+      const userData = unwrapList<any>(response, 'users')
 
-    // Extrai os usuários da resposta (unwrapList aceita os envelopes conhecidos)
-    const userData = unwrapList<any>(response, 'users')
+      // Mapeia para o formato esperado
+      users.value = userData.map((u: any) => ({
+        id: u.id || u._id,
+        name: u.name || u.username || 'Usuário',
+        username: u.username,
+        profileImage: u.profileImage || u.profilePhoto || u.avatar || u.photo,
+        isFollowing: u.isFollowing || u.following || false,
+        currentStatus: u.currentStatus || u.status,
+      }))
 
-    users.value = userData.map((u: any) => ({
-      id: u.id || u._id,
-      name: u.name || u.username || 'Usuário',
-      username: u.username,
-      profileImage: u.profileImage || u.profilePhoto || u.avatar || u.photo,
-      isFollowing: u.isFollowing || u.following || false,
-      currentStatus: u.currentStatus || u.status,
-    }))
+      // Salva as recomendações para restaurar quando limpar a busca
+      recommendedUsers.value = [...users.value]
 
-    if (users.value.length === 0) {
-      errorMessage.value = `Nenhum usuário encontrado para "${query}"`
+      if (users.value.length === 0) {
+        errorMessage.value = 'Nenhum usuário encontrado no momento'
+      }
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar recomendações de usuários:', error)
+      hasError.value = true
+      errorMessage.value = error?.response?.data?.message || 'Erro ao carregar usuários'
+      showSnackbar(errorMessage.value, '#ef4444')
+    } finally {
+      isLoading.value = false
     }
-    isSearching.value = false
-  } catch (error: any) {
-    // Requisição substituída por outra mais recente: mantém o loading do request atual
-    if (isRequestCanceled(error)) return
+  }
 
-    console.error('❌ Erro ao buscar usuários:', error)
-    hasError.value = true
+  // Cancela a busca anterior quando uma nova é disparada (evita respostas fora de ordem)
+  let userSearchCtrl: AbortController | null = null
+
+  async function performSearch (query: string) {
+    if (!query.trim()) {
+      // Quando limpar a busca, restaura as recomendações iniciais (sem nova requisição)
+      userSearchCtrl?.abort()
+      users.value = [...recommendedUsers.value]
+      isSearching.value = false
+      hasError.value = false
+      errorMessage.value = ''
+      return
+    }
+
+    // Limpa resultados anteriores e ativa loading ao iniciar nova busca
     users.value = []
-
-    // Mensagem de erro sem fallback
-    errorMessage.value = error?.response?.status === 404 || error?.message?.includes('404')
-      ? 'Endpoint de busca não disponível. Aguarde implementação no backend.'
-      : error?.response?.data?.message || 'Erro ao buscar usuários'
-    showSnackbar(errorMessage.value, '#ef4444')
-    isSearching.value = false
-  }
-}
-
-// Ativa o loading imediatamente ao digitar, antes do debounce do SearchInput disparar,
-// para evitar que o estado vazio apareça durante a janela de debounce.
-watch(searchQuery, (newValue) => {
-  if (newValue.trim()) {
     isSearching.value = true
-  } else {
-    isSearching.value = false
+    hasError.value = false
+    errorMessage.value = ''
+
+    // Aborta a busca anterior antes de disparar a nova
+    userSearchCtrl?.abort()
+    userSearchCtrl = new AbortController()
+    const { signal } = userSearchCtrl
+
+    try {
+      const response = await searchUsers(query.trim(), 1, 20, signal)
+
+      // Extrai os usuários da resposta (unwrapList aceita os envelopes conhecidos)
+      const userData = unwrapList<any>(response, 'users')
+
+      users.value = userData.map((u: any) => ({
+        id: u.id || u._id,
+        name: u.name || u.username || 'Usuário',
+        username: u.username,
+        profileImage: u.profileImage || u.profilePhoto || u.avatar || u.photo,
+        isFollowing: u.isFollowing || u.following || false,
+        currentStatus: u.currentStatus || u.status,
+      }))
+
+      if (users.value.length === 0) {
+        errorMessage.value = `Nenhum usuário encontrado para "${query}"`
+      }
+      isSearching.value = false
+    } catch (error: any) {
+      // Requisição substituída por outra mais recente: mantém o loading do request atual
+      if (isRequestCanceled(error)) return
+
+      console.error('❌ Erro ao buscar usuários:', error)
+      hasError.value = true
+      users.value = []
+
+      // Mensagem de erro sem fallback
+      errorMessage.value = error?.response?.status === 404 || error?.message?.includes('404')
+        ? 'Endpoint de busca não disponível. Aguarde implementação no backend.'
+        : error?.response?.data?.message || 'Erro ao buscar usuários'
+      showSnackbar(errorMessage.value, '#ef4444')
+      isSearching.value = false
+    }
+  }
+
+  // Ativa o loading imediatamente ao digitar, antes do debounce do SearchInput disparar,
+  // para evitar que o estado vazio apareça durante a janela de debounce.
+  watch(searchQuery, newValue => {
+    if (newValue.trim()) {
+      isSearching.value = true
+    } else {
+      isSearching.value = false
+      users.value = [...recommendedUsers.value]
+      hasError.value = false
+      errorMessage.value = ''
+    }
+  })
+
+  // Handler para o evento search do SearchInput (já com debounce)
+  function handleSearch (query: string) {
+    if (!query.trim()) {
+      // Quando limpar a busca, restaura recomendações iniciais sem nova requisição
+      isSearching.value = false
+      users.value = [...recommendedUsers.value]
+      hasError.value = false
+      errorMessage.value = ''
+      return
+    }
+
+    isSearching.value = true
+    performSearch(query)
+  }
+
+  // Handler para limpar a busca
+  function handleClearSearch () {
     users.value = [...recommendedUsers.value]
+    isSearching.value = false
     hasError.value = false
     errorMessage.value = ''
   }
-})
 
-// Handler para o evento search do SearchInput (já com debounce)
-function handleSearch(query: string) {
-  if (!query.trim()) {
-    // Quando limpar a busca, restaura recomendações iniciais sem nova requisição
-    isSearching.value = false
-    users.value = [...recommendedUsers.value]
-    hasError.value = false
-    errorMessage.value = ''
-    return
+  // Filtro de usuários por nome (case-insensitive) - Local apenas
+  const filteredUsers = computed(() => {
+    return users.value
+  })
+
+  // Alterna status do convite (atualização otimista)
+  function toggleInvite (user: User) {
+    const previousState = user.isFollowing
+
+    // Atualização otimista
+    user.isFollowing = !user.isFollowing
+
+    if (previousState) {
+      unFollowUser(user)
+    } else {
+      followUser(user)
+    }
   }
 
-  isSearching.value = true
-  performSearch(query)
-}
-
-// Handler para limpar a busca
-function handleClearSearch() {
-  users.value = [...recommendedUsers.value]
-  isSearching.value = false
-  hasError.value = false
-  errorMessage.value = ''
-}
-
-// Filtro de usuários por nome (case-insensitive) - Local apenas
-const filteredUsers = computed(() => {
-  return users.value
-})
-
-// Alterna status do convite (atualização otimista)
-function toggleInvite(user: User) {
-  const previousState = user.isFollowing
-
-  // Atualização otimista
-  user.isFollowing = !user.isFollowing
-
-  if (previousState) {
-    unFollowUser(user)
-  } else {
-    followUser(user)
+  function finishSelection () {
+    router.push('/public/Congratulations')
   }
-}
 
-function finishSelection() {
-  router.push('/public/Congratulations')
-}
+  function skipStep () {
+    router.push('/public/Congratulations')
+  }
 
-function skipStep() {
-  router.push('/public/Congratulations')
-}
+  // Refaz a última ação (busca ou recomendações)
+  function retryLastAction () {
+    if (searchQuery.value.trim()) {
+      performSearch(searchQuery.value)
+    } else {
+      requestUserRecomendations()
+    }
+  }
 
-// Refaz a última ação (busca ou recomendações)
-function retryLastAction() {
-  if (searchQuery.value.trim()) {
-    performSearch(searchQuery.value)
-  } else {
+  onMounted(() => {
     requestUserRecomendations()
-  }
-}
-
-onMounted(() => {
-  requestUserRecomendations()
-})
+  })
 
 </script>
 
@@ -287,7 +251,13 @@ onMounted(() => {
     <template #form-content>
       <!-- Botão de Voltar -->
       <button class="btn-back" type="button" @click="router.back()">
-        <svg class="btn-back__arrow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <svg
+          class="btn-back__arrow"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          viewBox="0 0 24 24"
+        >
           <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
         <span>Voltar</span>
@@ -301,8 +271,13 @@ onMounted(() => {
         {{ t('addFriends.subtitle') }}
       </p>
       <div class="search-input-wrapper">
-        <SearchInput v-model="searchQuery" :loading="isSearching" :placeholder="t('addFriends.searchPlaceholder')"
-          @clear="handleClearSearch" @search="handleSearch" />
+        <SearchInput
+          v-model="searchQuery"
+          :loading="isSearching"
+          :placeholder="t('addFriends.searchPlaceholder')"
+          @clear="handleClearSearch"
+          @search="handleSearch"
+        />
       </div>
 
       <!-- Estado de loading (load inicial e durante a busca) -->
@@ -330,25 +305,46 @@ onMounted(() => {
       <ul v-else class="user-list">
         <li v-for="user in filteredUsers" :key="user.id" class="user-item">
           <div class="avatar-wrapper">
-            <img v-if="getAvatarUrl(user)" :alt="user.name" class="avatar" :src="getAvatarUrl(user)"
-              @error="($event.target as HTMLImageElement).style.display = 'none'">
-            <div v-if="!getAvatarUrl(user)" class="avatar-placeholder"
-              :style="{ backgroundColor: getAvatarColor(user) }">
-              {{ getUserInitials(user) }}
-            </div>
+            <UserAvatar class="avatar" :image="user.profileImage" :name="user.name" :size="48" />
           </div>
           <div class="user-info">
             <span class="name">{{ user.name }}</span>
             <span v-if="user.username" class="username">@{{ user.username }}</span>
           </div>
           <button :class="['invite-btn', user.isFollowing ? 'sent' : 'send']" type="button" @click="toggleInvite(user)">
-            <svg v-if="!user.isFollowing" class="follow-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <svg
+              v-if="!user.isFollowing"
+              class="follow-icon"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke-linecap="round" stroke-linejoin="round" />
               <circle cx="9" cy="7" r="4" />
-              <line x1="19" y1="8" x2="19" y2="14" stroke-linecap="round" />
-              <line x1="22" y1="11" x2="16" y2="11" stroke-linecap="round" />
+              <line
+                stroke-linecap="round"
+                x1="19"
+                x2="19"
+                y1="8"
+                y2="14"
+              />
+              <line
+                stroke-linecap="round"
+                x1="22"
+                x2="16"
+                y1="11"
+                y2="11"
+              />
             </svg>
-            <svg v-else class="follow-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <svg
+              v-else
+              class="follow-icon"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              viewBox="0 0 24 24"
+            >
               <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             {{ user.isFollowing ? t('addFriends.sent') : t('addFriends.send') }}

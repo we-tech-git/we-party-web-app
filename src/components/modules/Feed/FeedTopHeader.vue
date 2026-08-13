@@ -3,9 +3,10 @@
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+  import EventSearchAutocomplete from '@/components/modules/Feed/EventSearchAutocomplete.vue'
+  import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import { useAuth } from '@/composables/useAuth'
   import { svgIcons } from '@/utils/svgSet'
-  import EventSearchAutocomplete from '@/components/modules/Feed/EventSearchAutocomplete.vue'
 
   interface UserSummary {
     name: string
@@ -22,24 +23,6 @@
   const { t } = useI18n()
   const router = useRouter()
   const { logout: authLogout, loggedUser, isAuthenticated } = useAuth()
-
-  const avatarColors = [
-    '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
-    '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
-  ]
-
-  function getAvatarColor (name: string): string {
-    let hash = 0
-    for (let i = 0; i < name.length; i++) {
-      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
-    }
-    const index = Math.abs(hash % avatarColors.length)
-    return avatarColors[index] ?? '#F44336'
-  }
-
-  function getInitial (name: string): string {
-    return (name || 'U').charAt(0).toUpperCase()
-  }
 
   function logout () {
     authLogout()
@@ -131,16 +114,7 @@
             <template #activator="{ props: menuProps }">
               <div class="display-user-header" v-bind="menuProps">
                 <div class="user-avatar-section">
-                  <img
-                    v-if="user.avatar"
-                    :alt="user.name"
-                    class="avatar"
-                    loading="lazy"
-                    :src="user.avatar"
-                  >
-                  <div v-else class="avatar avatar-placeholder" :style="{ backgroundColor: getAvatarColor(user.name) }">
-                    {{ getInitial(user.name) }}
-                  </div>
+                  <UserAvatar class="avatar" :image="user.avatar" :name="user.name" :size="40" />
                 </div>
                 <div class="user-info-section">
                   <h2 class="user-name">{{ user.name }}</h2>
@@ -152,15 +126,7 @@
             <v-list class="user-dropdown-list" density="compact" :lines="false">
               <!-- Cabeçalho com info do usuário -->
               <div class="user-dropdown-header">
-                <div class="dropdown-avatar" :style="{ backgroundColor: getAvatarColor(user.name) }">
-                  <img
-                    v-if="user.avatar"
-                    :alt="user.name"
-                    :src="user.avatar"
-                    style="width:100%;height:100%;border-radius:50%;object-fit:cover;"
-                  >
-                  <span v-else>{{ getInitial(user.name) }}</span>
-                </div>
+                <UserAvatar class="dropdown-avatar" :image="user.avatar" :name="user.name" :size="44" />
                 <div class="dropdown-user-info">
                   <p class="dropdown-user-name">{{ user.name }}</p>
                   <p v-if="loggedUser?.email" class="dropdown-user-email">{{ loggedUser.email }}</p>
@@ -282,7 +248,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 
 .header-inner {
   grid-template-columns: minmax(180px, 250px) 1fr minmax(200px, 250px);
@@ -536,7 +501,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 
 :deep(.dropdown-action-item) {
   border-radius: 10px !important;

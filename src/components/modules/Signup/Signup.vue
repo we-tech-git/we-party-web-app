@@ -257,7 +257,13 @@
   <AuthLayout>
     <template #form-content>
       <button class="btn-back" type="button" @click="router.push('/public/login')">
-        <svg class="btn-back__arrow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <svg
+          class="btn-back__arrow"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          viewBox="0 0 24 24"
+        >
           <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
         <span>Voltar</span>

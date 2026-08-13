@@ -44,7 +44,12 @@ function mapNode (raw: any, fallbackParentId: string | null): CommentNodeData {
     content: raw?.content ?? '',
     createdAt: raw?.createdAt ?? '',
     likesCount: raw?.likesCount ?? raw?._count?.likes ?? raw?.likes ?? 0,
-    isLikedByMe: raw?.isLikedByMe ?? raw?.likedByMe ?? false,
+    // `likedByCurrentUser` é o nome que a listagem do backend usa
+    // (GET /events/:id/comments). Sem ele nesta lista, o campo caía sempre em
+    // `false`: o coração nunca acendia, o usuário clicava de novo e o endpoint
+    // — que é toggle — descurtia o comentário.
+    isLikedByMe:
+      raw?.isLikedByMe ?? raw?.likedByCurrentUser ?? raw?.likedByMe ?? false,
     parentCommentId: raw?.parentCommentId ?? raw?.parentId ?? fallbackParentId,
     replies: [],
     user: mapUser(raw?.user),

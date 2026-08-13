@@ -6,6 +6,7 @@
     deleteEventComment,
     getEventComments,
   } from '@/api/comments'
+  import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useCommentLikes } from '@/composables/useCommentLikes'
 
@@ -70,32 +71,6 @@
     const diffD = Math.floor(diffH / 24)
     if (diffD < 7) return `${diffD}d`
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-  }
-
-  function getInitial (name: string): string {
-    return (name || 'U').charAt(0).toUpperCase()
-  }
-
-  const avatarColors = [
-    '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
-    '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
-  ]
-
-  function getAvatarColor (name: string): string {
-    if (!name) return avatarColors[0] ?? '#F44336'
-    let hash = 0
-    for (let i = 0; i < name.length; i++) {
-      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
-    }
-    return avatarColors[Math.abs(hash % avatarColors.length)] ?? '#F44336'
-  }
-
-  function resolveAsset (val?: string): string {
-    if (!val) return ''
-    if (/^https?:\/\//i.test(val)) return val
-    const base = (import.meta.env.VITE__BASE_URL || '').replace(/\/$/, '')
-    const path = val.startsWith('/') ? val : `/${val}`
-    return `${base}${path}`
   }
 
   function isMyComment (comment: Comment): boolean {
@@ -332,19 +307,11 @@
             <TransitionGroup v-else name="comment-item">
               <div v-for="comment in comments" :key="comment.id" class="comment-row">
                 <div class="comment-avatar-wrapper">
-                  <img
-                    v-if="resolveAsset(comment.user?.profileImage)"
-                    :alt="comment.user?.name"
-                    class="comment-avatar"
-                    :src="resolveAsset(comment.user?.profileImage)"
-                  >
-                  <div
-                    v-else
-                    class="comment-avatar placeholder"
-                    :style="{ backgroundColor: getAvatarColor(comment.user?.name || '') }"
-                  >
-                    {{ getInitial(comment.user?.name || '') }}
-                  </div>
+                  <UserAvatar
+                    :image="comment.user?.profileImage"
+                    :name="comment.user?.name || ''"
+                    :size="40"
+                  />
                 </div>
 
                 <div class="comment-content">
@@ -516,19 +483,11 @@
                   >
                     <div v-for="reply in comment.replies" :key="reply.id" class="reply-row">
                       <div class="comment-avatar-wrapper">
-                        <img
-                          v-if="resolveAsset(reply.user?.profileImage)"
-                          :alt="reply.user?.name"
-                          class="comment-avatar comment-avatar--sm"
-                          :src="resolveAsset(reply.user?.profileImage)"
-                        >
-                        <div
-                          v-else
-                          class="comment-avatar comment-avatar--sm placeholder"
-                          :style="{ backgroundColor: getAvatarColor(reply.user?.name || '') }"
-                        >
-                          {{ getInitial(reply.user?.name || '') }}
-                        </div>
+                        <UserAvatar
+                          :image="reply.user?.profileImage"
+                          :name="reply.user?.name || ''"
+                          :size="26"
+                        />
                       </div>
                       <div class="comment-content">
                         <div class="comment-bubble comment-bubble--reply">

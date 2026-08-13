@@ -33,9 +33,9 @@ export function useGeolocation () {
       return FALLBACK
     }
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        position => {
           const coords: Coords = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,

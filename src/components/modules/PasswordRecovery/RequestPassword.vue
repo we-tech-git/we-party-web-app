@@ -100,7 +100,7 @@
         </div>
 
         <button class="btn-primary flex items-center justify-center gap-2" :disabled="isLoading" type="submit">
-          <AppLoader v-if="isLoading" size="sm" variant="text" :text="t('form.loading')" />
+          <AppLoader v-if="isLoading" size="sm" :text="t('form.loading')" variant="text" />
           <span v-else>{{ t('forgotPassword.button') }}</span>
         </button>
 

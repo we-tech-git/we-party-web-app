@@ -1,13 +1,13 @@
-import sharp from 'sharp'
-import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import sharp from 'sharp'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const src = resolve(root, 'public/logoweparty.png')
-const out = (n) => resolve(root, 'public', n)
+const out = n => resolve(root, 'public', n)
 
 // Fundo claro da marca para os ícones "any"; fundo gradiente sólido p/ maskable
-async function make(size, file, { bg, padRatio }) {
+async function make (size, file, { bg, padRatio }) {
   const inner = Math.round(size * (1 - padRatio))
   const logo = await sharp(src)
     .resize(inner, inner, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
@@ -22,7 +22,7 @@ async function make(size, file, { bg, padRatio }) {
 }
 
 const light = { r: 255, g: 245, b: 245, alpha: 1 } // #fff5f5
-const brand = { r: 255, g: 183, b: 77, alpha: 1 }  // #FFB74D
+const brand = { r: 255, g: 183, b: 77, alpha: 1 } // #FFB74D
 const transparent = { r: 0, g: 0, b: 0, alpha: 0 }
 
 await make(192, 'pwa-192x192.png', { bg: transparent, padRatio: 0.12 })

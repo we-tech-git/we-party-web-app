@@ -207,7 +207,6 @@ export async function updateUserProfile (userId: string, data: {
   name?: string
   username?: string
   bio?: string
-  location?: string
 }) {
   const formData = new FormData()
   for (const [key, value] of Object.entries(data)) {
@@ -241,7 +240,7 @@ async function patchUserProfileFormData (formData: FormData) {
     url: `${baseUrl}/users/profile`,
     data: formData,
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
     withCredentials: true,
     timeout: 30_000,
@@ -268,7 +267,7 @@ export async function uploadProfileImage (file: File) {
       url: `${baseUrl}/users/profile`,
       data: formData,
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
       withCredentials: true,
       timeout: 30_000,
@@ -301,7 +300,7 @@ export async function uploadBannerImage (file: File) {
       url: `${baseUrl}/users/profile`,
       data: formData,
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
       withCredentials: true,
       timeout: 30_000,

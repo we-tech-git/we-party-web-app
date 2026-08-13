@@ -17,6 +17,7 @@ declare module 'vue' {
     AuthLayout: typeof import('./components/UI/AuthLayout/AuthLayout.vue')['default']
     CommentNode: typeof import('./components/modules/Feed/CommentNode.vue')['default']
     CommentsDrawer: typeof import('./components/modules/Feed/CommentsDrawer.vue')['default']
+    ConfirmDialog: typeof import('./components/UI/ConfirmDialog/ConfirmDialog.vue')['default']
     Congratulations: typeof import('./components/modules/Congratulations/Congratulations.vue')['default']
     ErrorBoundary: typeof import('./components/UI/ErrorBoundary/ErrorBoundary.vue')['default']
     EventDetails: typeof import('./components/modules/Feed/EventDetails.vue')['default']
@@ -28,6 +29,7 @@ declare module 'vue' {
     FeedSidebarNav: typeof import('./components/modules/Feed/FeedSidebarNav.vue')['default']
     FeedTopHeader: typeof import('./components/modules/Feed/FeedTopHeader.vue')['default']
     FeedTrendsPanel: typeof import('./components/modules/Feed/FeedTrendsPanel.vue')['default']
+    ImageCropper: typeof import('./components/UI/ImageCropper/ImageCropper.vue')['default']
     InlineComments: typeof import('./components/modules/Feed/InlineComments.vue')['default']
     InputLabel: typeof import('./components/UI/inputLabel/InputLabel.vue')['default']
     Interest: typeof import('./components/modules/interest/Interest.vue')['default']
@@ -49,6 +51,7 @@ declare module 'vue' {
     Signup: typeof import('./components/modules/Signup/Signup.vue')['default']
     Snackbar: typeof import('./components/UI/Snackbar/Snackbar.vue')['default']
     SocialAuthButtons: typeof import('./components/UI/SocialAuthButtons/SocialAuthButtons.vue')['default']
+    UserAvatar: typeof import('./components/UI/UserAvatar/UserAvatar.vue')['default']
     VerifyPin: typeof import('./components/modules/PasswordRecovery/VerifyPin.vue')['default']
     WePartyLoader: typeof import('./components/UI/WePartyLoader/WePartyLoader.vue')['default']
   }

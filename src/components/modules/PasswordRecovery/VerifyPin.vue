@@ -83,7 +83,7 @@
 
         <!-- Verify Button -->
         <button class="verify-button active flex items-center justify-center gap-2" type="button" @click="backToLogin">
-          <AppLoader v-if="isVerifying" size="sm" variant="text" :text="$t('verifyPin.btn_back_to_login')" />
+          <AppLoader v-if="isVerifying" size="sm" :text="$t('verifyPin.btn_back_to_login')" variant="text" />
           <span v-else>{{ $t('verifyPin.btn_back_to_login') }}</span>
         </button>
       </div>

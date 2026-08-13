@@ -1,1718 +1,1484 @@
 <script setup lang="ts">
-import type { NavItem } from '@/types/navigation'
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
-import { isRequestCanceled, unwrapItem, unwrapList } from '@/api'
-import { followUserById, getFollowStats, getMyFollowers, getMyFollowing, unfollowUserById } from '@/api/follows'
-import { addUserInterest, getInterests, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
-import { getUserInterests, getUserProfile, getUserRecomendations, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
-import AppFooter from '@/components/AppFooter.vue'
-import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
-import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
-import FeedTopHeader from '@/components/modules/Feed/FeedTopHeader.vue'
-import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
-import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-import { useAuth } from '@/composables/useAuth'
-import { useLoading } from '@/composables/useLoading'
-import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
-import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
-import { AuthService } from '@/services/auth'
-import { useEventsStore } from '@/stores/events'
-import { useShareStore } from '@/stores/share'
-import { logger } from '@/utils/logger'
+  import type { NavItem } from '@/types/navigation'
+  import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import { useRoute, useRouter } from 'vue-router'
+  import { isRequestCanceled, unwrapItem, unwrapList } from '@/api'
+  import { followUserById, getFollowStats, getMyFollowers, getMyFollowing, unfollowUserById } from '@/api/follows'
+  import { addUserInterest, getInterests, getUnownedInterestSuggestions, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
+  import { getUserInterests, getUserProfile, getUserRecomendations, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
+  import AppFooter from '@/components/AppFooter.vue'
+  import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+  import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
+  import FeedTopHeader from '@/components/modules/Feed/FeedTopHeader.vue'
+  import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import ConfirmDialog from '@/components/UI/ConfirmDialog/ConfirmDialog.vue'
+  import ImageCropper from '@/components/UI/ImageCropper/ImageCropper.vue'
+  import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
+  import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
+  import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
+  import { useAuth } from '@/composables/useAuth'
+  import { useLoading } from '@/composables/useLoading'
+  import { AuthService } from '@/services/auth'
+  import { useEventsStore } from '@/stores/events'
+  import { useShareStore } from '@/stores/share'
+  import { logger } from '@/utils/logger'
 
-// ── Constantes (evita magic numbers) ──
-const CONFIG = {
-  MAX_FILE_SIZE_MB: 5,
-  AVATAR_OUTPUT_SIZE: 512,
-  CROP_CONTAINER_SIZE: 300,
-  EVENTS_DISPLAY_INCREMENT: 6,
-  INITIAL_DISPLAY_LIMIT: 6,
-  MAX_NAME_LENGTH: 50,
-  MAX_USERNAME_LENGTH: 30,
-  MAX_BIO_LENGTH: 160,
-  MAX_LOCATION_LENGTH: 60,
-  MAX_SEARCH_RESULTS: 10,
-  MAX_SUGGESTED_INTERESTS: 20,
-} as const
+  // ── Constantes (evita magic numbers) ──
+  /** Espelha BIO_MAX_LENGTH do backend (VarChar(500) + validação no service).
+   *  Se mudar lá, mude aqui. */
+  const BIO_MAX_LENGTH = 500
 
-const SNACKBAR_COLORS = {
-  success: '#22c55e',
-  error: '#ef4444',
-} as const
+  const CONFIG = {
+    MAX_FILE_SIZE_MB: 5,
+    AVATAR_OUTPUT_SIZE: 512,
+    EVENTS_DISPLAY_INCREMENT: 6,
+    INITIAL_DISPLAY_LIMIT: 6,
+    MAX_NAME_LENGTH: 50,
+    MAX_USERNAME_LENGTH: 30,
+    MAX_BIO_LENGTH: 160,
+    MAX_LOCATION_LENGTH: 60,
+    MAX_SEARCH_RESULTS: 10,
+    MAX_SUGGESTED_INTERESTS: 20,
+  } as const
 
-const { t } = useI18n()
-const router = useRouter()
-const route = useRoute()
-const { loggedUser, updateUser } = useAuth()
-const eventsStore = useEventsStore()
-const shareStore = useShareStore()
+  const SNACKBAR_COLORS = {
+    success: '#22c55e',
+    error: '#ef4444',
+  } as const
 
-// ── Loading state ──
-const loading = ref(true)
-const error = ref<string | null>(null)
-const uploadingAvatar = ref(false)
-const uploadingBanner = ref(false)
+  const { t } = useI18n()
+  const router = useRouter()
+  const route = useRoute()
+  const { loggedUser, updateUser } = useAuth()
+  const eventsStore = useEventsStore()
+  const shareStore = useShareStore()
 
-// ── Followers/Following state ──
-interface FollowUser {
-  id: string | number
-  name: string
-  username?: string
-  profileImage?: string
-  isFollowing?: boolean
-}
+  // ── Loading state ──
+  const loading = ref(true)
+  const error = ref<string | null>(null)
+  const uploadingAvatar = ref(false)
+  const uploadingBanner = ref(false)
 
-const followStats = ref({ followers: 0, following: 0 })
-const followersList = ref<FollowUser[]>([])
-const followingList = ref<FollowUser[]>([])
-const recommendedUsers = ref<FollowUser[]>([])
-const loadingFollowStats = ref(false)
-const loadingFollowers = ref(false)
-const loadingFollowing = ref(false)
-const loadingRecommendations = ref(true)
-const showFollowersModal = ref(false)
-const showFollowingModal = ref(false)
-
-// ── Snackbar ──
-const snackbarVisible = ref(false)
-const snackbarMessage = ref('')
-const snackbarColor = ref<string>(SNACKBAR_COLORS.success)
-
-function showSnackbar(message: string, color: string = SNACKBAR_COLORS.success) {
-  snackbarMessage.value = message
-  snackbarColor.value = color
-  if (snackbarVisible.value) {
-    snackbarVisible.value = false
-    requestAnimationFrame(() => {
-      snackbarVisible.value = true
-    })
-    return
+  // ── Followers/Following state ──
+  interface FollowUser {
+    id: string | number
+    name: string
+    username?: string
+    profileImage?: string
+    isFollowing?: boolean
   }
-  snackbarVisible.value = true
-}
 
-// ── Avatar colors para fallback ──
-const avatarColors = [
-  '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
-  '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
-]
+  const followStats = ref({ followers: 0, following: 0 })
+  const followersList = ref<FollowUser[]>([])
+  const followingList = ref<FollowUser[]>([])
+  const recommendedUsers = ref<FollowUser[]>([])
+  const loadingFollowStats = ref(false)
+  const loadingFollowers = ref(false)
+  const loadingFollowing = ref(false)
+  const loadingRecommendations = ref(true)
+  const showFollowersModal = ref(false)
+  const showFollowingModal = ref(false)
 
-function getAvatarColor(name: string): string {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash)
+  // ── Snackbar ──
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref<string>(SNACKBAR_COLORS.success)
+
+  function showSnackbar (message: string, color: string = SNACKBAR_COLORS.success) {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+    if (snackbarVisible.value) {
+      snackbarVisible.value = false
+      requestAnimationFrame(() => {
+        snackbarVisible.value = true
+      })
+      return
+    }
+    snackbarVisible.value = true
   }
-  const index = Math.abs(hash % avatarColors.length)
-  return avatarColors[index] ?? '#F44336'
-}
 
-function getInitials(name: string): string {
-  if (!name) return 'U'
-  const parts = name.trim().split(' ')
-  if (parts.length >= 2) {
-    return (parts[0]?.charAt(0) || '').toUpperCase() + (parts.at(-1)?.charAt(0) || '').toUpperCase()
-  }
-  return (name.charAt(0) || 'U').toUpperCase()
-}
+  // ── Avatar colors para fallback ──
+  // (substituído pelo componente global UserAvatar — as iniciais e o gradiente
+  //  agora vivem em src/utils/avatar.ts)
 
-// ── User data (reactive for editing) ──
-// Inicializa com os dados do loggedUser (dados salvos durante o login)
-const user = reactive({
-  name: loggedUser.value?.name || '',
-  username: loggedUser.value?.username ? `@${loggedUser.value.username}` : '',
-  avatar: loggedUser.value?.profileImage || '',
-  banner: '',
-  bio: '',
-  location: '',
-  joined: '',
-})
+  // ── User data (reactive for editing) ──
+  // Inicializa com os dados do loggedUser (dados salvos durante o login)
+  const user = reactive({
+    name: loggedUser.value?.name || '',
+    username: loggedUser.value?.username ? `@${loggedUser.value.username}` : '',
+    avatar: loggedUser.value?.profileImage || '',
+    banner: '',
+    bio: '',
+    joined: '',
+  })
 
-// Watch loggedUser — só refaz o fetch se o ID do usuário mudou (evita loop infinito)
-watch(() => loggedUser.value?.id, (newId, oldId) => {
-  if (newId && newId !== oldId) {
-    user.name = loggedUser.value?.name || ''
-    user.username = loggedUser.value?.username ? `@${loggedUser.value.username}` : ''
-    user.avatar = loggedUser.value?.profileImage || ''
+  // Watch loggedUser — só refaz o fetch se o ID do usuário mudou (evita loop infinito)
+  watch(() => loggedUser.value?.id, (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      user.name = loggedUser.value?.name || ''
+      user.username = loggedUser.value?.username ? `@${loggedUser.value.username}` : ''
+      user.avatar = loggedUser.value?.profileImage || ''
     // fetchUserProfile removido - o onMounted já cuida do carregamento inicial
+    }
+  })
+
+  onMounted(async () => {
+    if (loggedUser.value?.id) {
+      await fetchUserProfile()
+      // Carrega dados em paralelo para melhor performance
+      await Promise.all([
+        activeTab.value === 'liked' ? fetchLikedEvents() : Promise.resolve(),
+        fetchFollowStats(),
+        fetchRecommendedUsers(),
+      ])
+    } else {
+      error.value = 'Usuário não autenticado'
+      loading.value = false
+    }
+  })
+
+  // Cleanup para evitar memory leaks
+  onUnmounted(() => {
+    // Prévias de recorte não salvas: sem revogar, os object URLs vazam ao sair
+    // da página com o modal aberto.
+    discardPendingImages()
+
+    if (interestsSearchTimeout) {
+      clearTimeout(interestsSearchTimeout)
+      interestsSearchTimeout = null
+    }
+    if (userSearchTimeout) {
+      clearTimeout(userSearchTimeout)
+      userSearchTimeout = null
+    }
+    if (likedEventsTimeout) {
+      clearTimeout(likedEventsTimeout)
+      likedEventsTimeout = null
+    }
+    if (confirmedEventsTimeout) {
+      clearTimeout(confirmedEventsTimeout)
+      confirmedEventsTimeout = null
+    }
+  })
+
+  // ── User interests ──
+  interface UserInterest {
+    id: string
+    name: string
   }
-})
+  const userInterests = ref<UserInterest[]>([])
+  // Loading dedicado do card de interesses (independente do load principal da página),
+  // para mostrar o loader sempre que os interesses forem (re)carregados.
+  const loadingInterests = ref(false)
 
-onMounted(async () => {
-  if (loggedUser.value?.id) {
-    await fetchUserProfile()
-    // Carrega dados em paralelo para melhor performance
-    await Promise.all([
-      activeTab.value === 'liked' ? fetchLikedEvents() : Promise.resolve(),
-      fetchFollowStats(),
-      fetchRecommendedUsers(),
-    ])
-  } else {
-    error.value = 'Usuário não autenticado'
-    loading.value = false
-  }
-})
+  // ── Cache dos dados do perfil para evitar chamadas duplicadas ──
+  const cachedUserProfileData = ref<any>(null)
 
-// Cleanup para evitar memory leaks
-onUnmounted(() => {
-  if (interestsSearchTimeout) {
-    clearTimeout(interestsSearchTimeout)
-    interestsSearchTimeout = null
-  }
-  if (userSearchTimeout) {
-    clearTimeout(userSearchTimeout)
-    userSearchTimeout = null
-  }
-  if (likedEventsTimeout) {
-    clearTimeout(likedEventsTimeout)
-    likedEventsTimeout = null
-  }
-  if (confirmedEventsTimeout) {
-    clearTimeout(confirmedEventsTimeout)
-    confirmedEventsTimeout = null
-  }
-})
+  // ── Computed para verificar se tem avatar ──
+  const hasAvatar = computed(() => {
+    return user.avatar && user.avatar.trim() !== '' && !user.avatar.includes('pravatar')
+  })
 
-// ── User interests ──
-interface UserInterest {
-  id: string
-  name: string
-}
-const userInterests = ref<UserInterest[]>([])
-// Loading dedicado do card de interesses (independente do load principal da página),
-// para mostrar o loader sempre que os interesses forem (re)carregados.
-const loadingInterests = ref(false)
+  const hasBanner = computed(() => {
+    return user.banner && user.banner.trim() !== '' && !user.banner.includes('unsplash')
+  })
 
-// ── Cache dos dados do perfil para evitar chamadas duplicadas ──
-const cachedUserProfileData = ref<any>(null)
+  // ── File inputs refs ──
+  const modalAvatarInputRef = ref<HTMLInputElement | null>(null)
+  const modalBannerInputRef = ref<HTMLInputElement | null>(null)
 
-// ── Computed para verificar se tem avatar ──
-const hasAvatar = computed(() => {
-  return user.avatar && user.avatar.trim() !== '' && !user.avatar.includes('pravatar')
-})
+  // ── Recorte de imagem (Cropper.js) ──
+  // A geometria do recorte fica no componente ImageCropper; aqui só controlamos
+  // abertura do modal, upload e feedback.
+  const AVATAR_ASPECT = 1
+  const BANNER_ASPECT = 16 / 5
 
-const hasBanner = computed(() => {
-  return user.banner && user.banner.trim() !== '' && !user.banner.includes('unsplash')
-})
+  const showCropModal = ref(false)
+  const cropImageSrc = ref('')
+  const cropMimeType = ref('image/jpeg')
+  const avatarCropperRef = ref<InstanceType<typeof ImageCropper> | null>(null)
+  let pendingAvatarInput: HTMLInputElement | null = null
 
-// ── File inputs refs ──
-const avatarInputRef = ref<HTMLInputElement | null>(null)
-const bannerInputRef = ref<HTMLInputElement | null>(null)
-const modalAvatarInputRef = ref<HTMLInputElement | null>(null)
-const modalBannerInputRef = ref<HTMLInputElement | null>(null)
+  /** Imagens recortadas aguardando o "Salvar" do modal de edição. */
+  const pendingAvatarFile = ref<File | null>(null)
+  const pendingAvatarPreview = ref<string | null>(null)
+  const pendingBannerFile = ref<File | null>(null)
+  const pendingBannerPreview = ref<string | null>(null)
 
-// ── Avatar Cropper ──
-const showCropModal = ref(false)
-const cropImageSrc = ref('')
-const cropZoom = ref(1)
-const cropOffset = reactive({ x: 0, y: 0 })
-const cropDragging = ref(false)
-const cropDragStart = reactive({ x: 0, y: 0 })
-const cropOffsetStart = reactive({ x: 0, y: 0 })
-const cropImageNatural = reactive({ width: 0, height: 0 })
-let pendingAvatarInput: HTMLInputElement | null = null
+  const showBannerCropModal = ref(false)
+  const bannerCropImageSrc = ref('')
+  const bannerCropMimeType = ref('image/jpeg')
+  const bannerCropperRef = ref<InstanceType<typeof ImageCropper> | null>(null)
+  let pendingBannerInput: HTMLInputElement | null = null
 
-// Container usa a constante
-const CROP_CONTAINER = CONFIG.CROP_CONTAINER_SIZE
-
-// ── Banner Cropper ──
-const showBannerCropModal = ref(false)
-const bannerCropImageSrc = ref('')
-const bannerCropZoom = ref(1)
-const bannerCropOffset = reactive({ x: 0, y: 0 })
-const bannerCropDragging = ref(false)
-const bannerCropDragStart = reactive({ x: 0, y: 0 })
-const bannerCropOffsetStart = reactive({ x: 0, y: 0 })
-const bannerCropImageNatural = reactive({ width: 0, height: 0 })
-const bannerCropAreaRef = ref<HTMLElement | null>(null)
-const bannerCropW = ref(560)
-const bannerCropH = ref(175)
-let pendingBannerInput: HTMLInputElement | null = null
-
-// Base display size: image fits entirely inside the container (contain)
-function getBaseSize() {
-  const { width: nw, height: nh } = cropImageNatural
-  if (!nw || !nh) return { w: CROP_CONTAINER, h: CROP_CONTAINER }
-  const aspect = nw / nh
-  if (aspect >= 1) {
-    return { w: CROP_CONTAINER, h: CROP_CONTAINER / aspect }
-  }
-  return { w: CROP_CONTAINER * aspect, h: CROP_CONTAINER }
-}
-
-function clampOffset(ox: number, oy: number, zoom: number) {
-  const base = getBaseSize()
-  const scaledW = base.w * zoom
-  const scaledH = base.h * zoom
-  // Garantir que o círculo (CROP_CONTAINER) nunca veja fora da imagem
-  const maxX = Math.max(0, (scaledW - CROP_CONTAINER) / 2)
-  const maxY = Math.max(0, (scaledH - CROP_CONTAINER) / 2)
-  return {
-    x: Math.min(maxX, Math.max(-maxX, ox)),
-    y: Math.min(maxY, Math.max(-maxY, oy)),
-  }
-}
-
-// Zoom mínimo para que a imagem cubra o círculo inteiro
-const cropMinZoom = computed(() => {
-  const base = getBaseSize()
-  const minDim = Math.min(base.w, base.h)
-  return minDim > 0 ? CROP_CONTAINER / minDim : 1
-})
-
-function openCropModal(imageSrc: string, input: HTMLInputElement) {
-  cropImageSrc.value = imageSrc
-  pendingAvatarInput = input
-  cropOffset.x = 0
-  cropOffset.y = 0
-
-  const img = new Image()
-  img.addEventListener('load', () => {
-    cropImageNatural.width = img.naturalWidth
-    cropImageNatural.height = img.naturalHeight
-    // Inicia com zoom mínimo (imagem cobrindo o círculo)
-    cropZoom.value = cropMinZoom.value
+  function openCropModal (imageSrc: string, input: HTMLInputElement) {
+    cropImageSrc.value = imageSrc
+    cropMimeType.value = input.files?.[0]?.type || 'image/jpeg'
+    pendingAvatarInput = input
     showCropModal.value = true
-  })
-  img.src = imageSrc
-}
-
-function closeCropModal() {
-  showCropModal.value = false
-  cropImageSrc.value = ''
-  if (pendingAvatarInput) {
-    pendingAvatarInput.value = ''
-    pendingAvatarInput = null
   }
-}
 
-// Watch zoom para clampar offset e respeitar mínimo
-watch(cropZoom, newZoom => {
-  if (newZoom < cropMinZoom.value) {
-    cropZoom.value = cropMinZoom.value
-  }
-  const clamped = clampOffset(cropOffset.x, cropOffset.y, cropZoom.value)
-  cropOffset.x = clamped.x
-  cropOffset.y = clamped.y
-})
-
-function onCropMouseDown(e: MouseEvent) {
-  cropDragging.value = true
-  cropDragStart.x = e.clientX
-  cropDragStart.y = e.clientY
-  cropOffsetStart.x = cropOffset.x
-  cropOffsetStart.y = cropOffset.y
-}
-
-function onCropMouseMove(e: MouseEvent) {
-  if (!cropDragging.value) return
-  const raw = {
-    x: cropOffsetStart.x + (e.clientX - cropDragStart.x),
-    y: cropOffsetStart.y + (e.clientY - cropDragStart.y),
-  }
-  const clamped = clampOffset(raw.x, raw.y, cropZoom.value)
-  cropOffset.x = clamped.x
-  cropOffset.y = clamped.y
-}
-
-function onCropMouseUp() {
-  cropDragging.value = false
-}
-
-function onCropTouchStart(e: TouchEvent) {
-  const touch = e.touches[0]
-  if (!touch || e.touches.length !== 1) return
-  cropDragging.value = true
-  cropDragStart.x = touch.clientX
-  cropDragStart.y = touch.clientY
-  cropOffsetStart.x = cropOffset.x
-  cropOffsetStart.y = cropOffset.y
-}
-
-function onCropTouchMove(e: TouchEvent) {
-  const touch = e.touches[0]
-  if (!cropDragging.value || !touch || e.touches.length !== 1) return
-  e.preventDefault()
-  const raw = {
-    x: cropOffsetStart.x + (touch.clientX - cropDragStart.x),
-    y: cropOffsetStart.y + (touch.clientY - cropDragStart.y),
-  }
-  const clamped = clampOffset(raw.x, raw.y, cropZoom.value)
-  cropOffset.x = clamped.x
-  cropOffset.y = clamped.y
-}
-
-function onCropTouchEnd() {
-  cropDragging.value = false
-}
-
-// Estilo computado da imagem no crop
-const cropImageStyle = computed(() => {
-  const base = getBaseSize()
-  const z = cropZoom.value
-  const w = base.w * z
-  const h = base.h * z
-  return {
-    width: `${w}px`,
-    height: `${h}px`,
-    left: `${(CROP_CONTAINER - w) / 2 + cropOffset.x}px`,
-    top: `${(CROP_CONTAINER - h) / 2 + cropOffset.y}px`,
-  }
-})
-
-async function confirmCrop() {
-  const canvas = document.createElement('canvas')
-  const outputSize = 512
-  canvas.width = outputSize
-  canvas.height = outputSize
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-
-  const img = new Image()
-  img.crossOrigin = 'anonymous'
-  img.src = cropImageSrc.value
-
-  await new Promise<void>(resolve => {
-    img.addEventListener('load', () => resolve())
-    if (img.complete) resolve()
-  })
-
-  const base = getBaseSize()
-  const z = cropZoom.value
-  const scaledW = base.w * z
-  const scaledH = base.h * z
-
-  // Posição da imagem no container
-  const imgLeft = (CROP_CONTAINER - scaledW) / 2 + cropOffset.x
-  const imgTop = (CROP_CONTAINER - scaledH) / 2 + cropOffset.y
-
-  // Mapear o quadrado do container (0,0 → CROP_CONTAINER,CROP_CONTAINER) para coordenadas da imagem original
-  const scaleToNatX = img.naturalWidth / scaledW
-  const scaleToNatY = img.naturalHeight / scaledH
-
-  const srcX = -imgLeft * scaleToNatX
-  const srcY = -imgTop * scaleToNatY
-  const srcW = CROP_CONTAINER * scaleToNatX
-  const srcH = CROP_CONTAINER * scaleToNatY
-
-  // Clip circular
-  ctx.beginPath()
-  ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2)
-  ctx.closePath()
-  ctx.clip()
-
-  ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, outputSize, outputSize)
-
-  canvas.toBlob(async blob => {
-    if (!blob) return
-    const croppedFile = new File([blob], 'profile.jpg', { type: 'image/jpeg' })
-
-    try {
-      uploadingAvatar.value = true
-      showCropModal.value = false
-
-      await uploadProfileImage(croppedFile)
-      await fetchUserProfile()
-
-      showSnackbar(t('profile.messages.profileImageSuccess'))
-    } catch (error_: any) {
-      const errorMessage = error_.message || t('profile.messages.profileImageError')
-      showSnackbar(errorMessage, '#ef4444')
-    } finally {
-      uploadingAvatar.value = false
-      if (pendingAvatarInput) {
-        pendingAvatarInput.value = ''
-        pendingAvatarInput = null
-      }
+  function closeCropModal () {
+    showCropModal.value = false
+    cropImageSrc.value = ''
+    if (pendingAvatarInput) {
+      pendingAvatarInput.value = ''
+      pendingAvatarInput = null
     }
-  }, 'image/jpeg', 0.9)
-}
-
-// ── Banner Crop Functions ──
-function getBannerBaseSize() {
-  const { width: nw, height: nh } = bannerCropImageNatural
-  const cw = bannerCropW.value
-  const ch = bannerCropH.value
-  if (!nw || !nh) return { w: cw, h: ch }
-  const imgAspect = nw / nh
-  const containerAspect = cw / ch
-  if (imgAspect >= containerAspect) {
-    return { w: ch * imgAspect, h: ch }
   }
-  return { w: cw, h: cw / imgAspect }
-}
 
-function clampBannerOffset(ox: number, oy: number, zoom: number) {
-  const base = getBannerBaseSize()
-  const cw = bannerCropW.value
-  const ch = bannerCropH.value
-  const scaledW = base.w * zoom
-  const scaledH = base.h * zoom
-  const maxX = Math.max(0, (scaledW - cw) / 2)
-  const maxY = Math.max(0, (scaledH - ch) / 2)
-  return {
-    x: Math.min(maxX, Math.max(-maxX, ox)),
-    y: Math.min(maxY, Math.max(-maxY, oy)),
-  }
-}
-
-const bannerCropMinZoom = computed(() => {
-  const base = getBannerBaseSize()
-  const cw = bannerCropW.value
-  const ch = bannerCropH.value
-  return Math.max(cw / base.w, ch / base.h)
-})
-
-const bannerCropImageStyle = computed(() => {
-  const base = getBannerBaseSize()
-  const z = bannerCropZoom.value
-  const cw = bannerCropW.value
-  const ch = bannerCropH.value
-  const w = base.w * z
-  const h = base.h * z
-  return {
-    width: `${w}px`,
-    height: `${h}px`,
-    left: `${(cw - w) / 2 + bannerCropOffset.x}px`,
-    top: `${(ch - h) / 2 + bannerCropOffset.y}px`,
-  }
-})
-
-async function openBannerCropModal(imageSrc: string, input: HTMLInputElement) {
-  bannerCropImageSrc.value = imageSrc
-  pendingBannerInput = input
-  bannerCropOffset.x = 0
-  bannerCropOffset.y = 0
-
-  const img = new Image()
-  img.addEventListener('load', async () => {
-    bannerCropImageNatural.width = img.naturalWidth
-    bannerCropImageNatural.height = img.naturalHeight
+  function openBannerCropModal (imageSrc: string, input: HTMLInputElement) {
+    bannerCropImageSrc.value = imageSrc
+    bannerCropMimeType.value = input.files?.[0]?.type || 'image/jpeg'
+    pendingBannerInput = input
     showBannerCropModal.value = true
-    await nextTick()
-    if (bannerCropAreaRef.value) {
-      bannerCropW.value = bannerCropAreaRef.value.offsetWidth
-      bannerCropH.value = bannerCropAreaRef.value.offsetHeight
+  }
+
+  function closeBannerCropModal () {
+    showBannerCropModal.value = false
+    bannerCropImageSrc.value = ''
+    if (pendingBannerInput) {
+      pendingBannerInput.value = ''
+      pendingBannerInput = null
     }
-    bannerCropZoom.value = bannerCropMinZoom.value
-  })
-  img.src = imageSrc
-}
-
-function closeBannerCropModal() {
-  showBannerCropModal.value = false
-  bannerCropImageSrc.value = ''
-  if (pendingBannerInput) {
-    pendingBannerInput.value = ''
-    pendingBannerInput = null
   }
-}
 
-watch(bannerCropZoom, newZoom => {
-  if (newZoom < bannerCropMinZoom.value) {
-    bannerCropZoom.value = bannerCropMinZoom.value
+  /** Extensão coerente com o MIME, para o backend não receber .jpg contendo PNG. */
+  function fileNameFor (base: string, mimeType: string) {
+    const ext = mimeType === 'image/png' ? 'png' : (mimeType === 'image/webp' ? 'webp' : 'jpg')
+    return `${base}.${ext}`
   }
-  const clamped = clampBannerOffset(bannerCropOffset.x, bannerCropOffset.y, bannerCropZoom.value)
-  bannerCropOffset.x = clamped.x
-  bannerCropOffset.y = clamped.y
-})
 
-function onBannerCropMouseDown(e: MouseEvent) {
-  bannerCropDragging.value = true
-  bannerCropDragStart.x = e.clientX
-  bannerCropDragStart.y = e.clientY
-  bannerCropOffsetStart.x = bannerCropOffset.x
-  bannerCropOffsetStart.y = bannerCropOffset.y
-}
-
-function onBannerCropMouseMove(e: MouseEvent) {
-  if (!bannerCropDragging.value) return
-  const raw = {
-    x: bannerCropOffsetStart.x + (e.clientX - bannerCropDragStart.x),
-    y: bannerCropOffsetStart.y + (e.clientY - bannerCropDragStart.y),
-  }
-  const clamped = clampBannerOffset(raw.x, raw.y, bannerCropZoom.value)
-  bannerCropOffset.x = clamped.x
-  bannerCropOffset.y = clamped.y
-}
-
-function onBannerCropMouseUp() {
-  bannerCropDragging.value = false
-}
-
-function onBannerCropTouchStart(e: TouchEvent) {
-  const touch = e.touches[0]
-  if (!touch || e.touches.length !== 1) return
-  bannerCropDragging.value = true
-  bannerCropDragStart.x = touch.clientX
-  bannerCropDragStart.y = touch.clientY
-  bannerCropOffsetStart.x = bannerCropOffset.x
-  bannerCropOffsetStart.y = bannerCropOffset.y
-}
-
-function onBannerCropTouchMove(e: TouchEvent) {
-  const touch = e.touches[0]
-  if (!bannerCropDragging.value || !touch || e.touches.length !== 1) return
-  e.preventDefault()
-  const raw = {
-    x: bannerCropOffsetStart.x + (touch.clientX - bannerCropDragStart.x),
-    y: bannerCropOffsetStart.y + (touch.clientY - bannerCropDragStart.y),
-  }
-  const clamped = clampBannerOffset(raw.x, raw.y, bannerCropZoom.value)
-  bannerCropOffset.x = clamped.x
-  bannerCropOffset.y = clamped.y
-}
-
-function onBannerCropTouchEnd() {
-  bannerCropDragging.value = false
-}
-
-async function confirmBannerCrop() {
-  const canvas = document.createElement('canvas')
-  const BANNER_OUT_W = 1500
-  const BANNER_OUT_H = Math.round(BANNER_OUT_W * (bannerCropH.value / bannerCropW.value))
-  canvas.width = BANNER_OUT_W
-  canvas.height = BANNER_OUT_H
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-
-  const img = new Image()
-  img.crossOrigin = 'anonymous'
-  img.src = bannerCropImageSrc.value
-
-  await new Promise<void>(resolve => {
-    img.addEventListener('load', () => resolve())
-    if (img.complete) resolve()
-  })
-
-  const base = getBannerBaseSize()
-  const z = bannerCropZoom.value
-  const cw = bannerCropW.value
-  const ch = bannerCropH.value
-  const scaledW = base.w * z
-  const scaledH = base.h * z
-
-  const imgLeft = (cw - scaledW) / 2 + bannerCropOffset.x
-  const imgTop = (ch - scaledH) / 2 + bannerCropOffset.y
-
-  const scaleToNatX = img.naturalWidth / scaledW
-  const scaleToNatY = img.naturalHeight / scaledH
-
-  const srcX = -imgLeft * scaleToNatX
-  const srcY = -imgTop * scaleToNatY
-  const srcW = cw * scaleToNatX
-  const srcH = ch * scaleToNatY
-
-  ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, BANNER_OUT_W, BANNER_OUT_H)
-
-  canvas.toBlob(async blob => {
+  /**
+   * Confirma o recorte do avatar — apenas prepara a prévia local.
+   * O upload só acontece em `saveProfile()`; assim fechar o modal de edição
+   * descarta a troca, como qualquer outro campo do formulário.
+   */
+  async function confirmCrop () {
+    const blob = await avatarCropperRef.value?.getCroppedBlob()
     if (!blob) return
-    const croppedFile = new File([blob], 'cover.jpg', { type: 'image/jpeg' })
 
-    try {
-      uploadingBanner.value = true
-      showBannerCropModal.value = false
+    // Libera a prévia anterior antes de trocar, senão o object URL vaza.
+    if (pendingAvatarPreview.value) URL.revokeObjectURL(pendingAvatarPreview.value)
 
-      await uploadBannerImage(croppedFile)
-      await fetchUserProfile()
+    pendingAvatarFile.value = new File([blob], fileNameFor('profile', cropMimeType.value), { type: blob.type })
+    pendingAvatarPreview.value = URL.createObjectURL(blob)
 
-      showSnackbar(t('profile.messages.coverImageSuccess'))
-    } catch (error_: any) {
-      const errorMessage = error_.message || t('profile.messages.coverImageError')
-      showSnackbar(errorMessage, '#ef4444')
-    } finally {
-      uploadingBanner.value = false
-      if (pendingBannerInput) {
-        pendingBannerInput.value = ''
-        pendingBannerInput = null
-      }
+    showCropModal.value = false
+    if (pendingAvatarInput) {
+      pendingAvatarInput.value = ''
+      pendingAvatarInput = null
     }
-  }, 'image/jpeg', 0.9)
-}
-
-// ── Fetch user profile data ──
-let isFetchingProfile = false // Flag para evitar chamadas duplicadas
-
-async function fetchUserProfile() {
-  // Evita chamadas duplicadas
-  if (isFetchingProfile) {
-    return
   }
 
-  if (!loggedUser.value?.id) {
-    error.value = 'Usuário não autenticado'
-    loading.value = false
-    return
-  }
+  /** Idem `confirmCrop`, para a capa. */
+  async function confirmBannerCrop () {
+    const blob = await bannerCropperRef.value?.getCroppedBlob()
+    if (!blob) return
 
-  try {
-    isFetchingProfile = true
-    loading.value = true
-    error.value = null
+    if (pendingBannerPreview.value) URL.revokeObjectURL(pendingBannerPreview.value)
 
-    // Invalida o cache para forçar nova chamada à API
-    cachedUserProfileData.value = null
+    pendingBannerFile.value = new File([blob], fileNameFor('banner', bannerCropMimeType.value), { type: blob.type })
+    pendingBannerPreview.value = URL.createObjectURL(blob)
 
-    const response = await getUserProfile(loggedUser.value.id)
-    // A API retorna { success, data: { ...camposDoUsuario } }
-    const userData = unwrapItem(response) ?? {}
-
-    // Armazena os dados em cache para evitar chamadas duplicadas
-    cachedUserProfileData.value = userData
-
-    // Popula os dados do usuário, mantendo dados do loggedUser como fallback
-    user.name = userData.name || loggedUser.value?.name || ''
-    user.username = userData.username ? `@${userData.username}` : (loggedUser.value?.username ? `@${loggedUser.value.username}` : '')
-    user.avatar = userData.profilePhoto || userData.profileImage || userData.avatar || loggedUser.value?.profileImage || ''
-    user.banner = userData.profileCoverImage || userData.coverPhoto || userData.banner || userData.bannerImage || ''
-    user.bio = userData.bio || ''
-    user.location = userData.location || ''
-    user.joined = userData.createdAt ? formatJoinDate(userData.createdAt) : ''
-
-    // Sincroniza com localStorage para manter consistência em todas as páginas
-    updateUser({
-      name: userData.name || '',
-      username: userData.username || '',
-      profileImage: userData.profilePhoto || userData.profileImage || userData.avatar || '',
-    })
-
-    // Busca os interesses em paralelo, sem bloquear o load principal da página:
-    // o card de interesses exibe o próprio loader (loadingInterests) enquanto carrega.
-    fetchUserInterests()
-
-    // ── Extrai eventos confirmados (eventAttendances) que já vem no getUserProfile ──
-    // A API retorna eventAttendances no GET /users/:id, evitando chamada adicional
-    if (userData.eventAttendances && Array.isArray(userData.eventAttendances)) {
-      confirmedEventsItems.value = userData.eventAttendances
-        .filter((e: any) => e && (e.id || e.eventId))
-        .map((evt: any) => {
-          // Se eventAttendances contém o objeto do evento completo ou apenas referência
-          const eventData = evt.event || evt
-          return mapConfirmedAttendance(eventData)
-        })
-    } else {
-      confirmedEventsItems.value = []
+    showBannerCropModal.value = false
+    if (pendingBannerInput) {
+      pendingBannerInput.value = ''
+      pendingBannerInput = null
     }
-  } catch {
-    error.value = t('profile.messages.loadProfileError')
-  } finally {
-    loading.value = false
-    isFetchingProfile = false
-  }
-}
-
-// ── Fetch user interests ──
-async function fetchUserInterests() {
-  loadingInterests.value = true
-  try {
-    const response = await getUserInterests()
-    // unwrapList aceita todos os envelopes conhecidos da API
-    userInterests.value = unwrapList(response, 'interests')
-  } catch {
-    userInterests.value = []
-  } finally {
-    loadingInterests.value = false
-  }
-}
-
-// ── Fetch Follow Stats ──
-async function fetchFollowStats() {
-  if (!loggedUser.value?.id) return
-
-  try {
-    loadingFollowStats.value = true
-    const response = await getFollowStats(loggedUser.value.id)
-    const data = unwrapItem(response)
-
-    followStats.value = {
-      followers: data?.followersCount ?? data?.followers ?? 0,
-      following: data?.followingCount ?? data?.following ?? 0,
-    }
-  } catch (error_) {
-    console.error('Erro ao buscar estatísticas de follow:', error_)
-    followStats.value = { followers: 0, following: 0 }
-  } finally {
-    loadingFollowStats.value = false
-  }
-}
-
-// ── Fetch Followers List ──
-async function fetchFollowersList() {
-  try {
-    loadingFollowers.value = true
-    const response = await getMyFollowers()
-    const users = unwrapList<any>(response, 'followers', 'users')
-
-    followersList.value = users.map((u: any) => ({
-      id: u.id || u._id,
-      name: u.name || u.username || 'Usuário',
-      username: u.username,
-      profileImage: u.profileImage || u.profilePhoto || u.avatar,
-      isFollowing: u.isFollowing ?? false,
-    }))
-  } catch (error_) {
-    console.error('Erro ao buscar seguidores:', error_)
-    followersList.value = []
-  } finally {
-    loadingFollowers.value = false
-  }
-}
-
-// ── Fetch Following List ──
-async function fetchFollowingList() {
-  try {
-    loadingFollowing.value = true
-    const response = await getMyFollowing()
-    const users = unwrapList<any>(response, 'following', 'users')
-
-    followingList.value = users.map((u: any) => ({
-      id: u.id || u._id,
-      name: u.name || u.username || 'Usuário',
-      username: u.username,
-      profileImage: u.profileImage || u.profilePhoto || u.avatar,
-      isFollowing: true, // Se está na lista de following, já está seguindo
-    }))
-  } catch (error_) {
-    console.error('Erro ao buscar seguindo:', error_)
-    followingList.value = []
-  } finally {
-    loadingFollowing.value = false
-  }
-}
-
-// ── Search Users in Recommendations ──
-const userSearchQuery = ref('')
-const filteredRecommendedUsers = ref<FollowUser[]>([])
-const allRecommendedUsers = ref<FollowUser[]>([])
-const searchingUsers = ref(false)
-
-// ── Fetch User Recommendations ──
-async function fetchRecommendedUsers() {
-  try {
-    loadingRecommendations.value = true
-    const response = await getUserRecomendations()
-    const users = unwrapList<any>(response, 'users')
-
-    // Armazena todos os usuários recomendados
-    allRecommendedUsers.value = users.map((u: any) => ({
-      id: u.id || u._id,
-      name: u.name || u.username || 'Usuário',
-      username: u.username,
-      profileImage: u.profileImage || u.profilePhoto || u.avatar,
-      isFollowing: u.isFollowing ?? false,
-    }))
-
-    // Inicializa a lista filtrada com todos os usuários
-    filteredRecommendedUsers.value = [...allRecommendedUsers.value]
-    recommendedUsers.value = allRecommendedUsers.value.slice(0, 5)
-  } catch (error_) {
-    console.error('Erro ao buscar recomendações de usuários:', error_)
-    allRecommendedUsers.value = []
-    filteredRecommendedUsers.value = []
-    recommendedUsers.value = []
-  } finally {
-    loadingRecommendations.value = false
-  }
-}
-
-// Ativa o loading imediatamente ao digitar (antes do debounce do SearchInput),
-// para evitar que a UI mostre "nenhum resultado" durante a janela de debounce.
-watch(userSearchQuery, newValue => {
-  if (newValue.trim()) {
-    filteredRecommendedUsers.value = []
-    searchingUsers.value = true
-  } else {
-    filteredRecommendedUsers.value = [...allRecommendedUsers.value]
-    searchingUsers.value = false
-  }
-})
-
-// ── Handler para busca de usuários (chamado pelo SearchInput com debounce) ──
-function handleUserSearch(query: string) {
-  if (!query.trim()) {
-    filteredRecommendedUsers.value = [...allRecommendedUsers.value]
-    searchingUsers.value = false
-    return
   }
 
-  // Filtro local (síncrono)
-  const lowerQuery = query.toLowerCase()
-  filteredRecommendedUsers.value = allRecommendedUsers.value.filter(user =>
-    user.name.toLowerCase().includes(lowerQuery)
-    || (user.username && user.username.toLowerCase().includes(lowerQuery)),
-  )
-  searchingUsers.value = false
-}
-
-// ── Handler para limpar busca de usuários ──
-function handleClearUserSearch() {
-  filteredRecommendedUsers.value = [...allRecommendedUsers.value]
-  searchingUsers.value = false
-}
-
-// ── Toggle Follow User ──
-async function toggleFollowUser(user: FollowUser) {
-  const previousState = user.isFollowing
-
-  // Atualização otimista
-  user.isFollowing = !user.isFollowing
-
-  try {
-    if (previousState) {
-      await unfollowUserById(user.id)
-      followStats.value.following = Math.max(0, followStats.value.following - 1)
-      showSnackbar(t('profile.messages.unfollowSuccess', { name: user.name }), '#6b7280')
-    } else {
-      await followUserById(user.id)
-      followStats.value.following++
-      showSnackbar(t('profile.messages.followSuccess', { name: user.name }), SNACKBAR_COLORS.success)
-    }
-  } catch (error_) {
-    // Reverte em caso de erro
-    user.isFollowing = previousState
-    console.error('Erro ao alterar follow:', error_)
-    showSnackbar(t('profile.messages.followUpdateError'), SNACKBAR_COLORS.error)
-  }
-}
-
-// ── Open/Close Followers/Following Modals ──
-function openFollowersModal() {
-  showFollowersModal.value = true
-  fetchFollowersList()
-}
-
-function closeFollowersModal() {
-  showFollowersModal.value = false
-}
-
-function openFollowingModal() {
-  showFollowingModal.value = true
-  fetchFollowingList()
-}
-
-function closeFollowingModal() {
-  showFollowingModal.value = false
-}
-
-// ── Manage Interests Modal ──
-const showInterestsModal = ref(false)
-const interestsSearchQuery = ref('')
-const searchedInterests = ref<UserInterest[]>([])
-const suggestedInterests = ref<UserInterest[]>([])
-const tempUserInterests = ref<UserInterest[]>([]) // Interesses temporários (enquanto modal está aberto)
-const isSearchingInterests = ref(false)
-const isSavingInterests = ref(false)
-const isLoadingSuggestions = ref(false)
-
-// ── Request New Interests Modal ──
-const showRequestModal = ref(false)
-const newInterestName = ref('')
-const pendingInterests = ref<string[]>([])
-const isSubmittingRequest = ref(false)
-
-async function openInterestsModal() {
-  // Cria cópia dos interesses atuais para trabalhar temporariamente
-  tempUserInterests.value = [...userInterests.value]
-  showInterestsModal.value = true
-  interestsSearchQuery.value = ''
-  searchedInterests.value = []
-  await loadSuggestedInterests()
-}
-
-async function loadSuggestedInterests() {
-  try {
-    isLoadingSuggestions.value = true
-    const response = await getInterests()
-    const interests: UserInterest[] = unwrapList(response, 'interests')
-
-    // Filtra interesses que o usuário já possui (usa tempUserInterests) e limita a 20 sugestões
-    const userInterestIds = new Set(tempUserInterests.value.map(i => i.id))
-    suggestedInterests.value = interests
-      .filter(i => !userInterestIds.has(i.id))
-      .slice(0, 20)
-  } catch (error) {
-    console.error('Erro ao carregar interesses sugeridos:', error)
-    suggestedInterests.value = []
-  } finally {
-    isLoadingSuggestions.value = false
-  }
-}
-
-function closeInterestsModal() {
-  // Descarta mudanças temporárias ao fechar sem salvar
-  tempUserInterests.value = []
-  showInterestsModal.value = false
-  interestsSearchQuery.value = ''
-  searchedInterests.value = []
-  suggestedInterests.value = []
-}
-
-// Ativa o loading imediatamente ao digitar (antes do debounce do SearchInput),
-// para evitar que a UI mostre "interesse não encontrado" durante a janela de debounce.
-watch(interestsSearchQuery, newValue => {
-  if (newValue.trim()) {
-    searchedInterests.value = []
-    isSearchingInterests.value = true
-  } else {
-    searchedInterests.value = []
-    isSearchingInterests.value = false
-  }
-})
-
-// Cancela a busca anterior quando uma nova é disparada (evita respostas fora de ordem)
-let interestsSearchCtrl: AbortController | null = null
-
-// ── Handler para busca de interesses (chamado pelo SearchInput com debounce) ──
-async function handleInterestsSearch(query: string) {
-  if (!query.trim()) {
-    interestsSearchCtrl?.abort()
-    searchedInterests.value = []
-    isSearchingInterests.value = false
-    return
+  /** Descarta imagens recortadas mas não salvas, liberando os object URLs. */
+  function discardPendingImages () {
+    if (pendingAvatarPreview.value) URL.revokeObjectURL(pendingAvatarPreview.value)
+    if (pendingBannerPreview.value) URL.revokeObjectURL(pendingBannerPreview.value)
+    pendingAvatarFile.value = null
+    pendingAvatarPreview.value = null
+    pendingBannerFile.value = null
+    pendingBannerPreview.value = null
   }
 
-  // Ativa loading (caso ainda não esteja ativo pelo watcher)
-  isSearchingInterests.value = true
-
-  // Aborta a busca anterior antes de disparar a nova
-  interestsSearchCtrl?.abort()
-  interestsSearchCtrl = new AbortController()
-  const { signal } = interestsSearchCtrl
-
-  try {
-    const response = await searchInterestsByName(query.trim(), signal)
-    const interests: UserInterest[] = unwrapList(response, 'interests')
-
-    // Filtra interesses que o usuário já possui (usa tempUserInterests)
-    const userInterestIds = new Set(tempUserInterests.value.map(i => i.id))
-    searchedInterests.value = interests.filter(i => !userInterestIds.has(i.id)).slice(0, 10)
-    isSearchingInterests.value = false
-  } catch (error) {
-    // Requisição substituída por outra mais recente: mantém o loading do request atual
-    if (isRequestCanceled(error)) return
-    console.error('Erro ao buscar interesses:', error)
-    searchedInterests.value = []
-    isSearchingInterests.value = false
-  }
-}
-
-// ── Handler para limpar busca de interesses ──
-function handleClearInterestsSearch() {
-  searchedInterests.value = []
-  isSearchingInterests.value = false
-}
-
-function addInterestToUser(interest: UserInterest) {
-  // Adiciona apenas na lista temporária (não faz requisição ainda)
-  tempUserInterests.value.push(interest)
-
-  // Remove dos resultados de busca e sugestões
-  searchedInterests.value = searchedInterests.value.filter(i => i.id !== interest.id)
-  suggestedInterests.value = suggestedInterests.value.filter(i => i.id !== interest.id)
-}
-
-function removeInterestFromUser(interestId: string) {
-  // Remove apenas da lista temporária (não faz requisição ainda)
-  const removed = tempUserInterests.value.find(i => i.id === interestId)
-  tempUserInterests.value = tempUserInterests.value.filter(i => i.id !== interestId)
-
-  // Se removeu, adiciona de volta às sugestões
-  if (removed) {
-    suggestedInterests.value.unshift(removed)
-  }
-}
-
-async function saveInterestsChanges() {
-  try {
-    isSavingInterests.value = true
-
-    // Identifica interesses adicionados e removidos
-    const originalIds = new Set(userInterests.value.map(i => i.id))
-    const tempIds = new Set(tempUserInterests.value.map(i => i.id))
-
-    const toAdd = tempUserInterests.value.filter(i => !originalIds.has(i.id))
-    const toRemove = userInterests.value.filter(i => !tempIds.has(i.id))
-
-    // Faz as requisições em paralelo
-    const addPromises = toAdd.map(interest => addUserInterest(interest.id))
-    const removePromises = toRemove.map(interest => removeUserInterest(interest.id))
-
-    // Aguarda todas as requisições
-    await Promise.all([...addPromises, ...removePromises])
-
-    // Atualiza a lista real com os valores temporários
-    userInterests.value = [...tempUserInterests.value]
-
-    showSnackbar(t('profile.messages.interestsUpdateSuccess'), '#22c55e')
-    closeInterestsModal()
-  } catch (error) {
-    console.error('Erro ao salvar interesses:', error)
-    showSnackbar(t('profile.messages.interestsUpdateError'), '#ef4444')
-  } finally {
-    isSavingInterests.value = false
-  }
-}
-
-// ── Remove interesse diretamente (usado no botão X da sidebar) ──
-async function removeInterestDirectly(interestId: string) {
-  try {
-    await removeUserInterest(interestId)
-
-    // Remove da lista local
-    userInterests.value = userInterests.value.filter(i => i.id !== interestId)
-
-    showSnackbar(t('profile.messages.interestRemoveSuccess'), '#22c55e')
-  } catch (error) {
-    console.error('❌ Erro ao remover interesse:', error)
-    showSnackbar(t('profile.messages.interestRemoveError'), '#ef4444')
-  }
-}
-
-// ── Request New Interests ──
-function openRequestModal() {
-  newInterestName.value = interestsSearchQuery.value.trim()
-  pendingInterests.value = []
-  showRequestModal.value = true
-}
-
-function closeRequestModal() {
-  showRequestModal.value = false
-  newInterestName.value = ''
-  pendingInterests.value = []
-  isSubmittingRequest.value = false
-}
-
-function addToPending() {
-  const name = newInterestName.value.trim()
-  if (name && !pendingInterests.value.includes(name)) {
-    pendingInterests.value.push(name)
-    newInterestName.value = ''
-  }
-}
-
-function removePending(index: number) {
-  pendingInterests.value.splice(index, 1)
-}
-
-async function submitNewInterestRequest() {
-  // Adiciona o que estiver no input se o usuário esqueceu de clicar no +
-  addToPending()
-
-  if (pendingInterests.value.length === 0) {
-    showSnackbar(t('profile.messages.addAtLeastOne'), '#ef4444')
-    return
-  }
-
-  try {
-    isSubmittingRequest.value = true
-
-    // Envia a solicitação para o backend
-    await requestNewInterests([...pendingInterests.value])
-
-    // Limpa e fecha o modal
-    pendingInterests.value = []
-    closeRequestModal()
-
-    // Mostra mensagem de sucesso
-    showSnackbar(t('profile.messages.requestSuccess'), '#22c55e')
-
-    // Limpa a busca
-    interestsSearchQuery.value = ''
-    searchedInterests.value = []
-  } catch (error: any) {
-    console.error('❌ Erro ao solicitar novo interesse:', error)
-    const errorMessage = error?.response?.data?.message || t('profile.messages.requestError')
-    showSnackbar(errorMessage, '#ef4444')
-  } finally {
-    isSubmittingRequest.value = false
-  }
-}
-
-// ── Format join date ──
-function formatJoinDate(dateString: string): string {
-  const date = new Date(dateString)
-  const months = [
-    t('profile.months.january'),
-    t('profile.months.february'),
-    t('profile.months.march'),
-    t('profile.months.april'),
-    t('profile.months.may'),
-    t('profile.months.june'),
-    t('profile.months.july'),
-    t('profile.months.august'),
-    t('profile.months.september'),
-    t('profile.months.october'),
-    t('profile.months.november'),
-    t('profile.months.december'),
-  ]
-  return `${months[date.getMonth()]} de ${date.getFullYear()}`
-}
-
-// ── Format short date for mini cards ──
-function formatShortDate(dateString: string): string {
-  try {
-    const date = new Date(dateString)
-    if (Number.isNaN(date.getTime())) return t('profile.likedEvents.soon')
-
-    const day = date.getDate().toString().padStart(2, '0')
-    const month = (date.getMonth() + 1).toString().padStart(2, '0')
-    return `${day}/${month}`
-  } catch {
-    return t('profile.likedEvents.soon')
-  }
-}
-
-// ── Upload handlers ──
-function triggerAvatarUpload() {
-  avatarInputRef.value?.click()
-}
-
-function triggerBannerUpload() {
-  bannerInputRef.value?.click()
-}
-
-function triggerModalAvatarUpload() {
-  modalAvatarInputRef.value?.click()
-}
-
-function triggerModalBannerUpload() {
-  modalBannerInputRef.value?.click()
-}
-
-async function handleAvatarChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-
-  // Validação do arquivo
-  const maxSize = 5 * 1024 * 1024 // 5MB
-  if (file.size > maxSize) {
-    showSnackbar(t('profile.messages.fileSizeError'), '#ef4444')
-    input.value = ''
-    return
-  }
-
-  if (!file.type.startsWith('image/')) {
-    showSnackbar(t('profile.messages.fileTypeError'), '#ef4444')
-    input.value = ''
-    return
-  }
-
-  // Abre o modal de crop em vez de fazer upload direto
-  const reader = new FileReader()
-  reader.addEventListener('load', e => {
-    const result = (e.target as FileReader)?.result as string
-    if (result) {
-      openCropModal(result, input)
-    }
-  })
-  reader.readAsDataURL(file)
-}
-
-async function handleBannerChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-
-  // Validação do arquivo
-  const maxSize = 5 * 1024 * 1024 // 5MB
-  if (file.size > maxSize) {
-    showSnackbar(t('profile.messages.fileSizeError'), '#ef4444')
-    input.value = ''
-    return
-  }
-
-  if (!file.type.startsWith('image/')) {
-    showSnackbar(t('profile.messages.fileTypeError'), '#ef4444')
-    input.value = ''
-    return
-  }
-
-  // Abre o modal de enquadramento da capa
-  const reader = new FileReader()
-  reader.addEventListener('load', e => {
-    const result = (e.target as FileReader)?.result as string
-    if (result) {
-      openBannerCropModal(result, input)
-    }
-  })
-  reader.readAsDataURL(file)
-}
-
-// ── Navigation ──
-const activeNav = ref('profile')
-
-const navItems = computed<NavItem[]>(() => [
-  { id: 'home', label: t('feed.nav.home'), icon: 'home' },
-  { id: 'top-events', label: t('feed.nav.topEvents'), icon: 'top' },
-  { id: 'favorites', label: t('feed.nav.favorites'), icon: 'bookmark' },
-  { id: 'profile', label: t('feed.nav.profile'), icon: 'profile' },
-])
-
-function handleNavSelect(id: string) {
-  if (id === 'home' || id === 'top-events' || id === 'favorites') {
-    router.push({
-      path: '/private/feed',
-      query: id === 'home' ? {} : { tab: id },
-    })
-  }
-}
-
-// ── Tabs ──
-const VALID_TABS = ['liked', 'confirmed', 'settings'] as const
-type TabId = typeof VALID_TABS[number]
-const initialTab = VALID_TABS.includes(route.query.tab as TabId)
-  ? (route.query.tab as TabId)
-  : 'liked'
-const activeTab = ref<TabId>(initialTab)
-
-const tabs: Array<{ id: TabId; label: string; icon: string }> = [
-  { id: 'liked', label: t('profile.tabs.liked'), icon: 'mdi-heart-outline' },
-  { id: 'confirmed', label: 'Confirmados', icon: 'mdi-calendar-check' },
-  { id: 'settings', label: t('profile.tabs.settings'), icon: 'mdi-cog-outline' },
-]
-
-// Persiste a aba na URL e re-busca dados ao trocar
-watch(activeTab, (val) => {
-  router.replace({ query: { ...route.query, tab: val } })
-  if (!loggedUser.value?.id) return
-  if (val === 'liked') fetchLikedEvents()
-  if (val === 'confirmed') fetchConfirmedEvents()
-})
-
-// Comentado - não usado no primeiro momento
-// const badges = [
-//   { icon: 'mdi-party-popper', color: '#FF4081', name: 'Party Animal', desc: 'Foi em 10 festas este mês' },
-//   { icon: 'mdi-map-marker-check', color: '#7C4DFF', name: 'Explorador', desc: 'Visitou 5 locais diferentes' },
-//   { icon: 'mdi-fire', color: '#FF9800', name: 'Em Chamas', desc: 'Sequência de 3 finais de semana' },
-//   { icon: 'mdi-crown', color: '#FFD700', name: 'VIP', desc: 'Membro premium da comunidade' },
-// ]
-
-// ── Edit Profile Modal ──
-const showEditModal = ref(false)
-const editForm = reactive({
-  name: '',
-  username: '',
-  bio: '',
-  location: '',
-})
-const saving = ref(false)
-
-function openEditModal() {
-  // Sempre carrega os valores atuais do perfil ao abrir
-  editForm.name = user.name
-  editForm.username = user.username.replace('@', '')
-  editForm.bio = user.bio
-  editForm.location = user.location
-  showEditModal.value = true
-}
-
-function closeEditModal() {
-  showEditModal.value = false
-  // Reset dos campos para os valores originais ao fechar sem salvar
-  editForm.name = user.name
-  editForm.username = user.username.replace('@', '')
-  editForm.bio = user.bio
-  editForm.location = user.location
-}
-
-async function saveProfile() {
-  saving.value = true
-  try {
-    const userId = loggedUser.value?.id
-    if (!userId) {
-      throw new Error('ID do usuário não encontrado')
-    }
-
-    // Envia para o backend
-    const response = await updateUserProfile(userId, {
-      name: editForm.name,
-      username: editForm.username.replace('@', ''),
-      bio: editForm.bio,
-      location: editForm.location,
-    })
-
-    // Usa o que o backend efetivamente confirmou salvar, não o que foi digitado —
-    // se a API silenciosamente não persistir bio/location, isso fica visível na hora
-    // em vez de só aparecer depois de um reload.
-    // Usa 'in' (não ??) para diferenciar "campo ausente na resposta" (mantém o
-    // valor digitado) de "campo presente mas vazio/null" (backend confirmou que
-    // não salvou — reflete isso na hora em vez de mascarar com o valor digitado).
-    const savedData: Record<string, any> = unwrapItem(response) ?? {}
-    user.name = 'name' in savedData ? (savedData.name || editForm.name) : editForm.name
-    user.username = 'username' in savedData && savedData.username ? `@${savedData.username}` : `@${editForm.username.replace('@', '')}`
-    user.bio = 'bio' in savedData ? (savedData.bio ?? '') : editForm.bio
-    user.location = 'location' in savedData ? (savedData.location ?? '') : editForm.location
-    showEditModal.value = false
-
-    if ('bio' in savedData && (savedData.bio ?? '') !== editForm.bio) {
-      logger.warn('[Profile] Backend não persistiu a bio enviada:', { enviado: editForm.bio, salvo: savedData.bio })
-    }
-    if ('location' in savedData && (savedData.location ?? '') !== editForm.location) {
-      logger.warn('[Profile] Backend não persistiu a localização enviada:', { enviado: editForm.location, salvo: savedData.location })
-    }
-
-    // Invalida o cache para forçar reload na próxima vez
-    cachedUserProfileData.value = null
-
-    // Sincroniza com localStorage para manter consistência
-    updateUser({
-      name: editForm.name,
-      username: editForm.username.replace('@', ''),
-    })
-
-    showSnackbar(t('profile.messages.profileUpdateSuccess'))
-  } catch (error: any) {
-    // Em caso de erro, não atualiza nada e mantém os valores originais
-    showSnackbar(t('profile.messages.profileUpdateError'), '#ef4444')
-    console.error('Erro ao atualizar perfil:', {
-      status: error?.response?.status,
-      data: error?.response?.data,
-      message: error?.message,
-    })
-  } finally {
-    saving.value = false
-  }
-}
-
-// ── Settings toggles ──
-const settingsNotifications = ref(true)
-
-// ── Liked events ──
-interface LikedEventItem {
-  id: string | number
-  banner: string
-  creator: { name: string }
-  hostAvatar: string
-  schedule: string
-  location?: string
-  title: string
-  description: string
-  confirmed: number
-  interested: number
-  likes?: number
-  interests?: string[]
-  commentsCount?: number
-}
-const { startLoading, stopLoading, isLoading: checkLoading } = useLoading()
-
-// Tempo mínimo (ms) que o skeleton fica visível. Sem isso, quando os dados vêm
-// do cache a busca resolve no mesmo tick e o loader não chega a aparecer.
-const MIN_SKELETON_MS = 600
-
-const likedEventsItems = ref<LikedEventItem[]>([])
-const displayLimit = ref(CONFIG.INITIAL_DISPLAY_LIMIT)
-let likedEventsTimeout: ReturnType<typeof setTimeout> | null = null
-let interestsSearchTimeout: ReturnType<typeof setTimeout> | null = null
-let userSearchTimeout: ReturnType<typeof setTimeout> | null = null
-
-// ── Estados para eventos confirmados ──
-const confirmedEventsItems = ref<LikedEventItem[]>([])
-const confirmedDisplayLimit = ref(CONFIG.INITIAL_DISPLAY_LIMIT)
-let confirmedEventsTimeout: ReturnType<typeof setTimeout> | null = null
-
-const displayedConfirmedEvents = computed(() => {
-  return confirmedEventsItems.value.slice(0, confirmedDisplayLimit.value)
-})
-
-const hasMoreConfirmedEvents = computed(() => {
-  return confirmedEventsItems.value.length > confirmedDisplayLimit.value
-})
-
-const showConfirmedCollapseButton = computed(() => {
-  return confirmedDisplayLimit.value > CONFIG.INITIAL_DISPLAY_LIMIT
-})
-
-function showMoreConfirmedEvents() {
-  confirmedDisplayLimit.value += CONFIG.EVENTS_DISPLAY_INCREMENT
-}
-
-function collapseConfirmedEvents() {
-  confirmedDisplayLimit.value = CONFIG.INITIAL_DISPLAY_LIMIT
-}
-
-const displayedLikedEvents = computed(() => {
-  return likedEventsItems.value.slice(0, displayLimit.value)
-})
-
-const hasMoreEvents = computed(() => {
-  return likedEventsItems.value.length > displayLimit.value
-})
-
-const showCollapseButton = computed(() => {
-  return displayLimit.value > CONFIG.INITIAL_DISPLAY_LIMIT
-})
-
-function showMoreEvents() {
-  displayLimit.value += CONFIG.EVENTS_DISPLAY_INCREMENT
-}
-
-function collapseEvents() {
-  displayLimit.value = CONFIG.INITIAL_DISPLAY_LIMIT
-}
-
-// ── Helpers para eventos curtidos ──
-// O payload de confirmados varia conforme a origem: /events traz `confirmedCount`,
-// enquanto o `event` aninhado em `eventAttendances` do perfil vem só com `_count`
-// (ou com a própria lista de presenças). Tenta todas as formas antes de cair em 0.
-function resolveConfirmedCount(evt: any): number {
-  const candidates = [
-    evt?.confirmedCount,
-    evt?.attendancesCount,
-    evt?.attendeesCount,
-    evt?._count?.attendances,
-    evt?._count?.eventAttendances,
-    evt?._count?.attendees,
-    Array.isArray(evt?.attendances) ? evt.attendances.length : undefined,
-    Array.isArray(evt?.eventAttendances) ? evt.eventAttendances.length : undefined,
-    Array.isArray(evt?.attendees) ? evt.attendees.length : undefined,
-  ]
-  for (const value of candidates) {
-    if (typeof value === 'number' && Number.isFinite(value)) return value
-  }
-  return 0
-}
-
-/**
- * A listagem de perfil (`GET /users/:id`) traz o evento aninhado em
- * `eventAttendances` num formato enxuto, sem os campos de contagem que o
- * endpoint de detalhe do evento tem (`confirmedCount`, `_count.attendances`
- * etc.) — então `resolveConfirmedCount` cai em 0 mesmo quando existe
- * confirmação. Mas o próprio fato do evento estar em `eventAttendances` já
- * prova que há pelo menos 1 confirmado: o usuário logado. Piso o valor aqui
- * em vez de em `resolveConfirmedCount`, que também serve a aba de curtidos —
- * lá 0 pode ser o valor real.
- */
-function mapConfirmedAttendance(evt: any): LikedEventItem {
-  const mapped = mapLikedEvent(evt)
-  return { ...mapped, confirmed: Math.max(1, mapped.confirmed) }
-}
-
-/**
- * Mesmo raciocínio de `mapConfirmedAttendance`, aplicado à aba "Curtidos":
- * o evento só está em `userData.likedEvents` porque o usuário logado o
- * curtiu, então `likes` é comprovadamente >= 1 mesmo quando o payload enxuto
- * do perfil não traz nenhum campo de contagem.
- */
-function mapLikedEventItem(evt: any): LikedEventItem {
-  const mapped = mapLikedEvent(evt)
-  return { ...mapped, likes: Math.max(1, mapped.likes ?? 0) }
-}
-
-function mapLikedEvent(evt: any): LikedEventItem {
-  const rawBanner = evt.bannerUrl || evt.banner || (Array.isArray(evt.photos) ? evt.photos[0] : '') || ''
-  const hostName = evt.organizer?.name || evt.hostName || evt.creator?.name || 'Organizador'
-  const resolveSchedule = (e: any): string => {
-    const candidates = [e.date, e.startDate, e.dateTime, e.startAt, e.eventDate, e.start_date, e.schedule]
-    for (const val of candidates) {
-      if (!val) continue
-      const parsed = new Date(val)
-      if (!Number.isNaN(parsed.getTime())) {
-        return parsed.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-      }
-    }
-    return t('profile.likedEvents.dateUndefined')
-  }
-  return {
-    id: evt.id,
-    banner: rawBanner,
-    creator: { name: hostName },
-    hostAvatar: evt.organizer?.avatar || evt.hostAvatar || evt.creator?.profileImage || '',
-    schedule: resolveSchedule(evt),
-    location: evt.location || evt.address || t('profile.likedEvents.locationUndefined'),
-    title: evt.name || evt.title || t('profile.likedEvents.eventTitle'),
-    description: evt.description || '',
-    confirmed: resolveConfirmedCount(evt),
-    interested: evt.interestedCount || 0,
-    likes: evt.likesCount || evt.likes || evt._count?.likes || 0,
-    interests: (evt.eventInterests || evt.interests || evt.categories || []).map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name).filter(Boolean),
-    commentsCount: evt.commentsCount ?? evt._count?.comments ?? 0,
-  }
-}
-
-async function fetchLikedEvents() {
-  if (!loggedUser.value?.id) return
-
-  likedEventsItems.value = []
-  startLoading('profile:liked')
-  const likedStartedAt = Date.now()
-
-  // Timeout de 3 segundos para o skeleton loading
-  if (likedEventsTimeout) {
-    clearTimeout(likedEventsTimeout)
-  }
-
-  likedEventsTimeout = setTimeout(() => {
-    if (checkLoading('profile:liked')) {
-      stopLoading('profile:liked')
-    }
-  }, 3000)
-
-  try {
-    // Usa dados do cache se disponível, senão busca da API
-    let userData = cachedUserProfileData.value
-
-    if (!userData) {
-      const response = await getUserProfile(loggedUser.value.id)
-      userData = unwrapItem(response) ?? {}
-      cachedUserProfileData.value = userData
-    }
-
-    // Extrai eventos curtidos do perfil do usuário
-    let events: any[] = []
-    if (userData?.likedEvents && Array.isArray(userData.likedEvents)) {
-      events = userData.likedEvents
-    } else if (userData?.events?.liked && Array.isArray(userData.events.liked)) {
-      events = userData.events.liked
-    } else if (userData?.likes && Array.isArray(userData.likes)) {
-      events = userData.likes
-    }
-
-    // Mapeia para o formato de exibição
-    likedEventsItems.value = events
-      .filter((e: any) => e && e.id)
-      .map((evt: any) => mapLikedEventItem(evt))
-
-    // Registra contagem e estado pelo store, e não escrevendo em likedEvents
-    // direto: a escrita direta atropelava um clique em voo (o store guarda
-    // esses ids) e zerava a contagem que outras telas já tinham resolvido.
-    for (const evt of events) {
-      if (evt?.id) eventsStore.registerEventLikeState({ ...evt, isLiked: true })
-    }
-
-    // Se a lista está vazia, aguarda o timeout de 3 segundos antes de mostrar empty state
-    if (events.length === 0) {
-      // O timeout já foi configurado acima, apenas aguarda
+  // ── Fetch user profile data ──
+  let isFetchingProfile = false // Flag para evitar chamadas duplicadas
+
+  async function fetchUserProfile () {
+    // Evita chamadas duplicadas
+    if (isFetchingProfile) {
       return
     }
 
-    // Cancela o timeout de fallback e encerra o loading respeitando o tempo
-    // mínimo de skeleton (garante que o loader apareça mesmo com cache).
+    if (!loggedUser.value?.id) {
+      error.value = 'Usuário não autenticado'
+      loading.value = false
+      return
+    }
+
+    try {
+      isFetchingProfile = true
+      loading.value = true
+      error.value = null
+
+      // Invalida o cache para forçar nova chamada à API
+      cachedUserProfileData.value = null
+
+      const response = await getUserProfile(loggedUser.value.id)
+      // A API retorna { success, data: { ...camposDoUsuario } }
+      const userData = unwrapItem(response) ?? {}
+
+      // Armazena os dados em cache para evitar chamadas duplicadas
+      cachedUserProfileData.value = userData
+
+      // Popula os dados do usuário, mantendo dados do loggedUser como fallback
+      user.name = userData.name || loggedUser.value?.name || ''
+      user.username = userData.username ? `@${userData.username}` : (loggedUser.value?.username ? `@${loggedUser.value.username}` : '')
+      user.avatar = userData.profilePhoto || userData.profileImage || userData.avatar || loggedUser.value?.profileImage || ''
+      user.banner = userData.profileCoverImage || userData.coverPhoto || userData.banner || userData.bannerImage || ''
+      user.bio = userData.bio || ''
+      user.joined = userData.createdAt ? formatJoinDate(userData.createdAt) : ''
+
+      // Sincroniza com localStorage para manter consistência em todas as páginas
+      updateUser({
+        name: userData.name || '',
+        username: userData.username || '',
+        profileImage: userData.profilePhoto || userData.profileImage || userData.avatar || '',
+      })
+
+      // Busca os interesses em paralelo, sem bloquear o load principal da página:
+      // o card de interesses exibe o próprio loader (loadingInterests) enquanto carrega.
+      fetchUserInterests()
+
+      // ── Extrai eventos confirmados (eventAttendances) que já vem no getUserProfile ──
+      // A API retorna eventAttendances no GET /users/:id, evitando chamada adicional
+      if (userData.eventAttendances && Array.isArray(userData.eventAttendances)) {
+        confirmedEventsItems.value = userData.eventAttendances
+          .filter((e: any) => e && (e.id || e.eventId))
+          .map((evt: any) => {
+            // Se eventAttendances contém o objeto do evento completo ou apenas referência
+            const eventData = evt.event || evt
+            return mapConfirmedAttendance(eventData)
+          })
+      } else {
+        confirmedEventsItems.value = []
+      }
+    } catch {
+      error.value = t('profile.messages.loadProfileError')
+    } finally {
+      loading.value = false
+      isFetchingProfile = false
+    }
+  }
+
+  // ── Fetch user interests ──
+  async function fetchUserInterests () {
+    loadingInterests.value = true
+    try {
+      const response = await getUserInterests()
+      // unwrapList aceita todos os envelopes conhecidos da API
+      userInterests.value = unwrapList(response, 'interests')
+    } catch {
+      userInterests.value = []
+    } finally {
+      loadingInterests.value = false
+    }
+  }
+
+  // ── Fetch Follow Stats ──
+  async function fetchFollowStats () {
+    if (!loggedUser.value?.id) return
+
+    try {
+      loadingFollowStats.value = true
+      const response = await getFollowStats(loggedUser.value.id)
+      const data = unwrapItem(response)
+
+      followStats.value = {
+        followers: data?.followersCount ?? data?.followers ?? 0,
+        following: data?.followingCount ?? data?.following ?? 0,
+      }
+    } catch (error_) {
+      console.error('Erro ao buscar estatísticas de follow:', error_)
+      followStats.value = { followers: 0, following: 0 }
+    } finally {
+      loadingFollowStats.value = false
+    }
+  }
+
+  // ── Fetch Followers List ──
+  async function fetchFollowersList () {
+    try {
+      loadingFollowers.value = true
+      const response = await getMyFollowers()
+      const users = unwrapList<any>(response, 'followers', 'users')
+
+      followersList.value = users.map((u: any) => ({
+        id: u.id || u._id,
+        name: u.name || u.username || 'Usuário',
+        username: u.username,
+        profileImage: u.profileImage || u.profilePhoto || u.avatar,
+        isFollowing: u.isFollowing ?? false,
+      }))
+    } catch (error_) {
+      console.error('Erro ao buscar seguidores:', error_)
+      followersList.value = []
+    } finally {
+      loadingFollowers.value = false
+    }
+  }
+
+  // ── Fetch Following List ──
+  async function fetchFollowingList () {
+    try {
+      loadingFollowing.value = true
+      const response = await getMyFollowing()
+      const users = unwrapList<any>(response, 'following', 'users')
+
+      followingList.value = users.map((u: any) => ({
+        id: u.id || u._id,
+        name: u.name || u.username || 'Usuário',
+        username: u.username,
+        profileImage: u.profileImage || u.profilePhoto || u.avatar,
+        isFollowing: true, // Se está na lista de following, já está seguindo
+      }))
+    } catch (error_) {
+      console.error('Erro ao buscar seguindo:', error_)
+      followingList.value = []
+    } finally {
+      loadingFollowing.value = false
+    }
+  }
+
+  // ── Search Users in Recommendations ──
+  const userSearchQuery = ref('')
+  const filteredRecommendedUsers = ref<FollowUser[]>([])
+  const allRecommendedUsers = ref<FollowUser[]>([])
+  const searchingUsers = ref(false)
+
+  // ── Fetch User Recommendations ──
+  async function fetchRecommendedUsers () {
+    try {
+      loadingRecommendations.value = true
+      const response = await getUserRecomendations()
+      const users = unwrapList<any>(response, 'users')
+
+      // Armazena todos os usuários recomendados
+      allRecommendedUsers.value = users.map((u: any) => ({
+        id: u.id || u._id,
+        name: u.name || u.username || 'Usuário',
+        username: u.username,
+        profileImage: u.profileImage || u.profilePhoto || u.avatar,
+        isFollowing: u.isFollowing ?? false,
+      }))
+
+      // Inicializa a lista filtrada com todos os usuários
+      filteredRecommendedUsers.value = [...allRecommendedUsers.value]
+      recommendedUsers.value = allRecommendedUsers.value.slice(0, 5)
+    } catch (error_) {
+      console.error('Erro ao buscar recomendações de usuários:', error_)
+      allRecommendedUsers.value = []
+      filteredRecommendedUsers.value = []
+      recommendedUsers.value = []
+    } finally {
+      loadingRecommendations.value = false
+    }
+  }
+
+  // Ativa o loading imediatamente ao digitar (antes do debounce do SearchInput),
+  // para evitar que a UI mostre "nenhum resultado" durante a janela de debounce.
+  watch(userSearchQuery, newValue => {
+    if (newValue.trim()) {
+      filteredRecommendedUsers.value = []
+      searchingUsers.value = true
+    } else {
+      filteredRecommendedUsers.value = [...allRecommendedUsers.value]
+      searchingUsers.value = false
+    }
+  })
+
+  // ── Handler para busca de usuários (chamado pelo SearchInput com debounce) ──
+  function handleUserSearch (query: string) {
+    if (!query.trim()) {
+      filteredRecommendedUsers.value = [...allRecommendedUsers.value]
+      searchingUsers.value = false
+      return
+    }
+
+    // Filtro local (síncrono)
+    const lowerQuery = query.toLowerCase()
+    filteredRecommendedUsers.value = allRecommendedUsers.value.filter(user =>
+      user.name.toLowerCase().includes(lowerQuery)
+      || (user.username && user.username.toLowerCase().includes(lowerQuery)),
+    )
+    searchingUsers.value = false
+  }
+
+  // ── Handler para limpar busca de usuários ──
+  function handleClearUserSearch () {
+    filteredRecommendedUsers.value = [...allRecommendedUsers.value]
+    searchingUsers.value = false
+  }
+
+  // ── Toggle Follow User ──
+  async function toggleFollowUser (user: FollowUser) {
+    const previousState = user.isFollowing
+
+    // Atualização otimista
+    user.isFollowing = !user.isFollowing
+
+    try {
+      if (previousState) {
+        await unfollowUserById(user.id)
+        followStats.value.following = Math.max(0, followStats.value.following - 1)
+        showSnackbar(t('profile.messages.unfollowSuccess', { name: user.name }), '#6b7280')
+      } else {
+        await followUserById(user.id)
+        followStats.value.following++
+        showSnackbar(t('profile.messages.followSuccess', { name: user.name }), SNACKBAR_COLORS.success)
+      }
+    } catch (error_) {
+      // Reverte em caso de erro
+      user.isFollowing = previousState
+      console.error('Erro ao alterar follow:', error_)
+      showSnackbar(t('profile.messages.followUpdateError'), SNACKBAR_COLORS.error)
+    }
+  }
+
+  // ── Open/Close Followers/Following Modals ──
+  function openFollowersModal () {
+    showFollowersModal.value = true
+    fetchFollowersList()
+  }
+
+  function closeFollowersModal () {
+    showFollowersModal.value = false
+  }
+
+  function openFollowingModal () {
+    showFollowingModal.value = true
+    fetchFollowingList()
+  }
+
+  function closeFollowingModal () {
+    showFollowingModal.value = false
+  }
+
+  // ── Manage Interests Modal ──
+  const showInterestsModal = ref(false)
+  const interestsSearchQuery = ref('')
+  const searchedInterests = ref<UserInterest[]>([])
+  const suggestedInterests = ref<UserInterest[]>([])
+  const tempUserInterests = ref<UserInterest[]>([]) // Interesses temporários (enquanto modal está aberto)
+  const isSearchingInterests = ref(false)
+  const isSavingInterests = ref(false)
+  const isLoadingSuggestions = ref(false)
+
+  // ── Sugestões inline (aparecem no card do perfil quando não há interesses) ──
+  const INLINE_SUGGESTIONS_LIMIT = 5
+  const inlineSuggestions = ref<UserInterest[]>([])
+  const isLoadingInlineSuggestions = ref(false)
+  /** Id do interesse sendo adicionado — alimenta o loading do próprio chip. */
+  const addingInterestId = ref<string | null>(null)
+
+  // ── Request New Interests Modal ──
+  const showRequestModal = ref(false)
+  const newInterestName = ref('')
+  const pendingInterests = ref<string[]>([])
+  const isSubmittingRequest = ref(false)
+
+  async function openInterestsModal () {
+    // Cria cópia dos interesses atuais para trabalhar temporariamente
+    tempUserInterests.value = [...userInterests.value]
+    showInterestsModal.value = true
+    interestsSearchQuery.value = ''
+    searchedInterests.value = []
+    await loadSuggestedInterests()
+  }
+
+  async function loadSuggestedInterests () {
+    try {
+      isLoadingSuggestions.value = true
+      const response = await getInterests()
+      const interests: UserInterest[] = unwrapList(response, 'interests')
+
+      // Filtra interesses que o usuário já possui (usa tempUserInterests) e limita a 20 sugestões
+      const userInterestIds = new Set(tempUserInterests.value.map(i => i.id))
+      suggestedInterests.value = interests
+        .filter(i => !userInterestIds.has(i.id))
+        .slice(0, 20)
+    } catch (error) {
+      console.error('Erro ao carregar interesses sugeridos:', error)
+      suggestedInterests.value = []
+    } finally {
+      isLoadingSuggestions.value = false
+    }
+  }
+
+  function closeInterestsModal () {
+    // Descarta mudanças temporárias ao fechar sem salvar
+    tempUserInterests.value = []
+    showInterestsModal.value = false
+    interestsSearchQuery.value = ''
+    searchedInterests.value = []
+    suggestedInterests.value = []
+  }
+
+  // Ativa o loading imediatamente ao digitar (antes do debounce do SearchInput),
+  // para evitar que a UI mostre "interesse não encontrado" durante a janela de debounce.
+  watch(interestsSearchQuery, newValue => {
+    if (newValue.trim()) {
+      searchedInterests.value = []
+      isSearchingInterests.value = true
+    } else {
+      searchedInterests.value = []
+      isSearchingInterests.value = false
+    }
+  })
+
+  // Cancela a busca anterior quando uma nova é disparada (evita respostas fora de ordem)
+  let interestsSearchCtrl: AbortController | null = null
+
+  // ── Handler para busca de interesses (chamado pelo SearchInput com debounce) ──
+  async function handleInterestsSearch (query: string) {
+    if (!query.trim()) {
+      interestsSearchCtrl?.abort()
+      searchedInterests.value = []
+      isSearchingInterests.value = false
+      return
+    }
+
+    // Ativa loading (caso ainda não esteja ativo pelo watcher)
+    isSearchingInterests.value = true
+
+    // Aborta a busca anterior antes de disparar a nova
+    interestsSearchCtrl?.abort()
+    interestsSearchCtrl = new AbortController()
+    const { signal } = interestsSearchCtrl
+
+    try {
+      const response = await searchInterestsByName(query.trim(), signal)
+      const interests: UserInterest[] = unwrapList(response, 'interests')
+
+      // Filtra interesses que o usuário já possui (usa tempUserInterests)
+      const userInterestIds = new Set(tempUserInterests.value.map(i => i.id))
+      searchedInterests.value = interests.filter(i => !userInterestIds.has(i.id)).slice(0, 10)
+      isSearchingInterests.value = false
+    } catch (error) {
+      // Requisição substituída por outra mais recente: mantém o loading do request atual
+      if (isRequestCanceled(error)) return
+      console.error('Erro ao buscar interesses:', error)
+      searchedInterests.value = []
+      isSearchingInterests.value = false
+    }
+  }
+
+  // ── Handler para limpar busca de interesses ──
+  function handleClearInterestsSearch () {
+    searchedInterests.value = []
+    isSearchingInterests.value = false
+  }
+
+  function addInterestToUser (interest: UserInterest) {
+    // Adiciona apenas na lista temporária (não faz requisição ainda)
+    tempUserInterests.value.push(interest)
+
+    // Remove dos resultados de busca e sugestões
+    searchedInterests.value = searchedInterests.value.filter(i => i.id !== interest.id)
+    suggestedInterests.value = suggestedInterests.value.filter(i => i.id !== interest.id)
+  }
+
+  function removeInterestFromUser (interestId: string) {
+    // Remove apenas da lista temporária (não faz requisição ainda)
+    const removed = tempUserInterests.value.find(i => i.id === interestId)
+    tempUserInterests.value = tempUserInterests.value.filter(i => i.id !== interestId)
+
+    // Se removeu, adiciona de volta às sugestões
+    if (removed) {
+      suggestedInterests.value.unshift(removed)
+    }
+  }
+
+  async function saveInterestsChanges () {
+    try {
+      isSavingInterests.value = true
+
+      // Identifica interesses adicionados e removidos
+      const originalIds = new Set(userInterests.value.map(i => i.id))
+      const tempIds = new Set(tempUserInterests.value.map(i => i.id))
+
+      const toAdd = tempUserInterests.value.filter(i => !originalIds.has(i.id))
+      const toRemove = userInterests.value.filter(i => !tempIds.has(i.id))
+
+      // Faz as requisições em paralelo
+      const addPromises = toAdd.map(interest => addUserInterest(interest.id))
+      const removePromises = toRemove.map(interest => removeUserInterest(interest.id))
+
+      // Aguarda todas as requisições
+      await Promise.all([...addPromises, ...removePromises])
+
+      // Atualiza a lista real com os valores temporários
+      userInterests.value = [...tempUserInterests.value]
+
+      showSnackbar(t('profile.messages.interestsUpdateSuccess'), '#22c55e')
+      closeInterestsModal()
+    } catch (error) {
+      console.error('Erro ao salvar interesses:', error)
+      showSnackbar(t('profile.messages.interestsUpdateError'), '#ef4444')
+    } finally {
+      isSavingInterests.value = false
+    }
+  }
+
+  // ── Remove interesse diretamente (usado no botão X da sidebar) ──
+  async function removeInterestDirectly (interestId: string) {
+    try {
+      await removeUserInterest(interestId)
+
+      // Remove da lista local
+      userInterests.value = userInterests.value.filter(i => i.id !== interestId)
+
+      showSnackbar(t('profile.messages.interestRemoveSuccess'), '#22c55e')
+    } catch (error) {
+      console.error('❌ Erro ao remover interesse:', error)
+      showSnackbar(t('profile.messages.interestRemoveError'), '#ef4444')
+    }
+  }
+
+  /**
+   * Carrega sugestões de interesses que o usuário ainda não possui.
+   *
+   * O filtro é do backend (`excludeOwned=true`), não do cliente: assim a lista
+   * chega já sem o que ele tem e sempre vem completa com `INLINE_SUGGESTIONS_LIMIT`
+   * opções — filtrar no cliente encolheria o bloco a cada interesse adicionado.
+   */
+  async function loadInlineSuggestions () {
+    try {
+      isLoadingInlineSuggestions.value = true
+      const response = await getUnownedInterestSuggestions(INLINE_SUGGESTIONS_LIMIT)
+      inlineSuggestions.value = unwrapList(response, 'interests').slice(0, INLINE_SUGGESTIONS_LIMIT)
+    } catch (error) {
+      logger.error('Erro ao carregar sugestões de interesse:', error)
+      inlineSuggestions.value = []
+    } finally {
+      isLoadingInlineSuggestions.value = false
+    }
+  }
+
+  /** Adiciona um interesse sugerido direto do card, sem abrir o modal. */
+  async function addInterestDirectly (interest: UserInterest) {
+    if (addingInterestId.value) return // evita disparo duplo
+
+    addingInterestId.value = interest.id
+    try {
+      await addUserInterest(interest.id)
+
+      userInterests.value = [...userInterests.value, interest]
+      // Remove na hora (feedback imediato); o watch abaixo recarrega da API e
+      // repõe a vaga com um interesse que o usuário ainda não tem.
+      inlineSuggestions.value = inlineSuggestions.value.filter(i => i.id !== interest.id)
+
+      showSnackbar(t('profile.messages.interestAddSuccess'), SNACKBAR_COLORS.success)
+    } catch (error) {
+      logger.error('Erro ao adicionar interesse:', error)
+      showSnackbar(t('profile.messages.interestAddError'), SNACKBAR_COLORS.error)
+    } finally {
+      addingInterestId.value = null
+    }
+  }
+
+  // Recarrega as sugestões sempre que a lista de interesses muda (adição ou
+  // remoção), para o bloco nunca oferecer algo que o usuário já tem.
+  watch(userInterests, () => {
+    loadInlineSuggestions()
+  }, { deep: true })
+
+  // ── Request New Interests ──
+  function openRequestModal () {
+    newInterestName.value = interestsSearchQuery.value.trim()
+    pendingInterests.value = []
+    showRequestModal.value = true
+  }
+
+  function closeRequestModal () {
+    showRequestModal.value = false
+    newInterestName.value = ''
+    pendingInterests.value = []
+    isSubmittingRequest.value = false
+  }
+
+  function addToPending () {
+    const name = newInterestName.value.trim()
+    if (name && !pendingInterests.value.includes(name)) {
+      pendingInterests.value.push(name)
+      newInterestName.value = ''
+    }
+  }
+
+  function removePending (index: number) {
+    pendingInterests.value.splice(index, 1)
+  }
+
+  async function submitNewInterestRequest () {
+    // Adiciona o que estiver no input se o usuário esqueceu de clicar no +
+    addToPending()
+
+    if (pendingInterests.value.length === 0) {
+      showSnackbar(t('profile.messages.addAtLeastOne'), '#ef4444')
+      return
+    }
+
+    try {
+      isSubmittingRequest.value = true
+
+      // Envia a solicitação para o backend
+      await requestNewInterests([...pendingInterests.value])
+
+      // Limpa e fecha o modal
+      pendingInterests.value = []
+      closeRequestModal()
+
+      // Mostra mensagem de sucesso
+      showSnackbar(t('profile.messages.requestSuccess'), '#22c55e')
+
+      // Limpa a busca
+      interestsSearchQuery.value = ''
+      searchedInterests.value = []
+    } catch (error: any) {
+      console.error('❌ Erro ao solicitar novo interesse:', error)
+      const errorMessage = error?.response?.data?.message || t('profile.messages.requestError')
+      showSnackbar(errorMessage, '#ef4444')
+    } finally {
+      isSubmittingRequest.value = false
+    }
+  }
+
+  // ── Format join date ──
+  function formatJoinDate (dateString: string): string {
+    const date = new Date(dateString)
+    const months = [
+      t('profile.months.january'),
+      t('profile.months.february'),
+      t('profile.months.march'),
+      t('profile.months.april'),
+      t('profile.months.may'),
+      t('profile.months.june'),
+      t('profile.months.july'),
+      t('profile.months.august'),
+      t('profile.months.september'),
+      t('profile.months.october'),
+      t('profile.months.november'),
+      t('profile.months.december'),
+    ]
+    return `${months[date.getMonth()]} de ${date.getFullYear()}`
+  }
+
+  // ── Format short date for mini cards ──
+  function formatShortDate (dateString: string): string {
+    try {
+      const date = new Date(dateString)
+      if (Number.isNaN(date.getTime())) return t('profile.likedEvents.soon')
+
+      const day = date.getDate().toString().padStart(2, '0')
+      const month = (date.getMonth() + 1).toString().padStart(2, '0')
+      return `${day}/${month}`
+    } catch {
+      return t('profile.likedEvents.soon')
+    }
+  }
+
+  // ── Upload handlers ──
+  function triggerModalAvatarUpload () {
+    modalAvatarInputRef.value?.click()
+  }
+
+  function triggerModalBannerUpload () {
+    modalBannerInputRef.value?.click()
+  }
+
+  async function handleAvatarChange (event: Event) {
+    const input = event.target as HTMLInputElement
+    const file = input.files?.[0]
+    if (!file) return
+
+    // Validação do arquivo
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) {
+      showSnackbar(t('profile.messages.fileSizeError'), '#ef4444')
+      input.value = ''
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showSnackbar(t('profile.messages.fileTypeError'), '#ef4444')
+      input.value = ''
+      return
+    }
+
+    // Abre o modal de crop em vez de fazer upload direto
+    const reader = new FileReader()
+    reader.addEventListener('load', e => {
+      const result = (e.target as FileReader)?.result as string
+      if (result) {
+        openCropModal(result, input)
+      }
+    })
+    reader.readAsDataURL(file)
+  }
+
+  async function handleBannerChange (event: Event) {
+    const input = event.target as HTMLInputElement
+    const file = input.files?.[0]
+    if (!file) return
+
+    // Validação do arquivo
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) {
+      showSnackbar(t('profile.messages.fileSizeError'), '#ef4444')
+      input.value = ''
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showSnackbar(t('profile.messages.fileTypeError'), '#ef4444')
+      input.value = ''
+      return
+    }
+
+    // Abre o modal de enquadramento da capa
+    const reader = new FileReader()
+    reader.addEventListener('load', e => {
+      const result = (e.target as FileReader)?.result as string
+      if (result) {
+        openBannerCropModal(result, input)
+      }
+    })
+    reader.readAsDataURL(file)
+  }
+
+  // ── Navigation ──
+  const activeNav = ref('profile')
+
+  const navItems = computed<NavItem[]>(() => [
+    { id: 'home', label: t('feed.nav.home'), icon: 'home' },
+    { id: 'top-events', label: t('feed.nav.topEvents'), icon: 'top' },
+    { id: 'favorites', label: t('feed.nav.favorites'), icon: 'bookmark' },
+    { id: 'profile', label: t('feed.nav.profile'), icon: 'profile' },
+  ])
+
+  function handleNavSelect (id: string) {
+    if (id === 'home' || id === 'top-events' || id === 'favorites') {
+      router.push({
+        path: '/private/feed',
+        query: id === 'home' ? {} : { tab: id },
+      })
+    }
+  }
+
+  // ── Tabs ──
+  const VALID_TABS = ['liked', 'confirmed', 'settings'] as const
+  type TabId = typeof VALID_TABS[number]
+  const initialTab = VALID_TABS.includes(route.query.tab as TabId)
+    ? (route.query.tab as TabId)
+    : 'liked'
+  const activeTab = ref<TabId>(initialTab)
+
+  const tabs: Array<{ id: TabId, label: string, icon: string }> = [
+    { id: 'liked', label: t('profile.tabs.liked'), icon: 'mdi-heart-outline' },
+    { id: 'confirmed', label: 'Confirmados', icon: 'mdi-calendar-check' },
+    { id: 'settings', label: t('profile.tabs.settings'), icon: 'mdi-cog-outline' },
+  ]
+
+  // Persiste a aba na URL e re-busca dados ao trocar
+  watch(activeTab, val => {
+    router.replace({ query: { ...route.query, tab: val } })
+    if (!loggedUser.value?.id) return
+    if (val === 'liked') fetchLikedEvents()
+    if (val === 'confirmed') fetchConfirmedEvents()
+  })
+
+  // Comentado - não usado no primeiro momento
+  // const badges = [
+  //   { icon: 'mdi-party-popper', color: '#FF4081', name: 'Party Animal', desc: 'Foi em 10 festas este mês' },
+  //   { icon: 'mdi-map-marker-check', color: '#7C4DFF', name: 'Explorador', desc: 'Visitou 5 locais diferentes' },
+  //   { icon: 'mdi-fire', color: '#FF9800', name: 'Em Chamas', desc: 'Sequência de 3 finais de semana' },
+  //   { icon: 'mdi-crown', color: '#FFD700', name: 'VIP', desc: 'Membro premium da comunidade' },
+  // ]
+
+  // ── Edit Profile Modal ──
+  const showEditModal = ref(false)
+  const editForm = reactive({
+    name: '',
+    username: '',
+    bio: '',
+  })
+  const saving = ref(false)
+
+  /** Confirmação exibida ao tentar fechar o modal com alterações pendentes. */
+  const showDiscardConfirm = ref(false)
+
+  // Dentro do modal, o recorte pendente tem precedência sobre a imagem salva —
+  // é o que dá ao usuário a noção de "vai ficar assim se eu salvar".
+  const displayAvatar = computed(() => pendingAvatarPreview.value ?? (hasAvatar.value ? user.avatar : ''))
+  const displayBanner = computed(() => pendingBannerPreview.value ?? (hasBanner.value ? user.banner : ''))
+
+  function openEditModal () {
+    // Sempre carrega os valores atuais do perfil ao abrir
+    editForm.name = user.name
+    editForm.username = user.username.replace('@', '')
+    editForm.bio = user.bio
+    discardPendingImages()
+    showEditModal.value = true
+  }
+
+  /** Há algo digitado ou recortado que ainda não foi para o servidor? */
+  const hasUnsavedChanges = computed(() =>
+    editForm.name !== user.name
+    || editForm.username !== user.username.replace('@', '')
+    || editForm.bio !== user.bio
+    || pendingAvatarFile.value !== null
+    || pendingBannerFile.value !== null,
+  )
+
+  /** Fecha de fato, descartando tudo que não foi salvo. */
+  function discardAndCloseEditModal () {
+    showDiscardConfirm.value = false
+    showEditModal.value = false
+    discardPendingImages()
+    editForm.name = user.name
+    editForm.username = user.username.replace('@', '')
+    editForm.bio = user.bio
+  }
+
+  /** Ponto de saída do modal: pede confirmação se houver alteração pendente. */
+  function closeEditModal () {
+    if (saving.value) return
+
+    if (hasUnsavedChanges.value) {
+      showDiscardConfirm.value = true
+      return
+    }
+
+    discardAndCloseEditModal()
+  }
+
+  async function saveProfile () {
+    saving.value = true
+    try {
+      const userId = loggedUser.value?.id
+      if (!userId) {
+        throw new Error('ID do usuário não encontrado')
+      }
+
+      // Sobe as imagens recortadas antes dos campos de texto. Se um upload
+      // falhar, o catch interrompe e nada é persistido pela metade.
+      if (pendingAvatarFile.value) {
+        uploadingAvatar.value = true
+        try {
+          await uploadProfileImage(pendingAvatarFile.value)
+        } finally {
+          uploadingAvatar.value = false
+        }
+      }
+
+      if (pendingBannerFile.value) {
+        uploadingBanner.value = true
+        try {
+          await uploadBannerImage(pendingBannerFile.value)
+        } finally {
+          uploadingBanner.value = false
+        }
+      }
+
+      // Envia para o backend
+      const response = await updateUserProfile(userId, {
+        name: editForm.name,
+        username: editForm.username.replace('@', ''),
+        bio: editForm.bio,
+      })
+
+      // Usa o que o backend efetivamente confirmou salvar, não o que foi digitado —
+      // se a API silenciosamente não persistir a bio, isso fica visível na hora
+      // em vez de só aparecer depois de um reload.
+      // Usa 'in' (não ??) para diferenciar "campo ausente na resposta" (mantém o
+      // valor digitado) de "campo presente mas vazio/null" (backend confirmou que
+      // não salvou — reflete isso na hora em vez de mascarar com o valor digitado).
+      const savedData: Record<string, any> = unwrapItem(response) ?? {}
+      user.name = 'name' in savedData ? (savedData.name || editForm.name) : editForm.name
+      user.username = 'username' in savedData && savedData.username ? `@${savedData.username}` : `@${editForm.username.replace('@', '')}`
+      user.bio = 'bio' in savedData ? (savedData.bio ?? '') : editForm.bio
+
+      // As prévias já foram para o servidor; libera os object URLs e fecha.
+      const hadNewImages = pendingAvatarFile.value !== null || pendingBannerFile.value !== null
+      discardPendingImages()
+      showEditModal.value = false
+
+      // Só relê o perfil quando houve troca de imagem — as URLs finais das
+      // fotos vêm do backend, não dos blobs locais.
+      if (hadNewImages) await fetchUserProfile()
+
+      if ('bio' in savedData && (savedData.bio ?? '') !== editForm.bio) {
+        logger.warn('[Profile] Backend não persistiu a bio enviada:', { enviado: editForm.bio, salvo: savedData.bio })
+      }
+
+      // Invalida o cache para forçar reload na próxima vez
+      cachedUserProfileData.value = null
+
+      // Sincroniza com localStorage para manter consistência
+      updateUser({
+        name: editForm.name,
+        username: editForm.username.replace('@', ''),
+      })
+
+      showSnackbar(t('profile.messages.profileUpdateSuccess'))
+    } catch (error: any) {
+      // Em caso de erro, não atualiza nada e mantém os valores originais
+      showSnackbar(t('profile.messages.profileUpdateError'), '#ef4444')
+      console.error('Erro ao atualizar perfil:', {
+        status: error?.response?.status,
+        data: error?.response?.data,
+        message: error?.message,
+      })
+    } finally {
+      saving.value = false
+    }
+  }
+
+  // ── Settings toggles ──
+  const settingsNotifications = ref(true)
+
+  // ── Liked events ──
+  interface LikedEventItem {
+    id: string | number
+    banner: string
+    creator: { name: string }
+    hostAvatar: string
+    schedule: string
+    title: string
+    description: string
+    confirmed: number
+    interested: number
+    /** Local do evento — não confundir com a localização do perfil, que foi removida. */
+    location?: string
+    likes?: number
+    interests?: string[]
+    commentsCount?: number
+  }
+  const { startLoading, stopLoading, isLoading: checkLoading } = useLoading()
+
+  // Tempo mínimo (ms) que o skeleton fica visível. Sem isso, quando os dados vêm
+  // do cache a busca resolve no mesmo tick e o loader não chega a aparecer.
+  const MIN_SKELETON_MS = 600
+
+  const likedEventsItems = ref<LikedEventItem[]>([])
+  const displayLimit = ref(CONFIG.INITIAL_DISPLAY_LIMIT)
+  let likedEventsTimeout: ReturnType<typeof setTimeout> | null = null
+  let interestsSearchTimeout: ReturnType<typeof setTimeout> | null = null
+  let userSearchTimeout: ReturnType<typeof setTimeout> | null = null
+
+  // ── Estados para eventos confirmados ──
+  const confirmedEventsItems = ref<LikedEventItem[]>([])
+  const confirmedDisplayLimit = ref(CONFIG.INITIAL_DISPLAY_LIMIT)
+  let confirmedEventsTimeout: ReturnType<typeof setTimeout> | null = null
+
+  const displayedConfirmedEvents = computed(() => {
+    return confirmedEventsItems.value.slice(0, confirmedDisplayLimit.value)
+  })
+
+  const hasMoreConfirmedEvents = computed(() => {
+    return confirmedEventsItems.value.length > confirmedDisplayLimit.value
+  })
+
+  const showConfirmedCollapseButton = computed(() => {
+    return confirmedDisplayLimit.value > CONFIG.INITIAL_DISPLAY_LIMIT
+  })
+
+  function showMoreConfirmedEvents () {
+    confirmedDisplayLimit.value += CONFIG.EVENTS_DISPLAY_INCREMENT
+  }
+
+  function collapseConfirmedEvents () {
+    confirmedDisplayLimit.value = CONFIG.INITIAL_DISPLAY_LIMIT
+  }
+
+  const displayedLikedEvents = computed(() => {
+    return likedEventsItems.value.slice(0, displayLimit.value)
+  })
+
+  const hasMoreEvents = computed(() => {
+    return likedEventsItems.value.length > displayLimit.value
+  })
+
+  const showCollapseButton = computed(() => {
+    return displayLimit.value > CONFIG.INITIAL_DISPLAY_LIMIT
+  })
+
+  function showMoreEvents () {
+    displayLimit.value += CONFIG.EVENTS_DISPLAY_INCREMENT
+  }
+
+  function collapseEvents () {
+    displayLimit.value = CONFIG.INITIAL_DISPLAY_LIMIT
+  }
+
+  // ── Helpers para eventos curtidos ──
+  // O payload de confirmados varia conforme a origem: /events traz `confirmedCount`,
+  // enquanto o `event` aninhado em `eventAttendances` do perfil vem só com `_count`
+  // (ou com a própria lista de presenças). Tenta todas as formas antes de cair em 0.
+  function resolveConfirmedCount (evt: any): number {
+    const candidates = [
+      evt?.confirmedCount,
+      evt?.attendancesCount,
+      evt?.attendeesCount,
+      evt?._count?.attendances,
+      evt?._count?.eventAttendances,
+      evt?._count?.attendees,
+      Array.isArray(evt?.attendances) ? evt.attendances.length : undefined,
+      Array.isArray(evt?.eventAttendances) ? evt.eventAttendances.length : undefined,
+      Array.isArray(evt?.attendees) ? evt.attendees.length : undefined,
+    ]
+    for (const value of candidates) {
+      if (typeof value === 'number' && Number.isFinite(value)) return value
+    }
+    return 0
+  }
+
+  /**
+   * A listagem de perfil (`GET /users/:id`) traz o evento aninhado em
+   * `eventAttendances` num formato enxuto, sem os campos de contagem que o
+   * endpoint de detalhe do evento tem (`confirmedCount`, `_count.attendances`
+   * etc.) — então `resolveConfirmedCount` cai em 0 mesmo quando existe
+   * confirmação. Mas o próprio fato do evento estar em `eventAttendances` já
+   * prova que há pelo menos 1 confirmado: o usuário logado. Piso o valor aqui
+   * em vez de em `resolveConfirmedCount`, que também serve a aba de curtidos —
+   * lá 0 pode ser o valor real.
+   */
+  function mapConfirmedAttendance (evt: any): LikedEventItem {
+    const mapped = mapLikedEvent(evt)
+    return { ...mapped, confirmed: Math.max(1, mapped.confirmed) }
+  }
+
+  /**
+   * Mesmo raciocínio de `mapConfirmedAttendance`, aplicado à aba "Curtidos":
+   * o evento só está em `userData.likedEvents` porque o usuário logado o
+   * curtiu, então `likes` é comprovadamente >= 1 mesmo quando o payload enxuto
+   * do perfil não traz nenhum campo de contagem.
+   */
+  function mapLikedEventItem (evt: any): LikedEventItem {
+    const mapped = mapLikedEvent(evt)
+    return { ...mapped, likes: Math.max(1, mapped.likes ?? 0) }
+  }
+
+  function mapLikedEvent (evt: any): LikedEventItem {
+    const rawBanner = evt.bannerUrl || evt.banner || (Array.isArray(evt.photos) ? evt.photos[0] : '') || ''
+    const hostName = evt.organizer?.name || evt.hostName || evt.creator?.name || 'Organizador'
+    const resolveSchedule = (e: any): string => {
+      const candidates = [e.date, e.startDate, e.dateTime, e.startAt, e.eventDate, e.start_date, e.schedule]
+      for (const val of candidates) {
+        if (!val) continue
+        const parsed = new Date(val)
+        if (!Number.isNaN(parsed.getTime())) {
+          return parsed.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+        }
+      }
+      return t('profile.likedEvents.dateUndefined')
+    }
+    return {
+      id: evt.id,
+      banner: rawBanner,
+      creator: { name: hostName },
+      hostAvatar: evt.organizer?.avatar || evt.hostAvatar || evt.creator?.profileImage || '',
+      schedule: resolveSchedule(evt),
+      location: evt.location || evt.address || t('profile.likedEvents.locationUndefined'),
+      title: evt.name || evt.title || t('profile.likedEvents.eventTitle'),
+      description: evt.description || '',
+      confirmed: resolveConfirmedCount(evt),
+      interested: evt.interestedCount || 0,
+      likes: evt.likesCount || evt.likes || evt._count?.likes || 0,
+      interests: (evt.eventInterests || evt.interests || evt.categories || []).map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name).filter(Boolean),
+      commentsCount: evt.commentsCount ?? evt._count?.comments ?? 0,
+    }
+  }
+
+  async function fetchLikedEvents () {
+    if (!loggedUser.value?.id) return
+
+    likedEventsItems.value = []
+    startLoading('profile:liked')
+    const likedStartedAt = Date.now()
+
+    // Timeout de 3 segundos para o skeleton loading
     if (likedEventsTimeout) {
       clearTimeout(likedEventsTimeout)
     }
-    const likedElapsed = Date.now() - likedStartedAt
+
     likedEventsTimeout = setTimeout(() => {
-      stopLoading('profile:liked')
-      likedEventsTimeout = null
-    }, Math.max(0, MIN_SKELETON_MS - likedElapsed))
-  } catch (error_) {
-    console.error('Erro ao buscar eventos curtidos do perfil do usuário:', error_)
-    likedEventsItems.value = []
+      if (checkLoading('profile:liked')) {
+        stopLoading('profile:liked')
+      }
+    }, 3000)
+
+    try {
+      // Usa dados do cache se disponível, senão busca da API
+      let userData = cachedUserProfileData.value
+
+      if (!userData) {
+        const response = await getUserProfile(loggedUser.value.id)
+        userData = unwrapItem(response) ?? {}
+        cachedUserProfileData.value = userData
+      }
+
+      // Extrai eventos curtidos do perfil do usuário
+      let events: any[] = []
+      if (userData?.likedEvents && Array.isArray(userData.likedEvents)) {
+        events = userData.likedEvents
+      } else if (userData?.events?.liked && Array.isArray(userData.events.liked)) {
+        events = userData.events.liked
+      } else if (userData?.likes && Array.isArray(userData.likes)) {
+        events = userData.likes
+      }
+
+      // Mapeia para o formato de exibição
+      likedEventsItems.value = events
+        .filter((e: any) => e && e.id)
+        .map((evt: any) => mapLikedEventItem(evt))
+
+      // Registra contagem e estado pelo store, e não escrevendo em likedEvents
+      // direto: a escrita direta atropelava um clique em voo (o store guarda
+      // esses ids) e zerava a contagem que outras telas já tinham resolvido.
+      for (const evt of events) {
+        if (evt?.id) eventsStore.registerEventLikeState({ ...evt, isLiked: true })
+      }
+
+      // Se a lista está vazia, aguarda o timeout de 3 segundos antes de mostrar empty state
+      if (events.length === 0) {
+        // O timeout já foi configurado acima, apenas aguarda
+        return
+      }
+
+      // Cancela o timeout de fallback e encerra o loading respeitando o tempo
+      // mínimo de skeleton (garante que o loader apareça mesmo com cache).
+      if (likedEventsTimeout) {
+        clearTimeout(likedEventsTimeout)
+      }
+      const likedElapsed = Date.now() - likedStartedAt
+      likedEventsTimeout = setTimeout(() => {
+        stopLoading('profile:liked')
+        likedEventsTimeout = null
+      }, Math.max(0, MIN_SKELETON_MS - likedElapsed))
+    } catch (error_) {
+      console.error('Erro ao buscar eventos curtidos do perfil do usuário:', error_)
+      likedEventsItems.value = []
     // Em caso de erro, o timeout de 3s já está configurado
-  }
-}
-
-async function handleUnlikeEvent(eventId: string | number, event: Event) {
-  // Previne a navegação para a página do evento
-  event.stopPropagation()
-
-  try {
-    // Toggle like no store (vai descurtir já que está curtido)
-    await eventsStore.toggleLike(eventId)
-
-    // Remove o item da lista de eventos curtidos
-    const index = likedEventsItems.value.findIndex(item => String(item.id) === String(eventId))
-    if (index !== -1) {
-      likedEventsItems.value.splice(index, 1)
     }
-
-    showSnackbar(t('profile.likedEvents.unlikedSuccess'), SNACKBAR_COLORS.success)
-  } catch (error_) {
-    console.error('Erro ao descurtir evento:', error_)
-    showSnackbar(t('profile.likedEvents.unlikedError'), SNACKBAR_COLORS.error)
-  }
-}
-
-// ── Fetch eventos confirmados ──
-// NOTA: Os eventos confirmados agora vem direto do getUserProfile (eventAttendances)
-// Esta função fica disponível caso seja necessário fazer um refresh manual
-async function fetchConfirmedEvents() {
-  if (!loggedUser.value?.id) return
-
-  confirmedEventsItems.value = []
-  startLoading('profile:confirmed')
-  const confirmedStartedAt = Date.now()
-
-  if (confirmedEventsTimeout) {
-    clearTimeout(confirmedEventsTimeout)
   }
 
-  confirmedEventsTimeout = setTimeout(() => {
-    if (checkLoading('profile:confirmed')) {
-      stopLoading('profile:confirmed')
-    }
-  }, 3000)
+  async function handleUnlikeEvent (eventId: string | number, event: Event) {
+    // Previne a navegação para a página do evento
+    event.stopPropagation()
 
-  try {
-    // Usa o mesmo endpoint de getUserProfile que já retorna eventAttendances corretamente
-    const response = await getUserProfile(loggedUser.value.id)
-    const userData = unwrapItem(response) ?? {}
+    try {
+      // Toggle like no store (vai descurtir já que está curtido)
+      await eventsStore.toggleLike(eventId)
 
-    if (userData?.eventAttendances && Array.isArray(userData.eventAttendances)) {
-      confirmedEventsItems.value = userData.eventAttendances
-        .filter((e: any) => e && (e.id || e.eventId))
-        .map((evt: any) => mapConfirmedAttendance(evt.event || evt))
-    } else {
-      confirmedEventsItems.value = []
+      // Remove o item da lista de eventos curtidos
+      const index = likedEventsItems.value.findIndex(item => String(item.id) === String(eventId))
+      if (index !== -1) {
+        likedEventsItems.value.splice(index, 1)
+      }
+
+      showSnackbar(t('profile.likedEvents.unlikedSuccess'), SNACKBAR_COLORS.success)
+    } catch (error_) {
+      console.error('Erro ao descurtir evento:', error_)
+      showSnackbar(t('profile.likedEvents.unlikedError'), SNACKBAR_COLORS.error)
     }
+  }
+
+  // ── Fetch eventos confirmados ──
+  // NOTA: Os eventos confirmados agora vem direto do getUserProfile (eventAttendances)
+  // Esta função fica disponível caso seja necessário fazer um refresh manual
+  async function fetchConfirmedEvents () {
+    if (!loggedUser.value?.id) return
+
+    confirmedEventsItems.value = []
+    startLoading('profile:confirmed')
+    const confirmedStartedAt = Date.now()
 
     if (confirmedEventsTimeout) {
       clearTimeout(confirmedEventsTimeout)
     }
-    const confirmedElapsed = Date.now() - confirmedStartedAt
+
     confirmedEventsTimeout = setTimeout(() => {
+      if (checkLoading('profile:confirmed')) {
+        stopLoading('profile:confirmed')
+      }
+    }, 3000)
+
+    try {
+      // Usa o mesmo endpoint de getUserProfile que já retorna eventAttendances corretamente
+      const response = await getUserProfile(loggedUser.value.id)
+      const userData = unwrapItem(response) ?? {}
+
+      confirmedEventsItems.value = userData?.eventAttendances && Array.isArray(userData.eventAttendances)
+        ? userData.eventAttendances
+          .filter((e: any) => e && (e.id || e.eventId))
+          .map((evt: any) => mapConfirmedAttendance(evt.event || evt))
+        : []
+
+      if (confirmedEventsTimeout) {
+        clearTimeout(confirmedEventsTimeout)
+      }
+      const confirmedElapsed = Date.now() - confirmedStartedAt
+      confirmedEventsTimeout = setTimeout(() => {
+        stopLoading('profile:confirmed')
+        confirmedEventsTimeout = null
+      }, Math.max(0, MIN_SKELETON_MS - confirmedElapsed))
+    } catch (error_) {
+      console.error('Erro ao buscar eventos confirmados:', error_)
+      confirmedEventsItems.value = []
       stopLoading('profile:confirmed')
-      confirmedEventsTimeout = null
-    }, Math.max(0, MIN_SKELETON_MS - confirmedElapsed))
-  } catch (error_) {
-    console.error('Erro ao buscar eventos confirmados:', error_)
-    confirmedEventsItems.value = []
-    stopLoading('profile:confirmed')
+    }
   }
-}
 
-// Cancelar presença foi movido para a página do evento — o card do perfil é só leitura.
+  // Cancelar presença foi movido para a página do evento — o card do perfil é só leitura.
 
-// Removido - não é mais usado com mini cards
-// async function handleToggleSaveLiked (item: LikedEventItem) {
-//   await eventsStore.toggleSave({
-//     id: item.id,
-//     banner: item.banner,
-//     creator: item.creator,
-//     hostAvatar: item.hostAvatar,
-//     schedule: item.schedule,
-//     location: item.location,
-//     title: item.title,
-//     description: item.description,
-//     confirmed: item.confirmed,
-//     interested: item.interested,
-//     likes: item.likes,
-//     interests: item.interests,
-//   })
-// }
+  // Removido - não é mais usado com mini cards
+  // async function handleToggleSaveLiked (item: LikedEventItem) {
+  //   await eventsStore.toggleSave({
+  //     id: item.id,
+  //     banner: item.banner,
+  //     creator: item.creator,
+  //     hostAvatar: item.hostAvatar,
+  //     schedule: item.schedule,
+  //     location: item.location,
+  //     title: item.title,
+  //     description: item.description,
+  //     confirmed: item.confirmed,
+  //     interested: item.interested,
+  //     likes: item.likes,
+  //     interests: item.interests,
+  //   })
+  // }
 
-function handleLogout() {
-  AuthService.logout()
-  router.push('/public/Login')
-}
+  function handleLogout () {
+    AuthService.logout()
+    router.push('/public/Login')
+  }
 
-function handleBackNavigation() {
-  router.push({ path: '/private/feed', query: { tab: 'favorites' } })
-}
+  function handleBackNavigation () {
+    router.push({ path: '/private/feed', query: { tab: 'favorites' } })
+  }
 
-// ── Share Profile ──
-function handleShareProfile() {
-  const profileUrl = `${window.location.origin}/private/profile`
-  const shareText = user.bio || `Confira o perfil de ${user.name} no WE PARTY!`
+  // ── Share Profile ──
+  function handleShareProfile () {
+    const profileUrl = `${window.location.origin}/private/profile`
+    const shareText = user.bio || `Confira o perfil de ${user.name} no WE PARTY!`
 
-  shareStore.open({
-    title: `Perfil de ${user.name}`,
-    text: shareText,
-    url: profileUrl,
-  })
-}
+    shareStore.open({
+      title: `Perfil de ${user.name}`,
+      text: shareText,
+      url: profileUrl,
+    })
+  }
 </script>
 
 <template>
@@ -1735,17 +1501,35 @@ function handleShareProfile() {
       <main class="layout-main" role="main">
         <!-- Breadcrumb com acessibilidade -->
         <nav :aria-label="t('profile.aria.navigation')" class="breadcrumb-nav">
-          <button :aria-label="t('profile.aria.backToFeed')" class="breadcrumb-back" type="button"
-            @click="handleBackNavigation">
+          <button
+            :aria-label="t('profile.aria.backToFeed')"
+            class="breadcrumb-back"
+            type="button"
+            @click="handleBackNavigation"
+          >
             <span aria-hidden="true" class="back-icon">
-              <svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16">
+              <svg
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+                width="16"
+              >
                 <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
             </span>
             <span class="back-text">{{ t('common.back') }}</span>
           </button>
           <span aria-hidden="true" class="breadcrumb-separator">
-            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+            <svg
+              fill="none"
+              height="14"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="14"
+            >
               <path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </span>
@@ -1754,50 +1538,39 @@ function handleShareProfile() {
 
         <!-- Profile Header Card -->
         <div class="profile-card">
-          <!-- Hidden file inputs -->
-          <input ref="bannerInputRef" accept="image/*" hidden type="file" @change="handleBannerChange">
-          <input ref="avatarInputRef" accept="image/*" hidden type="file" @change="handleAvatarChange">
-
-          <div :aria-label="hasBanner ? t('profile.aria.coverImage') : t('profile.aria.defaultCover')"
-            class="cover-image" :class="{ 'no-banner': !hasBanner }" role="img"
-            :style="hasBanner ? { backgroundImage: `url(${user.banner})` } : {}">
+          <div
+            :aria-label="hasBanner ? t('profile.aria.coverImage') : t('profile.aria.defaultCover')"
+            class="cover-image"
+            :class="{ 'no-banner': !hasBanner }"
+            role="img"
+            :style="hasBanner ? { backgroundImage: `url(${user.banner})` } : {}"
+          >
             <div aria-hidden="true" class="overlay" />
-            <button
-              :aria-label="uploadingBanner ? t('profile.editModal.uploadingCover') : t('profile.editModal.changeCover')"
-              class="cover-edit-btn" :disabled="uploadingBanner" @click="triggerBannerUpload">
-              <i v-if="uploadingBanner" aria-hidden="true" class="mdi mdi-loading mdi-spin" />
-              <i v-else aria-hidden="true" class="mdi mdi-camera-outline" />
-            </button>
           </div>
 
           <div class="profile-content">
             <div class="avatar-section">
-              <button
-                :aria-label="uploadingAvatar ? t('profile.editModal.uploadingAvatar') : t('profile.editModal.changeAvatar')"
-                class="avatar-wrapper" type="button" @click="triggerAvatarUpload">
-                <!-- Avatar com imagem -->
-                <img v-if="hasAvatar" :alt="t('profile.aria.profilePicture', { name: user.name })" class="avatar-img"
-                  :src="user.avatar">
-                <!-- Avatar com iniciais (fallback) -->
-                <div v-else :aria-label="t('profile.aria.avatarInitials', { initials: getInitials(user.name) })"
-                  class="avatar-img avatar-placeholder" role="img"
-                  :style="{ backgroundColor: getAvatarColor(user.name) }">
-                  {{ getInitials(user.name) }}
-                </div>
+              <div class="avatar-wrapper">
+                <UserAvatar
+                  class="avatar-img"
+                  :image="hasAvatar ? user.avatar : null"
+                  :name="user.name"
+                  :size="96"
+                />
                 <div :aria-label="t('profile.aria.onlineStatus')" class="status-indicator" role="status" />
-                <div aria-hidden="true" class="avatar-edit-overlay">
-                  <i v-if="uploadingAvatar" class="mdi mdi-loading mdi-spin" />
-                  <i v-else class="mdi mdi-camera-outline" />
-                </div>
-              </button>
+              </div>
 
               <div class="profile-actions-top">
                 <button :aria-label="t('profile.editProfile')" class="edit-btn" type="button" @click="openEditModal">
                   <i aria-hidden="true" class="mdi mdi-pencil-outline" />
                   {{ t('profile.editProfile') }}
                 </button>
-                <button :aria-label="t('profile.shareProfile')" class="share-btn" type="button"
-                  @click="handleShareProfile">
+                <button
+                  :aria-label="t('profile.shareProfile')"
+                  class="share-btn"
+                  type="button"
+                  @click="handleShareProfile"
+                >
                   <i aria-hidden="true" class="mdi mdi-share-variant-outline" />
                 </button>
               </div>
@@ -1834,10 +1607,6 @@ function handleShareProfile() {
               </div>
 
               <div class="meta-row">
-                <span v-if="user.location" class="meta-item">
-                  <i aria-hidden="true" class="mdi mdi-map-marker-outline" />
-                  {{ user.location }}
-                </span>
                 <span class="meta-item">
                   <i aria-hidden="true" class="mdi mdi-calendar-outline" />
                   {{ t('profile.joinedIn') }} {{ user.joined }}
@@ -1850,10 +1619,24 @@ function handleShareProfile() {
 
         <!-- Tabs com acessibilidade -->
         <div :aria-label="t('profile.aria.profileTabs')" class="content-tabs" role="tablist">
-          <button v-for="tab in tabs" :id="`tab-${tab.id}`" :key="tab.id" :aria-controls="`tabpanel-${tab.id}`"
-            :aria-selected="activeTab === tab.id" class="tab-btn" :class="{ active: activeTab === tab.id }" role="tab"
-            @click="activeTab = tab.id">
-            <img v-if="tab.icon.startsWith('/')" :alt="''" aria-hidden="true" class="tab-icon-img" :src="tab.icon">
+          <button
+            v-for="tab in tabs"
+            :id="`tab-${tab.id}`"
+            :key="tab.id"
+            :aria-controls="`tabpanel-${tab.id}`"
+            :aria-selected="activeTab === tab.id"
+            class="tab-btn"
+            :class="{ active: activeTab === tab.id }"
+            role="tab"
+            @click="activeTab = tab.id"
+          >
+            <img
+              v-if="tab.icon.startsWith('/')"
+              :alt="''"
+              aria-hidden="true"
+              class="tab-icon-img"
+              :src="tab.icon"
+            >
             <i v-else aria-hidden="true" class="mdi tab-icon" :class="tab.icon" />
             {{ tab.label }}
           </button>
@@ -1897,8 +1680,12 @@ function handleShareProfile() {
             </div>
             <div v-else-if="likedEventsItems.length > 0">
               <TransitionGroup class="liked-mini-cards-grid" name="mini-card" tag="div">
-                <div v-for="item in displayedLikedEvents" :key="item.id" class="mini-event-card"
-                  @click="router.push(`/private/event/${item.id}`)">
+                <div
+                  v-for="item in displayedLikedEvents"
+                  :key="item.id"
+                  class="mini-event-card"
+                  @click="router.push(`/private/event/${item.id}`)"
+                >
                   <div class="mini-card-banner">
                     <img :alt="item.title" :src="item.banner">
                     <div class="mini-card-date">
@@ -1917,13 +1704,25 @@ function handleShareProfile() {
                         <i class="mdi mdi-account-multiple" />
                         {{ item.confirmed }}
                       </span>
-                      <button class="mini-stat mini-stat-btn" :title="t('profile.likedEvents.unlikeTooltip')"
-                        @click="handleUnlikeEvent(item.id, $event)">
-                        <svg class="mini-stat-icon" :fill="eventsStore.isLiked(item.id) ? 'currentColor' : 'none'"
-                          height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                          stroke-width="2" viewBox="0 0 24 24" width="14">
+                      <button
+                        class="mini-stat mini-stat-btn"
+                        :title="t('profile.likedEvents.unlikeTooltip')"
+                        @click="handleUnlikeEvent(item.id, $event)"
+                      >
+                        <svg
+                          class="mini-stat-icon"
+                          :fill="eventsStore.isLiked(item.id) ? 'currentColor' : 'none'"
+                          height="14"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          viewBox="0 0 24 24"
+                          width="14"
+                        >
                           <path
-                            d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                            d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                          />
                         </svg>
                         {{ eventsStore.getLikeCount(item.id, item.likes || 0) }}
                       </button>
@@ -1946,10 +1745,20 @@ function handleShareProfile() {
             </div>
             <div v-else class="empty-state">
               <div class="empty-icon">
-                <svg class="empty-icon-img" fill="none" height="48" stroke="currentColor" stroke-linecap="round"
-                  stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="48">
+                <svg
+                  class="empty-icon-img"
+                  fill="none"
+                  height="48"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="48"
+                >
                   <path
-                    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                  />
                 </svg>
               </div>
               <h3>{{ t('profile.likedEvents.empty') }}</h3>
@@ -1982,8 +1791,12 @@ function handleShareProfile() {
             </div>
             <div v-else-if="confirmedEventsItems.length > 0">
               <TransitionGroup class="liked-mini-cards-grid" name="mini-card" tag="div">
-                <div v-for="item in displayedConfirmedEvents" :key="item.id" class="mini-event-card confirmed-card"
-                  @click="router.push(`/private/event/${item.id}`)">
+                <div
+                  v-for="item in displayedConfirmedEvents"
+                  :key="item.id"
+                  class="mini-event-card confirmed-card"
+                  @click="router.push(`/private/event/${item.id}`)"
+                >
                   <div class="mini-card-banner">
                     <img :alt="item.title" :src="item.banner">
                     <div class="mini-card-date">
@@ -2111,14 +1924,45 @@ function handleShareProfile() {
             <div class="interests-tags">
               <span v-for="interest in userInterests" :key="interest.id" class="tag">
                 {{ interest.name }}
-                <button class="remove-interest-btn" :title="t('profile.interests.remove')" type="button"
-                  @click.stop="removeInterestDirectly(interest.id)">
+                <button
+                  class="remove-interest-btn"
+                  :title="t('profile.interests.remove')"
+                  type="button"
+                  @click.stop="removeInterestDirectly(interest.id)"
+                >
                   <i class="mdi mdi-close" />
                 </button>
               </span>
             </div>
           </div>
           <p v-else class="interests-empty">{{ t('profile.interests.empty') }}</p>
+
+          <!-- Sugestões: aparecem tendo o usuário interesses ou não. O backend já
+               devolve só o que ele ainda não possui (excludeOwned=true). -->
+          <div
+            v-if="!loading && !loadingInterests && (isLoadingInlineSuggestions || inlineSuggestions.length > 0)"
+            class="interests-suggestions"
+          >
+            <p class="interests-suggestions-hint">{{ t('profile.interests.suggestionsHint') }}</p>
+
+            <AppLoader v-if="isLoadingInlineSuggestions" size="sm" :text="t('profile.interests.loadingSuggestions')" />
+
+            <div v-else class="interests-suggestions-list">
+              <button
+                v-for="interest in inlineSuggestions"
+                :key="interest.id"
+                :aria-label="`${t('profile.interests.add')}: ${interest.name}`"
+                class="suggestion-chip"
+                :disabled="addingInterestId !== null"
+                type="button"
+                @click="addInterestDirectly(interest)"
+              >
+                <i v-if="addingInterestId === interest.id" class="mdi mdi-loading mdi-spin" />
+                <i v-else class="mdi mdi-plus" />
+                {{ interest.name }}
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Recomendações de Usuários -->
@@ -2128,9 +1972,14 @@ function handleShareProfile() {
           </div>
           <!-- Campo de busca de usuários -->
           <div class="user-search-wrapper">
-            <SearchInput v-model="userSearchQuery" :loading="searchingUsers"
-              :placeholder="t('profile.recommendations.searchPlaceholder') || 'Buscar usuários...'" size="small"
-              @clear="handleClearUserSearch" @search="handleUserSearch" />
+            <SearchInput
+              v-model="userSearchQuery"
+              :loading="searchingUsers"
+              :placeholder="t('profile.recommendations.searchPlaceholder') || 'Buscar usuários...'"
+              size="small"
+              @clear="handleClearUserSearch"
+              @search="handleUserSearch"
+            />
           </div>
           <div v-if="loadingRecommendations" class="recommendations-loading">
             <AppLoader size="sm" :text="t('profile.recommendations.loading')" />
@@ -2142,19 +1991,22 @@ function handleShareProfile() {
             <ul class="recommendations-list">
               <li v-for="recUser in filteredRecommendedUsers" :key="recUser.id" class="recommendation-item">
                 <div class="recommendation-avatar">
-                  <img v-if="recUser.profileImage" :alt="recUser.name" :src="recUser.profileImage"
-                    @error="($event.target as HTMLImageElement).style.display = 'none'">
-                  <div v-if="!recUser.profileImage" class="avatar-placeholder-small"
-                    :style="{ backgroundColor: getAvatarColor(recUser.name) }">
-                    {{ getInitials(recUser.name) }}
-                  </div>
+                  <UserAvatar
+                    :image="recUser.profileImage"
+                    :name="recUser.name"
+                    :size="40"
+                  />
                 </div>
                 <div class="recommendation-info">
                   <span class="recommendation-name">{{ recUser.name }}</span>
                   <span v-if="recUser.username" class="recommendation-username">@{{ recUser.username }}</span>
                 </div>
-                <button class="recommendation-follow-btn" :class="{ following: recUser.isFollowing }" type="button"
-                  @click="toggleFollowUser(recUser)">
+                <button
+                  class="recommendation-follow-btn"
+                  :class="{ following: recUser.isFollowing }"
+                  type="button"
+                  @click="toggleFollowUser(recUser)"
+                >
                   <i :class="recUser.isFollowing ? 'mdi mdi-check' : 'mdi mdi-plus'" />
                 </button>
               </li>
@@ -2184,28 +2036,51 @@ function handleShareProfile() {
 
             <div class="modal-body">
               <!-- Hidden file inputs for modal -->
-              <input ref="modalBannerInputRef" accept="image/*" hidden type="file" @change="handleBannerChange">
-              <input ref="modalAvatarInputRef" accept="image/*" hidden type="file" @change="handleAvatarChange">
+              <input
+                ref="modalBannerInputRef"
+                accept="image/*"
+                hidden
+                type="file"
+                @change="handleBannerChange"
+              >
+              <input
+                ref="modalAvatarInputRef"
+                accept="image/*"
+                hidden
+                type="file"
+                @change="handleAvatarChange"
+              >
 
               <!-- Avatar edit section -->
               <div class="modal-avatar-section">
-                <div class="modal-banner" :class="{ 'no-banner': !hasBanner }"
-                  :style="hasBanner ? { backgroundImage: `url(${user.banner})` } : {}">
+                <div
+                  class="modal-banner"
+                  :class="{ 'no-banner': !displayBanner }"
+                  :style="displayBanner ? { backgroundImage: `url(${displayBanner})` } : {}"
+                >
                   <div class="modal-banner-overlay" />
-                  <button class="modal-banner-edit" :disabled="uploadingBanner" title="Alterar capa"
-                    @click="triggerModalBannerUpload">
+                  <button
+                    class="modal-banner-edit"
+                    :disabled="uploadingBanner"
+                    title="Alterar capa"
+                    @click="triggerModalBannerUpload"
+                  >
                     <i v-if="uploadingBanner" class="mdi mdi-loading mdi-spin" />
                     <i v-else class="mdi mdi-camera-outline" />
                   </button>
                 </div>
                 <div class="modal-avatar-wrapper" @click="triggerModalAvatarUpload">
-                  <img v-if="hasAvatar" :alt="user.name" class="modal-avatar-img" :src="user.avatar">
-                  <div v-else class="modal-avatar-img avatar-placeholder"
-                    :style="{ backgroundColor: getAvatarColor(user.name) }">
-                    {{ getInitials(user.name) }}
-                  </div>
-                  <button class="modal-avatar-edit" :disabled="uploadingAvatar"
-                    :title="t('profile.editModal.changeAvatar')">
+                  <UserAvatar
+                    class="modal-avatar-img"
+                    :image="displayAvatar"
+                    :name="user.name"
+                    :size="72"
+                  />
+                  <button
+                    class="modal-avatar-edit"
+                    :disabled="uploadingAvatar"
+                    :title="t('profile.editModal.changeAvatar')"
+                  >
                     <i v-if="uploadingAvatar" class="mdi mdi-loading mdi-spin" />
                     <i v-else class="mdi mdi-camera-outline" />
                   </button>
@@ -2215,8 +2090,14 @@ function handleShareProfile() {
               <!-- Form fields -->
               <div class="form-group">
                 <label class="form-label" for="edit-name">{{ t('profile.editModal.name') }}</label>
-                <input id="edit-name" v-model="editForm.name" class="form-input" maxlength="50"
-                  :placeholder="t('profile.editModal.namePlaceholder')" type="text">
+                <input
+                  id="edit-name"
+                  v-model="editForm.name"
+                  class="form-input"
+                  maxlength="50"
+                  :placeholder="t('profile.editModal.namePlaceholder')"
+                  type="text"
+                >
                 <span class="char-count">{{ editForm.name.length }}/50</span>
               </div>
 
@@ -2224,30 +2105,35 @@ function handleShareProfile() {
                 <label class="form-label" for="edit-username">{{ t('profile.editModal.username') }}</label>
                 <div class="input-with-prefix">
                   <span class="input-prefix">@</span>
-                  <input id="edit-username" v-model="editForm.username" class="form-input with-prefix" maxlength="30"
-                    :placeholder="t('profile.editModal.usernamePlaceholder')" type="text">
+                  <input
+                    id="edit-username"
+                    v-model="editForm.username"
+                    class="form-input with-prefix"
+                    maxlength="30"
+                    :placeholder="t('profile.editModal.usernamePlaceholder')"
+                    type="text"
+                  >
                 </div>
               </div>
 
               <div class="form-group">
                 <label class="form-label" for="edit-bio">{{ t('profile.editModal.bio') }}</label>
-                <textarea id="edit-bio" v-model="editForm.bio" class="form-textarea" maxlength="160"
-                  :placeholder="t('profile.editModal.bioPlaceholder')" rows="3" />
-                <span class="char-count">{{ editForm.bio.length }}/160</span>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="edit-location">{{ t('profile.editModal.location') }}</label>
-                <div class="input-with-icon">
-                  <i class="mdi mdi-map-marker-outline input-icon" />
-                  <input id="edit-location" v-model="editForm.location" class="form-input with-icon" maxlength="60"
-                    :placeholder="t('profile.editModal.locationPlaceholder')" type="text">
-                </div>
+                <textarea
+                  id="edit-bio"
+                  v-model="editForm.bio"
+                  class="form-textarea"
+                  :maxlength="BIO_MAX_LENGTH"
+                  :placeholder="t('profile.editModal.bioPlaceholder')"
+                  rows="3"
+                />
+                <span class="char-count">{{ editForm.bio.length }}/{{ BIO_MAX_LENGTH }}</span>
               </div>
             </div>
 
             <div class="modal-footer">
-              <button class="btn-cancel" @click="closeEditModal">{{ t('profile.editModal.cancel') }}</button>
+              <button class="btn-cancel" :disabled="saving" @click="closeEditModal">
+                {{ t('profile.editModal.cancel') }}
+              </button>
               <button class="btn-save" :disabled="saving" @click="saveProfile">
                 <i v-if="saving" class="mdi mdi-loading mdi-spin" />
                 {{ saving ? t('profile.editModal.saving') : t('profile.editModal.save') }}
@@ -2257,6 +2143,17 @@ function handleShareProfile() {
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Confirmação de descarte ao fechar o modal de edição -->
+    <ConfirmDialog
+      v-model="showDiscardConfirm"
+      :cancel-label="t('profile.discardModal.keepEditing')"
+      :confirm-label="t('profile.discardModal.discard')"
+      danger
+      :message="t('profile.discardModal.message')"
+      :title="t('profile.discardModal.title')"
+      @confirm="discardAndCloseEditModal"
+    />
 
     <!-- Crop Avatar Modal -->
     <Teleport to="body">
@@ -2271,19 +2168,14 @@ function handleShareProfile() {
             </div>
 
             <div class="crop-modal-body">
-              <div class="crop-area" @mousedown.prevent="onCropMouseDown" @mouseleave="onCropMouseUp"
-                @mousemove.prevent="onCropMouseMove" @mouseup="onCropMouseUp" @touchend="onCropTouchEnd"
-                @touchmove="onCropTouchMove" @touchstart.prevent="onCropTouchStart">
-                <img class="crop-image" draggable="false" :src="cropImageSrc" :style="cropImageStyle">
-                <div class="crop-circle-mask" />
-              </div>
-
-              <div class="crop-zoom-control">
-                <i class="mdi mdi-image-size-select-small" />
-                <input v-model.number="cropZoom" class="crop-zoom-slider" max="3" :min="cropMinZoom" step="0.01"
-                  type="range">
-                <i class="mdi mdi-magnify-plus-outline" />
-              </div>
+              <ImageCropper
+                ref="avatarCropperRef"
+                :aspect-ratio="AVATAR_ASPECT"
+                circle
+                :output-mime-type="cropMimeType"
+                :output-size="CONFIG.AVATAR_OUTPUT_SIZE"
+                :src="cropImageSrc"
+              />
             </div>
 
             <div class="crop-modal-footer">
@@ -2301,8 +2193,11 @@ function handleShareProfile() {
     <!-- Banner Crop Modal -->
     <Teleport to="body">
       <Transition name="modal">
-        <div v-if="showBannerCropModal" class="modal-overlay banner-crop-modal-overlay"
-          @click.self="closeBannerCropModal">
+        <div
+          v-if="showBannerCropModal"
+          class="modal-overlay banner-crop-modal-overlay"
+          @click.self="closeBannerCropModal"
+        >
           <div class="banner-crop-modal-container">
             <div class="crop-modal-header">
               <div class="banner-crop-header-content">
@@ -2317,25 +2212,16 @@ function handleShareProfile() {
             <div class="banner-crop-modal-body">
               <p class="banner-crop-hint">
                 <i class="mdi mdi-gesture-swipe" />
-                Arraste para reposicionar · Use o controle abaixo para ajustar o zoom
+                Arraste para reposicionar · Use os controles abaixo para ajustar o zoom
               </p>
 
-              <div ref="bannerCropAreaRef" class="banner-crop-area" @mousedown.prevent="onBannerCropMouseDown"
-                @mousemove.prevent="onBannerCropMouseMove" @mouseup="onBannerCropMouseUp"
-                @mouseleave="onBannerCropMouseUp" @touchstart.prevent="onBannerCropTouchStart"
-                @touchmove="onBannerCropTouchMove" @touchend="onBannerCropTouchEnd">
-                <img class="banner-crop-image" draggable="false" :src="bannerCropImageSrc"
-                  :style="bannerCropImageStyle">
-                <div class="banner-crop-guides" />
-                <div class="banner-crop-border" />
-              </div>
-
-              <div class="banner-crop-zoom-control">
-                <i class="mdi mdi-image-size-select-small" />
-                <input v-model.number="bannerCropZoom" class="crop-zoom-slider" max="3" :min="bannerCropMinZoom"
-                  step="0.01" type="range">
-                <i class="mdi mdi-magnify-plus-outline" />
-              </div>
+              <ImageCropper
+                ref="bannerCropperRef"
+                :aspect-ratio="BANNER_ASPECT"
+                :output-mime-type="bannerCropMimeType"
+                :output-size="1600"
+                :src="bannerCropImageSrc"
+              />
             </div>
 
             <div class="crop-modal-footer">
@@ -2365,9 +2251,13 @@ function handleShareProfile() {
             <div class="interests-modal-body">
               <!-- Busca de interesses -->
               <div class="interests-search-section">
-                <SearchInput v-model="interestsSearchQuery" :loading="isSearchingInterests"
-                  :placeholder="t('profile.interests.searchPlaceholder')" @clear="handleClearInterestsSearch"
-                  @search="handleInterestsSearch" />
+                <SearchInput
+                  v-model="interestsSearchQuery"
+                  :loading="isSearchingInterests"
+                  :placeholder="t('profile.interests.searchPlaceholder')"
+                  @clear="handleClearInterestsSearch"
+                  @search="handleInterestsSearch"
+                />
               </div>
 
               <!-- Estado de loading -->
@@ -2390,8 +2280,10 @@ function handleShareProfile() {
               </div>
 
               <!-- Mensagem quando não há resultados -->
-              <div v-else-if="interestsSearchQuery.trim() && !isSearchingInterests && searchedInterests.length === 0"
-                class="no-results">
+              <div
+                v-else-if="interestsSearchQuery.trim() && !isSearchingInterests && searchedInterests.length === 0"
+                class="no-results"
+              >
                 <i class="mdi mdi-emoticon-sad-outline" />
                 <p>{{ t('profile.interests.noResults') }}</p>
                 <button class="request-interest-btn" @click="openRequestModal">
@@ -2472,9 +2364,14 @@ function handleShareProfile() {
               <div class="input-wrapper">
                 <label class="input-label" for="newInterest">{{ t('profile.requestInterestModal.label') }}</label>
                 <div class="input-group">
-                  <input id="newInterest" v-model="newInterestName" class="request-input"
-                    :placeholder="t('profile.requestInterestModal.placeholder')" type="text"
-                    @keyup.enter="addToPending">
+                  <input
+                    id="newInterest"
+                    v-model="newInterestName"
+                    class="request-input"
+                    :placeholder="t('profile.requestInterestModal.placeholder')"
+                    type="text"
+                    @keyup.enter="addToPending"
+                  >
                   <button class="add-pending-btn" type="button" @click="addToPending">
                     <i class="mdi mdi-plus" />
                   </button>
@@ -2495,9 +2392,11 @@ function handleShareProfile() {
               <button class="btn-cancel" @click="closeRequestModal">
                 {{ t('profile.requestInterestModal.cancel') }}
               </button>
-              <button class="btn-submit"
+              <button
+                class="btn-submit"
                 :disabled="(pendingInterests.length === 0 && !newInterestName.trim()) || isSubmittingRequest"
-                @click="submitNewInterestRequest">
+                @click="submitNewInterestRequest"
+              >
                 <i v-if="isSubmittingRequest" class="mdi mdi-loading mdi-spin" />
                 {{ isSubmittingRequest ? t('profile.requestInterestModal.submitting') :
                   t('profile.requestInterestModal.submit') }}
@@ -2526,19 +2425,22 @@ function handleShareProfile() {
               <ul v-else-if="followersList.length > 0" class="follow-modal-list">
                 <li v-for="follower in followersList" :key="follower.id" class="follow-modal-item">
                   <div class="follow-modal-avatar">
-                    <img v-if="follower.profileImage" :alt="follower.name" :src="follower.profileImage"
-                      @error="($event.target as HTMLImageElement).style.display = 'none'">
-                    <div v-if="!follower.profileImage" class="avatar-placeholder-modal"
-                      :style="{ backgroundColor: getAvatarColor(follower.name) }">
-                      {{ getInitials(follower.name) }}
-                    </div>
+                    <UserAvatar
+                      :image="follower.profileImage"
+                      :name="follower.name"
+                      :size="48"
+                    />
                   </div>
                   <div class="follow-modal-info">
                     <span class="follow-modal-name">{{ follower.name }}</span>
                     <span v-if="follower.username" class="follow-modal-username">@{{ follower.username }}</span>
                   </div>
-                  <button class="follow-modal-btn" :class="{ following: follower.isFollowing }" type="button"
-                    @click="toggleFollowUser(follower)">
+                  <button
+                    class="follow-modal-btn"
+                    :class="{ following: follower.isFollowing }"
+                    type="button"
+                    @click="toggleFollowUser(follower)"
+                  >
                     {{ follower.isFollowing ? t('profile.followersModal.following') : t('profile.followersModal.follow')
                     }}
                   </button>
@@ -2572,12 +2474,11 @@ function handleShareProfile() {
               <ul v-else-if="followingList.length > 0" class="follow-modal-list">
                 <li v-for="following in followingList" :key="following.id" class="follow-modal-item">
                   <div class="follow-modal-avatar">
-                    <img v-if="following.profileImage" :alt="following.name" :src="following.profileImage"
-                      @error="($event.target as HTMLImageElement).style.display = 'none'">
-                    <div v-if="!following.profileImage" class="avatar-placeholder-modal"
-                      :style="{ backgroundColor: getAvatarColor(following.name) }">
-                      {{ getInitials(following.name) }}
-                    </div>
+                    <UserAvatar
+                      :image="following.profileImage"
+                      :name="following.name"
+                      :size="48"
+                    />
                   </div>
                   <div class="follow-modal-info">
                     <span class="follow-modal-name">{{ following.name }}</span>
@@ -2745,33 +2646,8 @@ function handleShareProfile() {
   background: linear-gradient(to top, rgba(0, 0, 0, 0.35), transparent 60%);
 }
 
-.cover-edit-btn {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(4px);
-  color: white;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  transition: all 0.2s;
-  opacity: 0;
-}
-
 .profile-card:hover .cover-edit-btn {
   opacity: 1;
-}
-
-.cover-edit-btn:hover {
-  background: rgba(0, 0, 0, 0.65);
-  transform: scale(1.08);
 }
 
 .profile-content {
@@ -2908,27 +2784,6 @@ function handleShareProfile() {
 /* Avatar edit overlay */
 .avatar-wrapper {
   cursor: pointer;
-}
-
-.avatar-edit-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.3s;
-  color: white;
-  font-size: 1.5rem;
-}
-
-.avatar-wrapper:hover .avatar-edit-overlay {
-  opacity: 1;
 }
 
 /* Cover image sem banner */
@@ -3978,6 +3833,58 @@ function handleShareProfile() {
   font-size: 0.85rem;
   color: #9aa0b8;
   margin: 0;
+}
+
+/* Sugestões abaixo do estado vazio — a borda superior é o separador que
+   distingue "você não tem interesses" de "adicione um destes". */
+.interests-suggestions {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(154, 160, 184, 0.22);
+}
+
+.interests-suggestions-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7194;
+}
+
+.interests-suggestions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.suggestion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px dashed rgba(255, 95, 166, 0.45);
+  border-radius: 999px;
+  background: transparent;
+  color: #6b7194;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.suggestion-chip:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(255, 186, 75, 0.12), rgba(255, 95, 166, 0.12));
+  border-color: rgba(255, 95, 166, 0.75);
+  color: #d63384;
+  transform: translateY(-1px);
+}
+
+.suggestion-chip:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.suggestion-chip i {
+  font-size: 0.9rem;
 }
 
 .tag {
@@ -5471,90 +5378,6 @@ function handleShareProfile() {
   gap: 1.25rem;
 }
 
-.crop-area {
-  width: 300px;
-  height: 300px;
-  position: relative;
-  overflow: hidden;
-  cursor: grab;
-  background: #000;
-  touch-action: none;
-  border-radius: 4px;
-}
-
-.crop-area:active {
-  cursor: grabbing;
-}
-
-.crop-image {
-  position: absolute;
-  display: block;
-  pointer-events: none;
-  user-select: none;
-}
-
-.crop-circle-mask {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: 50%;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
-}
-
-.crop-circle-mask::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-}
-
-.crop-zoom-control {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  max-width: 300px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 1.3rem;
-}
-
-.crop-zoom-slider {
-  flex: 1;
-  -webkit-appearance: none;
-  appearance: none;
-  height: 4px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.15);
-  outline: none;
-}
-
-.crop-zoom-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(255, 95, 166, 0.3);
-  transition: transform 0.15s;
-}
-
-.crop-zoom-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-}
-
-.crop-zoom-slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
-  cursor: pointer;
-  border: none;
-  box-shadow: 0 2px 8px rgba(255, 95, 166, 0.3);
-}
-
 .crop-modal-footer {
   display: flex;
   justify-content: flex-end;
@@ -5624,68 +5447,6 @@ function handleShareProfile() {
 .banner-crop-hint i {
   font-size: 1rem;
   opacity: 0.7;
-}
-
-.banner-crop-area {
-  width: 100%;
-  aspect-ratio: 16 / 5;
-  position: relative;
-  overflow: hidden;
-  cursor: grab;
-  background: #0a0b14;
-  touch-action: none;
-  border-radius: 10px;
-  user-select: none;
-}
-
-.banner-crop-area:active {
-  cursor: grabbing;
-}
-
-.banner-crop-image {
-  position: absolute;
-  display: block;
-  pointer-events: none;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
-.banner-crop-guides {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-  background-size: 33.33% 50%;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.banner-crop-area:active .banner-crop-guides {
-  opacity: 1;
-}
-
-.banner-crop-border {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: 10px;
-  box-shadow: inset 0 0 0 2px rgba(255, 186, 75, 0.35);
-  transition: box-shadow 0.2s;
-}
-
-.banner-crop-area:active .banner-crop-border {
-  box-shadow: inset 0 0 0 2px rgba(255, 186, 75, 0.7);
-}
-
-.banner-crop-zoom-control {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 1.3rem;
 }
 
 /* ═════════════════════════════════════════════════════

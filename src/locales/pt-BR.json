@@ -123,14 +123,16 @@
     "infoPoint1": "Conexões para todo momento",
     "infoPoint2": "Eventos só para amigos",
     "infoPoint3": "Compartilhe histórias e momentos"
-  }
-  ,
+  },
   "interest": {
     "title": "Interesses",
     "subtitle": "Adicione interesses ao seu perfil para te apresentar os eventos que você se identifica mais.",
     "searchPlaceholder": "Buscar interesses (ex: Rock, Jazz, Yoga...)",
     "finishButton": "CONCLUIR",
-    "brandTitle": { "part1": "Por que adicionar", "part2": "interesses" },
+    "brandTitle": {
+      "part1": "Por que adicionar",
+      "part2": "interesses"
+    },
     "benefit1": "Eventos que tem mais a sua cara",
     "benefit2": "Eventos personalizados irão aparecer",
     "modal": {
@@ -295,7 +297,8 @@
       "noResults": "Nenhum interesse encontrado",
       "searching": "Buscando interesses...",
       "requestNew": "Solicitar novo interesse",
-      "emptyMessage": "Você ainda não adicionou nenhum interesse."
+      "emptyMessage": "Você ainda não adicionou nenhum interesse.",
+      "suggestionsHint": "Que tal começar por estes?"
     },
     "editModal": {
       "title": "Editar Perfil",
@@ -305,8 +308,6 @@
       "usernamePlaceholder": "seunome",
       "bio": "Bio",
       "bioPlaceholder": "Conte um pouco sobre você...",
-      "location": "Localização",
-      "locationPlaceholder": "Sua cidade",
       "cancel": "Cancelar",
       "save": "Salvar",
       "saving": "Salvando...",
@@ -357,7 +358,9 @@
       "followSuccess": "Você começou a seguir {name}",
       "followUpdateError": "Erro ao atualizar. Tente novamente.",
       "cancelAttendanceSuccess": "Presença cancelada com sucesso!",
-      "cancelAttendanceError": "Erro ao cancelar presença"
+      "cancelAttendanceError": "Erro ao cancelar presença",
+      "interestAddSuccess": "Interesse adicionado!",
+      "interestAddError": "Não foi possível adicionar o interesse. Tente novamente."
     },
     "months": {
       "january": "Janeiro",
@@ -405,6 +408,12 @@
       "loading": "Carregando...",
       "empty": "Você ainda não segue ninguém",
       "unfollow": "Deixar de seguir"
+    },
+    "discardModal": {
+      "title": "Descartar alterações?",
+      "message": "Você fez alterações que ainda não foram salvas. Se fechar agora, elas serão perdidas.",
+      "discard": "Descartar",
+      "keepEditing": "Continuar editando"
     }
   },
   "loginRequiredDialog": {
@@ -415,5 +424,3 @@
     }
   }
 }
-
-
