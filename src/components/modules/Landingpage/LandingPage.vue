@@ -1,17 +1,17 @@
 <script setup lang="ts">
-  // Import só de tipos: custo zero em runtime, não entra no bundle.
-  // O módulo real (~630KB) é carregado sob demanda dentro de initThreeJS (P11).
-  import type * as THREE from 'three'
-  import { useThrottleFn, useWindowScroll, useWindowSize } from '@vueuse/core'
+  import { useWindowScroll, useWindowSize } from '@vueuse/core'
 
   import gsap from 'gsap'
   import { ScrollTrigger } from 'gsap/ScrollTrigger'
-  import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+  import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
+  import { unwrapList } from '@/api'
+  import { getAllPublicEvents, getPublicTrendingEvents } from '@/api/event'
+  import GradientText from '@/components/UI/GradientText/GradientText.vue'
   import LoginRequiredDialog from '@/components/UI/LoginRequiredDialog/LoginRequiredDialog.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import { useGuestMode } from '@/composables/useGuestMode'
   import { usePwaInstall } from '@/composables/usePwaInstall'
-  import { RESIZE_THROTTLE_MS } from '@/constants/timing'
   import { logger } from '@/utils/logger'
 
   gsap.registerPlugin(ScrollTrigger)
@@ -19,34 +19,46 @@
   const router = useRouter()
   const { requireLogin: _requireLogin } = useGuestMode()
 
-  // PWA — instalação do app a partir do header
+  // PWA — instalação do app a partir do header, do banner e do rodapé
   const { canInstall, isIOS, showIOSInstructions, promptInstall } = usePwaInstall()
 
-  async function installApp () {
-    await promptInstall()
+  const snackbarVisible = ref(false)
+  const snackbarMessage = ref('')
+  const snackbarColor = ref('#ff9800')
+
+  function showSnackbar (message: string, color = '#ff9800') {
+    snackbarMessage.value = message
+    snackbarColor.value = color
+    snackbarVisible.value = true
   }
 
-  // Three.js refs
-  const canvasContainer = ref<HTMLDivElement | null>(null)
-  let scene: THREE.Scene
-  let camera: THREE.PerspectiveCamera
-  let renderer: THREE.WebGLRenderer
-  let particles: THREE.Points
-  let animationFrameId: number
-  let mouseX = 0
-  let mouseY = 0
-  let mouseMoveListener: ((e: MouseEvent) => void) | null = null
-  let resizeListener: (() => void) | null = null
+  async function installApp () {
+    const outcome = await promptInstall()
+    if (outcome === 'accepted') {
+      showSnackbar('App instalado com sucesso!', '#22c55e')
+    } else if (outcome === 'unavailable' && !isIOS) {
+      showSnackbar('Instalação não disponível neste navegador agora. Tente pelo Chrome ou Edge.', '#ff9800')
+    }
+  }
 
-  // Animation refs
+  // Element Refs
+  const landingEl = ref<HTMLElement | null>(null)
+  const headerEl = ref<HTMLElement | null>(null)
+  const heroSection = ref<HTMLElement | null>(null)
+  const heroVideo = ref<HTMLVideoElement | null>(null)
+  const featuresGridEl = ref<HTMLElement | null>(null)
+  const discoverCardsEl = ref<HTMLElement | null>(null)
+
+  // Animation refs & GSAP context
   const isLoaded = ref(false)
+  const navSolid = ref(false)
+  const reducedMotion = ref(false)
+  let heroObserver: IntersectionObserver | null = null
+  let ctx: gsap.Context | null = null
 
   // Scroll tracking
-  const { y: scrollY } = useWindowScroll()
+  useWindowScroll()
   const { width: windowWidth } = useWindowSize()
-
-  // Parallax effect
-  const _parallaxY = computed(() => scrollY.value * 0.3)
 
   // Mobile menu state
   const isMobileMenuOpen = ref(false)
@@ -78,81 +90,251 @@
     faqOpen.value = faqOpen.value === index ? null : index
   }
 
+  // Showcase "We Party em ação" — aba ativa do mockup do celular
+  const activeShowcase = ref(0)
+
+  // Aba "Feed de Eventos" embute o app real num iframe com viewport fixo de celular
+  const FEED_EMBED_WIDTH = 390
+  const phoneScreenEl = ref<HTMLElement | null>(null)
+  const feedEmbedScale = ref(1)
+  let phoneScreenObserver: ResizeObserver | null = null
+
+  // Smartphone 3D
+  const PHONE_BASE_ROTATE_X = 3
+  const PHONE_BASE_ROTATE_Y = -14
+  const PHONE_TILT_RANGE_X = 3
+  const PHONE_TILT_RANGE_Y = 5
+  const phoneStageEl = ref<HTMLElement | null>(null)
+  const phoneTiltEl = ref<HTMLElement | null>(null)
+  const badgeConfirmedEl = ref<HTMLElement | null>(null)
+
+  let badgeConfirmedX: ReturnType<typeof gsap.quickTo> | null = null
+  let badgeConfirmedY: ReturnType<typeof gsap.quickTo> | null = null
+  let phoneFloatTl: gsap.core.Timeline | null = null
+
+  function setPhoneTilt (rotateX: number, rotateY: number, duration = 0.9) {
+    if (!phoneTiltEl.value) return
+    gsap.to(phoneTiltEl.value, { rotateX, rotateY, duration, ease: 'power3.out', overwrite: 'auto' })
+  }
+
+  function onPhonePointerMove (event: MouseEvent) {
+    if (reducedMotion.value || windowWidth.value < 1024) return
+    if (!phoneStageEl.value) return
+
+    const rect = phoneStageEl.value.getBoundingClientRect()
+    const px = (event.clientX - rect.left) / rect.width
+    const py = (event.clientY - rect.top) / rect.height
+
+    setPhoneTilt(
+      PHONE_BASE_ROTATE_X - (py - 0.5) * 2 * PHONE_TILT_RANGE_X,
+      PHONE_BASE_ROTATE_Y + (px - 0.5) * 2 * PHONE_TILT_RANGE_Y,
+    )
+
+    badgeConfirmedX?.((px - 0.5) * -10)
+    badgeConfirmedY?.((py - 0.5) * -8)
+  }
+
+  function onPhonePointerLeave () {
+    if (reducedMotion.value) return
+    setPhoneTilt(PHONE_BASE_ROTATE_X, PHONE_BASE_ROTATE_Y)
+    badgeConfirmedX?.(0)
+    badgeConfirmedY?.(0)
+  }
+
   // Data
   const faqs = [
     {
-      icon: 'mdi-currency-usd-off',
       question: 'A We Party é gratuita?',
-      answer: 'Sim! Você pode criar sua conta, explorar eventos e conectar-se com pessoas interessantes de forma totalmente gratuita. Algumas funcionalidades premium estarão disponíveis futuramente.',
-      gradient: 'linear-gradient(135deg, #FF9AB5 0%, #FFB3C6 100%)',
+      answer: 'Sim! Criar uma conta, descobrir eventos e conversar com outras pessoas é 100% gratuito. Alguns eventos parceiros podem cobrar ingresso à parte.',
     },
     {
-      icon: 'mdi-calendar-plus',
       question: 'Posso criar eventos na plataforma?',
-      answer: 'Com certeza! Qualquer usuário pode criar eventos e compartilhar com a comunidade. É simples, rápido e você pode alcançar milhares de pessoas interessadas na sua área.',
-      gradient: 'linear-gradient(135deg, #FF9AB5 0%, #FFB3C6 100%)',
+      answer: 'Claro! Qualquer usuário pode publicar um evento, público ou privado, e convidar sua comunidade em poucos cliques.',
     },
     {
-      icon: 'mdi-map-marker-radius',
-      question: 'Como encontrar eventos perto de mim?',
-      answer: 'Nossa plataforma usa sua localização e interesses para mostrar eventos relevantes próximos a você. Você também pode usar filtros avançados por categoria, data e distância.',
-      gradient: 'linear-gradient(135deg, #FF9AB5 0%, #FFB3C6 100%)',
+      question: 'Como encontro eventos perto de mim?',
+      answer: 'Ative sua localização e o feed mostra automaticamente o que está rolando perto de você, com filtros por categoria, data e distância.',
     },
     {
-      icon: 'mdi-shield-check',
       question: 'Meus dados estão seguros?',
-      answer: 'Absolutamente! Levamos sua privacidade a sério. Utilizamos criptografia e seguimos as melhores práticas de segurança para proteger suas informações pessoais.',
-      gradient: 'linear-gradient(135deg, #FF9AB5 0%, #FFB3C6 100%)',
+      answer: 'Sim. Usamos criptografia nas conversas e nunca compartilhamos seus dados pessoais com terceiros sem sua autorização.',
+    },
+    {
+      question: 'Preciso pagar para participar de eventos?',
+      answer: 'Depende do evento. Muitos são gratuitos, e para os pagos você vê o valor e compra o ingresso direto pelo app.',
     },
   ]
 
-  // Contact form state
-  const contactMethod = ref<'whatsapp' | 'email'>('whatsapp')
-  const contactForm = ref({
-    name: '',
-    email: '',
-    subject: '',
-    message: '',
-  })
-  const sendingEmail = ref(false)
-  const emailSent = ref(false)
+  const features = [
+    {
+      icon: 'mdi-map-marker-radius',
+      title: 'Descubra eventos perto de você',
+      description: 'Explore festas, shows e experiências na sua cidade, filtradas pelo que você realmente gosta.',
+      emoji: '📍',
+      gradient: 'var(--gradient)',
+    },
+    {
+      icon: 'mdi-account-group',
+      title: 'Veja quem vai participar',
+      description: 'Saiba quem confirmou presença antes mesmo do evento começar.',
+      emoji: '👥',
+      gradient: 'linear-gradient(135deg, #ffd93d, #FF9F3D)',
+    },
+    {
+      icon: 'mdi-chat',
+      title: 'Interaja com participantes',
+      description: 'Converse, combine de ir e conheça novas pessoas.',
+      emoji: '💬',
+      gradient: 'linear-gradient(135deg, #8b5cf6, #F978A3)',
+      highlight: true,
+    },
+    {
+      icon: 'mdi-calendar-plus',
+      title: 'Crie e compartilhe eventos',
+      description: 'Organize seus próprios eventos e alcance mais pessoas.',
+      emoji: '🎟️',
+      gradient: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+    },
+  ]
 
-  function selectContactMethod (method: 'whatsapp' | 'email') {
-    contactMethod.value = method
-    emailSent.value = false
+  interface DiscoverEventCard {
+    emoji: string
+    category: string
+    tag: string
+    tagColor: string
+    title: string
+    likes: number
+    comments: number
+    when: string
+    gradient: string
+    image: string
   }
 
-  function openWhatsApp () {
-    const message = encodeURIComponent('Olá! Gostaria de saber mais sobre a We Party.')
-    const phoneNumber = '5511999999999' // Substitua pelo número real
-    window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank')
+  const fallbackDiscoverEvents: DiscoverEventCard[] = [
+    {
+      emoji: '🎶', category: 'Música', tag: 'Festa', tagColor: '#F978A3', title: 'Festa na Cobertura',
+      likes: 84, comments: 12, when: 'Hoje, 22h', gradient: 'linear-gradient(135deg, #ffb27a, #F978A3)', image: '',
+    },
+    {
+      emoji: '🎭', category: 'Comédia', tag: 'Stand-up', tagColor: '#8b5cf6', title: 'Noite de Stand-up',
+      likes: 42, comments: 6, when: 'Sáb, 20h', gradient: 'linear-gradient(135deg, #8b5cf6, #ff8bc4)', image: '',
+    },
+    {
+      emoji: '🎪', category: 'Ao ar livre', tag: 'Festival', tagColor: '#FF9F3D', title: 'Festival de Verão',
+      likes: 310, comments: 48, when: 'Dom, 14h', gradient: 'linear-gradient(135deg, #ffd93d, #FF9F3D)', image: '',
+    },
+  ]
+
+  const discoverCardStyles = [
+    { emoji: '🎶', tagColor: '#F978A3', gradient: 'linear-gradient(135deg, #ffb27a, #F978A3)' },
+    { emoji: '🎭', tagColor: '#8b5cf6', gradient: 'linear-gradient(135deg, #8b5cf6, #ff8bc4)' },
+    { emoji: '🎪', tagColor: '#FF9F3D', gradient: 'linear-gradient(135deg, #ffd93d, #FF9F3D)' },
+  ]
+
+  const discoverEvents = ref<DiscoverEventCard[]>(fallbackDiscoverEvents)
+
+  function extractEventImage (event: any): string {
+    const fromImages = Array.isArray(event.images) && event.images.length > 0
+      ? (typeof event.images[0] === 'string' ? event.images[0] : event.images[0]?.url)
+      : ''
+    return fromImages || event.bannerUrl || event.banner || event.image || event.imageUrl || event.cover || event.thumbnail || ''
   }
 
-  async function sendEmail () {
-    if (!contactForm.value.name || !contactForm.value.email || !contactForm.value.message) {
-      return
+  function formatEventWhen (event: any): string {
+    const raw = event.date || event.startDate || event.dateTime || event.startAt || event.eventDate || event.start_date
+    if (!raw) return 'Data a definir'
+    const date = new Date(raw)
+    if (Number.isNaN(date.getTime())) return 'Data a definir'
+
+    const now = new Date()
+    const isSameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString()
+    const tomorrow = new Date(now)
+    tomorrow.setDate(now.getDate() + 1)
+
+    const time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(':00', 'h')
+
+    if (isSameDay(date, now)) return `Hoje, ${time}`
+    if (isSameDay(date, tomorrow)) return `Amanhã, ${time}`
+
+    const weekday = date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+    return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}, ${time}`
+  }
+
+  function mapToDiscoverCard (event: any, index: number): DiscoverEventCard {
+    const style = discoverCardStyles[index % discoverCardStyles.length]!
+    const rawInterests = event.eventInterests || event.interests || event.categories || event.tags || []
+    const interestName = rawInterests
+      .map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name)
+      .find(Boolean)
+
+    return {
+      emoji: style.emoji,
+      category: interestName || 'Evento',
+      tag: interestName || 'Evento',
+      tagColor: style.tagColor,
+      title: event.name || event.title || 'Evento sem nome',
+      likes: event.likesCount ?? event.likes ?? event._count?.likes ?? 0,
+      comments: event.commentsCount ?? event._count?.comments ?? 0,
+      when: formatEventWhen(event),
+      gradient: style.gradient,
+      image: extractEventImage(event),
     }
-
-    sendingEmail.value = true
-
-    // Simular envio de email (substitua com sua lógica real de API)
-    setTimeout(() => {
-      logger.log('Email enviado:', contactForm.value)
-      sendingEmail.value = false
-      emailSent.value = true
-
-      // Limpar formulário após 3 segundos
-      setTimeout(() => {
-        contactForm.value = {
-          name: '',
-          email: '',
-          subject: '',
-          message: '',
-        }
-        emailSent.value = false
-      }, 3000)
-    }, 1500)
   }
+
+  async function fetchDiscoverEvents () {
+    try {
+      let response = await getPublicTrendingEvents(1, 3)
+      let rawEvents = unwrapList<any>(response, 'events', 'data', 'content')
+      if (rawEvents.length === 0) {
+        response = await getAllPublicEvents(1, 3)
+        rawEvents = unwrapList<any>(response, 'events', 'data', 'content')
+      }
+      if (rawEvents.length === 0) return
+
+      discoverEvents.value = rawEvents.slice(0, 3).map((event, index) => mapToDiscoverCard(event, index))
+    } catch (error) {
+      logger.error('Erro ao buscar eventos reais para a landing page:', error)
+    }
+  }
+
+  const appScreenshots = [
+    {
+      title: 'Feed de Eventos',
+      description: 'Navegue por eventos próximos em tempo real, com filtros que aprendem o que você gosta.',
+      image: '/Feedparty.png',
+      icon: 'mdi-view-dashboard',
+      color: 'var(--gradient)',
+      tag: 'Descoberta',
+    },
+    {
+      title: 'Perfil Interativo',
+      description: 'Personalize seu perfil, siga amigos e acompanhe o histórico de eventos que você viveu.',
+      image: '/perfilweparty.png',
+      icon: 'mdi-account-circle',
+      color: '#8b5cf6',
+      tag: 'Social',
+    },
+    {
+      title: 'Detalhes do Evento',
+      description: 'Mapa integrado, lista de participantes e todas as informações completas do evento.',
+      image: '',
+      icon: 'mdi-calendar-star',
+      color: '#3b82f6',
+      tag: 'Informações',
+    },
+  ]
+
+  const mainFeature = features[0]!
+  const secondaryFeatures = features.slice(1)
+
+  const howItWorks = [
+    { number: '01', title: 'Crie sua conta', description: 'Cadastre-se gratuitamente em poucos segundos e comece a explorar.', icon: 'mdi-account-plus', color: 'var(--gradient)' },
+    { number: '02', title: 'Descubra eventos', description: 'Explore eventos próximos ou baseados nos seus interesses.', icon: 'mdi-compass', color: '#8b5cf6' },
+    { number: '03', title: 'Conecte-se com pessoas', description: 'Veja quem vai participar e interaja com a comunidade.', icon: 'mdi-heart-multiple', color: '#ec4899' },
+    { number: '04', title: 'Viva novas experiências', description: 'Participe de eventos e descubra novos lugares e pessoas.', icon: 'mdi-party-popper', color: 'linear-gradient(135deg, #ffd93d, #FF9F3D)' },
+  ]
+
+  const instagramUrl = 'https://instagram.com/weparty'
 
   // Terms and Privacy Modal
   const showTermsModal = ref(false)
@@ -163,305 +345,549 @@
     showTermsModal.value = true
   }
 
-  const features = [
-    {
-      icon: 'mdi-map-marker-radius',
-      title: 'Descubra eventos perto de você',
-      description: 'Explore festas, shows e experiências na sua cidade.',
-      gradient: 'gradient-coral',
-      emoji: '📍',
-    },
-    {
-      icon: 'mdi-account-group',
-      title: 'Veja quem vai participar',
-      description: 'Saiba quem confirmou presença antes mesmo do evento começar.',
-      gradient: 'gradient-purple',
-      emoji: '👥',
-    },
-    {
-      icon: 'mdi-chat',
-      title: 'Interaja com outros participantes',
-      description: 'Converse, combine de ir e conheça novas pessoas.',
-      gradient: 'gradient-sunset',
-      emoji: '💬',
-    },
-    {
-      icon: 'mdi-calendar-plus',
-      title: 'Crie e compartilhe eventos',
-      description: 'Organize seus próprios eventos e alcance mais pessoas.',
-      gradient: 'gradient-ocean',
-      emoji: '✨',
-    },
-  ]
-
-  const appScreenshots = [
-    {
-      title: 'Feed de Eventos',
-      description: 'Navegue por eventos próximos em tempo real.',
-      image: '/Feedparty.png',
-      icon: 'mdi-view-dashboard',
-      color: 'linear-gradient(135deg, #FFB74D, #FF9AB5)',
-      tag: 'Descoberta',
-      features: ['Eventos em tempo real', 'Filtros inteligentes', 'Feed personalizado'],
-    },
-    {
-      title: 'Perfil Interativo',
-      description: 'Personalize seu perfil e siga amigos.',
-      image: '/perfilweparty.png',
-      icon: 'mdi-account-circle',
-      color: '#8b5cf6',
-      tag: 'Social',
-      features: ['Perfil customizável', 'Rede de amigos', 'Histórico de eventos'],
-    },
-    {
-      title: 'Detalhes do Evento',
-      description: 'Informações completas e participantes.',
-      image: '/pagdetalhesdeevento.png',
-      icon: 'mdi-calendar-star',
-      color: '#3b82f6',
-      tag: 'Informações',
-      features: ['Info completas', 'Mapa integrado', 'Lista de participantes'],
-    },
-  ]
-
-  const howItWorks = [
-    { number: '01', title: 'Crie sua conta', description: 'Cadastre-se gratuitamente em poucos segundos.', icon: 'mdi-account-plus', color: 'linear-gradient(135deg, #FFB74D, #FF9AB5)' },
-    { number: '02', title: 'Descubra eventos', description: 'Explore eventos próximos ou baseados nos seus interesses.', icon: 'mdi-compass', color: '#8b5cf6' },
-    { number: '03', title: 'Conecte-se com pessoas', description: 'Veja quem vai participar e interaja com a comunidade.', icon: 'mdi-heart-multiple', color: '#ec4899' },
-    { number: '04', title: 'Viva novas experiências', description: 'Participe de eventos e descubra novos lugares e pessoas.', icon: 'mdi-party-popper', color: 'linear-gradient(135deg, #FFB74D, #FF9AB5)' },
-  ]
-
   // Live counter
   const usersOnline = ref(0)
   const targetUsersOnline = 157
 
-  // Three.js setup
-  async function initThreeJS () {
-    try {
-      if (!canvasContainer.value) {
-        logger.warn('Canvas container não encontrado')
-        return
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MICROINTERAÇÕES: Efeito Magnético nos CTAs Principais
+  // ═══════════════════════════════════════════════════════════════════════════
+  function setupMagneticButtons (container: HTMLElement) {
+    const buttons = container.querySelectorAll<HTMLElement>('.btn-cta-primary, .btn-primary-glow, .btn-pwa-install, .btn-install')
+    for (const btn of buttons) {
+      const text = btn.querySelector<HTMLElement>('span, .v-icon, .btn-glow')
+      const onMove = (e: MouseEvent) => {
+        if (reducedMotion.value || windowWidth.value < 1024) return
+        const rect = btn.getBoundingClientRect()
+        const x = e.clientX - (rect.left + rect.width / 2)
+        const y = e.clientY - (rect.top + rect.height / 2)
+        gsap.to(btn, { x: x * 0.28, y: y * 0.28, duration: 0.35, ease: 'power2.out', overwrite: 'auto' })
+        if (text) {
+          gsap.to(text, { x: x * 0.12, y: y * 0.12, duration: 0.35, ease: 'power2.out', overwrite: 'auto' })
+        }
+      }
+      const onLeave = () => {
+        if (reducedMotion.value) return
+        gsap.to(btn, { x: 0, y: 0, duration: 0.7, ease: 'elastic.out(1, 0.4)', overwrite: 'auto' })
+        if (text) {
+          gsap.to(text, { x: 0, y: 0, duration: 0.7, ease: 'elastic.out(1, 0.4)', overwrite: 'auto' })
+        }
+      }
+      btn.addEventListener('mousemove', onMove)
+      btn.addEventListener('mouseleave', onLeave)
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ASSINATURA VISUAL 1: Interatividade 3D nos Cards da Seção Descubra
+  // ═══════════════════════════════════════════════════════════════════════════
+  function setupDiscoverCardsInteractivity (cardsContainer: HTMLElement) {
+    const cards = cardsContainer.querySelectorAll<HTMLElement>('.discover-event-card')
+    const baseRotations = [-6, 5, -3]
+
+    for (const [idx, card] of cards.entries()) {
+      const img = card.querySelector<HTMLElement>('.discover-event-image')
+      const baseRot = baseRotations[idx % 3] ?? 0
+
+      const onMove = (e: MouseEvent) => {
+        if (reducedMotion.value || windowWidth.value < 1024) return
+        const rect = card.getBoundingClientRect()
+        const px = (e.clientX - rect.left) / rect.width - 0.5
+        const py = (e.clientY - rect.top) / rect.height - 0.5
+
+        gsap.to(card, {
+          rotateX: -py * 14,
+          rotateY: px * 16,
+          rotateZ: 0,
+          y: -10,
+          scale: 1.04,
+          duration: 0.35,
+          ease: 'power2.out',
+          overwrite: 'auto',
+        })
+        if (img) {
+          gsap.to(img, {
+            scale: 1.08,
+            x: px * 6,
+            y: py * 6,
+            duration: 0.35,
+            ease: 'power2.out',
+            overwrite: 'auto',
+          })
+        }
       }
 
-      // Carrega o Three.js sob demanda (P11): evita que o chunk de ~630KB
-      // bloqueie o carregamento do conteúdo principal da landing.
-      const THREE = await import('three')
-
-      // O componente pode ter sido desmontado enquanto o chunk carregava
-      if (!canvasContainer.value) {
-        return
+      const onLeave = () => {
+        if (reducedMotion.value) return
+        gsap.to(card, {
+          rotateX: 0,
+          rotateY: 0,
+          rotateZ: baseRot,
+          y: 0,
+          scale: 1,
+          duration: 0.85,
+          ease: 'elastic.out(1, 0.45)',
+          overwrite: 'auto',
+        })
+        if (img) {
+          gsap.to(img, {
+            scale: 1,
+            x: 0,
+            y: 0,
+            duration: 0.85,
+            ease: 'power2.out',
+            overwrite: 'auto',
+          })
+        }
       }
 
-      const container = canvasContainer.value
-      const width = container.clientWidth || window.innerWidth
-      const height = container.clientHeight || window.innerHeight
+      card.addEventListener('mousemove', onMove)
+      card.addEventListener('mouseleave', onLeave)
+    }
+  }
 
-      if (width === 0 || height === 0) {
-        logger.warn('Canvas com dimensões inválidas')
-        return
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SPOTLIGHT NO GRID DE FEATURES
+  // ═══════════════════════════════════════════════════════════════════════════
+  function setupFeaturesSpotlight (gridEl: HTMLElement) {
+    const cards = gridEl.querySelectorAll<HTMLElement>('.feature-secondary, .feature-main')
+    for (const card of cards) {
+      const onMove = (e: MouseEvent) => {
+        if (reducedMotion.value || windowWidth.value < 1024) return
+        const rect = card.getBoundingClientRect()
+        const x = e.clientX - rect.left
+        const y = e.clientY - rect.top
+        card.style.setProperty('--mouse-x', `${x}px`)
+        card.style.setProperty('--mouse-y', `${y}px`)
       }
+      card.addEventListener('mousemove', onMove)
+    }
+  }
 
-      scene = new THREE.Scene()
-      camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000)
-      camera.position.z = 50
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GSAP MASTER MOTION SYSTEM
+  // ═══════════════════════════════════════════════════════════════════════════
+  function initAnimations () {
+    if (!landingEl.value) return
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-      renderer.setSize(width, height)
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-      renderer.setClearColor(0x00_00_00, 0)
-      container.append(renderer.domElement)
-
-      // Particles
-      const particleCount = windowWidth.value < 768 ? 250 : 500
-      const geometry = new THREE.BufferGeometry()
-      const positions = new Float32Array(particleCount * 3)
-      const colors = new Float32Array(particleCount * 3)
-      const sizes = new Float32Array(particleCount)
-
-      const colorPalette = [
-        new THREE.Color('#FFB74D'),
-        new THREE.Color('#FF9AB5'),
-        new THREE.Color('#ffd93d'),
-        new THREE.Color('#8b5cf6'),
-        new THREE.Color('#ec4899'),
-        new THREE.Color('#3b82f6'),
-      ]
-
-      for (let i = 0; i < particleCount; i++) {
-        const i3 = i * 3
-        positions[i3] = (Math.random() - 0.5) * 100
-        positions[i3 + 1] = (Math.random() - 0.5) * 100
-        positions[i3 + 2] = (Math.random() - 0.5) * 50
-
-        const color = colorPalette[Math.floor(Math.random() * colorPalette.length)]!
-        colors[i3] = color.r
-        colors[i3 + 1] = color.g
-        colors[i3 + 2] = color.b
-        sizes[i] = Math.random() * 2 + 0.5
-      }
-
-      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-      geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
-
-      const material = new THREE.ShaderMaterial({
-        uniforms: {
-          time: { value: 0 },
-          pixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+    ctx = gsap.context(() => {
+      // 2. Contador ao vivo dinâmico
+      gsap.to({ val: 0 }, {
+        val: targetUsersOnline,
+        duration: 2.4,
+        ease: 'power3.out',
+        delay: 0.3,
+        onUpdate: function () {
+          usersOnline.value = Math.round(this.targets()[0].val)
         },
-        vertexShader: `
-        attribute float size;
-        attribute vec3 color;
-        varying vec3 vColor;
-        uniform float time;
-        uniform float pixelRatio;
-        void main() {
-          vColor = color;
-          vec3 pos = position;
-          pos.y += sin(time * 0.5 + position.x * 0.1) * 2.0;
-          pos.x += cos(time * 0.3 + position.y * 0.1) * 1.5;
-          vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-          gl_PointSize = size * pixelRatio * (60.0 / -mvPosition.z);
-          gl_Position = projectionMatrix * mvPosition;
-        }
-      `,
-        fragmentShader: `
-        varying vec3 vColor;
-        void main() {
-          float dist = length(gl_PointCoord - vec2(0.5));
-          if (dist > 0.5) discard;
-          float alpha = 1.0 - smoothstep(0.3, 0.5, dist);
-          gl_FragColor = vec4(vColor, alpha * 0.5);
-        }
-      `,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
       })
 
-      particles = new THREE.Points(geometry, material)
-      scene.add(particles)
+      // 3. Hero — Master Entrance Timeline
+      const heroTl = gsap.timeline({ defaults: { ease: 'power4.out' } })
+      heroTl
+        .from('.header', { y: -25, opacity: 0, duration: 1.0, ease: 'power3.out' })
+        .from('.hero-wordmark-wrap', { y: 70, opacity: 0, scale: 0.94, duration: 1.2, ease: 'power4.out' }, '-=0.6')
+        .from('.hero-tagline-wrap', { y: 35, opacity: 0, duration: 1.0, ease: 'power3.out' }, '-=0.7')
+        .from('.hero-scroll-indicator', { y: 20, opacity: 0, duration: 0.8, ease: 'power2.out' }, '-=0.4')
 
-      function animate () {
-        animationFrameId = requestAnimationFrame(animate)
-        const time = performance.now() * 0.001
-        ; (material.uniforms.time as { value: number }).value = time
-        particles.rotation.x += (mouseY * 0.000_03 - particles.rotation.x) * 0.05
-        particles.rotation.y += (mouseX * 0.000_03 - particles.rotation.y) * 0.05
-        particles.rotation.z += 0.0002
-        renderer.render(scene, camera)
+      // 4. Hero — Scroll Storytelling Scrub (transição suave para a próxima seção)
+      if (!reducedMotion.value && heroSection.value) {
+        gsap.timeline({
+          scrollTrigger: {
+            trigger: heroSection.value,
+            start: 'top top',
+            end: 'bottom top',
+            scrub: 1.1,
+          },
+        })
+          .to('.hero-video', { scale: 1.08, yPercent: 12, opacity: 0.45, ease: 'none' }, 0)
+          .to('.hero-v2-content', { yPercent: 22, opacity: 0, ease: 'none' }, 0)
+          .to('.hero-scroll-indicator', { opacity: 0, ease: 'none' }, 0)
       }
-      animate()
 
-      mouseMoveListener = (e: MouseEvent) => {
-        mouseX = e.clientX - window.innerWidth / 2
-        mouseY = e.clientY - window.innerHeight / 2
+      // 5. Descubra — Entrada dos Textos & Assinatura "Deal the Cards" Fan-Out
+      gsap.from('.discover-badge', {
+        scrollTrigger: {
+          trigger: '#descubra',
+          start: 'top 85%',
+          toggleActions: 'play none none reverse',
+        },
+        y: 25,
+        opacity: 0,
+        scale: 0.9,
+        duration: 0.8,
+        ease: 'back.out(1.4)',
+      })
+
+      gsap.from('.discover-title', {
+        scrollTrigger: {
+          trigger: '#descubra',
+          start: 'top 85%',
+          toggleActions: 'play none none reverse',
+        },
+        y: 40,
+        opacity: 0,
+        duration: 0.9,
+        ease: 'power3.out',
+      })
+
+      gsap.from('.discover-text, .discover-actions, .discover-live-card', {
+        scrollTrigger: {
+          trigger: '#descubra',
+          start: 'top 80%',
+          toggleActions: 'play none none reverse',
+        },
+        y: 30,
+        opacity: 0,
+        stagger: 0.12,
+        duration: 0.85,
+        ease: 'power3.out',
+      })
+
+      // Assinatura Visual 1: Efeito "Deal the Cards"
+      const discoverCards = gsap.utils.toArray<HTMLElement>('.discover-event-card')
+      if (discoverCards.length > 0) {
+        gsap.timeline({
+          scrollTrigger: {
+            trigger: '.discover-cards',
+            start: 'top 82%',
+            toggleActions: 'play none none reverse',
+          },
+        }).from(discoverCards, {
+          y: 90,
+          x: i => (i === 1 ? 50 : -50),
+          rotateZ: 0,
+          scale: 0.84,
+          opacity: 0,
+          stagger: 0.16,
+          duration: 1.15,
+          ease: 'power4.out',
+        })
       }
-      window.addEventListener('mousemove', mouseMoveListener)
 
-      resizeListener = useThrottleFn(() => {
-        if (!canvasContainer.value) return
-        const w = canvasContainer.value.clientWidth
-        const h = canvasContainer.value.clientHeight
-        camera.aspect = w / h
-        camera.updateProjectionMatrix()
-        renderer.setSize(w, h)
-      }, RESIZE_THROTTLE_MS)
-      window.addEventListener('resize', resizeListener)
-    } catch (error) {
-      logger.error('Erro ao inicializar Three.js:', error)
-    // Continúa funcionando sem o canvas 3D
-    }
+      // 6. Features Grid Reveal
+      gsap.from('.features-v2 .section-header', {
+        scrollTrigger: {
+          trigger: '#features',
+          start: 'top 85%',
+          toggleActions: 'play none none reverse',
+        },
+        y: 35,
+        opacity: 0,
+        duration: 0.85,
+        ease: 'power3.out',
+      })
+
+      gsap.from('.feature-main', {
+        scrollTrigger: {
+          trigger: '.features-grid-v2',
+          start: 'top 82%',
+          toggleActions: 'play none none reverse',
+        },
+        y: 50,
+        opacity: 0,
+        scale: 0.96,
+        duration: 1.0,
+        ease: 'power3.out',
+      })
+
+      gsap.from('.feature-secondary', {
+        scrollTrigger: {
+          trigger: '.features-grid-v2',
+          start: 'top 82%',
+          toggleActions: 'play none none reverse',
+        },
+        y: 40,
+        opacity: 0,
+        stagger: 0.14,
+        duration: 0.9,
+        ease: 'power3.out',
+      })
+
+      // Floating lento no emoji da feature principal
+      gsap.to('.feature-main-emoji', {
+        y: -12,
+        rotation: 3,
+        duration: 3.5,
+        ease: 'sine.inOut',
+        repeat: -1,
+        yoyo: true,
+      })
+
+      // 7. App em Ação — Header e Tabs
+      gsap.from('.app-showcase-v2 .section-header', {
+        scrollTrigger: {
+          trigger: '#app-showcase',
+          start: 'top 85%',
+          toggleActions: 'play none none reverse',
+        },
+        y: 35,
+        opacity: 0,
+        duration: 0.85,
+        ease: 'power3.out',
+      })
+
+      gsap.from('.showcase-tab', {
+        scrollTrigger: {
+          trigger: '.showcase-tabs',
+          start: 'top 82%',
+          toggleActions: 'play none none reverse',
+        },
+        x: -40,
+        opacity: 0,
+        stagger: 0.14,
+        duration: 0.9,
+        ease: 'power3.out',
+      })
+
+      // 8. Como Funciona — Assinatura Visual 2 ("Linha Viva & Parallax")
+      gsap.from('.how-it-works-v2 .section-header', {
+        scrollTrigger: {
+          trigger: '#como-funciona',
+          start: 'top 85%',
+          toggleActions: 'play none none reverse',
+        },
+        y: 35,
+        opacity: 0,
+        duration: 0.85,
+        ease: 'power3.out',
+      })
+
+      // Linha viva da jornada que se desenha com o scroll
+      gsap.to('.timeline-live-line', {
+        scaleY: 1,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: '.timeline',
+          start: 'top 75%',
+          end: 'bottom 85%',
+          scrub: 0.4,
+        },
+      })
+
+      const timelineRows = gsap.utils.toArray<HTMLElement>('.timeline-row')
+      for (const [i, row] of timelineRows.entries()) {
+        const isReverse = i % 2 === 1
+
+        gsap.from(row, {
+          scrollTrigger: {
+            trigger: row,
+            start: 'top 85%',
+            toggleActions: 'play none none reverse',
+          },
+          x: isReverse ? 40 : -40,
+          opacity: 0,
+          duration: 0.9,
+          ease: 'power3.out',
+        })
+
+        // Parallax sutil no número gigante de fundo
+        const bigNum = row.querySelector('.timeline-bignum')
+        if (bigNum && !reducedMotion.value) {
+          gsap.to(bigNum, {
+            yPercent: isReverse ? -24 : 24,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: row,
+              start: 'top bottom',
+              end: 'bottom top',
+              scrub: 1.2,
+            },
+          })
+        }
+      }
+
+      // 9. FAQ Balões de Chat
+      gsap.from('.faq-intro', {
+        scrollTrigger: {
+          trigger: '.faq-v2',
+          start: 'top 85%',
+          toggleActions: 'play none none reverse',
+        },
+        y: 35,
+        opacity: 0,
+        duration: 0.85,
+        ease: 'power3.out',
+      })
+
+      gsap.from('.faq-intro-card', {
+        scrollTrigger: {
+          trigger: '.faq-intro',
+          start: 'top 80%',
+          toggleActions: 'play none none reverse',
+        },
+        scale: 0.92,
+        opacity: 0,
+        duration: 0.9,
+        ease: 'back.out(1.4)',
+      })
+
+      gsap.from('.faq-chat-item', {
+        scrollTrigger: {
+          trigger: '.faq-chat-list',
+          start: 'top 82%',
+          toggleActions: 'play none none reverse',
+        },
+        x: 35,
+        opacity: 0,
+        stagger: 0.12,
+        duration: 0.8,
+        ease: 'power3.out',
+      })
+
+      // 10. Banner PWA
+      gsap.from('.pwa-banner', {
+        scrollTrigger: {
+          trigger: '.pwa-banner',
+          start: 'top 88%',
+          toggleActions: 'play none none reverse',
+        },
+        y: 40,
+        opacity: 0,
+        scale: 0.97,
+        duration: 0.9,
+        ease: 'power3.out',
+      })
+
+      // 11. Footer
+      gsap.from('.footer-grid-v2 > *', {
+        scrollTrigger: {
+          trigger: '.footer-v2',
+          start: 'top 90%',
+          toggleActions: 'play none none reverse',
+        },
+        y: 30,
+        opacity: 0,
+        stagger: 0.1,
+        duration: 0.8,
+        ease: 'power3.out',
+      })
+
+      // Inicializa o Smartphone 3D
+      initPhoneShowcase()
+
+      // Configura microinterações do mouse
+      setupMagneticButtons(landingEl.value!)
+      if (discoverCardsEl.value) {
+        setupDiscoverCardsInteractivity(discoverCardsEl.value)
+      }
+      if (featuresGridEl.value) {
+        setupFeaturesSpotlight(featuresGridEl.value)
+      }
+    }, landingEl.value)
   }
 
-  function destroyThreeJS () {
-    if (animationFrameId) cancelAnimationFrame(animationFrameId)
-    if (mouseMoveListener) {
-      window.removeEventListener('mousemove', mouseMoveListener)
-      mouseMoveListener = null
-    }
-    if (resizeListener) {
-      window.removeEventListener('resize', resizeListener)
-      resizeListener = null
-    }
-    if (renderer) {
-      renderer.dispose()
-      if (canvasContainer.value && renderer.domElement.parentNode) {
-        renderer.domElement.remove()
-      }
-    }
-    if (particles) {
-      particles.geometry.dispose()
-      ; (particles.material as THREE.Material).dispose()
-    }
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SMARTPHONE 3D (Refinado e Integrado)
+  // ═══════════════════════════════════════════════════════════════════════════
+  function initPhoneShowcase () {
+    if (!phoneTiltEl.value || !phoneStageEl.value) return
 
-  // GSAP Animations
-  function initAnimations () {
-    gsap.to({ val: 0 }, {
-      val: targetUsersOnline,
-      duration: 2.5,
-      ease: 'power2.out',
-      delay: 0.5,
-      onUpdate: function () {
-        usersOnline.value = Math.round(this.targets()[0].val)
+    gsap.set(phoneTiltEl.value, { transformPerspective: 1600 })
+
+    if (reducedMotion.value) {
+      gsap.set(phoneTiltEl.value, { rotateX: PHONE_BASE_ROTATE_X, rotateY: PHONE_BASE_ROTATE_Y, opacity: 1 })
+      gsap.set(badgeConfirmedEl.value, { opacity: 1 })
+      return
+    }
+
+    gsap.set(phoneTiltEl.value, { rotateX: PHONE_BASE_ROTATE_X, rotateY: PHONE_BASE_ROTATE_Y })
+
+    if (badgeConfirmedEl.value) {
+      badgeConfirmedX = gsap.quickTo(badgeConfirmedEl.value, 'x', { duration: 1.1, ease: 'power3.out' })
+      badgeConfirmedY = gsap.quickTo(badgeConfirmedEl.value, 'y', { duration: 1.1, ease: 'power3.out' })
+    }
+
+    const floatAmplitude = windowWidth.value < 768 ? 3 : 7
+    phoneFloatTl = gsap.timeline({ repeat: -1, yoyo: true, paused: true, defaults: { ease: 'sine.inOut', duration: 3.6 } })
+      .to(phoneTiltEl.value, { y: -floatAmplitude, rotateZ: 0.3 }, 0)
+      .to('.showcase-phone-3d-shadow', { scale: 0.96, opacity: 0.7 }, 0)
+
+    const entranceTl = gsap.timeline({
+      scrollTrigger: {
+        trigger: phoneStageEl.value,
+        start: 'top 82%',
+        toggleActions: 'play none none reverse',
+        onEnter: () => {
+          gsap.set(phoneTiltEl.value, { rotateY: PHONE_BASE_ROTATE_Y - 11 })
+          setPhoneTilt(PHONE_BASE_ROTATE_X, PHONE_BASE_ROTATE_Y, 1.1)
+        },
+        onLeaveBack: () => setPhoneTilt(PHONE_BASE_ROTATE_X, PHONE_BASE_ROTATE_Y - 11, 0.6),
+      },
+      onComplete: () => {
+        phoneFloatTl?.play()
+      },
+      onReverseComplete: () => {
+        phoneFloatTl?.pause(0)
       },
     })
 
-    const heroTl = gsap.timeline({ delay: 0.2 })
-    heroTl
-      .from('.hero-badge-animated', { y: 30, opacity: 0, duration: 0.8, ease: 'power3.out' })
-      .from('.hero-title-animated', { y: 50, opacity: 0, duration: 0.8, ease: 'power3.out' }, '-=0.4')
-      .from('.hero-subtitle-animated', { y: 30, opacity: 0, duration: 0.6, ease: 'power3.out' }, '-=0.4')
-      .from('.hero-cta-animated', { y: 30, opacity: 0, duration: 0.6, ease: 'power3.out', stagger: 0.15 }, '-=0.3')
-
-    for (const [i, card] of gsap.utils.toArray('.feature-card-animated').entries()) {
-      gsap.from(card as Element, {
-        scrollTrigger: { trigger: card as Element, start: 'top 85%', toggleActions: 'play none none reverse' },
-        y: 60, opacity: 0, duration: 0.8, delay: i * 0.1, ease: 'power3.out',
+    entranceTl
+      .from(phoneTiltEl.value, {
+        opacity: 0, y: 60, scale: 0.92, duration: 1.1, ease: 'power3.out',
       })
-    }
+      .from(badgeConfirmedEl.value, {
+        opacity: 0, y: 16, scale: 0.9, duration: 0.6, ease: 'power3.out',
+      }, '-=0.55')
 
-    for (const item of gsap.utils.toArray('.showcase-animated')) {
-      gsap.from(item as Element, {
-        scrollTrigger: { trigger: item as Element, start: 'top 80%', toggleActions: 'play none none reverse' },
-        y: 80, opacity: 0, duration: 1, ease: 'power3.out',
-      })
-    }
-
-    for (const [i, step] of gsap.utils.toArray('.step-animated').entries()) {
-      gsap.from(step as Element, {
-        scrollTrigger: { trigger: step as Element, start: 'top 85%', toggleActions: 'play none none reverse' },
-        y: 50, opacity: 0, duration: 0.8, delay: i * 0.15, ease: 'power3.out',
-      })
-    }
-
-    for (const header of gsap.utils.toArray('.section-header-animated')) {
-      gsap.from(header as Element, {
-        scrollTrigger: { trigger: header as Element, start: 'top 85%', toggleActions: 'play none none reverse' },
-        y: 40, opacity: 0, duration: 0.8, ease: 'power3.out',
+    const phoneBodyEl = phoneTiltEl.value.querySelector('.showcase-phone-3d-body')
+    if (phoneBodyEl) {
+      gsap.to(phoneBodyEl, {
+        scale: 1.03,
+        scrollTrigger: {
+          trigger: phoneStageEl.value,
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: 1.2,
+        },
       })
     }
   }
 
   onMounted(async () => {
+    reducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
     try {
       await nextTick()
-      isLoaded.value = true // Mostra o conteúdo imediatamente
+      isLoaded.value = true
       initAnimations()
+      fetchDiscoverEvents()
     } catch (error) {
       logger.error('Erro ao inicializar landing page:', error)
-      isLoaded.value = true // Garante que o conteúdo seja visível mesmo com erro
+      isLoaded.value = true
     }
-    // Three.js carrega em paralelo, sem bloquear o conteúdo principal (P11).
-    // Erros de import/inicialização já são tratados dentro de initThreeJS.
-    initThreeJS()
+
+    if (reducedMotion.value) {
+      heroVideo.value?.pause()
+    }
+
+    if (heroSection.value) {
+      const headerHeight = headerEl.value?.offsetHeight ?? 80
+      heroObserver = new IntersectionObserver(
+        entries => {
+          const entry = entries[0]
+          if (entry) navSolid.value = !entry.isIntersecting
+        },
+        { rootMargin: `-${headerHeight}px 0px 0px 0px`, threshold: 0 },
+      )
+      heroObserver.observe(heroSection.value)
+    }
+
+    if (phoneScreenEl.value) {
+      phoneScreenObserver = new ResizeObserver(entries => {
+        const width = entries[0]?.contentRect.width
+        if (width) feedEmbedScale.value = width / FEED_EMBED_WIDTH
+      })
+      phoneScreenObserver.observe(phoneScreenEl.value)
+    }
   })
 
   onUnmounted(() => {
-    destroyThreeJS()
+    heroObserver?.disconnect()
+    phoneScreenObserver?.disconnect()
+    phoneFloatTl?.kill()
+    ctx?.revert()
     for (const t of ScrollTrigger.getAll()) t.kill()
-    // Garante que o scroll do body seja restaurado ao sair da página
     document.body.style.overflow = ''
   })
 
@@ -476,7 +902,6 @@
     router.push('/public/explore')
   }
 
-  // Navegação a partir do menu mobile (fecha o menu antes de agir)
   function goToLoginMobile () {
     closeMobileMenu()
     goToLogin()
@@ -490,7 +915,6 @@
     installApp()
   }
 
-  // Rola suavemente até uma seção da página e fecha o menu mobile
   function goToSection (sectionId: string) {
     closeMobileMenu()
     nextTick(() => {
@@ -501,45 +925,17 @@
 </script>
 
 <template>
-  <div class="landing-page" :class="{ 'is-loaded': isLoaded }">
-    <!-- Three.js Canvas -->
-    <div ref="canvasContainer" class="three-canvas" />
+  <div ref="landingEl" class="landing-page" :class="{ 'is-loaded': isLoaded }">
     <div class="gradient-overlay" />
 
-    <!-- Floating Decorations -->
-    <div class="floating-decorations">
-      <!-- Grupo Superior -->
-      <span class="float-emoji size-lg" style="--x: 5%; --y: 15%; --delay: 0s; --duration: 8s;">🎉</span>
-      <span class="float-emoji size-md" style="--x: 92%; --y: 12%; --delay: 1s; --duration: 7s;">🎊</span>
-      <span class="float-emoji size-sm" style="--x: 25%; --y: 8%; --delay: 2.5s; --duration: 6s;">✨</span>
-      <span class="float-emoji size-md" style="--x: 70%; --y: 18%; --delay: 0.5s; --duration: 9s;">🎈</span>
-
-      <!-- Grupo Meio-Superior -->
-      <span class="float-emoji size-lg" style="--x: 3%; --y: 35%; --delay: 1.5s; --duration: 7s;">🎵</span>
-      <span class="float-emoji size-sm" style="--x: 95%; --y: 30%; --delay: 3s; --duration: 6s;">💃</span>
-      <span class="float-emoji size-md" style="--x: 45%; --y: 25%; --delay: 2s; --duration: 8s;">🕺</span>
-
-      <!-- Grupo Inferior -->
-      <span class="float-emoji size-md" style="--x: 12%; --y: 85%; --delay: 0.7s; --duration: 7s;">🪩</span>
-      <span class="float-emoji size-lg" style="--x: 90%; --y: 88%; --delay: 1.2s; --duration: 9s;">🎭</span>
-
-      <!-- Grupo Extra para mais densidade -->
-      <span class="float-emoji size-sm glow" style="--x: 18%; --y: 12%; --delay: 1.3s; --duration: 5s;">⭐</span>
-      <span class="float-emoji size-sm glow" style="--x: 82%; --y: 88%; --delay: 2.6s; --duration: 4s;">✨</span>
-    </div>
-
     <!-- Header -->
-    <header class="header">
+    <header ref="headerEl" class="header" :class="{ 'header-solid': navSolid }">
       <div class="container">
         <div class="header-content">
           <div class="logo" @click="router.push('/')">
             <img alt="We Party Logo" class="logo-img" src="/logoweparty.png">
             <span class="logo-text">We Party</span>
           </div>
-          <nav class="nav-menu">
-            <a class="nav-link" href="#como-funciona">Como funciona</a>
-            <a class="nav-link" href="#contato">Entre em contato</a>
-          </nav>
           <div class="auth-buttons">
             <button
               v-if="canInstall"
@@ -587,10 +983,6 @@
             <v-icon icon="mdi-information-outline" size="20" />
             <span>Como funciona</span>
           </a>
-          <a class="mobile-nav-link" href="#contato" @click.prevent="goToSection('#contato')">
-            <v-icon icon="mdi-email-outline" size="20" />
-            <span>Entre em contato</span>
-          </a>
 
           <div class="mobile-menu-divider" />
 
@@ -611,396 +1003,439 @@
       </div>
     </Transition>
 
-    <!-- Hero Section -->
-    <section class="hero">
-      <div class="hero-glow hero-glow-1" />
-      <div class="hero-glow hero-glow-2" />
-      <div class="hero-glow hero-glow-3" />
+    <!-- Hero Cinematográfica -->
+    <section ref="heroSection" class="hero hero-v2">
+      <video
+        ref="heroVideo"
+        autoplay
+        class="hero-video"
+        loop
+        muted
+        playsinline
+        preload="auto"
+      >
+        <source src="/hero-video.mp4" type="video/mp4">
+      </video>
+      <div class="hero-video-overlay" />
 
       <div class="container">
-        <div class="hero-content">
-          <div class="hero-badge-animated hero-badge">
-            <div class="badge-pulse" />
-            <span class="badge-icon">✨</span>
-            <span>A rede social feita para quem ama eventos</span>
+        <div class="hero-v2-content">
+          <div class="hero-wordmark-wrap">
+            <GradientText
+              tag="h1"
+              class="hero-wordmark"
+              :colors="['#ff9a4d', '#ff5f8f']"
+              :animation-speed="4"
+            >
+              We Party
+            </GradientText>
+          </div>
+          <div class="hero-tagline-wrap">
+            <GradientText
+              tag="p"
+              class="hero-tagline"
+              :colors="['#ff9a4d', '#ff5f8f']"
+              :animation-speed="4"
+            >
+              A rede social feita para quem ama eventos
+            </GradientText>
+          </div>
+        </div>
+      </div>
+
+      <!-- Indicador de Scroll -->
+      <div class="hero-scroll-indicator" @click="goToSection('#descubra')">
+        <span class="indicator-mouse"><span class="indicator-wheel" /></span>
+        <span class="indicator-text">Role para explorar</span>
+      </div>
+    </section>
+
+    <!-- Descubra eventos -->
+    <section id="descubra" class="discover">
+      <div class="discover-bg" />
+      <div class="container discover-grid">
+        <div class="discover-content">
+          <div class="discover-badge">
+            <span>🎉</span>
+            <span>Feito para quem ama sair de casa</span>
           </div>
 
-          <h1 class="hero-title-animated hero-title">
-            Descubra eventos perto de você e conecte-se com <span class="title-gradient">pessoas que também vão</span>
-          </h1>
+          <h2 class="discover-title">
+            Descubra eventos perto de você e conecte-se
+            <span class="title-gradient"> com pessoas que também vão</span>
+          </h2>
 
-          <p class="hero-subtitle-animated hero-subtitle">
-            Encontre festas, shows e experiências na sua cidade, veja quem vai participar e interaja com outros usuários
-            antes mesmo do evento começar.
+          <p class="discover-text">
+            Encontre festas, shows e experiências na sua cidade, veja quem vai participar e interaja
+            com outros usuários antes mesmo do evento começar.
           </p>
 
-          <div class="hero-cta-group">
-            <button class="hero-cta-animated btn-cta-primary" type="button" @click="goToFeed">
+          <div class="discover-actions">
+            <button class="btn-cta-primary" type="button" @click="goToFeed">
               <span>Experimentar</span>
               <div class="btn-glow" />
             </button>
+            <div class="discover-avatars">
+              <span class="avatar-dot avatar-1" />
+              <span class="avatar-dot avatar-2" />
+              <span class="avatar-dot avatar-3" />
+              <span class="avatar-label">+2.3k na sua região</span>
+            </div>
+          </div>
+
+          <div class="discover-live-card">
+            <span class="discover-live-emoji">🔥</span>
+            <div class="discover-live-body">
+              <div class="discover-live-top">
+                <span class="discover-live-number">+{{ usersOnline }}</span>
+                <span class="discover-live-badge"><span class="live-dot" />AO VIVO</span>
+              </div>
+              <div class="discover-live-text">pessoas descobrindo eventos agora</div>
+            </div>
+          </div>
+        </div>
+
+        <div ref="discoverCardsEl" class="discover-cards">
+          <div
+            v-for="(event, index) in discoverEvents"
+            :key="event.title"
+            class="discover-event-card"
+            :class="`discover-event-card-${index + 1}`"
+          >
+            <div class="discover-event-media" :style="{ background: event.gradient }">
+              <img
+                v-if="event.image"
+                alt=""
+                class="discover-event-image"
+                loading="lazy"
+                :src="event.image"
+              >
+              <span class="discover-event-category">{{ event.emoji }} {{ event.category }}</span>
+              <span class="discover-event-share"><v-icon icon="mdi-share-variant-outline" size="14" /></span>
+              <div class="discover-event-overlay">
+                <span class="discover-event-tag" :style="{ background: event.tagColor }">{{ event.tag }}</span>
+                <div class="discover-event-title">{{ event.title }}</div>
+              </div>
+            </div>
+            <div class="discover-event-footer">
+              <div class="discover-event-stats">
+                <span>❤️ {{ event.likes }}</span>
+                <span>💬 {{ event.comments }}</span>
+              </div>
+              <span class="discover-event-when" :style="{ color: event.tagColor }">{{ event.when }}</span>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Live Counter -->
-    <section class="live-counter">
-      <div class="container">
-        <div class="counter-card">
-          <div class="counter-content">
-            <v-icon class="counter-icon" icon="mdi-account-group" size="28" />
-            <div class="counter-info">
-              <span class="counter-number">+{{ usersOnline }}</span>
-              <span class="counter-text">pessoas descobrindo eventos AGORA</span>
-            </div>
-            <div class="counter-live">
-              <span class="live-dot" />
-              <span>AO VIVO</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Features -->
-    <section id="features" class="features">
+    <!-- Features Grid -->
+    <section id="features" class="features features-v2">
       <div class="features-bg" />
       <div class="container">
-        <div class="section-header-animated section-header">
+        <div class="section-header">
           <h2 class="section-title">
             Uma nova forma de descobrir e <span class="gradient-text">viver eventos</span>
           </h2>
         </div>
 
-        <div class="features-grid">
-          <div
-            v-for="(feature, index) in features"
-            :key="index"
-            class="feature-card-animated feature-card"
-            :class="feature.gradient"
-          >
-            <div class="feature-emoji">{{ feature.emoji }}</div>
-            <div class="feature-icon-wrapper">
-              <div class="feature-icon-bg" />
-              <div class="feature-icon">
-                <v-icon :icon="feature.icon" size="32" />
+        <div ref="featuresGridEl" class="features-grid-v2">
+          <div class="feature-main">
+            <div>
+              <span class="feature-main-index">01</span>
+              <h3 class="feature-main-title">{{ mainFeature.title }}</h3>
+              <p class="feature-main-desc">{{ mainFeature.description }}</p>
+            </div>
+            <div class="feature-main-footer">
+              <div class="feature-main-icon"><v-icon icon="mdi-crosshairs-gps" size="22" /></div>
+              <span>Baseado na sua localização,<br>atualizado em tempo real</span>
+            </div>
+            <span class="feature-main-emoji">{{ mainFeature.emoji }}</span>
+          </div>
+
+          <div class="feature-secondary-list">
+            <div
+              v-for="feature in secondaryFeatures"
+              :key="feature.title"
+              class="feature-secondary"
+            >
+              <div class="feature-secondary-icon" :style="{ background: feature.gradient }">
+                <v-icon :icon="feature.icon" size="22" />
+              </div>
+              <div class="feature-secondary-body">
+                <div class="feature-secondary-heading">
+                  <h4>{{ feature.title }}</h4>
+                  <span v-if="feature.highlight" class="feature-badge">MAIS USADO</span>
+                </div>
+                <p>{{ feature.description }}</p>
               </div>
             </div>
-            <h3 class="feature-title">{{ feature.title }}</h3>
-            <p class="feature-description">{{ feature.description }}</p>
-            <div class="feature-arrow">→</div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- App Screenshots -->
-    <section id="app" class="app-showcase">
+    <!-- App em ação -->
+    <section id="app-showcase" class="app-showcase-v2">
       <div class="container">
-        <div class="section-header-animated section-header">
+        <div class="section-header">
           <span class="section-overline">PLATAFORMA</span>
           <h2 class="section-title">
             Veja o <span class="logo-text">We Party</span> em ação
           </h2>
-          <p class="section-description">
-            Conheça nossa plataforma e descubra como é fácil explorar eventos
-          </p>
+          <p class="section-description">Conheça a plataforma e descubra como é fácil explorar eventos</p>
         </div>
 
-        <div class="screenshots-grid">
-          <div v-for="(screenshot, index) in appScreenshots" :key="index" class="showcase-animated screenshot-card">
-            <div class="screenshot-image-wrapper">
-              <img v-if="screenshot.image" :alt="screenshot.title" class="screenshot-img" :src="screenshot.image">
-              <div
-                v-else
-                class="screenshot-placeholder"
-                :style="{ borderColor: screenshot.color.includes('gradient') ? '#FFB74D' : screenshot.color }"
-              >
-                <v-icon
-                  :color="screenshot.color.includes('gradient') ? '#FFB74D' : screenshot.color"
-                  :icon="screenshot.icon"
-                  size="64"
-                />
-                <p class="placeholder-text">{{ screenshot.title }}</p>
-                <p class="placeholder-hint">Adicione seu screenshot aqui</p>
+        <div class="showcase-grid">
+          <div class="showcase-tabs">
+            <button
+              v-for="(screenshot, index) in appScreenshots"
+              :key="screenshot.title"
+              class="showcase-tab"
+              :class="{ active: activeShowcase === index }"
+              type="button"
+              @click="activeShowcase = index"
+            >
+              <div class="showcase-tab-top">
+                <div
+                  class="showcase-tab-badge"
+                  :style="activeShowcase === index ? { background: screenshot.color } : {}"
+                >
+                  <v-icon :icon="screenshot.icon" size="22" />
+                </div>
+                <div class="showcase-tab-heading">
+                  <span class="showcase-tab-pill" :class="{ active: activeShowcase === index }">{{ screenshot.tag }}</span>
+                  <div class="showcase-tab-title">{{ screenshot.title }}</div>
+                </div>
+              </div>
+              <p class="showcase-tab-desc">{{ screenshot.description }}</p>
+            </button>
+          </div>
+
+          <div
+            ref="phoneStageEl"
+            class="showcase-phone-wrap"
+            @mouseleave="onPhonePointerLeave"
+            @mousemove="onPhonePointerMove"
+          >
+            <div class="showcase-phone-3d-shadow" />
+
+            <div ref="phoneTiltEl" class="showcase-phone-3d-tilt">
+              <div class="showcase-phone-3d-body">
+                <div class="showcase-phone-3d-core" />
+
+                <div class="showcase-phone-3d-face face-right">
+                  <span class="showcase-phone-3d-btn btn-power" />
+                </div>
+                <div class="showcase-phone-3d-face face-left">
+                  <span class="showcase-phone-3d-btn btn-vol-up" />
+                  <span class="showcase-phone-3d-btn btn-vol-down" />
+                </div>
+                <div class="showcase-phone-3d-face face-top" />
+                <div class="showcase-phone-3d-face face-bottom" />
+
+                <div class="showcase-phone-3d-face face-front">
+                  <div class="showcase-phone-3d-speaker">
+                    <span class="showcase-phone-3d-camera" />
+                  </div>
+                  <div ref="phoneScreenEl" class="showcase-phone-3d-screen">
+                    <Transition mode="out-in" name="phone-fade">
+                      <div v-if="activeShowcase === 0" key="feed-embed" class="showcase-feed-embed-wrap">
+                        <iframe
+                          class="showcase-feed-embed"
+                          loading="lazy"
+                          src="/public/explore"
+                          :style="{ transform: `scale(${feedEmbedScale})` }"
+                          title="Feed de Eventos da We Party, ao vivo"
+                        />
+                      </div>
+                      <div v-else-if="activeShowcase === 2" key="event-mock" class="event-mock">
+                        <div class="event-mock-cover" :style="{ background: discoverEvents[0]!.gradient }">
+                          <span class="event-mock-back"><v-icon icon="mdi-arrow-left" size="14" /></span>
+                          <span class="event-mock-like"><v-icon icon="mdi-heart-outline" size="14" /></span>
+                          <span class="event-mock-emoji">{{ discoverEvents[0]!.emoji }}</span>
+                        </div>
+                        <div class="event-mock-body">
+                          <span class="event-mock-tag" :style="{ background: discoverEvents[0]!.tagColor }">{{ discoverEvents[0]!.tag }}</span>
+                          <div class="event-mock-title">{{ discoverEvents[0]!.title }}</div>
+                          <div class="event-mock-meta">
+                            <span><v-icon icon="mdi-calendar-blank-outline" size="12" /> {{ discoverEvents[0]!.when }}</span>
+                          </div>
+                          <div class="event-mock-map">
+                            <span class="event-mock-map-pin"><v-icon icon="mdi-map-marker" size="16" /></span>
+                          </div>
+                          <div class="event-mock-participants">
+                            <div class="discover-avatars">
+                              <span class="avatar-dot avatar-1" />
+                              <span class="avatar-dot avatar-2" />
+                              <span class="avatar-dot avatar-3" />
+                            </div>
+                            <span class="event-mock-participants-text">+312 confirmados</span>
+                          </div>
+                          <div class="event-mock-cta">
+                            <v-icon icon="mdi-check-circle-outline" size="15" />
+                            <span>Confirmar presença</span>
+                          </div>
+                        </div>
+                      </div>
+                      <img
+                        v-else
+                        :key="activeShowcase"
+                        :alt="appScreenshots[activeShowcase]!.title"
+                        class="showcase-phone-img"
+                        :src="appScreenshots[activeShowcase]!.image"
+                      >
+                    </Transition>
+                    <div class="showcase-phone-3d-glass" />
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="screenshot-content">
-              <span class="screenshot-tag" :style="{ background: screenshot.color }">
-                {{ screenshot.tag }}
-              </span>
-              <h3 class="screenshot-title">{{ screenshot.title }}</h3>
-              <p class="screenshot-description">{{ screenshot.description }}</p>
-              <ul class="screenshot-features">
-                <li v-for="(feat, i) in screenshot.features" :key="i">
-                  <v-icon
-                    icon="mdi-check-circle"
-                    size="16"
-                    :style="{ color: screenshot.color.includes('gradient') ? '#FFB74D' : screenshot.color }"
-                  />
-                  {{ feat }}
-                </li>
-              </ul>
+
+            <div ref="badgeConfirmedEl" class="showcase-floating-badge badge-confirmed">
+              <v-icon color="#4ade80" icon="mdi-check-circle" size="16" /> Presença confirmada
             </div>
           </div>
+        </div>
+
+        <div v-if="canInstall" class="pwa-banner">
+          <span class="pwa-banner-deco pwa-banner-deco-1">✨</span>
+          <span class="pwa-banner-deco pwa-banner-deco-2">🎉</span>
+          <div class="pwa-banner-info">
+            <div class="pwa-banner-icon">📲</div>
+            <div>
+              <div class="pwa-banner-title">Baixe também nossa versão PWA</div>
+              <div class="pwa-banner-desc">Instale direto do navegador, sem loja de apps, e leve o We Party pra onde você for.</div>
+            </div>
+          </div>
+          <button class="btn-pwa-install" type="button" @click="installApp">
+            <v-icon icon="mdi-download" size="20" />
+            <span>Instalar PWA</span>
+          </button>
         </div>
       </div>
     </section>
 
-    <!-- How It Works -->
-    <section id="como-funciona" class="how-it-works">
+    <!-- Como funciona — Linha Viva & Parallax -->
+    <section id="como-funciona" class="how-it-works how-it-works-v2">
+      <div class="how-it-works-bg" />
       <div class="container">
-        <div class="section-header-animated section-header">
+        <div class="section-header">
           <h2 class="section-title">
-            Como funciona o
-            <span class="logo-text">We Party</span>
+            Como funciona o <span class="logo-text">We Party</span>
           </h2>
         </div>
 
-        <div class="steps-grid">
-          <div class="steps-line" />
-          <template v-for="(step, index) in howItWorks" :key="index">
-            <div class="step-animated step-card">
-              <div class="step-number" :style="{ background: step.color }">
-                <v-icon :icon="step.icon" size="24" />
-                <span class="step-badge">{{ step.number }}</span>
-              </div>
-              <h3 class="step-title">{{ step.title }}</h3>
-              <p class="step-description">{{ step.description }}</p>
-            </div>
-            <div v-if="index < howItWorks.length - 1" class="step-arrow">
-              <v-icon icon="mdi-arrow-right" size="32" />
-            </div>
-          </template>
-        </div>
-      </div>
-    </section>
+        <div class="timeline">
+          <!-- Linha conectiva dinâmica -->
+          <div class="timeline-live-line" />
 
-    <!-- CTA Section -->
-    <section class="cta-section">
-      <div class="cta-bg" />
-      <div class="container">
-        <div class="cta-content">
-          <h2 class="cta-title">Pronto para descobrir seu próximo rolê?</h2>
-          <button class="btn-cta-large" type="button" @click="goToFeed">
-            <span>Explorar</span>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- FAQ -->
-    <section class="faq">
-      <div class="container">
-        <div class="section-header-animated section-header">
-          <h2 class="section-title">PERGUNTAS FREQUENTES</h2>
-          <p class="section-description">Tire suas dúvidas sobre a plataforma</p>
-        </div>
-
-        <div class="faq-list">
           <div
-            v-for="(faq, index) in faqs"
-            :key="index"
-            class="faq-item"
-            :class="{ active: faqOpen === index }"
-            :style="{ animationDelay: `${index * 0.1}s` }"
+            v-for="(step, index) in howItWorks"
+            :key="step.number"
+            class="timeline-row"
+            :class="{ 'timeline-row-reverse': index % 2 === 1 }"
           >
-            <button class="faq-question" :style="{ background: faq.gradient }" type="button" @click="toggleFaq(index)">
-              <div class="faq-q-content">
-                <div class="faq-icon">
-                  <v-icon :icon="faq.icon" />
-                </div>
-                <span class="faq-q-text">{{ faq.question }}</span>
-              </div>
-              <div class="faq-toggle-icon" :class="{ rotated: faqOpen === index }">
-                <v-icon icon="mdi-chevron-down" />
-              </div>
-            </button>
-            <Transition name="faq-expand">
-              <div v-if="faqOpen === index" class="faq-answer">
-                <div class="faq-answer-content">
-                  <v-icon class="faq-answer-icon" icon="mdi-chat-question-outline" />
-                  <p>{{ faq.answer }}</p>
-                </div>
-              </div>
-            </Transition>
+            <span class="timeline-bignum" :class="index % 2 === 1 ? 'timeline-bignum-right' : 'timeline-bignum-left'">{{ step.number }}</span>
+            <div class="timeline-icon" :style="{ background: step.color }">
+              <v-icon :icon="step.icon" size="30" />
+            </div>
+            <div class="timeline-body">
+              <div class="timeline-title">{{ step.title }}</div>
+              <p class="timeline-desc">{{ step.description }}</p>
+            </div>
+            <div class="timeline-step-pill">Passo {{ index + 1 }} de {{ howItWorks.length }}</div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Contact -->
-    <section id="contato" class="contact">
+    <!-- FAQ — Balões de Chat -->
+    <section class="faq faq-v2">
+      <div class="faq-bg" />
       <div class="container">
-        <div class="section-header-animated section-header">
-          <h2 class="section-title">Contato</h2>
-          <h3 class="section-subtitle-contato">Fale com a gente</h3>
-          <p class="section-description">Escolha a melhor forma de entrar em contato conosco</p>
-        </div>
+        <div class="faq-grid">
+          <div class="faq-intro">
+            <h2 class="section-title">Perguntas <span class="gradient-text">frequentes</span></h2>
+            <p class="section-description">Toque em uma pergunta para ver a resposta na hora</p>
 
-        <div class="contact-options">
-          <button
-            class="contact-method-btn"
-            :class="{ active: contactMethod === 'whatsapp' }"
-            type="button"
-            @click="selectContactMethod('whatsapp')"
-          >
-            <div class="method-icon whatsapp-icon">
-              <v-icon icon="mdi-whatsapp" size="28" />
-            </div>
-            <span class="method-label">WhatsApp</span>
-            <span class="method-desc">Resposta rápida</span>
-          </button>
-
-          <button
-            class="contact-method-btn"
-            :class="{ active: contactMethod === 'email' }"
-            type="button"
-            @click="selectContactMethod('email')"
-          >
-            <div class="method-icon email-icon">
-              <v-icon icon="mdi-email-outline" size="28" />
-            </div>
-            <span class="method-label">Email</span>
-            <span class="method-desc">Atendimento detalhado</span>
-          </button>
-        </div>
-
-        <Transition mode="out-in" name="contact-slide">
-          <!-- WhatsApp Mode -->
-          <div v-if="contactMethod === 'whatsapp'" key="whatsapp" class="contact-content">
-            <div class="whatsapp-card">
-              <div class="whatsapp-preview">
-                <v-icon class="whatsapp-icon-large" icon="mdi-whatsapp" size="64" />
-                <h3 class="whatsapp-title">Fale conosco pelo WhatsApp</h3>
-                <p class="whatsapp-text">
-                  Tire suas dúvidas em tempo real com nossa equipe. Estamos prontos para ajudá-lo!
-                </p>
-              </div>
-              <button class="btn-whatsapp" type="button" @click="openWhatsApp">
-                <v-icon icon="mdi-whatsapp" size="24" />
-                <span>Iniciar conversa no WhatsApp</span>
-                <v-icon icon="mdi-arrow-right" size="20" />
-              </button>
+            <div class="faq-intro-card">
+              <div class="faq-chat-avatar faq-intro-avatar"><v-icon color="#fff" icon="mdi-party-popper" size="18" /></div>
+              <p class="faq-intro-text">
+                <strong>Oi! 👋</strong> Separei as dúvidas que mais chegam por aqui. Bora conferir?
+              </p>
             </div>
           </div>
 
-          <!-- Email Mode -->
-          <div v-else key="email" class="contact-content">
-            <div v-if="emailSent" class="email-success">
-              <v-icon class="success-icon" color="#4CAF50" icon="mdi-check-circle" size="64" />
-              <h3 class="success-title">Mensagem enviada com sucesso!</h3>
-              <p class="success-text">Retornaremos o contato em breve.</p>
+          <div class="faq-chat-list">
+            <div v-for="(faq, index) in faqs" :key="faq.question" class="faq-chat-item">
+              <div class="faq-chat-question-row">
+                <button class="faq-chat-bubble-q" type="button" @click="toggleFaq(index)">
+                  <span>{{ faq.question }}</span>
+                  <v-icon class="faq-chat-icon" :class="{ rotated: faqOpen === index }" icon="mdi-chevron-down" size="18" />
+                </button>
+              </div>
+              <Transition name="faq-expand">
+                <div v-if="faqOpen === index" class="faq-chat-answer-row">
+                  <div class="faq-chat-avatar"><v-icon color="#fff" icon="mdi-party-popper" size="18" /></div>
+                  <div class="faq-chat-bubble-a">{{ faq.answer }}</div>
+                </div>
+              </Transition>
             </div>
-
-            <form v-else class="email-form" @submit.prevent="sendEmail">
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label" for="contact-name">
-                    <v-icon icon="mdi-account-outline" size="18" />
-                    Nome completo
-                  </label>
-                  <input
-                    id="contact-name"
-                    v-model="contactForm.name"
-                    class="form-input"
-                    placeholder="Seu nome"
-                    required
-                    type="text"
-                  >
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label" for="contact-email">
-                    <v-icon icon="mdi-email-outline" size="18" />
-                    Email
-                  </label>
-                  <input
-                    id="contact-email"
-                    v-model="contactForm.email"
-                    class="form-input"
-                    placeholder="seu@email.com"
-                    required
-                    type="email"
-                  >
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="contact-subject">
-                  <v-icon icon="mdi-text-box-outline" size="18" />
-                  Assunto
-                </label>
-                <input
-                  id="contact-subject"
-                  v-model="contactForm.subject"
-                  class="form-input"
-                  placeholder="Como podemos ajudar?"
-                  type="text"
-                >
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="contact-message">
-                  <v-icon icon="mdi-message-text-outline" size="18" />
-                  Mensagem
-                </label>
-                <textarea
-                  id="contact-message"
-                  v-model="contactForm.message"
-                  class="form-textarea"
-                  placeholder="Descreva sua dúvida ou sugestão..."
-                  required
-                  rows="5"
-                />
-              </div>
-
-              <button class="btn-submit" :disabled="sendingEmail" type="submit">
-                <v-icon v-if="!sendingEmail" icon="mdi-send" size="20" />
-                <v-progress-circular
-                  v-else
-                  color="#fff"
-                  indeterminate
-                  :size="20"
-                  :width="2"
-                />
-                <span>{{ sendingEmail ? 'Enviando...' : 'Enviar mensagem' }}</span>
-              </button>
-            </form>
           </div>
-        </Transition>
+        </div>
       </div>
     </section>
 
     <!-- Footer -->
-    <footer class="footer">
+    <footer class="footer footer-v2">
       <div class="container">
-        <div class="footer-content">
-          <div class="footer-brand">
-            <img alt="We Party Logo" class="logo-img" src="/logoweparty.png">
-            <span class="logo-text">We Party</span>
+        <div class="footer-grid-v2">
+          <div class="footer-col-brand">
+            <div class="footer-brand">
+              <img alt="We Party Logo" class="logo-img" src="/logoweparty.png">
+              <span class="logo-text">We Party</span>
+            </div>
+            <p class="footer-brand-desc">O jeito mais fácil de descobrir, criar e viver os melhores eventos perto de você.</p>
+            <div class="footer-social">
+              <a
+                aria-label="Instagram"
+                class="social-link"
+                :href="instagramUrl"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <v-icon icon="mdi-instagram" />
+              </a>
+            </div>
           </div>
-          <div class="footer-links">
-            <a href="#sobre">Sobre</a>
+
+          <div class="footer-col">
+            <div class="footer-col-title">PRODUTO</div>
+            <button class="footer-link-btn" type="button" @click="goToSection('#como-funciona')">Como funciona</button>
+            <button class="footer-link-btn" type="button" @click="goToSection('#features')">Recursos</button>
+            <button class="footer-link-btn" type="button" @click="goToSignup">Criar evento</button>
+          </div>
+
+          <div class="footer-col">
+            <div class="footer-col-title">EMPRESA</div>
             <button class="footer-link-btn" type="button" @click="router.push('/public/updates')">Novidades</button>
-            <button class="footer-link-btn" type="button" @click="openTermsModal('terms')">Termos de Uso</button>
-            <button class="footer-link-btn" type="button" @click="openTermsModal('privacy')">Privacidade</button>
-          </div>
-          <div class="footer-social">
-            <a aria-label="Instagram" class="social-link" href="#">
-              <v-icon icon="mdi-instagram" />
-            </a>
-            <a aria-label="Facebook" class="social-link" href="#">
-              <v-icon icon="mdi-facebook" />
-            </a>
-            <a aria-label="Twitter" class="social-link" href="#">
-              <v-icon icon="mdi-twitter" />
-            </a>
+            <a
+              class="footer-link-a"
+              href="https://www.wetechhub.com.br/"
+              rel="noopener noreferrer"
+              target="_blank"
+            >We TechHub</a>
           </div>
         </div>
-        <div class="footer-bottom">
-          <p>© 2026 We Party. Todos os direitos reservados.</p>
+
+        <div class="footer-bottom-v2">
+          <span>© 2026 We Party. Todos os direitos reservados.</span>
+          <div class="footer-legal-links">
+            <button class="footer-link-btn" type="button" @click="openTermsModal('privacy')">Privacidade</button>
+            <button class="footer-link-btn" type="button" @click="openTermsModal('terms')">Termos de uso</button>
+            <button class="footer-link-btn" type="button" @click="openTermsModal('privacy')">Cookies</button>
+          </div>
         </div>
       </div>
     </footer>
@@ -1046,7 +1481,7 @@
       </Transition>
     </Teleport>
 
-    <!-- Instruções de instalação no iOS (Safari não suporta prompt automático) -->
+    <!-- Instruções de instalação no iOS -->
     <Teleport to="body">
       <Transition name="modal-fade">
         <div v-if="showIOSInstructions" class="ios-modal-overlay" @click.self="showIOSInstructions = false">
@@ -1087,6 +1522,7 @@
 
     <!-- Login Required Dialog -->
     <LoginRequiredDialog />
+    <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />
   </div>
 </template>
 
@@ -1095,9 +1531,9 @@
    VARIÁVEIS E BASE
    ═══════════════════════════════════════════════════════════════════════════ */
 .landing-page {
-  --primary: #FFB74D;
+  --primary: #FFC947;
   --primary-dark: #FF9F3D;
-  --secondary: #FF9AB5;
+  --secondary: #F978A3;
   --accent: #ffd93d;
   --purple: #8b5cf6;
   --pink: #ec4899;
@@ -1111,20 +1547,20 @@
   --text: #2c3e50;
   --text-muted: #6c757d;
   --glass: rgba(255, 255, 255, 0.9);
-  --glass-border: rgba(255, 183, 77, 0.1);
-  --gradient: linear-gradient(135deg, #FFB74D, #FF9AB5);
+  --glass-border: rgba(255, 201, 71, 0.1);
+  --gradient: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
   --gradient-hero: linear-gradient(180deg, #fff5f5 0%, #fff0f3 50%, #ffeef2 100%);
   --gradient-purple: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
   --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.12);
-  --shadow-colored: 0 20px 60px rgba(255, 183, 77, 0.25);
+  --shadow-colored: 0 20px 60px rgba(255, 201, 71, 0.25);
 
   background: var(--gradient-hero);
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
   position: relative;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
   width: 100%;
   opacity: 1;
   visibility: visible;
@@ -1161,109 +1597,17 @@ img {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   DECORAÇÕES FLUTUANTES
+   BARRA DE PROGRESSO DE SCROLL GLOBAL
    ═══════════════════════════════════════════════════════════════════════════ */
-.floating-decorations {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  overflow: hidden;
-}
-
-.float-emoji {
-  position: absolute;
-  left: var(--x);
-  top: var(--y);
-  font-size: 40px;
-  opacity: 0.18;
-  animation: floatBounce var(--duration) ease-in-out infinite;
-  animation-delay: var(--delay);
-  filter: drop-shadow(0 4px 8px rgba(255, 183, 77, 0.15));
-  transition: opacity 0.4s ease;
-  will-change: transform;
-  contain: layout style paint;
-}
-
-.float-emoji:not(:hover) {
-  will-change: auto;
-}
-
-.float-emoji.size-sm {
-  font-size: 28px;
-  opacity: 0.15;
-}
-
-.float-emoji.size-md {
-  font-size: 40px;
-  opacity: 0.18;
-}
-
-.float-emoji.size-lg {
-  font-size: 56px;
-  opacity: 0.22;
-}
-
-.float-emoji.size-xl {
-  font-size: 72px;
-  opacity: 0.16;
-}
-
-.float-emoji.glow {
-  filter: drop-shadow(0 0 10px rgba(255, 200, 100, 0.6));
-  animation: floatBounce var(--duration) ease-in-out infinite, glowTwinkle 2s ease-in-out infinite;
-}
-
-@keyframes glowTwinkle {
-
-  0%,
-  100% {
-    opacity: 0.15;
-    filter: drop-shadow(0 0 8px rgba(255, 200, 100, 0.4));
-  }
-
-  50% {
-    opacity: 0.4;
-    filter: drop-shadow(0 0 20px rgba(255, 200, 100, 0.8));
-  }
-}
-
-@keyframes floatBounce {
-
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-  }
-
-  25% {
-    transform: translate3d(0, -15px, 0) rotate(5deg) scale(1.05);
-  }
-
-  50% {
-    transform: translate3d(0, -8px, 0) rotate(-3deg) scale(1);
-  }
-
-  75% {
-    transform: translate3d(0, -18px, 0) rotate(3deg) scale(1.03);
-  }
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
-   THREE.JS CANVAS & OVERLAYS
+   OVERLAY DE FUNDO
    ═══════════════════════════════════════════════════════════════════════════ */
-.three-canvas {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
 .gradient-overlay {
   position: fixed;
   inset: 0;
   background:
     radial-gradient(ellipse at 20% 20%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(255, 183, 77, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(255, 201, 71, 0.03) 0%, transparent 50%),
     radial-gradient(ellipse at 50% 50%, rgba(236, 72, 153, 0.02) 0%, transparent 70%);
   z-index: 1;
   pointer-events: none;
@@ -1279,19 +1623,20 @@ img {
   right: 0;
   z-index: 1000;
   padding: 1.25rem 0;
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 183, 77, 0.08);
-  transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 20px rgba(255, 183, 77, 0.06);
+  background: transparent;
+  transition: top 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
 }
 
-@media (max-width: 768px) {
-  .header {
-    backdrop-filter: blur(6px);
-    background: rgba(255, 255, 255, 0.95);
-  }
+.header.header-solid {
+  top: 1rem;
+  padding: 0;
+}
+
+.header:not(.header-solid) .container {
+  max-width: none;
+  padding: 0 clamp(1.5rem, 5vw, 4.5rem);
 }
 
 .header-content {
@@ -1299,6 +1644,26 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 2rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  transition: background 0.35s ease, box-shadow 0.35s ease,
+    border-color 0.35s ease, padding 0.35s ease, max-width 0.35s ease;
+}
+
+.header-solid .header-content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0.65rem 0.85rem 0.65rem 1.75rem;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  border-color: rgba(255, 154, 77, 0.15);
+  box-shadow: 0 16px 40px rgba(255, 95, 143, 0.2);
+}
+
+@media (max-width: 768px) {
+  .header-solid .header-content {
+    padding: 0.55rem 0.6rem 0.55rem 1.15rem;
+  }
 }
 
 .logo {
@@ -1322,7 +1687,6 @@ img {
 }
 
 @keyframes gentle-float {
-
   0%,
   100% {
     transform: translateY(0);
@@ -1338,7 +1702,7 @@ img {
   font-weight: 800;
   font-family: 'Baloo Thambi 2', cursive;
   font-style: normal;
-  background: var(--gradient);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1354,39 +1718,6 @@ h2 .logo-text,
   font-size: 1.35rem;
 }
 
-.nav-menu {
-  display: flex;
-  gap: 2.5rem;
-}
-
-.nav-link {
-  color: #334155;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-}
-
-.nav-link::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--gradient);
-  transition: width 0.3s ease;
-}
-
-.nav-link:hover {
-  color: var(--primary);
-}
-
-.nav-link:hover::after {
-  width: 100%;
-}
-
 .auth-buttons {
   display: flex;
   gap: 1rem;
@@ -1396,7 +1727,7 @@ h2 .logo-text,
 .btn-ghost {
   background: transparent;
   border: none;
-  color: #334155;
+  color: #fff;
   font-weight: 600;
   padding: 0.875rem 1.5rem;
   cursor: pointer;
@@ -1404,18 +1735,29 @@ h2 .logo-text,
     background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 10px;
   transform: translateZ(0);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
 .btn-ghost:hover {
-  color: var(--primary);
-  background: rgba(255, 183, 77, 0.05);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.header-solid .btn-ghost {
+  color: #334155;
+  text-shadow: none;
+}
+
+.header-solid .btn-ghost:hover {
+  color: var(--primary-dark);
+  background: rgba(255, 154, 77, 0.08);
 }
 
 .btn-primary-glow {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: var(--gradient);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   border: none;
   color: white;
   font-weight: 700;
@@ -1424,13 +1766,14 @@ h2 .logo-text,
   cursor: pointer;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 20px rgba(255, 183, 77, 0.35);
+  box-shadow: 0 4px 20px rgba(255, 95, 143, 0.35);
   transform: translateZ(0);
+  will-change: transform;
 }
 
 .btn-primary-glow:hover {
   transform: translateY(-2px) translateZ(0);
-  box-shadow: 0 8px 30px rgba(255, 183, 77, 0.45);
+  box-shadow: 0 8px 30px rgba(255, 95, 143, 0.45);
 }
 
 /* Botão de instalação do PWA (desktop) */
@@ -1438,9 +1781,9 @@ h2 .logo-text,
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(255, 183, 77, 0.1);
-  border: 1.5px solid rgba(255, 183, 77, 0.45);
-  color: var(--primary-dark);
+  background: rgba(255, 255, 255, 0.16);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
   font-weight: 700;
   font-size: 0.9rem;
   padding: 0.75rem 1.25rem;
@@ -1448,14 +1791,28 @@ h2 .logo-text,
   cursor: pointer;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 0.3s ease;
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease;
   transform: translateZ(0);
+  will-change: transform;
 }
 
 .btn-install:hover {
   transform: translateY(-2px) translateZ(0);
-  background: rgba(255, 183, 77, 0.18);
-  box-shadow: 0 6px 20px rgba(255, 183, 77, 0.25);
+  background: rgba(255, 255, 255, 0.26);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.header-solid .btn-install {
+  background: rgba(255, 154, 77, 0.1);
+  border-color: rgba(255, 154, 77, 0.4);
+  color: var(--primary-dark);
+}
+
+.header-solid .btn-install:hover {
+  background: rgba(255, 154, 77, 0.18);
+  box-shadow: 0 6px 20px rgba(255, 95, 143, 0.25);
 }
 
 .btn-install .v-icon {
@@ -1463,7 +1820,6 @@ h2 .logo-text,
 }
 
 @keyframes install-bounce {
-
   0%,
   100% {
     transform: translateY(0);
@@ -1474,7 +1830,7 @@ h2 .logo-text,
   }
 }
 
-/* Botão de instalação do PWA (mobile — ao lado do menu) */
+/* Botão de instalação do PWA (mobile) */
 .btn-install-mobile {
   display: none;
   align-items: center;
@@ -1486,7 +1842,7 @@ h2 .logo-text,
   border-radius: 12px;
   color: #fff;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(255, 183, 77, 0.35);
+  box-shadow: 0 4px 16px rgba(255, 201, 71, 0.35);
 }
 
 .mobile-menu-btn {
@@ -1498,22 +1854,32 @@ h2 .logo-text,
   background: transparent;
   border: none;
   border-radius: 12px;
-  color: var(--text);
+  color: #fff;
   cursor: pointer;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 .mobile-menu-btn:hover {
-  background: rgba(255, 183, 77, 0.1);
-  color: var(--primary);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
 }
 
-/* ── Mobile Menu (drawer) ── */
+.header-solid .mobile-menu-btn {
+  color: var(--text);
+  text-shadow: none;
+}
+
+.header-solid .mobile-menu-btn:hover {
+  background: rgba(255, 154, 77, 0.1);
+  color: var(--primary-dark);
+}
+
+/* Mobile Menu (drawer) */
 .mobile-menu-overlay {
   position: fixed;
   inset: 0;
   z-index: 999;
-  /* Escurece o fundo abaixo do header fixo */
   padding-top: 84px;
   background: rgba(26, 26, 46, 0.35);
   backdrop-filter: blur(4px);
@@ -1531,7 +1897,7 @@ h2 .logo-text,
   gap: 0.35rem;
   background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 183, 77, 0.18);
+  border: 1px solid rgba(255, 201, 71, 0.18);
   border-radius: 18px;
   box-shadow: 0 20px 60px rgba(26, 26, 46, 0.18);
 }
@@ -1555,14 +1921,14 @@ h2 .logo-text,
 
 .mobile-nav-link:hover,
 .mobile-nav-link:active {
-  background: rgba(255, 183, 77, 0.08);
+  background: rgba(255, 201, 71, 0.08);
   color: var(--primary);
 }
 
 .mobile-menu-divider {
   height: 1px;
   margin: 0.5rem 0.25rem;
-  background: linear-gradient(90deg, transparent, rgba(255, 183, 77, 0.25), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 201, 71, 0.25), transparent);
 }
 
 .mobile-menu-install {
@@ -1571,8 +1937,8 @@ h2 .logo-text,
   justify-content: center;
   gap: 0.5rem;
   padding: 0.85rem 1rem;
-  background: rgba(255, 183, 77, 0.1);
-  border: 1.5px solid rgba(255, 183, 77, 0.45);
+  background: rgba(255, 201, 71, 0.1);
+  border: 1.5px solid rgba(255, 201, 71, 0.45);
   border-radius: 12px;
   color: var(--primary-dark);
   font-weight: 700;
@@ -1582,7 +1948,7 @@ h2 .logo-text,
 }
 
 .mobile-menu-install:hover {
-  background: rgba(255, 183, 77, 0.18);
+  background: rgba(255, 201, 71, 0.18);
 }
 
 .mobile-menu-ghost {
@@ -1598,13 +1964,13 @@ h2 .logo-text,
 }
 
 .mobile-menu-ghost:hover {
-  background: rgba(255, 183, 77, 0.06);
+  background: rgba(255, 201, 71, 0.06);
   color: var(--primary);
 }
 
 .mobile-menu-primary {
   padding: 0.9rem 1rem;
-  background: var(--gradient);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   border: none;
   border-radius: 12px;
   color: #fff;
@@ -1612,16 +1978,15 @@ h2 .logo-text,
   font-size: 0.95rem;
   letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(255, 183, 77, 0.35);
+  box-shadow: 0 6px 20px rgba(255, 95, 143, 0.35);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .mobile-menu-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 28px rgba(255, 183, 77, 0.45);
+  box-shadow: 0 10px 28px rgba(255, 201, 71, 0.45);
 }
 
-/* Transição de abertura/fechamento do menu mobile */
 .mobile-menu-fade-enter-active,
 .mobile-menu-fade-leave-active {
   transition: opacity 0.25s ease;
@@ -1644,202 +2009,272 @@ h2 .logo-text,
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   .mobile-menu-fade-enter-active,
   .mobile-menu-fade-leave-active,
   .mobile-menu-fade-enter-active .mobile-menu-panel,
   .mobile-menu-fade-leave-active .mobile-menu-panel {
     transition: none;
   }
+
+  .showcase-phone-3d-tilt,
+  .showcase-phone-3d-shadow {
+    transition: none;
+    animation: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   HERO SECTION
+   MISC
+   ═══════════════════════════════════════════════════════════════════════════ */
+.live-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--gradient);
+  border-radius: 50%;
+  animation: blink 1s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HERO CINEMATOGRÁFICA
    ═══════════════════════════════════════════════════════════════════════════ */
 .hero {
-  min-height: 100vh;
+  min-height: 94vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10rem 0 8rem;
+  padding: 11rem 0 5rem;
   position: relative;
+  overflow: hidden;
   text-align: center;
 }
 
-.hero-glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(100px);
-  opacity: 0.4;
-  animation: pulse-glow 4s ease-in-out infinite;
-}
-
-.hero-glow-1 {
-  width: 500px;
-  height: 500px;
-  background: var(--primary);
-  top: 10%;
-  left: -10%;
-}
-
-.hero-glow-2 {
-  width: 400px;
-  height: 400px;
-  background: var(--purple);
-  top: 30%;
-  right: -5%;
-  animation-delay: 1s;
-}
-
-.hero-glow-3 {
-  width: 300px;
-  height: 300px;
-  background: var(--pink);
-  bottom: 10%;
-  left: 30%;
-  animation-delay: 2s;
-}
-
-@keyframes pulse-glow {
-
-  0%,
-  100% {
-    opacity: 0.3;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 0.5;
-    transform: scale(1.1);
-  }
-}
-
-.hero-content {
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1.35rem;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 183, 77, 0.15);
-  border-radius: 999px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  background: linear-gradient(135deg, #FFB74D, #FF9AB5);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 2.5rem;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(255, 183, 77, 0.12);
-}
-
-.badge-pulse {
+.hero-video {
   position: absolute;
   inset: 0;
-  background: var(--gradient);
-  opacity: 0.1;
-  animation: badge-pulse 2s ease-in-out infinite;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  will-change: transform, opacity;
 }
 
-@keyframes badge-pulse {
-
-  0%,
-  100% {
-    opacity: 0.1;
-  }
-
-  50% {
-    opacity: 0.2;
-  }
+.hero-video-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(circle at 50% 65%, rgba(255, 95, 143, 0.3), transparent 50%),
+    radial-gradient(circle at 15% 15%, rgba(255, 154, 60, 0.22), transparent 45%),
+    radial-gradient(circle at 85% 25%, rgba(139, 92, 246, 0.25), transparent 45%),
+    linear-gradient(180deg, rgba(20, 18, 32, 0.55) 0%, rgba(20, 18, 32, 0.4) 45%, rgba(20, 18, 32, 0.72) 100%);
+  pointer-events: none;
 }
 
-.badge-icon {
-  animation: sparkle 1.5s ease-in-out infinite;
+.hero-v2-content {
+  position: relative;
+  z-index: 2;
+  max-width: 1500px;
+  margin: 0 auto;
+  will-change: transform, opacity;
 }
 
-@keyframes sparkle {
-
-  0%,
-  100% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.2);
-  }
-}
-
-.hero-title {
-  font-size: clamp(2.5rem, 6vw, 4.5rem);
-  font-weight: 800;
-  line-height: 1.15;
-  margin-bottom: 2rem;
-  letter-spacing: -0.03em;
-  color: #1a1a2e;
-}
-
-.title-line {
+.hero-wordmark-wrap,
+.hero-tagline-wrap {
   display: block;
 }
 
-.title-gradient {
-  background: var(--gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.hero-wordmark {
+  font-family: 'Baloo Thambi 2', cursive;
+  font-size: clamp(4.5rem, 19vw, 15rem);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 1.5rem;
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.35));
 }
 
-.hero-subtitle {
-  font-size: clamp(1.1rem, 2vw, 1.35rem);
-  color: #64748b;
-  line-height: 1.8;
-  margin-bottom: 3.5rem;
-  max-width: 620px;
-  margin-left: auto;
-  margin-right: auto;
-  font-weight: 400;
-}
-
-.hero-subtitle .highlight {
-  background: var(--gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.hero-tagline {
+  font-size: clamp(1.4rem, 3.2vw, 2.5rem);
   font-weight: 600;
+  margin: 0;
+  filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.3));
 }
 
-.hero-cta-group {
+/* Indicador de scroll cinematográfico */
+.hero-scroll-indicator {
+  position: absolute;
+  bottom: 2.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
   display: flex;
-  gap: 1rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.75);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  will-change: transform, opacity;
+}
+
+.hero-scroll-indicator:hover {
+  color: #fff;
+  transform: translateX(-50%) translateY(2px);
+}
+
+.indicator-mouse {
+  width: 22px;
+  height: 34px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  position: relative;
+  display: flex;
   justify-content: center;
+}
+
+.indicator-wheel {
+  width: 4px;
+  height: 6px;
+  background: #fff;
+  border-radius: 2px;
+  margin-top: 6px;
+  animation: scroll-wheel 1.8s ease-in-out infinite;
+}
+
+@keyframes scroll-wheel {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  61% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.indicator-text {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESCUBRA EVENTOS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.discover {
+  position: relative;
+  padding: 5rem 0 8rem;
+  overflow: hidden;
+}
+
+.discover-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(255, 201, 71, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 95% 85%, rgba(139, 92, 246, 0.12) 0%, transparent 45%);
+}
+
+.discover-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.discover-content {
+  text-align: left;
+}
+
+.discover-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.55rem 1.2rem;
+  border-radius: 999px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 16px rgba(249, 120, 163, 0.18);
+}
+
+.discover-title {
+  font-size: clamp(1.85rem, 3.4vw, 2.75rem);
+  line-height: 1.28;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.02em;
+  margin: 0 0 1.5rem;
+}
+
+.title-gradient {
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.discover-text {
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: var(--text-light);
+  max-width: 460px;
+  margin: 0 0 2.25rem;
+}
+
+.discover-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
   flex-wrap: wrap;
-  margin-bottom: 4rem;
+  margin-bottom: 2rem;
 }
 
 .btn-cta-primary {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1.25rem 2.5rem;
-  background: var(--gradient);
+  padding: 1.1rem 2.25rem;
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   border: none;
-  border-radius: 16px;
+  border-radius: 999px;
   color: white;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 10px 40px rgba(255, 183, 77, 0.35);
+  box-shadow: 0 10px 30px rgba(255, 95, 143, 0.35);
   position: relative;
   overflow: hidden;
   transform: translateZ(0);
+  will-change: transform;
 }
 
 .btn-cta-primary .btn-glow {
@@ -1856,171 +2291,225 @@ h2 .logo-text,
 
 .btn-cta-primary:hover {
   transform: translateY(-3px) translateZ(0);
-  box-shadow: 0 16px 50px rgba(255, 183, 77, 0.45);
+  box-shadow: 0 16px 40px rgba(255, 95, 143, 0.45);
 }
 
-.btn-cta-secondary {
+.discover-avatars {
+  display: flex;
+  align-items: center;
+}
+
+.avatar-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid #fff8f0;
+  margin-left: -10px;
+  display: inline-block;
+}
+
+.avatar-dot:first-child {
+  margin-left: 0;
+}
+
+.avatar-1 {
+  background: linear-gradient(135deg, #ffb27a, #F978A3);
+}
+
+.avatar-2 {
+  background: linear-gradient(135deg, #ff9a9a, #c48bff);
+}
+
+.avatar-3 {
+  background: linear-gradient(135deg, #8bd3ff, #a58bff);
+}
+
+.avatar-label {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  font-weight: 600;
+  margin-left: 0.6rem;
+}
+
+.discover-live-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  background: #fff;
+  border-radius: 18px;
+  padding: 1.1rem 1.6rem;
+  box-shadow: 0 16px 40px rgba(249, 120, 163, 0.2);
+}
+
+.discover-live-emoji {
+  font-size: 1.6rem;
+}
+
+.discover-live-top {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1.25rem 2rem;
-  background: rgba(255, 255, 255, 0.95);
-  border: 2px solid rgba(255, 183, 77, 0.15);
-  border-radius: 16px;
-  color: #FFB74D;
-  font-weight: 700;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(8px);
-  transform: translateZ(0);
 }
 
-@media (max-width: 768px) {
-  .btn-cta-secondary {
-    backdrop-filter: blur(4px);
-  }
-}
-
-.btn-cta-secondary:hover {
-  background: white;
-  border-color: rgba(255, 183, 77, 0.3);
-  transform: translateY(-3px) translateZ(0);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-}
-
-.hero-stats {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-  padding: 2rem;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 183, 77, 0.1);
-  border-radius: 24px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-  max-width: 700px;
-  margin: 0 auto;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.stat-emoji {
-  font-size: 1.5rem;
-}
-
-.stat-info {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-}
-
-.stat-value {
-  font-size: 1.5rem;
+.discover-live-number {
+  font-size: 1.35rem;
   font-weight: 800;
+  color: var(--primary);
+}
+
+.discover-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--secondary);
+  letter-spacing: 0.05em;
+}
+
+.discover-live-text {
+  font-size: 0.85rem;
+  color: #1e293b;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+
+.discover-cards {
+  position: relative;
+  min-height: 620px;
+  perspective: 1200px;
+}
+
+.discover-event-card {
+  position: absolute;
+  width: 240px;
+  background: #fff;
+  border-radius: 22px;
+  padding: 10px;
+  box-shadow: 0 20px 45px rgba(249, 120, 163, 0.22);
+  transform-style: preserve-3d;
+  will-change: transform;
+  backface-visibility: hidden;
+  cursor: pointer;
+}
+
+.discover-event-card-1 {
+  top: 0;
+  left: 0;
+  transform: rotate(-6deg);
+  z-index: 1;
+}
+
+.discover-event-card-2 {
+  top: 240px;
+  right: 0;
+  transform: rotate(5deg);
+  z-index: 2;
+}
+
+.discover-event-card-3 {
+  bottom: 0;
+  left: 5%;
+  transform: rotate(-3deg);
+  z-index: 1;
+}
+
+.discover-event-media {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.discover-event-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  will-change: transform;
+}
+
+.discover-event-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.72) 100%);
+}
+
+.discover-event-category {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 10px;
+  font-weight: 700;
   color: #1a1a2e;
 }
 
-.stat-label {
-  font-size: 0.85rem;
-  color: #999;
-  font-weight: 600;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   LIVE COUNTER
-   ═══════════════════════════════════════════════════════════════════════════ */
-.live-counter {
-  padding: 2rem 0;
-  position: relative;
-  z-index: 10;
-}
-
-.counter-card {
-  display: flex;
-  justify-content: center;
-  position: relative;
-}
-
-.counter-content {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 1rem 2rem;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-}
-
-.counter-icon {
-  background: var(--gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.counter-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.counter-number {
-  font-size: 1.5rem;
-  font-weight: 800;
-  background: var(--gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.counter-text {
-  font-size: 0.9rem;
-  color: #333;
-  font-weight: 600;
-}
-
-.counter-live {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #FFB74D, #FF9AB5);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.live-dot {
-  width: 8px;
-  height: 8px;
-  background: var(--gradient);
+.discover-event-share {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  animation: blink 1s ease-in-out infinite;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
 }
 
-@keyframes blink {
+.discover-event-overlay {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 1;
+}
 
-  0%,
-  100% {
-    opacity: 1;
-  }
+.discover-event-tag {
+  display: inline-block;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  margin-bottom: 7px;
+}
 
-  50% {
-    opacity: 0.3;
-  }
+.discover-event-title {
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.discover-event-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 4px 2px;
+}
+
+.discover-event-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: #9a9aab;
+  font-weight: 600;
+}
+
+.discover-event-when {
+  font-size: 11px;
+  font-weight: 700;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2035,11 +2524,11 @@ h2 .logo-text,
 .section-overline {
   display: inline-block;
   padding: 0.5rem 1rem;
-  border: 1px solid rgba(255, 183, 77, 0.2);
+  border: 1px solid rgba(255, 201, 71, 0.2);
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #FFB74D, #FF9AB5);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -2058,7 +2547,7 @@ h2 .logo-text,
 }
 
 .gradient-text {
-  background: var(--gradient);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -2071,19 +2560,11 @@ h2 .logo-text,
   font-weight: 400;
 }
 
-.section-subtitle-contato {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-  color: #1e293b;
-  line-height: 1.4;
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
    FEATURES
    ═══════════════════════════════════════════════════════════════════════════ */
-.features {
-  padding: 10rem 0;
+.features-v2 {
+  padding: 8rem 0;
   position: relative;
 }
 
@@ -2098,596 +2579,1022 @@ h2 .logo-text,
   pointer-events: none;
 }
 
-.features .container {
-  max-width: 1400px;
+.features-v2 .container {
+  max-width: 1320px;
 }
 
-.features-grid {
+.features-grid-v2 {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 2rem;
-  margin-top: 4rem;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 1.75rem;
+  align-items: stretch;
 }
 
-.feature-card {
+.feature-main {
+  position: relative;
+  background: linear-gradient(150deg, var(--primary), var(--secondary));
+  border-radius: 28px;
+  padding: 2.75rem 2.5rem;
+  box-shadow: 0 24px 50px rgba(249, 120, 163, 0.3);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.feature-main-index {
+  font-size: 0.9rem;
+  font-weight: 700;
+  opacity: 0.85;
+  letter-spacing: 0.05em;
+}
+
+.feature-main-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1.3;
+  margin: 1.1rem 0 0.85rem;
+}
+
+.feature-main-desc {
+  font-size: 0.97rem;
+  line-height: 1.6;
+  opacity: 0.92;
+  max-width: 380px;
+  margin: 0;
+}
+
+.feature-main-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.feature-main-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feature-main-emoji {
+  position: absolute;
+  right: -20px;
+  bottom: -30px;
+  font-size: 130px;
+  opacity: 0.15;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.feature-secondary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.feature-secondary {
   position: relative;
   background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 28px;
-  padding: 3rem 2.5rem;
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+  border-radius: 22px;
+  padding: 1.5rem 1.6rem;
+  box-shadow: 0 14px 34px rgba(249, 120, 163, 0.12);
+  display: flex;
+  align-items: flex-start;
+  gap: 1.15rem;
+  transition: box-shadow 0.3s ease;
+  will-change: transform;
   overflow: hidden;
+}
+
+.feature-secondary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle 200px at var(--mouse-x, -999px) var(--mouse-y, -999px), rgba(249, 120, 163, 0.12), transparent);
+  pointer-events: none;
+  opacity: 1;
+}
+
+.feature-secondary:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 44px rgba(249, 120, 163, 0.2);
+}
+
+.feature-secondary-icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feature-secondary-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.feature-secondary-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.feature-secondary-heading h4 {
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: #1a1a2e;
+  margin: 0;
+}
+
+.feature-badge {
+  background: #fff0e8;
+  color: var(--primary-dark);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+}
+
+.feature-secondary-body p {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  line-height: 1.55;
+  margin: 0.4rem 0 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP EM AÇÃO — MOCKUP INTERATIVO
+   ═══════════════════════════════════════════════════════════════════════════ */
+.app-showcase-v2 {
+  padding: 8rem 0;
+  position: relative;
+}
+
+.app-showcase-v2 .container {
+  max-width: 1320px;
+}
+
+.showcase-grid {
+  display: grid;
+  grid-template-columns: 0.95fr 1.05fr;
+  gap: 3.5rem;
+  align-items: center;
+}
+
+.showcase-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.showcase-tab {
+  text-align: left;
+  background: rgba(255, 255, 255, 0.5);
+  border: 2px solid rgba(0, 0, 0, 0.04);
+  border-radius: 20px;
+  padding: 1.35rem 1.5rem;
+  cursor: pointer;
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  font-family: inherit;
+  will-change: transform;
+}
+
+.showcase-tab.active {
+  background: #fff;
+  border-color: transparent;
+  box-shadow: 0 16px 36px rgba(249, 120, 163, 0.22);
+}
+
+.showcase-tab-top {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.showcase-tab-badge {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.06);
+  filter: grayscale(0.4) opacity(0.7);
+  transition: all 0.25s ease;
+}
+
+.showcase-tab.active .showcase-tab-badge {
+  filter: none;
+}
+
+.showcase-tab-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.showcase-tab-pill {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  color: #9a9aab;
+}
+
+.showcase-tab-pill.active {
+  background: #fff0e8;
+  color: var(--primary-dark);
+}
+
+.showcase-tab-title {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #1a1a2e;
+  margin-top: 0.45rem;
+}
+
+.showcase-tab-desc {
+  font-size: 0.87rem;
+  color: var(--text-light);
+  line-height: 1.6;
+  margin: 0.85rem 0 0;
+  padding-left: 4rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SMARTPHONE 3D
+   ═══════════════════════════════════════════════════════════════════════════ */
+.showcase-phone-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0 4rem;
+  perspective: 1700px;
+}
+
+.showcase-phone-3d-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  width: 62%;
+  height: 70px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(249, 120, 163, 0.5) 0%, rgba(249, 120, 163, 0.22) 45%, rgba(249, 120, 163, 0) 75%);
+  filter: blur(22px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.showcase-phone-3d-tilt {
+  position: relative;
+  z-index: 1;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.showcase-phone-3d-body {
+  position: relative;
+  width: 280px;
+  height: 560px;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.showcase-phone-3d-face {
+  position: absolute;
+  background: linear-gradient(180deg, #26263f 0%, #101020 100%);
+}
+
+.showcase-phone-3d-core {
+  position: absolute;
+  inset: 0;
+  border-radius: 44px;
+  background: linear-gradient(180deg, #1c1c34 0%, #0b0b16 100%);
+  transform: translateZ(0);
+}
+
+.face-front {
+  inset: 0;
+  border-radius: 44px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateZ(8px);
+  background:
+    radial-gradient(circle at 14% 8%, rgba(139, 92, 246, 0.2), transparent 40%),
+    radial-gradient(circle at 88% 96%, rgba(249, 120, 163, 0.25), transparent 45%),
+    linear-gradient(155deg, #14142a 0%, #1a1a2e 45%, #20203f 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.16),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.4),
+    0 34px 60px -12px rgba(20, 10, 30, 0.45),
+    0 12px 24px -8px rgba(249, 120, 163, 0.25);
+}
+
+.face-right,
+.face-left {
+  width: 16px;
+  height: 472px;
+  top: 44px;
+  left: 132px;
+  border-radius: 16px;
+  background: linear-gradient(90deg, #0b0b14 0%, #2c2c48 35%, #3c3c5e 50%, #2c2c48 65%, #0b0b14 100%);
+}
+
+.face-right {
+  transform: rotateY(90deg) translateZ(140px);
+}
+
+.face-left {
+  transform: rotateY(-90deg) translateZ(140px);
+}
+
+.face-top,
+.face-bottom {
+  width: 192px;
+  height: 16px;
+  top: 272px;
+  left: 44px;
+  background: linear-gradient(180deg, #26263f 0%, #101020 100%);
+}
+
+.face-top {
+  transform: rotateX(90deg) translateZ(280px);
+  border-radius: 44px 44px 0 0;
+}
+
+.face-bottom {
+  transform: rotateX(-90deg) translateZ(280px);
+  border-radius: 0 0 44px 44px;
+}
+
+.showcase-phone-3d-btn {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #3a3a5c, #14141f);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+.btn-power {
+  top: 130px;
+  height: 72px;
+}
+
+.btn-vol-up {
+  top: 108px;
+  height: 44px;
+}
+
+.btn-vol-down {
+  top: 164px;
+  height: 44px;
+}
+
+.showcase-phone-3d-speaker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.showcase-phone-3d-speaker::before {
+  content: '';
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.showcase-phone-3d-camera {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #4a4a66, #0a0a14 70%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.showcase-phone-3d-screen {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  border-radius: 32px;
+  overflow: hidden;
+  background: #fdeef4;
+  /* .showcase-phone-3d-body/-tilt usam transform-style: preserve-3d para o
+     tilt 3D do mockup. Sem isolar esta tela num contexto "flat" próprio, o
+     overflow: hidden acima deixa vazar conteúdo composto separadamente
+     (o iframe do feed e o v-menu teleportado do dropdown de usuário),
+     que passa a ignorar os limites arredondados da tela durante o scroll. */
+  transform-style: flat;
   isolation: isolate;
 }
 
-.feature-card::before {
-  content: '';
+.showcase-phone-3d-glass {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255, 183, 77, 0.05), rgba(255, 154, 181, 0.05));
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.feature-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 50px rgba(255, 183, 77, 0.12),
-    0 0 0 1px rgba(255, 183, 77, 0.08);
-  border-color: rgba(255, 183, 77, 0.15);
-}
-
-.feature-card:hover::before {
-  opacity: 0.05;
-}
-
-.feature-emoji {
-  position: absolute;
-  top: 1.5rem;
-  right: 1.5rem;
-  font-size: 2rem;
-  opacity: 0.3;
-  transition: all 0.3s ease;
-}
-
-.feature-card:hover .feature-emoji {
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.05) 16%, rgba(255, 255, 255, 0) 34%, rgba(255, 255, 255, 0) 64%, rgba(255, 255, 255, 0.05) 84%, rgba(255, 255, 255, 0.14) 100%);
+  mix-blend-mode: overlay;
   opacity: 0.6;
-  transform: scale(1.2) rotate(10deg);
 }
 
-.feature-icon-wrapper {
-  position: relative;
-  margin-bottom: 1.5rem;
-}
-
-.feature-icon {
-  position: relative;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 90px;
-  height: 90px;
-  background: var(--gradient);
-  border-radius: 26px;
-  color: white;
-  box-shadow: 0 10px 30px rgba(255, 183, 77, 0.25);
-  transition: transform 0.3s;
-}
-
-.feature-icon-bg {
-  position: absolute;
-  inset: -10px;
-  background: var(--gradient);
-  border-radius: 32px;
-  opacity: 0.15;
-  filter: blur(15px);
-  transition: all 0.3s;
-}
-
-.feature-card:hover .feature-icon {
-  transform: scale(1.1) rotate(5deg);
-}
-
-.feature-card:hover .feature-icon-bg {
-  opacity: 0.3;
-  transform: scale(1.2);
-}
-
-.feature-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-  color: #1e293b;
-  line-height: 1.4;
-  position: relative;
-  z-index: 1;
-  letter-spacing: -0.01em;
-}
-
-.feature-description {
-  color: #64748b;
-  line-height: 1.7;
-  font-size: 1.05rem;
-  font-size: 1rem;
-  position: relative;
-  z-index: 1;
-}
-
-.feature-arrow {
-  position: absolute;
-  bottom: 2rem;
-  right: 2rem;
-  font-size: 1.5rem;
-  background: var(--gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  opacity: 0;
-  transform: translateX(-10px);
-  transition: all 0.3s ease;
-}
-
-.feature-card:hover .feature-arrow {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   APP SHOWCASE
-   ═══════════════════════════════════════════════════════════════════════════ */
-.app-showcase {
-  padding: 10rem 0;
-  position: relative;
-}
-
-.screenshots-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2rem;
-  margin-top: 4rem;
-}
-
-.screenshot-card {
-  display: flex;
-  flex-direction: column;
-  background: white;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 24px;
-  overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-}
-
-.screenshot-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12);
-}
-
-.screenshot-image-wrapper {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-}
-
-.screenshot-img {
+.showcase-phone-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.4s ease, filter 0.3s ease;
+  object-position: top center;
+  display: block;
 }
 
-.screenshot-card:hover .screenshot-img {
-  transform: scale(1.05);
-  filter: brightness(1.05);
-}
-
-.screenshot-placeholder {
+.event-mock {
   width: 100%;
   height: 100%;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  padding: 3rem;
-  border: 3px dashed rgba(0, 0, 0, 0.15);
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  margin: 1.5rem;
-  transition: all 0.3s;
+  background: #fff;
 }
 
-.screenshot-card:hover .screenshot-placeholder {
-  border-color: inherit;
-  transform: scale(1.02);
-}
-
-.placeholder-text {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #333;
-  margin: 0;
-}
-
-.placeholder-hint {
-  font-size: 0.9rem;
-  color: #999;
-  margin: 0;
-  border-radius: 24px;
-}
-
-.screenshot-content {
-  padding: 2.5rem;
-}
-
-.screenshot-tag {
-  display: inline-block;
-  padding: 0.4rem 0.85rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: white;
-  margin-bottom: 1.25rem;
-}
-
-.screenshot-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-  color: #1e293b;
-  line-height: 1.4;
-  letter-spacing: -0.01em;
-}
-
-.screenshot-description {
-  color: #64748b;
-  font-size: 1.05rem;
-  line-height: 1.7;
-  margin-bottom: 2rem;
-}
-
-.screenshot-features {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.screenshot-features li {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.95rem;
-  color: #666;
-  font-weight: 500;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   HOW IT WORKS
-   ═══════════════════════════════════════════════════════════════════════════ */
-.how-it-works {
-  padding: 10rem 0;
+.event-mock-cover {
   position: relative;
-}
-
-.steps-grid {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  position: relative;
-  flex-wrap: nowrap;
-  overflow: visible;
-}
-
-.steps-line {
-  display: none;
-}
-
-.step-card {
-  text-align: center;
-  position: relative;
-  flex: 1 1 0;
-  min-width: 200px;
-}
-
-.step-arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #FF9AB5;
-  opacity: 0.6;
-  transition: all 0.3s ease;
-  animation: arrowBounce 2s ease-in-out infinite;
   flex-shrink: 0;
-  width: 32px;
+  height: 40%;
+  min-height: 130px;
 }
 
-@keyframes arrowBounce {
-
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  50% {
-    transform: translateX(8px);
-  }
-}
-
-.step-arrow:hover {
-  opacity: 1;
-  color: #FFB3C6;
-}
-
-.step-number {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 80px;
-  height: 80px;
-  border-radius: 24px;
-  color: white;
-  margin-bottom: 1.5rem;
-  transition: all 0.3s ease;
-}
-
-.step-card:hover .step-number {
-  transform: scale(1.1) rotate(5deg);
-}
-
-.step-badge {
+.event-mock-back,
+.event-mock-like {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 28px;
-  height: 28px;
-  background: var(--dark);
-  border: 2px solid white;
+  top: 12px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 800;
 }
 
-.step-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin-bottom: 0.75rem;
-  color: #333;
-  line-height: 1.3;
+.event-mock-back {
+  left: 12px;
 }
 
-.step-description {
-  color: #666;
-  line-height: 1.7;
-  font-size: 1rem;
+.event-mock-like {
+  right: 12px;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   CTA SECTION
-   ═══════════════════════════════════════════════════════════════════════════ */
-.cta-section {
-  padding: 8rem 0;
-  position: relative;
-  overflow: hidden;
-}
-
-.cta-bg {
+.event-mock-emoji {
   position: absolute;
   inset: 0;
-  background: var(--gradient);
-  opacity: 0.1;
-}
-
-.cta-content {
-  text-align: center;
-  max-width: 700px;
-  margin: 0 auto;
-  position: relative;
-  z-index: 2;
-}
-
-.cta-title {
-  font-size: clamp(2.5rem, 5vw, 3.5rem);
-  font-weight: 900;
-  margin-bottom: 2.5rem;
-  color: white;
-  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  line-height: 1.2;
-}
-
-.cta-subtitle {
-  font-size: 1.15rem;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 2rem;
-}
-
-.btn-cta-large {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1.5rem 3rem;
-  background: var(--gradient);
-  border: none;
-  border-radius: 20px;
-  color: white;
-  font-weight: 700;
-  font-size: 1.25rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 15px 50px rgba(255, 183, 77, 0.4);
+  justify-content: center;
+  font-size: 2.6rem;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.15));
 }
 
-.btn-cta-large:hover {
-  transform: translateY(-5px) scale(1.02);
-  box-shadow: 0 20px 60px rgba(255, 183, 77, 0.5);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   FAQ
-   ═══════════════════════════════════════════════════════════════════════════ */
-.faq {
-  padding: 8rem 0;
-  background: linear-gradient(180deg, #FFF8FA 0%, #FFFDFE 100%);
-}
-
-.faq-list {
-  max-width: 900px;
-  margin: 0 auto 3rem;
+.event-mock-body {
+  flex: 1;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 8px;
 }
 
-.faq-item {
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.08);
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  animation: fadeInUp 0.6s ease backwards;
+.event-mock-tag {
+  align-self: flex-start;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.event-mock-title {
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1.25;
+  color: var(--text-dark);
 }
 
-.faq-item:hover {
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-  transform: translateY(-4px);
-}
-
-.faq-item.active {
-  box-shadow: 0 15px 50px rgba(255, 154, 181, 0.22);
-}
-
-.faq-question {
-  width: 100%;
-  padding: 1.5rem 2rem;
-  border: none;
-  cursor: pointer;
+.event-mock-meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1.25rem;
-  color: white;
-  font-weight: 700;
-  font-size: 1.05rem;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-light);
 }
 
-.faq-question::before {
-  content: '';
+.event-mock-map {
+  position: relative;
+  height: 76px;
+  border-radius: 14px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle, rgba(139, 92, 246, 0.16) 1px, transparent 1px) 0 0 / 14px 14px,
+    linear-gradient(135deg, #e9f4ff 0%, #f3edff 100%);
+}
+
+.event-mock-map-pin {
   position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.1);
-  opacity: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--gradient);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(249, 120, 163, 0.4);
+}
+
+.event-mock-participants {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.event-mock-participants-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.event-mock-cta {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12.5px;
+  box-shadow: 0 10px 24px rgba(34, 197, 94, 0.3);
+}
+
+.showcase-feed-embed-wrap {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.showcase-feed-embed {
+  width: 390px;
+  height: 844px;
+  border: none;
+  transform-origin: top left;
+}
+
+.phone-fade-enter-active,
+.phone-fade-leave-active {
   transition: opacity 0.3s ease;
 }
 
-.faq-question:hover::before {
-  opacity: 1;
+.phone-fade-enter-from,
+.phone-fade-leave-to {
+  opacity: 0;
 }
 
-.faq-q-content {
+.showcase-floating-badge {
+  position: absolute;
+  z-index: 2;
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  flex: 1;
-  text-align: left;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  border-radius: 16px;
+  padding: 0.7rem 1.1rem;
+  box-shadow: 0 16px 34px -6px rgba(249, 120, 163, 0.3), 0 2px 6px rgba(26, 26, 46, 0.06);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  will-change: transform;
 }
 
-.faq-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(10px);
+.badge-confirmed {
+  bottom: 14%;
+  right: -6%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PWA BANNER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pwa-banner {
+  margin-top: 5rem;
+  background: linear-gradient(120deg, var(--dark) 0%, #33244d 60%, #4a2650 100%);
+  border-radius: 28px;
+  padding: 2.75rem 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2.5rem;
+  position: relative;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.pwa-banner-deco {
+  position: absolute;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.pwa-banner-deco-1 {
+  left: -20px;
+  top: -30px;
+  font-size: 130px;
+}
+
+.pwa-banner-deco-2 {
+  right: 10%;
+  bottom: -20px;
+  font-size: 90px;
+}
+
+.pwa-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  text-align: left;
+  position: relative;
+  z-index: 1;
+}
+
+.pwa-banner-icon {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 20px;
+  background: var(--gradient);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 30px;
+  box-shadow: 0 12px 30px rgba(249, 120, 163, 0.35);
+}
+
+.pwa-banner-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 0.4rem;
+}
+
+.pwa-banner-desc {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.6;
+}
+
+.btn-pwa-install {
+  background: #fff;
+  color: var(--dark);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.95rem 2rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  will-change: transform;
+}
+
+.btn-pwa-install:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.25);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMO FUNCIONA — TIMELINE & LINHA VIVA
+   ═══════════════════════════════════════════════════════════════════════════ */
+.how-it-works-v2 {
+  padding: 8rem 0 6rem;
+  position: relative;
+}
+
+.how-it-works-v2 .container {
+  max-width: 1320px;
+}
+
+.how-it-works-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 100%, rgba(249, 120, 163, 0.1) 0%, transparent 55%);
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Linha viva de conexão que se ilumina com o scroll */
+.timeline-live-line {
+  position: absolute;
+  top: 40px;
+  bottom: 40px;
+  left: 40px;
+  width: 3px;
+  background: linear-gradient(180deg, #FFC947 0%, #F978A3 50%, #8b5cf6 100%);
+  border-radius: 999px;
+  transform-origin: top center;
+  transform: scaleY(0);
+  z-index: 0;
+  opacity: 0.45;
+  box-shadow: 0 0 12px rgba(249, 120, 163, 0.5);
+}
+
+.timeline-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+  padding: 2.25rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  text-align: left;
+  will-change: transform;
+}
+
+.timeline-row:last-child {
+  border-bottom: none;
+}
+
+.timeline-row-reverse {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.timeline-bignum {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: clamp(4.5rem, 9vw, 8.75rem);
+  font-weight: 800;
+  color: var(--dark);
+  opacity: 0.05;
+  line-height: 1;
+  z-index: 0;
+  font-family: 'Baloo Thambi 2', cursive;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.timeline-bignum-left {
+  left: 0;
+}
+
+.timeline-bignum-right {
+  right: 0;
+}
+
+.timeline-icon {
+  position: relative;
+  z-index: 1;
+  width: 80px;
+  height: 80px;
   flex-shrink: 0;
-  transition: all 0.3s ease;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 18px 36px rgba(249, 120, 163, 0.3);
 }
 
-.faq-question:hover .faq-icon {
-  background: rgba(255, 255, 255, 0.35);
-  transform: scale(1.08);
+.timeline-body {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
 }
 
-.faq-q-text {
-  line-height: 1.5;
-  letter-spacing: -0.01em;
+.timeline-title {
+  font-weight: 800;
+  font-size: 1.4rem;
+  color: #1a1a2e;
+  margin-bottom: 0.4rem;
 }
 
-.faq-toggle-icon {
+.timeline-desc {
+  font-size: 0.95rem;
+  color: var(--text-light);
+  line-height: 1.6;
+  max-width: 440px;
+  margin: 0;
+}
+
+.timeline-row-reverse .timeline-desc {
+  margin-left: auto;
+}
+
+.timeline-step-pill {
+  position: relative;
+  z-index: 1;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  background: #fff0e8;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FAQ — BALÕES DE CONVERSA
+   ═══════════════════════════════════════════════════════════════════════════ */
+.faq-v2 {
+  padding: 6rem 0 9rem;
+  position: relative;
+}
+
+.faq-v2 .container {
+  max-width: 1320px;
+}
+
+.faq-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.1) 0%, transparent 55%);
+}
+
+.faq-grid {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 5rem;
+  align-items: center;
+}
+
+.faq-intro {
+  text-align: left;
+  max-width: 420px;
+}
+
+.faq-intro .section-title {
+  font-size: clamp(2.5rem, 5vw, 3.75rem);
+  margin-bottom: 1rem;
+}
+
+.faq-intro .section-description {
+  font-size: 1.35rem;
+  margin-bottom: 2.25rem;
+}
+
+.faq-intro-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 4px 22px 22px 22px;
+  padding: 1.1rem 1.3rem;
+  box-shadow: 0 14px 32px rgba(249, 120, 163, 0.14);
+}
+
+.faq-intro-avatar {
+  animation: faq-avatar-bounce 3.2s ease-in-out infinite;
+}
+
+@keyframes faq-avatar-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.faq-intro-text {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #4a4a58;
+  margin: 0;
+}
+
+.faq-intro-text strong {
+  color: #1e293b;
+}
+
+.faq-chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.faq-chat-question-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.faq-chat-bubble-q {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
+  border: none;
+  color: #fff;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 1rem 1.5rem;
+  border-radius: 22px 22px 4px 22px;
+  cursor: pointer;
+  box-shadow: 0 12px 26px rgba(255, 95, 143, 0.28);
+  max-width: 100%;
+  text-align: left;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.faq-chat-bubble-q:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(255, 95, 143, 0.38);
+}
+
+.faq-chat-icon {
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
+}
+
+.faq-chat-icon.rotated {
+  transform: rotate(180deg);
+}
+
+.faq-chat-answer-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+.faq-chat-avatar {
   width: 38px;
   height: 38px;
+  flex-shrink: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--gradient);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.6rem;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
+  box-shadow: 0 8px 18px rgba(249, 120, 163, 0.3);
 }
 
-.faq-toggle-icon.rotated {
-  transform: rotate(180deg);
-  background: rgba(255, 255, 255, 0.4);
-}
-
-.faq-answer {
-  background: white;
-  overflow: hidden;
-}
-
-.faq-answer-content {
-  padding: 1.75rem 2rem;
-  display: flex;
-  gap: 1.25rem;
-  align-items: flex-start;
-}
-
-.faq-answer-icon {
-  font-size: 1.75rem;
-  color: #FF9AB5;
-  flex-shrink: 0;
-  margin-top: 0.15rem;
-}
-
-.faq-answer-content p {
-  margin: 0;
-  color: #555;
-  line-height: 1.8;
-  font-size: 1rem;
-  letter-spacing: -0.01em;
+.faq-chat-bubble-a {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  color: #4a4a58;
+  font-size: 1.05rem;
+  line-height: 1.65;
+  padding: 1rem 1.35rem;
+  border-radius: 4px 22px 22px 22px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+  max-width: 100%;
 }
 
 .faq-expand-enter-active,
 .faq-expand-leave-active {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  max-height: 300px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 220px;
+  overflow: hidden;
 }
 
 .faq-expand-enter-from,
@@ -2697,443 +3604,126 @@ h2 .logo-text,
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   CONTACT
-   ═══════════════════════════════════════════════════════════════════════════ */
-.contact {
-  padding: 8rem 0;
-  text-align: center;
-  background: linear-gradient(180deg, #fff 0%, #FFF8FA 100%);
-}
-
-.section-subtitle-contato {
-  background: linear-gradient(135deg, #FF9AB5 0%, #FFB3C6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-size: 2.5rem;
-  font-weight: 800;
-  margin-bottom: 1rem;
-}
-
-.contact-options {
-  max-width: 600px;
-  margin: 3rem auto 2.5rem;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
-  padding: 0.5rem;
-  background: white;
-  border-radius: 18px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-}
-
-.contact-method-btn {
-  padding: 1.75rem 1.5rem;
-  background: white;
-  border: 2px solid transparent;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  position: relative;
-}
-
-.contact-method-btn:hover {
-  border-color: rgba(255, 154, 181, 0.3);
-  transform: translateY(-3px);
-  box-shadow: 0 6px 20px rgba(255, 154, 181, 0.15);
-}
-
-.contact-method-btn.active {
-  background: linear-gradient(135deg, #FF9AB5 0%, #FFB3C6 100%);
-  color: white;
-  border-color: transparent;
-  box-shadow: 0 8px 25px rgba(255, 154, 181, 0.35);
-}
-
-.method-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-}
-
-.whatsapp-icon {
-  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-  color: white;
-}
-
-.email-icon {
-  background: linear-gradient(135deg, #FF9AB5 0%, #FFB3C6 100%);
-  color: white;
-}
-
-.contact-method-btn.active .method-icon {
-  background: rgba(255, 255, 255, 0.25);
-  transform: scale(1.1);
-}
-
-.method-label {
-  font-weight: 700;
-  font-size: 1.15rem;
-  margin-top: 0.25rem;
-}
-
-.method-desc {
-  font-size: 0.85rem;
-  opacity: 0.75;
-  font-weight: 500;
-}
-
-.contact-content {
-  max-width: 700px;
-  margin: 0 auto;
-}
-
-/* WhatsApp Card */
-.whatsapp-card {
-  background: linear-gradient(135deg, rgba(37, 211, 102, 0.08) 0%, rgba(18, 140, 126, 0.08) 100%);
-  border: 2px solid rgba(37, 211, 102, 0.2);
-  border-radius: 24px;
-  padding: 3rem 2.5rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-}
-
-.whatsapp-preview {
-  margin-bottom: 2rem;
-}
-
-.whatsapp-icon-large {
-  color: #25D366;
-  margin-bottom: 1rem;
-}
-
-.whatsapp-title {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: #333;
-  margin-bottom: 0.75rem;
-}
-
-.whatsapp-text {
-  color: #666;
-  font-size: 1.05rem;
-  line-height: 1.7;
-  max-width: 500px;
-  margin: 0 auto;
-}
-
-.btn-whatsapp {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 1.25rem 2.5rem;
-  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-  color: white;
-  border: none;
-  border-radius: 16px;
-  font-weight: 700;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 6px 25px rgba(37, 211, 102, 0.3);
-}
-
-.btn-whatsapp:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 10px 35px rgba(37, 211, 102, 0.4);
-}
-
-/* Email Form */
-.email-form {
-  background: white;
-  border-radius: 24px;
-  padding: 2.5rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-  border: 2px solid rgba(255, 154, 181, 0.15);
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.form-group {
-  text-align: left;
-  margin-bottom: 1.5rem;
-}
-
-.form-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #555;
-  font-weight: 600;
-  font-size: 0.95rem;
-  margin-bottom: 0.65rem;
-}
-
-.form-label i {
-  color: #FF9AB5;
-}
-
-.form-input,
-.form-textarea {
-  width: 100%;
-  padding: 1rem 1.25rem;
-  border: 2px solid #eee;
-  border-radius: 12px;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  font-family: inherit;
-  background: #FAFAFA;
-}
-
-.form-input:focus,
-.form-textarea:focus {
-  outline: none;
-  border-color: #FF9AB5;
-  background: white;
-  box-shadow: 0 4px 15px rgba(255, 154, 181, 0.12);
-}
-
-.form-textarea {
-  resize: vertical;
-  min-height: 120px;
-  line-height: 1.6;
-}
-
-.btn-submit {
-  width: 100%;
-  padding: 1.25rem 2rem;
-  background: linear-gradient(135deg, #FF9AB5 0%, #FFB3C6 100%);
-  color: white;
-  border: none;
-  border-radius: 14px;
-  font-weight: 700;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 6px 25px rgba(255, 154, 181, 0.3);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-
-.btn-submit:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 35px rgba(255, 154, 181, 0.4);
-}
-
-.btn-submit:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-/* Email Success */
-.email-success {
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.08) 0%, rgba(129, 199, 132, 0.08) 100%);
-  border: 2px solid rgba(76, 175, 80, 0.2);
-  border-radius: 24px;
-  padding: 4rem 2.5rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-}
-
-.success-icon {
-  margin-bottom: 1.25rem;
-}
-
-.success-title {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: #333;
-  margin-bottom: 0.75rem;
-}
-
-.success-text {
-  color: #666;
-  font-size: 1.05rem;
-  line-height: 1.7;
-}
-
-/* Contact Transitions */
-.contact-slide-enter-active,
-.contact-slide-leave-active {
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.contact-slide-enter-from {
-  opacity: 0;
-  transform: translateY(20px) scale(0.95);
-}
-
-.contact-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-20px) scale(0.95);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
    FOOTER
    ═══════════════════════════════════════════════════════════════════════════ */
-.footer {
-  padding: 4rem 0 2rem;
-  border-top: 1px solid rgba(255, 183, 77, 0.15);
-  background: linear-gradient(180deg, #fff 0%, #fff5f5 100%);
+.footer-v2 {
+  padding: 5rem 0 2rem;
+  background: linear-gradient(160deg, var(--dark), #100f1a);
   position: relative;
   isolation: isolate;
 }
 
-.footer-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 2rem;
-  margin-bottom: 3rem;
+.footer-grid-v2 {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 3rem;
 }
 
 .footer-brand {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  margin-bottom: 1.1rem;
 }
 
-.footer-links {
-  display: flex;
-  gap: 2rem;
-}
-
-.footer-links a {
-  color: #666;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: all 0.3s;
-  position: relative;
-}
-
-.footer-links a::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--gradient);
-  transition: width 0.3s;
-}
-
-.footer-links a:hover::after {
-  width: 100%;
-}
-
-.footer-links a:hover {
-  color: var(--primary);
+.footer-brand-desc {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.7;
+  max-width: 300px;
+  margin: 0 0 1.4rem;
 }
 
 .footer-social {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .social-link {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  background: white;
-  border: 2px solid rgba(0, 0, 0, 0.08);
-  color: var(--text-light);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
   text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .social-link:hover {
   background: var(--gradient);
-  border-color: transparent;
-  color: white;
-  transform: translateY(-5px) rotate(10deg);
-  box-shadow: 0 8px 20px rgba(255, 183, 77, 0.3);
+  transform: translateY(-4px) rotate(10deg);
+  box-shadow: 0 8px 20px rgba(255, 201, 71, 0.3);
 }
 
-.footer-bottom {
-  text-align: center;
-  padding-top: 2rem;
-  border-top: 1px solid var(--glass-border);
+.footer-col-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 1.25rem;
 }
 
-.footer-bottom p {
-  color: #999;
-  font-size: 0.9rem;
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
-.footer-link-btn {
+.footer-link-btn,
+.footer-link-a {
   background: none;
   border: none;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: all 0.3s;
-  position: relative;
+  font-weight: 500;
+  font-size: 0.92rem;
   cursor: pointer;
   padding: 0;
   font-family: inherit;
+  text-align: left;
+  transition: color 0.25s ease;
 }
 
-.footer-link-btn::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--gradient);
-  transition: width 0.3s;
+.footer-link-btn:hover,
+.footer-link-a:hover {
+  color: var(--primary);
 }
 
-.footer-link-btn:hover::after {
-  width: 100%;
+.footer-bottom-v2 {
+  max-width: 1320px;
+  margin: 3.5rem auto 0;
+  padding-top: 1.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.4);
 }
 
-.footer-link-btn:hover {
+.footer-legal-links {
+  display: flex;
+  gap: 1.6rem;
+}
+
+.footer-legal-links .footer-link-btn {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.82rem;
+}
+
+.footer-legal-links .footer-link-btn:hover {
   color: var(--primary);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TERMS & PRIVACY MODAL
+   MODAIS
    ═══════════════════════════════════════════════════════════════════════════ */
-.terms-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  z-index: 3000;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   MODAL DE INSTALAÇÃO iOS
-   ═══════════════════════════════════════════════════════════════════════════ */
+.terms-modal-overlay,
 .ios-modal-overlay {
   position: fixed;
   inset: 0;
@@ -3162,7 +3752,7 @@ h2 .logo-text,
   align-items: center;
   gap: 0.75rem;
   padding: 2rem 1.5rem 1.25rem;
-  background: linear-gradient(180deg, rgba(255, 183, 77, 0.12), transparent);
+  background: linear-gradient(180deg, rgba(255, 201, 71, 0.12), transparent);
 }
 
 .ios-modal-logo {
@@ -3262,19 +3852,12 @@ h2 .logo-text,
   font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(255, 183, 77, 0.35);
+  box-shadow: 0 6px 20px rgba(255, 201, 71, 0.35);
   transition: transform 0.2s ease;
 }
 
 .ios-close-btn:hover {
   transform: translateY(-1px);
-}
-
-@media (max-width: 768px) {
-  .terms-modal-overlay {
-    backdrop-filter: blur(3px);
-    background: rgba(0, 0, 0, 0.85);
-  }
 }
 
 .terms-modal {
@@ -3303,7 +3886,7 @@ h2 .logo-text,
   font-weight: 700;
   color: #333;
   margin: 0;
-  background: linear-gradient(135deg, #FF9AB5 0%, #FFB3C6 100%);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -3324,8 +3907,8 @@ h2 .logo-text,
 }
 
 .terms-modal-close:hover {
-  background: rgba(255, 154, 181, 0.15);
-  color: #FF9AB5;
+  background: rgba(249, 120, 163, 0.15);
+  color: #F978A3;
   transform: rotate(90deg);
 }
 
@@ -3364,20 +3947,21 @@ h2 .logo-text,
 }
 
 .terms-close-btn:hover {
-  border-color: #FF9AB5;
-  color: #FF9AB5;
+  border-color: #F978A3;
+  color: #F978A3;
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(255, 154, 181, 0.2);
+  box-shadow: 0 4px 15px rgba(249, 120, 163, 0.2);
 }
 
-/* Modal Transitions */
 .modal-fade-enter-active,
 .modal-fade-leave-active {
   transition: opacity 0.3s ease;
 }
 
 .modal-fade-enter-active .terms-modal,
-.modal-fade-leave-active .terms-modal {
+.modal-fade-leave-active .terms-modal,
+.modal-fade-enter-active .ios-modal,
+.modal-fade-leave-active .ios-modal {
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -3387,341 +3971,234 @@ h2 .logo-text,
 }
 
 .modal-fade-enter-from .terms-modal,
-.modal-fade-leave-to .terms-modal {
+.modal-fade-leave-to .terms-modal,
+.modal-fade-enter-from .ios-modal,
+.modal-fade-leave-to .ios-modal {
   transform: scale(0.9) translateY(30px);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   RESPONSIVE
+   RESPONSIVO
    ═══════════════════════════════════════════════════════════════════════════ */
-@media (max-width: 1200px) {
-  .features-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.75rem;
-  }
-}
-
 @media (max-width: 1024px) {
-  .screenshots-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
+  .discover-grid,
+  .showcase-grid,
+  .faq-grid {
+    grid-template-columns: 1fr;
   }
 
-  .steps-grid {
-    flex-direction: column;
-    gap: 2rem;
-  }
-
-  .step-card {
+  .faq-intro {
     max-width: 100%;
-    min-width: 100%;
+    text-align: center;
   }
 
-  .step-arrow {
-    transform: rotate(90deg);
+  .faq-intro-card {
+    max-width: 480px;
+    margin: 0 auto;
   }
 
-  @keyframes arrowBounce {
-
-    0%,
-    100% {
-      transform: rotate(90deg) translateX(0);
-    }
-
-    50% {
-      transform: rotate(90deg) translateX(8px);
-    }
+  .discover-cards {
+    min-height: 460px;
+    max-width: 460px;
+    margin: 0 auto;
   }
 
-  .hero {
-    min-height: 80vh;
-    padding: 8rem 0 5rem;
+  .features-grid-v2 {
+    grid-template-columns: 1fr;
   }
 
-  .section-title {
-    font-size: 2rem;
+  .feature-main {
+    min-height: 280px;
   }
 
-  .section-description {
-    font-size: 1rem;
+  .footer-grid-v2 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2.5rem;
   }
 
-  .feature-card {
-    padding: 2rem;
+  .pwa-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .btn-pwa-install {
+    align-self: stretch;
+    justify-content: center;
+  }
+
+  .showcase-phone-wrap {
+    perspective: 1300px;
+    padding: 2.5rem 0 3.5rem;
+  }
+
+  .badge-confirmed {
+    right: 4%;
   }
 }
 
 @media (max-width: 768px) {
-
   .nav-menu,
   .auth-buttons {
     display: none;
   }
 
-  .btn-install-mobile {
-    display: inline-flex;
-    margin-left: auto;
-    margin-right: 0.5rem;
-  }
-
+  .btn-install-mobile,
   .mobile-menu-btn {
     display: inline-flex;
   }
 
   .hero {
-    min-height: 70vh;
-    padding: 6rem 0 4rem;
+    padding: 8rem 0 3rem;
   }
 
-  .hero-badge {
-    font-size: 0.8rem;
-    padding: 0.5rem 1rem;
-    margin-bottom: 1.5rem;
+  .discover {
+    padding: 2rem 0 5rem;
   }
 
-  .hero-subtitle {
-    margin-bottom: 2.5rem;
-  }
-
-  .hero-glow-1,
-  .hero-glow-2,
-  .hero-glow-3 {
-    width: 200px;
-    height: 200px;
-    opacity: 0.25;
-  }
-
-  .hero-glow-1 {
-    left: -20%;
-  }
-
-  .hero-glow-2 {
-    right: -20%;
-  }
-
-  .hero-cta-group {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .btn-cta-primary,
-  .btn-cta-secondary {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .hero-stats {
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .stat-item {
-    justify-content: center;
-  }
-
-  .counter-content {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1rem;
-  }
-
-  .features-grid,
-  .screenshots-grid {
+  .discover-grid {
     grid-template-columns: 1fr;
-    gap: 1.25rem;
+    gap: 2.5rem;
   }
 
-  .feature-card,
-  .screenshot-card {
-    padding: 1.75rem;
-  }
-
-  .live-counter {
-    padding: 3rem 0;
-  }
-
-  .counter-card {
-    padding: 1.5rem;
-  }
-
-  .counter-number {
-    font-size: 1.75rem;
-  }
-
-  .counter-text {
-    font-size: 0.85rem;
-  }
-
-  .how-it-works {
-    padding: 6rem 0;
-  }
-
-  .cta-section {
-    padding: 5rem 0;
-  }
-
-  .cta-title {
-    font-size: 2rem;
-    margin-bottom: 2rem;
-  }
-
-  .btn-cta-large {
-    font-size: 1.1rem;
-    padding: 1.25rem 2.5rem;
-  }
-
-  .phone-mockup {
-    width: 180px;
-    height: 360px;
-  }
-
-  .footer-content {
-    flex-direction: column;
+  .discover-content {
     text-align: center;
   }
 
-  .footer-links {
-    flex-direction: column;
-    gap: 1rem;
+  .discover-text {
+    margin-left: auto;
+    margin-right: auto;
   }
 
-  .footer-social {
+  .discover-actions {
     justify-content: center;
   }
 
-  .social-link {
-    width: 42px;
-    height: 42px;
+  .discover-live-card {
+    margin: 0 auto;
   }
 
-  .scroll-indicator {
+  /* No mobile a colagem rotacionada não cabe — vira uma lista empilhada normal */
+  .discover-cards {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-height: auto;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    perspective: none;
+  }
+
+  .discover-event-card,
+  .discover-event-card-1,
+  .discover-event-card-2,
+  .discover-event-card-3 {
+    position: static;
+    width: 100%;
+    top: auto;
+    bottom: auto;
+    left: auto;
+    right: auto;
+    transform: none;
+  }
+
+  .features-v2,
+  .app-showcase-v2,
+  .how-it-works-v2,
+  .faq-v2 {
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+  }
+
+  .showcase-tab-desc {
+    padding-left: 0;
+  }
+
+  .showcase-phone-3d-body {
+    width: 240px;
+    height: 480px;
+  }
+
+  .face-right,
+  .face-left {
+    height: 392px;
+    top: 44px;
+    left: 112px;
+  }
+
+  .face-right {
+    transform: rotateY(90deg) translateZ(120px);
+  }
+
+  .face-left {
+    transform: rotateY(-90deg) translateZ(120px);
+  }
+
+  .face-top,
+  .face-bottom {
+    width: 152px;
+    top: 232px;
+    left: 44px;
+  }
+
+  .face-top {
+    transform: rotateX(90deg) translateZ(240px);
+  }
+
+  .face-bottom {
+    transform: rotateX(-90deg) translateZ(240px);
+  }
+
+  .badge-confirmed {
     display: none;
   }
 
-  .faq {
-    padding: 5rem 0;
+  .timeline-live-line {
+    display: none;
   }
 
-  .faq-list {
-    gap: 1rem;
-  }
-
-  .faq-question {
-    padding: 1.25rem 1.5rem;
-    font-size: 0.95rem;
-  }
-
-  .faq-q-content {
-    gap: 1rem;
-  }
-
-  .faq-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 1.3rem;
-  }
-
-  .faq-toggle-icon {
-    width: 34px;
-    height: 34px;
-    font-size: 1.4rem;
-  }
-
-  .faq-answer-content {
-    padding: 1.5rem 1.5rem;
-    gap: 1rem;
-  }
-
-  .faq-answer-icon {
-    font-size: 1.5rem;
-  }
-
-  .faq-answer-content p {
-    font-size: 0.95rem;
-  }
-
-  /* Contact Responsive */
-  .contact {
-    padding: 5rem 0;
-  }
-
-  .section-subtitle-contato {
-    font-size: 2rem;
-  }
-
-  .contact-options {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .contact-method-btn {
-    padding: 1.5rem 1.25rem;
-  }
-
-  .method-icon {
-    width: 48px;
-    height: 48px;
-  }
-
-  .whatsapp-card,
-  .email-form {
-    padding: 2rem 1.5rem;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
+  .timeline-row,
+  .timeline-row-reverse {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
     gap: 1.25rem;
   }
 
-  .btn-whatsapp,
-  .btn-submit {
-    font-size: 1rem;
-    padding: 1.1rem 2rem;
+  .timeline-row-reverse .timeline-desc {
+    margin-left: 0;
   }
 
-  /* Terms Modal Responsive */
-  .terms-modal {
-    max-height: 85vh;
+  .timeline-bignum {
+    display: none;
   }
 
-  .terms-modal-header {
-    padding: 1.25rem 1.5rem;
+  .faq-chat-bubble-q,
+  .faq-chat-bubble-a {
+    max-width: 100%;
   }
 
-  .terms-modal-title {
-    font-size: 1.25rem;
-  }
-
-  .terms-modal-footer {
-    padding: 1.25rem 1.5rem;
-  }
-
-  .terms-pdf-viewer {
-    min-height: 400px;
+  .footer-grid-v2 {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
   }
 }
 
 @media (max-width: 480px) {
-  .hero {
-    min-height: auto;
-    padding: 5rem 0 3rem;
+  .hero-wordmark {
+    font-size: 3rem;
   }
 
-  .hero-title {
-    font-size: 1.85rem;
-    margin-bottom: 1.5rem;
-    line-height: 1.2;
+  .showcase-phone-wrap {
+    perspective: 900px;
+    padding: 1.5rem 0 2.5rem;
   }
 
-  .hero-subtitle {
-    font-size: 1rem;
-    margin-bottom: 2rem;
-  }
-
-  .hero-badge {
-    font-size: 0.75rem;
-    padding: 0.45rem 0.9rem;
-    margin-bottom: 1.25rem;
+  .showcase-phone-3d-shadow {
+    height: 46px;
+    filter: blur(16px);
   }
 
   .section-title {
@@ -3732,231 +4209,14 @@ h2 .logo-text,
     font-size: 0.95rem;
   }
 
-  .live-counter {
-    padding: 2rem 0;
-  }
-
-  .counter-card {
-    padding: 1.25rem;
+  .pwa-banner-info {
     flex-direction: column;
     text-align: center;
   }
 
-  .counter-content {
+  .footer-bottom-v2 {
     flex-direction: column;
-    align-items: center;
     text-align: center;
-  }
-
-  .counter-number {
-    font-size: 1.5rem;
-  }
-
-  .counter-text {
-    font-size: 0.8rem;
-  }
-
-  .how-it-works {
-    padding: 4rem 0;
-  }
-
-  .step-title {
-    font-size: 1.2rem;
-  }
-
-  .step-description {
-    font-size: 0.95rem;
-  }
-
-  .cta-section {
-    padding: 4rem 0;
-  }
-
-  .cta-title {
-    font-size: 1.75rem;
-    line-height: 1.3;
-  }
-
-  .btn-cta-large {
-    font-size: 1rem;
-    padding: 1.1rem 2rem;
-  }
-
-  .faq {
-    padding: 4rem 0;
-  }
-
-  .faq-question {
-    padding: 1rem 1.25rem;
-    font-size: 0.9rem;
-  }
-
-  .faq-q-content {
-    gap: 0.85rem;
-  }
-
-  .faq-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 1.2rem;
-    border-radius: 10px;
-  }
-
-  .faq-toggle-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 1.3rem;
-  }
-
-  .faq-answer-content {
-    padding: 1.25rem 1.25rem;
-    gap: 0.85rem;
-    flex-direction: column;
-  }
-
-  .faq-answer-icon {
-    font-size: 1.4rem;
-    margin-top: 0;
-  }
-
-  .faq-answer-content p {
-    font-size: 0.9rem;
-    line-height: 1.7;
-  }
-
-  /* Contact Mobile */
-  .section-subtitle-contato {
-    font-size: 1.75rem;
-  }
-
-  .contact-method-btn {
-    padding: 1.25rem 1rem;
-  }
-
-  .method-icon {
-    width: 44px;
-    height: 44px;
-  }
-
-  .method-label {
-    font-size: 1rem;
-  }
-
-  .method-desc {
-    font-size: 0.8rem;
-  }
-
-  .whatsapp-card,
-  .email-form,
-  .email-success {
-    padding: 1.75rem 1.25rem;
-  }
-
-  .whatsapp-title,
-  .success-title {
-    font-size: 1.5rem;
-  }
-
-  .whatsapp-text,
-  .success-text {
-    font-size: 0.95rem;
-  }
-
-  .form-group {
-    margin-bottom: 1.25rem;
-  }
-
-  .form-input,
-  .form-textarea {
-    padding: 0.9rem 1rem;
-    font-size: 0.95rem;
-  }
-
-  .btn-whatsapp,
-  .btn-submit {
-    font-size: 0.95rem;
-    padding: 1rem 1.75rem;
-  }
-
-  .btn-cta-primary,
-  .btn-cta-secondary {
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
-  }
-
-  .feature-card,
-  .screenshot-card {
-    padding: 1.5rem;
-  }
-
-  .phone-mockup {
-    width: 160px;
-    height: 320px;
-  }
-
-  .hero-glow-1,
-  .hero-glow-2,
-  .hero-glow-3 {
-    width: 150px;
-    height: 150px;
-    opacity: 0.2;
-  }
-
-  .screenshot-card h3 {
-    font-size: 1.1rem;
-  }
-
-  .screenshot-card p {
-    font-size: 0.9rem;
-  }
-
-  .feature-card h3 {
-    font-size: 1.1rem;
-  }
-
-  .feature-card p {
-    font-size: 0.9rem;
-  }
-
-  .step-number {
-    width: 64px;
-    height: 64px;
-  }
-
-  /* Terms Modal Mobile */
-  .terms-modal-overlay {
-    padding: 1rem;
-  }
-
-  .terms-modal {
-    max-height: 80vh;
-    border-radius: 16px;
-  }
-
-  .terms-modal-header {
-    padding: 1rem 1.25rem;
-  }
-
-  .terms-modal-title {
-    font-size: 1.1rem;
-  }
-
-  .terms-modal-close {
-    width: 36px;
-    height: 36px;
-  }
-
-  .terms-modal-footer {
-    padding: 1rem 1.25rem;
-  }
-
-  .terms-close-btn {
-    padding: 0.75rem 1.5rem;
-    font-size: 0.9rem;
-  }
-
-  .terms-pdf-viewer {
-    min-height: 300px;
   }
 }
 </style>

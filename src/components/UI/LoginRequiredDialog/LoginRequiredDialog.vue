@@ -4,7 +4,7 @@
   import { useRouter } from 'vue-router'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
-  import { useGuestMode } from '@/composables/useGuestMode'
+  import { isEmbeddedInIframe, useGuestMode } from '@/composables/useGuestMode'
   import { socialAuthService } from '@/services/socialAuth'
   import { logger } from '@/utils/logger'
 
@@ -38,6 +38,14 @@
   }
 
   async function handleGoogleAuth () {
+    // Dentro do preview em iframe (mockup 3D da landing page), o fluxo de
+    // login do Google não deve rodar ali dentro — leva o usuário direto
+    // para a página real de cadastro, na janela de topo.
+    if (isEmbeddedInIframe() && window.top) {
+      window.top.location.href = '/public/Signup'
+      return
+    }
+
     try {
       showSnackbar(t('loginRequiredDialog.snackbar.googleAuthenticating'), '#4285F4')
       const result = await socialAuthService.loginWithGoogle()

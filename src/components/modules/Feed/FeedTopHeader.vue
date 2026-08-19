@@ -6,6 +6,7 @@
   import EventSearchAutocomplete from '@/components/modules/Feed/EventSearchAutocomplete.vue'
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import { useAuth } from '@/composables/useAuth'
+  import { isEmbeddedInIframe, useGuestMode } from '@/composables/useGuestMode'
   import { svgIcons } from '@/utils/svgSet'
 
   interface UserSummary {
@@ -15,7 +16,7 @@
     bio?: string
   }
 
-  defineProps<{
+  const props = defineProps<{
     user: UserSummary
     showBackBtn?: boolean
     guestMode?: boolean
@@ -23,13 +24,39 @@
   const { t } = useI18n()
   const router = useRouter()
   const { logout: authLogout, loggedUser, isAuthenticated } = useAuth()
+  const { requireLogin } = useGuestMode()
 
   function logout () {
     authLogout()
     router.push('/public/Login')
   }
 
+  // No modo guest embutido (iframe do mockup), o menu do usuário é exibido
+  // mesmo sem sessão só por questão de espaço — mas as ações continuam
+  // bloqueadas pela mesma dinâmica de "Acesso Restrito" do resto do feed.
+  function goToProfile () {
+    if (props.guestMode) {
+      requireLogin('acessar seu perfil')
+      return
+    }
+    router.push('/private/profile')
+  }
+
+  function handleLogoutClick () {
+    if (props.guestMode) {
+      requireLogin('sair da conta')
+      return
+    }
+    logout()
+  }
+
+  const isEmbedded = isEmbeddedInIframe()
+
   function goToLogin () {
+    if (isEmbedded && window.top) {
+      window.top.location.href = '/public/Login'
+      return
+    }
     router.push('/public/Login')
   }
 
@@ -40,6 +67,10 @@
   }
 
   function goToSignup () {
+    if (isEmbedded && window.top) {
+      window.top.location.href = '/public/Signup'
+      return
+    }
     router.push('/public/Signup')
   }
 
@@ -91,13 +122,16 @@
         </slot>
       </div>
       <div class="user-summary">
-        <!-- Seletor de idioma apenas no modo guest (explore) -->
-        <div v-if="guestMode" class="lang-switch-wrapper">
+        <!-- Seletor de idioma apenas no modo guest (explore), exceto dentro do
+             preview em iframe (mockup 3D da landing page), onde não cabe -->
+        <div v-if="guestMode && !isEmbedded" class="lang-switch-wrapper">
           <LanguageSwitcher />
         </div>
 
-        <!-- Modo Guest: Botões de Login/Cadastro -->
-        <template v-if="guestMode">
+        <!-- Modo Guest: Botões de Login/Cadastro, exceto dentro do preview em
+             iframe (mockup 3D da landing page) — lá eles só tomam espaço da
+             busca, e qualquer ação restrita já leva ao login na janela de topo -->
+        <template v-if="guestMode && !isEmbedded">
           <div class="guest-actions">
             <button class="btn-guest-login" type="button" @click="goToLogin">
               Entrar
@@ -136,7 +170,7 @@
               <v-divider class="my-1" />
 
               <!-- Navegar para perfil -->
-              <v-list-item class="dropdown-action-item" rounded="lg" @click="router.push('/private/profile')">
+              <v-list-item class="dropdown-action-item" rounded="lg" @click="goToProfile">
                 <template #prepend>
                   <svg
                     fill="none"
@@ -158,7 +192,7 @@
               <v-divider class="my-1" />
 
               <!-- Sair -->
-              <v-list-item class="dropdown-action-item dropdown-logout" rounded="lg" @click="logout">
+              <v-list-item class="dropdown-action-item dropdown-logout" rounded="lg" @click="handleLogoutClick">
                 <template #prepend>
                   <svg
                     fill="none"

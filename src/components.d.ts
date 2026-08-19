@@ -30,6 +30,7 @@ declare module 'vue' {
     FeedTopHeader: typeof import('./components/modules/Feed/FeedTopHeader.vue')['default']
     FeedTrendsPanel: typeof import('./components/modules/Feed/FeedTrendsPanel.vue')['default']
     FollowButton: typeof import('./components/UI/FollowButton/FollowButton.vue')['default']
+    GradientText: typeof import('./components/UI/GradientText/GradientText.vue')['default']
     ImageCropper: typeof import('./components/UI/ImageCropper/ImageCropper.vue')['default']
     InlineComments: typeof import('./components/modules/Feed/InlineComments.vue')['default']
     InlineInterests: typeof import('./components/modules/Feed/InlineInterests.vue')['default']
