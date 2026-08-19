@@ -131,6 +131,20 @@
     })
   }
 
+  /**
+   * Navega para os detalhes de um evento da lista de tendências (bottom sheet
+   * mobile), bloqueando visitantes com o mesmo dialog de "Acesso Restrito"
+   * usado no resto do feed.
+   */
+  function goToTrendingEvent (eventId: number | string) {
+    if (props.guestMode) {
+      requireLogin('ver detalhes do evento')
+      return
+    }
+    router.push(`/private/event/${eventId}`)
+    showTrendingMobile.value = false
+  }
+
   const tabs = computed<TabItem[]>(() => {
     // Na página de top eventos e favoritos, não mostrar abas
     if (activeNav.value === 'top-events' || activeNav.value === 'favorites') {
@@ -1463,7 +1477,7 @@
                 <button
                   class="trending-item-mobile"
                   type="button"
-                  @click="router.push(`/private/event/${item.id}`); showTrendingMobile = false"
+                  @click="goToTrendingEvent(item.id)"
                 >
                   <span aria-hidden="true" class="trend-rank">{{ index + 1 }}</span>
                   <div class="trend-info">
