@@ -357,7 +357,7 @@
   font-family: "Baloo Thambi 2", serif;
   font-weight: 800;
   font-size: 2rem;
-  background: linear-gradient(90deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -445,7 +445,7 @@
 }
 
 .btn-guest-signup {
-  background: linear-gradient(135deg, #ff9ab5 0%, #ffb74d 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #ff9a4d 100%);
   color: #1a1d2e;
   box-shadow: 0 4px 12px rgba(255, 154, 181, 0.3);
 }

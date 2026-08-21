@@ -123,7 +123,7 @@
   --color-bg-hover: #eef0ff;
   --color-text: #707799;
   --color-text-active: #ffffff;
-  --gradient-primary: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  --gradient-primary: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
 
   --transition-speed: 0.2s;
 

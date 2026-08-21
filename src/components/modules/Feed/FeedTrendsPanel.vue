@@ -170,9 +170,9 @@ strong {
   align-items: center;
   gap: 0.4rem;
   padding: 0.55rem 1.35rem;
-  border-radius: 999px;
+  border-radius: 14px;
   border: none;
-  background: linear-gradient(135deg, rgba(255, 138, 91, 0.15), rgba(255, 95, 166, 0.15));
+  background: linear-gradient(135deg, rgba(255, 138, 91, 0.15), rgba(255, 95, 143, 0.15));
   color: #ff5fa6;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -187,7 +187,7 @@ strong {
 
 .more:hover,
 .less:hover {
-  background: linear-gradient(135deg, rgba(255, 138, 91, 0.25), rgba(255, 95, 166, 0.25));
+  background: linear-gradient(135deg, rgba(255, 138, 91, 0.25), rgba(255, 95, 143, 0.25));
 }
 
 .less {

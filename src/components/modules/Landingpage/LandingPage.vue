@@ -99,6 +99,25 @@
   const feedEmbedScale = ref(1)
   let phoneScreenObserver: ResizeObserver | null = null
 
+  // No breakpoint mobile o scroll do feed acontece no html/body do próprio
+  // documento embutido (não num contêiner interno), então não dá pra usar
+  // scrolling="no" no iframe sem travar a navegação. Em vez disso, injeta um
+  // estilo same-origin que esconde a scrollbar nativa sem desativar o scroll.
+  function onFeedEmbedLoad (event: Event) {
+    const iframe = event.target as HTMLIFrameElement
+    try {
+      const doc = iframe.contentDocument
+      if (!doc || doc.getElementById('embed-hide-scrollbar')) return
+
+      const style = doc.createElement('style')
+      style.id = 'embed-hide-scrollbar'
+      style.textContent = 'html, body { scrollbar-width: none; } html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; height: 0; }'
+      doc.head.appendChild(style)
+    } catch {
+      // Cross-origin (ex.: preview em domínio diferente) — sem acesso ao documento, ignora.
+    }
+  }
+
   // Smartphone 3D
   const PHONE_BASE_ROTATE_X = 3
   const PHONE_BASE_ROTATE_Y = -14
@@ -353,7 +372,7 @@
   // MICROINTERAÇÕES: Efeito Magnético nos CTAs Principais
   // ═══════════════════════════════════════════════════════════════════════════
   function setupMagneticButtons (container: HTMLElement) {
-    const buttons = container.querySelectorAll<HTMLElement>('.btn-cta-primary, .btn-primary-glow, .btn-pwa-install, .btn-install')
+    const buttons = container.querySelectorAll<HTMLElement>('.btn-cta-primary, .btn-primary-glow, .btn-pwa-install')
     for (const btn of buttons) {
       const text = btn.querySelector<HTMLElement>('span, .v-icon, .btn-glow')
       const onMove = (e: MouseEvent) => {
@@ -910,10 +929,6 @@
     closeMobileMenu()
     goToSignup()
   }
-  function installAppMobile () {
-    closeMobileMenu()
-    installApp()
-  }
 
   function goToSection (sectionId: string) {
     closeMobileMenu()
@@ -937,30 +952,11 @@
             <span class="logo-text">We Party</span>
           </div>
           <div class="auth-buttons">
-            <button
-              v-if="canInstall"
-              class="btn-install"
-              title="Instalar o app da We Party"
-              type="button"
-              @click="installApp"
-            >
-              <v-icon icon="mdi-download" size="20" />
-              <span>Baixar app</span>
-            </button>
             <button class="btn-ghost" type="button" @click="goToLogin">Entrar</button>
             <button class="btn-primary-glow" type="button" @click="goToSignup">
               <span>CADASTRO</span>
             </button>
           </div>
-          <button
-            v-if="canInstall"
-            aria-label="Instalar o app da We Party"
-            class="btn-install-mobile"
-            type="button"
-            @click="installApp"
-          >
-            <v-icon icon="mdi-download" size="22" />
-          </button>
           <button
             aria-controls="mobile-menu"
             :aria-expanded="isMobileMenuOpen"
@@ -986,15 +982,6 @@
 
           <div class="mobile-menu-divider" />
 
-          <button
-            v-if="canInstall"
-            class="mobile-menu-install"
-            type="button"
-            @click="installAppMobile"
-          >
-            <v-icon icon="mdi-download" size="20" />
-            <span>Baixar app</span>
-          </button>
           <button class="mobile-menu-ghost" type="button" @click="goToLoginMobile">Entrar</button>
           <button class="mobile-menu-primary" type="button" @click="goToSignupMobile">
             <span>CADASTRO</span>
@@ -1247,6 +1234,7 @@
                           src="/public/explore"
                           :style="{ transform: `scale(${feedEmbedScale})` }"
                           title="Feed de Eventos da We Party, ao vivo"
+                          @load="onFeedEmbedLoad"
                         />
                       </div>
                       <div v-else-if="activeShowcase === 2" key="event-mock" class="event-mock">
@@ -1644,7 +1632,7 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 2rem;
-  border-radius: 999px;
+  border-radius: 14px;
   border: 1px solid transparent;
   transition: background 0.35s ease, box-shadow 0.35s ease,
     border-color 0.35s ease, padding 0.35s ease, max-width 0.35s ease;
@@ -1776,75 +1764,6 @@ h2 .logo-text,
   box-shadow: 0 8px 30px rgba(255, 95, 143, 0.45);
 }
 
-/* Botão de instalação do PWA (desktop) */
-.btn-install {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1.5px solid rgba(255, 255, 255, 0.4);
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.9rem;
-  padding: 0.75rem 1.25rem;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 0.3s ease,
-    border-color 0.3s ease,
-    color 0.3s ease;
-  transform: translateZ(0);
-  will-change: transform;
-}
-
-.btn-install:hover {
-  transform: translateY(-2px) translateZ(0);
-  background: rgba(255, 255, 255, 0.26);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-}
-
-.header-solid .btn-install {
-  background: rgba(255, 154, 77, 0.1);
-  border-color: rgba(255, 154, 77, 0.4);
-  color: var(--primary-dark);
-}
-
-.header-solid .btn-install:hover {
-  background: rgba(255, 154, 77, 0.18);
-  box-shadow: 0 6px 20px rgba(255, 95, 143, 0.25);
-}
-
-.btn-install .v-icon {
-  animation: install-bounce 2s ease-in-out infinite;
-}
-
-@keyframes install-bounce {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(2px);
-  }
-}
-
-/* Botão de instalação do PWA (mobile) */
-.btn-install-mobile {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  background: var(--gradient);
-  border: none;
-  border-radius: 12px;
-  color: #fff;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(255, 201, 71, 0.35);
-}
-
 .mobile-menu-btn {
   display: none;
   align-items: center;
@@ -1929,26 +1848,6 @@ h2 .logo-text,
   height: 1px;
   margin: 0.5rem 0.25rem;
   background: linear-gradient(90deg, transparent, rgba(255, 201, 71, 0.25), transparent);
-}
-
-.mobile-menu-install {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.85rem 1rem;
-  background: rgba(255, 201, 71, 0.1);
-  border: 1.5px solid rgba(255, 201, 71, 0.45);
-  border-radius: 12px;
-  color: var(--primary-dark);
-  font-weight: 700;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: background-color 0.25s ease;
-}
-
-.mobile-menu-install:hover {
-  background: rgba(255, 201, 71, 0.18);
 }
 
 .mobile-menu-ghost {
@@ -2263,7 +2162,7 @@ h2 .logo-text,
   padding: 1.1rem 2.25rem;
   background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   border: none;
-  border-radius: 999px;
+  border-radius: 14px;
   color: white;
   font-weight: 700;
   font-size: 1rem;
@@ -3292,7 +3191,7 @@ h2 .logo-text,
   font-weight: 700;
   font-size: 0.95rem;
   padding: 0.95rem 2rem;
-  border-radius: 999px;
+  border-radius: 14px;
   border: none;
   cursor: pointer;
   display: flex;
@@ -4049,7 +3948,6 @@ h2 .logo-text,
     display: none;
   }
 
-  .btn-install-mobile,
   .mobile-menu-btn {
     display: inline-flex;
   }

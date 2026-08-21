@@ -100,7 +100,7 @@
   border: 1.5px solid transparent;
   background:
     linear-gradient(#fff, #fff) padding-box,
-    linear-gradient(90deg, #FFC947 0%, #F978A3 100%) border-box;
+    linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%) border-box;
 }
 
 .follow-btn.is-follow:hover {
@@ -109,7 +109,7 @@
 
 .follow-btn.is-following {
   border: none;
-  background: linear-gradient(90deg, #FFC947 0%, #F978A3 100%);
+  background: linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%);
   background-size: 100% 100%;
   color: #fff;
   box-shadow: 0 10px 18px rgba(249, 120, 163, 0.25);

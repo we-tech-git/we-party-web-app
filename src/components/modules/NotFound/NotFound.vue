@@ -288,7 +288,7 @@
   font-size: clamp(7rem, 22vw, 14rem);
   font-weight: 900;
   line-height: 1;
-  background: var(--gradient-primary, linear-gradient(135deg, #ffb74d, #ff9ab5));
+  background: var(--gradient-primary, linear-gradient(135deg, #ff9a4d, #ff5f8f));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -361,7 +361,7 @@
 }
 
 .nf-card--primary {
-  background: linear-gradient(135deg, #ffb74d 0%, #ff9ab5 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: #fff;
 }
 

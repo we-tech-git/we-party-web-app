@@ -107,8 +107,8 @@
 
   🎨 CUSTOMIZAÇÃO:
   As variáveis CSS podem ser alteradas:
-  --accent: Cor primária (padrão: #ff5fa6)
-  --accent-light: Cor secundária (padrão: #ffba4b)
+  --accent: Cor primária (padrão: #ff5f8f)
+  --accent-light: Cor secundária (padrão: #ff9a4d)
 
 -->
 
@@ -544,10 +544,10 @@
    CSS VARIABLES
    ═══════════════════════════════════════════════════════════════════════════ */
 .feed-card {
-  --accent: #ff5fa6;
-  --accent-light: #ffba4b;
-  --accent-rgb: 255, 95, 166;
-  --accent-light-rgb: 255, 186, 75;
+  --accent: #ff5f8f;
+  --accent-light: #ff9a4d;
+  --accent-rgb: 255, 95, 143;
+  --accent-light-rgb: 255, 154, 77;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -693,7 +693,7 @@
   align-items: center;
   gap: 0.55rem;
   padding: 0.4rem 0.8rem 0.4rem 0.45rem;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.93);
   backdrop-filter: blur(8px);
   color: #1a1d35;
@@ -832,7 +832,7 @@
 
 .interest-chip {
   padding: 0.45rem 0.9rem;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #fff;
@@ -899,7 +899,7 @@
 
 .interest-tag {
   padding: 0.35rem 0.75rem;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.18);
   font-size: 0.7rem;
@@ -932,7 +932,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.55rem 0.85rem;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -995,7 +995,7 @@
 .stat-action {
   cursor: pointer;
   padding: 0.35rem 0.65rem;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }

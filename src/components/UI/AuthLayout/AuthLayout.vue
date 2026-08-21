@@ -136,7 +136,7 @@
   justify-content: center;
   position: relative;
   padding: 48px;
-  background: linear-gradient(142.35deg, rgba(252, 149, 89, 0.15) -1.66%, rgba(255, 98, 216, 0.15) 100.44%);
+  background: linear-gradient(142.35deg, rgba(255, 154, 77, 0.15) -1.66%, rgba(255, 95, 143, 0.15) 100.44%);
   overflow: hidden;
 }
 
@@ -157,7 +157,7 @@
   font-size: 100px;
   line-height: 1.25;
   letter-spacing: 0;
-  background: linear-gradient(to right, #FFC947, #F978A3);
+  background: linear-gradient(to right, #ff9a4d, #ff5f8f);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

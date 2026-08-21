@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
   import type { FeedItem } from '@/stores/events'
   import { computed, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
@@ -540,10 +540,10 @@
 
 /* ─── CSS variable defaults ─────────────────────────────────────────────── */
 .feed-card {
-  --accent: #ff5fa6;
-  --accent-light: #ffba4b;
-  --accent-rgb: 255, 95, 166;
-  --accent-light-rgb: 255, 186, 75;
+  --accent: #ff5f8f;
+  --accent-light: #ff9a4d;
+  --accent-rgb: 255, 95, 143;
+  --accent-light-rgb: 255, 154, 77;
 }
 
 /* ─── Card shell ─────────────────────────────────────────────────────────── */
@@ -708,7 +708,7 @@
   align-items: center;
   gap: 0.55rem;
   padding: 0.4rem 0.8rem 0.4rem 0.45rem;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.93);
   backdrop-filter: blur(8px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
@@ -883,7 +883,7 @@
   display: inline-flex;
   align-items: center;
   padding: 0.18rem 0.55rem;
-  border-radius: 999px;
+  border-radius: 14px;
   font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -897,7 +897,7 @@
 }
 
 .interest-tag.matched {
-  background: linear-gradient(135deg, rgba(233, 30, 99, 0.85), rgba(255, 95, 166, 0.85));
+  background: linear-gradient(135deg, rgba(233, 30, 99, 0.85), rgba(255, 95, 143, 0.85));
   border-color: rgba(255, 255, 255, 0.25);
   color: #fff;
   font-weight: 700;
@@ -1070,7 +1070,7 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.28rem 0.65rem;
-  border-radius: 999px;
+  border-radius: 14px;
   border: none;
   background: transparent;
   color: rgba(255, 255, 255, 0.85);

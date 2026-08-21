@@ -298,8 +298,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 20% 20%, rgba(255, 186, 75, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(255, 95, 166, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 20% 20%, rgba(255, 154, 77, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255, 95, 143, 0.15) 0%, transparent 50%),
     radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
 }
 
@@ -317,7 +317,7 @@
   left: var(--x);
   width: var(--size);
   height: var(--size);
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.6), rgba(255, 95, 166, 0.6));
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.6), rgba(255, 95, 143, 0.6));
   border-radius: 50%;
   animation: floatUp var(--duration) ease-in-out infinite;
   animation-delay: var(--delay);
@@ -362,7 +362,7 @@
   height: 400px;
   top: -100px;
   right: -100px;
-  background: radial-gradient(circle, rgba(255, 186, 75, 0.2) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 154, 77, 0.2) 0%, transparent 70%);
   animation: pulse 8s ease-in-out infinite, fadeIn 1s ease forwards;
   animation-delay: 0s, 0.2s;
 }
@@ -372,7 +372,7 @@
   height: 300px;
   bottom: 10%;
   left: -50px;
-  background: radial-gradient(circle, rgba(255, 95, 166, 0.2) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 95, 143, 0.2) 0%, transparent 70%);
   animation: pulse 10s ease-in-out infinite, fadeIn 1s ease forwards;
   animation-delay: 2s, 0.4s;
 }

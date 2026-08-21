@@ -133,17 +133,18 @@
 <template>
   <AuthLayout>
     <template #form-content>
-      <a class="back-link" href="#" @click.prevent="router.back()">
+      <button class="btn-back" type="button" @click="router.back()">
         <svg
-          class="back-arrow"
+          class="btn-back__arrow"
           fill="none"
           stroke="currentColor"
-          stroke-width="1.5"
+          stroke-width="2.5"
           viewBox="0 0 24 24"
         >
-          <path d="M10 19l-7-7m0 0l7-7m-7 7h18" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
-      </a>
+        <span>Voltar</span>
+      </button>
       <h1 class="auth-title">{{ t('resetPassword.title') }}</h1>
       <p class="auth-subtitle">{{ t('resetPassword.subtitle') }}</p>
 
@@ -239,29 +240,60 @@
   margin-top: 1.5rem;
 }
 
-.back-link {
+.btn-back {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
+  padding: 10px 18px 10px 12px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%);
+  box-shadow: 0 4px 14px rgba(255, 95, 143, 0.28);
+  color: #fff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
   margin-bottom: 1.5rem;
-  padding: 0.5rem;
-  color: #FFB37B;
-  text-decoration: none;
-  transition: color 0.2s;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.back-link:hover {
-  color: #FF9A44;
+.btn-back:hover {
+  transform: translateX(-3px);
+  box-shadow: 0 6px 20px rgba(255, 95, 143, 0.42);
 }
 
-.back-arrow {
-  width: 32px;
-  height: 32px;
+.btn-back:active {
+  transform: translateX(-1px);
+}
+
+.btn-back__arrow {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.btn-back:hover .btn-back__arrow {
+  transform: translateX(-3px);
 }
 
 .form-fields {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.form-fields :deep(.input-field:focus) {
+  border-color: transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%) border-box !important;
+  box-shadow: 0 0 0 2px rgba(255, 95, 143, 0.2) !important;
+}
+
+.form-fields :deep(.input-field:focus + label) {
+  color: #ff5f8f !important;
 }
 
 .error-message,

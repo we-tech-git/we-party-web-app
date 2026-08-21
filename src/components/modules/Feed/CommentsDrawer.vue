@@ -652,7 +652,7 @@
 .handle-bar {
   width: 40px;
   height: 4px;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.2);
   transition: background 0.2s ease;
 }
@@ -690,7 +690,7 @@
   min-width: 22px;
   height: 22px;
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(255, 95, 166, 0.15);
   color: #ff5fa6;
   font-size: 0.72rem;
@@ -735,7 +735,7 @@
 
 .comments-list::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
+  border-radius: 14px;
 }
 
 .loading-state {
@@ -908,8 +908,8 @@
   display: inline-flex;
   align-items: center;
   padding: 1px 7px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: #fff;
   font-size: 0.6rem;
   font-weight: 700;
@@ -928,7 +928,7 @@
   gap: 0.4rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 95, 166, 0.3);
-  border-radius: 999px;
+  border-radius: 14px;
   padding: 0.2rem 0.3rem 0.2rem 0.85rem;
 }
 
@@ -980,7 +980,7 @@
   font-weight: 600;
   padding: 0.25rem 0.5rem;
   margin-top: 0.2rem;
-  border-radius: 999px;
+  border-radius: 14px;
   transition: all 0.2s ease;
 }
 
@@ -1068,7 +1068,7 @@
   gap: 0.5rem;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
+  border-radius: 14px;
   padding: 0.3rem 0.35rem 0.3rem 1rem;
   transition: border-color 0.2s ease;
 }
@@ -1101,7 +1101,7 @@
   height: 36px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: #fff;
   cursor: pointer;
   transition: all 0.25s ease;

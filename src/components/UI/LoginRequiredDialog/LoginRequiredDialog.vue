@@ -210,7 +210,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(255, 154, 181, 0.1), rgba(255, 183, 77, 0.1));
+  background: linear-gradient(135deg, rgba(255, 95, 143, 0.1), rgba(255, 154, 77, 0.1));
   border-radius: 50%;
   border: 2px solid rgba(255, 154, 181, 0.25);
 }
@@ -297,7 +297,7 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #ff9ab5 0%, #ffb74d 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #ff9a4d 100%);
   color: #ffffff;
   box-shadow: 0 4px 15px rgba(255, 154, 181, 0.35);
 }

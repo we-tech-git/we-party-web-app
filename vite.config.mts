@@ -71,7 +71,7 @@ export default defineConfig({
         short_name: 'We Party',
         description: 'Descubra eventos perto de você e conecte-se com pessoas que também vão.',
         lang: 'pt-BR',
-        theme_color: '#FFB74D',
+        theme_color: '#ff9a4d',
         background_color: '#fff5f5',
         display: 'standalone',
         orientation: 'portrait',

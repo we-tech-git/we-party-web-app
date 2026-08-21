@@ -478,14 +478,14 @@
 .ic-sort {
   display: inline-flex;
   padding: 2px;
-  border-radius: 999px;
+  border-radius: 14px;
   background: #f1f2f7;
 }
 
 .ic-sort-btn {
   border: none;
   background: transparent;
-  border-radius: 999px;
+  border-radius: 14px;
   padding: 0.24rem 0.6rem;
   font-size: 0.73rem;
   font-weight: 700;
@@ -509,7 +509,7 @@
   align-items: center;
   gap: 0.28rem;
   border: none;
-  border-radius: 999px;
+  border-radius: 14px;
   background: transparent;
   padding: 0.3rem 0.55rem;
   font-size: 0.73rem;
@@ -539,7 +539,7 @@
   min-width: 24px;
   height: 24px;
   padding: 0 7px;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(255, 47, 146, 0.12);
   color: #ff2f92;
   font-size: 0.76rem;
@@ -578,7 +578,7 @@
 
 .ic-list::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.15);
-  border-radius: 999px;
+  border-radius: 14px;
 }
 
 .ic-loading {
@@ -642,7 +642,7 @@
   min-width: 0;
   background: #ffffff;
   border: 1.6px solid #ff5fa6;
-  border-radius: 999px;
+  border-radius: 14px;
   padding: 0.3rem 1.1rem;
   transition: box-shadow 0.2s ease;
 }
@@ -671,9 +671,9 @@
   place-items: center;
   flex-shrink: 0;
   border: none;
-  border-radius: 999px;
+  border-radius: 14px;
   padding: 0.7rem 1.4rem;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: #fff;
   font-size: 0.9rem;
   font-weight: 800;

@@ -147,12 +147,12 @@
   padding: 1.2rem;
   width: 100%;
   max-width: 320px;
-  border-radius: 999px;
+  border-radius: 14px;
   border: none;
   font-weight: 700;
   color: #fff;
   letter-spacing: 0.02em;
-  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   box-shadow: 0 12px 24px rgba(255, 95, 166, 0.28);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }

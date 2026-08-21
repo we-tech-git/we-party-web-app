@@ -1558,7 +1558,7 @@
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: white;
   font-weight: 600;
   cursor: pointer;
@@ -1651,7 +1651,7 @@
 }
 
 .status-badge.soon {
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: white;
   animation: slideInLeft 0.5s ease, glow 2s ease-in-out infinite;
 }
@@ -1724,7 +1724,7 @@
 }
 
 .fab-btn.like-btn.active {
-  background: linear-gradient(135deg, #ff6b6b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff5f8f 100%);
   color: white;
 }
 
@@ -1755,7 +1755,7 @@
 }
 
 .fab-btn.save-btn.active {
-  background: linear-gradient(135deg, #ffba4b 0%, #ffa502 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ffa502 100%);
   color: white;
 }
 
@@ -1780,7 +1780,7 @@
   height: 22px;
   padding: 0 6px;
   border-radius: 11px;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: white;
   font-size: 0.7rem;
   font-weight: 700;
@@ -1853,7 +1853,7 @@
 /* Countdown Section */
 .countdown-section {
   padding: 1.25rem;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.1) 0%, rgba(255, 95, 166, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.1) 0%, rgba(255, 95, 143, 0.1) 100%);
   border-bottom: 1px solid rgba(255, 95, 166, 0.1);
 }
 
@@ -1889,7 +1889,7 @@
 .countdown-value {
   font-size: 1.75rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1963,7 +1963,7 @@
 }
 
 .stat-icon.likes {
-  background: linear-gradient(135deg, rgba(255, 107, 107, 0.15) 0%, rgba(255, 95, 166, 0.15) 100%);
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.15) 0%, rgba(255, 95, 143, 0.15) 100%);
   color: #ff5fa6;
 }
 
@@ -2118,7 +2118,7 @@
 }
 
 .tab-btn.active {
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: white;
   box-shadow: 0 4px 15px rgba(255, 95, 166, 0.3);
 }
@@ -2227,7 +2227,7 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #ff5fa6, #ffba4b);
+  background: linear-gradient(135deg, #ff5f8f, #ff9a4d);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2262,7 +2262,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, #ff5fa6, #ff7eb3);
+  background: linear-gradient(135deg, #ff5f8f, #ff7eb3);
   color: white;
   border: none;
   border-radius: 12px;
@@ -2321,7 +2321,7 @@
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2423,7 +2423,7 @@
 .lineup-number {
   font-size: 1.5rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -2444,7 +2444,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.15) 0%, rgba(255, 95, 166, 0.15) 100%);
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.15) 0%, rgba(255, 95, 143, 0.15) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2487,7 +2487,7 @@
   padding: 1rem 2rem;
   border: none;
   border-radius: 16px;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: white;
   font-size: 1.1rem;
   font-weight: 800;
@@ -2608,7 +2608,7 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #ff9a4d 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2628,7 +2628,7 @@
   font-size: 1rem;
   font-weight: 700;
   color: #333;
-  background: linear-gradient(135deg, #ff5fa6, #ffba4b);
+  background: linear-gradient(135deg, #ff5f8f, #ff9a4d);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -2678,7 +2678,7 @@
   margin-bottom: 2.5rem;
   padding-bottom: 1.5rem;
   border-bottom: 2px solid transparent;
-  border-image: linear-gradient(90deg, #ff5fa6, #ffba4b);
+  border-image: linear-gradient(90deg, #ff5f8f, #ff9a4d);
   border-image-slice: 1;
 }
 
@@ -2686,7 +2686,7 @@
   width: 60px;
   height: 60px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #ff9a4d 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2717,7 +2717,7 @@
   font-weight: 700;
   color: #333;
   margin: 0 0 0.25rem;
-  background: linear-gradient(135deg, #ff5fa6, #ffba4b);
+  background: linear-gradient(135deg, #ff5f8f, #ff9a4d);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -2913,7 +2913,7 @@
   height: 80px;
   margin: 0 auto 1.5rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2978,7 +2978,7 @@
 }
 
 .modal-btn.confirm {
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: white;
   box-shadow: 0 4px 15px rgba(255, 95, 166, 0.3);
 }
@@ -3411,9 +3411,9 @@
 
 .terms-close-btn {
   padding: 0.55rem 1.2rem;
-  border-radius: 999px;
+  border-radius: 14px;
   border: none;
-  background: linear-gradient(135deg, #F978A3 0%, #f97316 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #f97316 100%);
   color: #fff;
   font-weight: 600;
   font-size: 0.88rem;
@@ -3478,7 +3478,7 @@
   padding: 1.25rem 1.5rem;
   border: 2px solid rgba(255, 95, 166, 0.2);
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.05) 0%, rgba(255, 95, 166, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.05) 0%, rgba(255, 95, 143, 0.05) 100%);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -3502,7 +3502,7 @@
 
 .source-url-full-btn:hover {
   border-color: rgba(255, 95, 166, 0.4);
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.1) 0%, rgba(255, 95, 166, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.1) 0%, rgba(255, 95, 143, 0.1) 100%);
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(255, 95, 166, 0.15);
 }
@@ -3514,7 +3514,7 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: white;
   font-size: 1.3rem;
   flex-shrink: 0;
@@ -3561,7 +3561,7 @@
   padding: 1rem 2rem;
   border: none;
   border-radius: 16px;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: white;
   font-size: 1.1rem;
   font-weight: 800;
@@ -3635,7 +3635,7 @@
   justify-content: center;
   min-width: 18px;
   height: 18px;
-  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #ff9a4d 100%);
   color: white;
   font-size: 0.65rem;
   font-weight: 700;
@@ -3693,7 +3693,7 @@
 
 .comments-empty .empty-icon i {
   font-size: 2.5rem;
-  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #ff9a4d 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -3785,7 +3785,7 @@
 }
 
 .comment-admin-badge {
-  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #ff9a4d 100%);
   color: white;
   font-size: 0.65rem;
   font-weight: 700;
@@ -3913,7 +3913,7 @@
   height: 32px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #ff9a4d 100%);
   color: white;
   cursor: pointer;
   display: flex;
@@ -3972,7 +3972,7 @@
   height: 40px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #ff9a4d 100%);
   color: white;
   cursor: pointer;
   display: flex;
@@ -4101,7 +4101,7 @@
 }
 
 .mobile-action-btn.active {
-  background: linear-gradient(135deg, rgba(255, 95, 166, 0.15) 0%, rgba(255, 186, 75, 0.15) 100%);
+  background: linear-gradient(135deg, rgba(255, 95, 143, 0.15) 0%, rgba(255, 154, 77, 0.15) 100%);
   color: #ff5fa6;
 }
 
@@ -4119,7 +4119,7 @@
   height: 18px;
   padding: 0 5px;
   border-radius: 9px;
-  background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #ff9a4d 100%);
   color: white;
   font-size: 0.65rem;
   font-weight: 700;
@@ -4140,7 +4140,7 @@
   max-width: 200px;
   border: none;
   border-radius: 14px;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: white;
   font-size: 0.95rem;
   font-weight: 700;

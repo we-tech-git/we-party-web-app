@@ -1888,10 +1888,9 @@
 
 <style scoped>
 /* ── Gradients ───────────────────────────────────────────────
-   Padronizado com a identidade We Party (css-variables.css):
-   primário sunset → secundário rosa → rosa de destaque do Feed. */
+   Padronizado com a identidade We Party (mesmo gradiente da landing page). */
 .bg-grad-main {
-    background: linear-gradient(120deg, #ffb74d 0%, #ff9ab5 55%, #ff5fa6 100%);
+    background: linear-gradient(120deg, #ff9a4d 0%, #ff5f8f 100%);
 }
 
 .bg-grad-green {
@@ -1900,7 +1899,7 @@
 
 /* Botão "Saiba mais" — mesma cor/efeito do botão da tela de detalhes antiga */
 .btn-external {
-    background: linear-gradient(135deg, #ff5fa6, #ff7eb3);
+    background: linear-gradient(135deg, #ff5f8f, #ff7eb3);
 }
 
 .btn-external:hover {
@@ -1911,7 +1910,7 @@
 /* Botão "Voltar" do hero — muda para o gradiente da marca ao passar o mouse,
    padronizando o feedback com os demais botões do app */
 .btn-back:hover {
-    background: linear-gradient(120deg, #ffb74d 0%, #ff9ab5 55%, #ff5fa6 100%);
+    background: linear-gradient(120deg, #ff9a4d 0%, #ff5f8f 100%);
     border-color: transparent;
     box-shadow: 0 10px 26px -12px rgba(240, 48, 154, .85);
 }
@@ -1930,7 +1929,7 @@
 }
 
 .text-grad {
-    background: linear-gradient(120deg, #ffb74d, #ff9ab5, #ff5fa6);
+    background: linear-gradient(120deg, #ff9a4d, #ff5f8f);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -1997,7 +1996,7 @@
     font-weight: 800;
     font-size: 2rem;
     line-height: 1;
-    background: linear-gradient(90deg, #ffba4b 0%, #ff5fa6 100%);
+    background: linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -2127,22 +2126,22 @@
     color: #ff5fa6;
     background: #fff0f6;
     border: 1px solid #ffd9e6;
-    border-radius: 999px;
+    border-radius: 14px;
     padding: 3px 10px;
     white-space: nowrap;
 }
 
 .heat-track {
     height: 10px;
-    border-radius: 999px;
+    border-radius: 14px;
     background: #fbe9f1;
     overflow: hidden;
 }
 
 .heat-fill {
     height: 100%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #ffb74d 0%, #ff9ab5 55%, #ff5fa6 100%);
+    border-radius: 14px;
+    background: linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%);
     transition: width .6s cubic-bezier(.2, .7, .3, 1);
 }
 
@@ -2269,7 +2268,7 @@
     left: var(--x);
     width: var(--size);
     height: var(--size);
-    background: linear-gradient(135deg, rgba(255, 186, 75, 0.6), rgba(255, 95, 166, 0.6));
+    background: linear-gradient(135deg, rgba(255, 154, 77, 0.6), rgba(255, 95, 143, 0.6));
     border-radius: 50%;
     animation: floatUp var(--duration) ease-in-out infinite;
     animation-delay: var(--delay);
@@ -2326,7 +2325,7 @@
     width: 42px;
     height: 42px;
     border-radius: 13px;
-    background: linear-gradient(135deg, #ff5fa6 0%, #ffba4b 100%);
+    background: linear-gradient(135deg, #ff5f8f 0%, #ff9a4d 100%);
     color: #fff;
     display: grid;
     place-items: center;
@@ -2360,7 +2359,7 @@
     color: #ff5fa6;
     background: #fff0f6;
     border: 1px solid #ffd9e6;
-    border-radius: 999px;
+    border-radius: 14px;
     padding: 2px 9px;
     white-space: nowrap;
     flex-shrink: 0;
@@ -2430,7 +2429,7 @@
 }
 
 .faq-row.active .faq-row-num {
-    background: linear-gradient(135deg, #ff5fa6, #ffba4b);
+    background: linear-gradient(135deg, #ff5f8f, #ff9a4d);
     border-color: transparent;
     color: #fff;
 }
@@ -2473,7 +2472,7 @@
     width: 22px;
     height: 22px;
     border-radius: 7px;
-    background: linear-gradient(135deg, #ff5fa6, #ffba4b);
+    background: linear-gradient(135deg, #ff5f8f, #ff9a4d);
     color: #fff;
     font-size: 10px;
     font-weight: 800;
