@@ -106,7 +106,7 @@
   font-size: 2rem;
   line-height: 1;
   white-space: nowrap;
-  background: linear-gradient(90deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

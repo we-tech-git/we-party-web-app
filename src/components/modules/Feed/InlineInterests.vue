@@ -138,7 +138,7 @@
   min-width: 24px;
   height: 24px;
   padding: 0 7px;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(255, 47, 146, 0.12);
   color: #ff2f92;
   font-size: 0.76rem;

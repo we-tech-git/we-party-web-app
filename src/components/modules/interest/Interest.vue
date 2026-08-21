@@ -542,6 +542,18 @@
   margin-bottom: 1.5rem;
 }
 
+.search-wrapper :deep(.search-input-field:focus) {
+  border-color: transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%) border-box !important;
+  box-shadow: 0 0 0 3px rgba(255, 95, 143, 0.1) !important;
+}
+
+.search-wrapper :deep(.search-input-container:focus-within .search-input-icon) {
+  color: #ff5f8f !important;
+}
+
 .suggestions {
   position: absolute;
   left: 0;
@@ -602,7 +614,7 @@
   height: 28px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   color: #fff;
   display: grid;
   place-items: center;
@@ -665,7 +677,7 @@
   border: none;
   font-weight: 700;
   color: #fff;
-  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   box-shadow: 0 4px 12px rgba(255, 95, 166, .25);
   cursor: pointer;
   transition: all 0.2s;
@@ -706,7 +718,7 @@
 }
 
 .chip.selected {
-  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   background-size: 100% 100%;
   color: #fff;
   border: none;
@@ -727,7 +739,7 @@
   border: none;
   font-weight: 700;
   color: #fff;
-  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   box-shadow: 0 10px 24px rgba(255, 95, 166, .25);
 }
 
@@ -753,7 +765,7 @@
 }
 
 .skip-link:hover span {
-  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -767,10 +779,10 @@
   align-items: center;
   gap: 6px;
   padding: 10px 18px 10px 12px;
-  border-radius: 999px;
+  border-radius: 14px;
   border: none;
-  background: linear-gradient(90deg, #FFC25B 0%, #FF5FA6 100%);
-  box-shadow: 0 4px 14px rgba(255, 95, 166, 0.28);
+  background: linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%);
+  box-shadow: 0 4px 14px rgba(255, 95, 143, 0.28);
   color: #fff;
   font-family: 'Poppins', sans-serif;
   font-size: 0.875rem;
@@ -782,7 +794,7 @@
 
 .btn-back:hover {
   transform: translateX(-3px);
-  box-shadow: 0 6px 20px rgba(255, 95, 166, 0.42);
+  box-shadow: 0 6px 20px rgba(255, 95, 143, 0.42);
 }
 
 .btn-back:active {
@@ -957,7 +969,7 @@
   border: none;
   font-weight: 600;
   color: #fff;
-  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1048,7 +1060,7 @@
 }
 
 .brand-title .qmark {
-  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1077,7 +1089,7 @@
     font-size: 2.75rem;
     line-height: 1.1;
     text-transform: uppercase;
-    background: linear-gradient(to right, #FFC947, #F978A3);
+    background: linear-gradient(to right, #ff9a4d, #ff5f8f);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;

@@ -1498,7 +1498,7 @@
 <style scoped>
 .feed-page {
   height: 100vh;
-  background: linear-gradient(142.35deg, rgba(252, 162, 89, 0.07) -1.66%, rgba(255, 98, 159, 0.11) 100.44%);
+  background: linear-gradient(142.35deg, rgba(255, 154, 77, 0.07) -1.66%, rgba(255, 95, 143, 0.11) 100.44%);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1628,7 +1628,7 @@
        uma cor lisa "no chute", que destacava a faixa como um retângulo por
        cima do fundo. Opaco (sem blur) porque é isso que garante ocultar de
        verdade os cards que passam por baixo ao rolar. */
-    background: linear-gradient(142.35deg, rgba(252, 162, 89, 0.07) -1.66%, rgba(255, 98, 159, 0.11) 100.44%), #fff5f7;
+    background: linear-gradient(142.35deg, rgba(255, 154, 77, 0.07) -1.66%, rgba(255, 95, 143, 0.11) 100.44%), #fff5f7;
   }
 }
 
@@ -1651,7 +1651,7 @@
   bottom: -0.4rem;
   width: 100%;
   height: 3px;
-  border-radius: 999px;
+  border-radius: 14px;
   background: transparent;
   transition: background 0.2s ease;
 }
@@ -1661,7 +1661,7 @@
 }
 
 .tabs button.active::after {
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
 }
 
 .tab-back-btn {
@@ -1704,7 +1704,7 @@
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.15) 0%, rgba(255, 95, 166, 0.15) 100%);
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.15) 0%, rgba(255, 95, 143, 0.15) 100%);
   color: #ff5fa6;
   font-weight: 600;
   font-size: 0.9rem;
@@ -1713,7 +1713,7 @@
 }
 
 .breadcrumb-back:hover {
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: white;
   transform: translateX(-3px);
   box-shadow: 0 4px 15px rgba(255, 95, 166, 0.3);
@@ -1753,7 +1753,7 @@
   font-size: 0.95rem;
   color: #2d2f55;
   padding: 0.35rem 0.85rem;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.1) 0%, rgba(255, 95, 166, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.1) 0%, rgba(255, 95, 143, 0.1) 100%);
   border-radius: 10px;
 }
 
@@ -1808,7 +1808,7 @@
   gap: 0.75rem;
   padding: 0.8rem 2.5rem;
   border-radius: 20px;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   border: none;
   font-weight: 600;
@@ -1836,7 +1836,7 @@
   gap: 0.5rem;
   padding: 0.8rem 1.5rem;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.15), rgba(255, 95, 166, 0.15));
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.15), rgba(255, 95, 143, 0.15));
   color: #ff5fa6;
   border: none;
   font-weight: 600;
@@ -1847,7 +1847,7 @@
 }
 
 .scroll-to-top-btn:hover {
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(255, 95, 166, 0.4);
@@ -1878,7 +1878,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.15), rgba(255, 95, 166, 0.15));
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.15), rgba(255, 95, 143, 0.15));
   color: #ff5fa6;
   font-size: 1.5rem;
   font-weight: 700;
@@ -2121,7 +2121,7 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.45rem 0.9rem;
-  border-radius: 999px;
+  border-radius: 14px;
   border: 1.5px solid rgba(0, 0, 0, 0.1);
   background: #fff;
   color: #5a6080;
@@ -2141,7 +2141,7 @@
 
 .filter-toggle-btn.filter-active {
   border-color: #ff5fa6;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.08) 0%, rgba(255, 95, 166, 0.08) 100%);
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.08) 0%, rgba(255, 95, 143, 0.08) 100%);
   color: #ff5fa6;
 }
 
@@ -2161,8 +2161,8 @@
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: #fff;
   font-size: 0.68rem;
   font-weight: 700;
@@ -2216,7 +2216,7 @@
   background: transparent;
   border: none;
   padding: 0.25rem 0.65rem;
-  border-radius: 999px;
+  border-radius: 14px;
   font-size: 0.7rem;
   font-weight: 600;
   color: #e91e63;
@@ -2251,7 +2251,7 @@
   gap: 0.3rem;
   padding: 0.2rem 0.55rem;
   border: none;
-  border-radius: 999px;
+  border-radius: 14px;
   font-size: 0.72rem;
   font-family: inherit;
   font-weight: 600;
@@ -2365,7 +2365,7 @@
   display: inline-flex;
   align-items: center;
   padding: 0.32rem 0.85rem;
-  border-radius: 999px;
+  border-radius: 14px;
   border: 1.5px solid rgba(0, 0, 0, 0.1);
   background: #fff;
   color: #4a5070;
@@ -2385,7 +2385,7 @@
 
 .filter-chip.active {
   border-color: transparent;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: #fff;
   box-shadow: 0 3px 12px rgba(255, 95, 166, 0.3);
   transform: translateY(-1px);
@@ -2414,7 +2414,7 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.3rem 0.75rem;
-  border-radius: 999px;
+  border-radius: 14px;
   border: 1.5px solid rgba(255, 95, 166, 0.3);
   background: rgba(255, 95, 166, 0.06);
   color: #ff5fa6;
@@ -2498,7 +2498,7 @@
   height: 56px;
   border-radius: 16px;
   border: none;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: white;
   box-shadow: 0 8px 24px rgba(255, 95, 166, 0.4),
     0 4px 12px rgba(0, 0, 0, 0.15);
@@ -2533,7 +2533,7 @@
   align-items: center;
   justify-content: center;
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: 14px;
   background: #fff;
   color: #ff5fa6;
   font-size: 0.7rem;
@@ -2594,7 +2594,7 @@
   transform: translateX(-50%);
   width: 40px;
   height: 4px;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(0, 0, 0, 0.15);
 }
 
@@ -2671,7 +2671,7 @@
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.15) 0%, rgba(255, 95, 166, 0.15) 100%);
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.15) 0%, rgba(255, 95, 143, 0.15) 100%);
   color: #ff5fa6;
   font-weight: 800;
   font-size: 0.9rem;

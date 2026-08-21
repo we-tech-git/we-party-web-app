@@ -327,7 +327,7 @@
   display: inline-flex;
   align-items: center;
   padding: 1px 6px;
-  border-radius: 999px;
+  border-radius: 14px;
   font-size: 0.58rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -335,7 +335,7 @@
 }
 
 .cn-badge--admin {
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: #fff;
 }
 
@@ -409,7 +409,7 @@
   align-items: center;
   gap: 0.3rem;
   border: none;
-  border-radius: 999px;
+  border-radius: 14px;
   background: transparent;
   padding: 0.28rem 0.55rem;
   font-size: 0.79rem;
@@ -488,7 +488,7 @@
   left: 50%;
   width: 2px;
   transform: translateX(-50%);
-  border-radius: 999px;
+  border-radius: 14px;
   background: #e4e6ef;
   transition: background 0.18s ease, width 0.18s ease;
 }
@@ -546,7 +546,7 @@
   gap: 0.3rem;
   background: #fff;
   border: 1.5px solid rgba(255, 95, 166, 0.45);
-  border-radius: 999px;
+  border-radius: 14px;
   padding: 0.18rem 0.22rem 0.18rem 0.85rem;
   box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.07);
 }
@@ -596,7 +596,7 @@
   height: 27px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #ffba4b 0%, #ff5fa6 100%);
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
   color: #fff;
   cursor: pointer;
   transition: all 0.2s ease;

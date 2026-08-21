@@ -2534,9 +2534,9 @@
    ═════════════════════════════════════════════════════ */
 .profile-page-layout {
   /* Cores primárias */
-  --color-primary: #ff5fa6;
+  --color-primary: #ff5f8f;
   --color-primary-light: #ff7eb3;
-  --color-secondary: #ffba4b;
+  --color-secondary: #ff9a4d;
   --color-accent-gradient: linear-gradient(135deg, var(--color-secondary), var(--color-primary));
 
   /* Cores neutras */
@@ -2549,7 +2549,7 @@
   /* Cores de fundo */
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #fafbfc;
-  --color-bg-gradient: linear-gradient(142.35deg, rgba(252, 162, 89, 0.05) -1.66%, rgba(255, 98, 159, 0.08) 100.44%);
+  --color-bg-gradient: linear-gradient(142.35deg, rgba(255, 154, 77, 0.05) -1.66%, rgba(255, 95, 143, 0.08) 100.44%);
 
   /* Espaçamentos */
   --spacing-xs: 0.25rem;
@@ -2727,7 +2727,7 @@
   background: white;
   color: #2d2f55;
   border: 1.5px solid #e0e2ed;
-  border-radius: 99px;
+  border-radius: 14px;
   font-weight: 600;
   font-size: 0.85rem;
   cursor: pointer;
@@ -2830,9 +2830,9 @@
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.75rem;
-  background: linear-gradient(135deg, rgba(255, 95, 166, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(255, 95, 143, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
   color: #ff5fa6;
-  border-radius: 20px;
+  border-radius: 14px;
   font-size: 0.8rem;
   font-weight: 500;
   border: 1px solid rgba(255, 95, 166, 0.2);
@@ -2888,7 +2888,7 @@
   border: 1px solid rgba(255, 95, 166, 0.28);
   cursor: pointer;
   padding: 0.45rem 0.85rem;
-  border-radius: 999px;
+  border-radius: 14px;
   transition: all var(--transition-fast);
 }
 
@@ -2989,7 +2989,7 @@
 
 .tab-btn.active {
   color: white;
-  background: linear-gradient(135deg, #ff7eb3, #ff5fa6);
+  background: linear-gradient(135deg, #ff7eb3, #ff5f8f);
   box-shadow: 0 4px 12px rgba(255, 95, 166, 0.25);
 }
 
@@ -3437,10 +3437,10 @@
   align-items: center;
   gap: 0.6rem;
   padding: 0.85rem 2rem;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   border: none;
-  border-radius: 99px;
+  border-radius: 14px;
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
@@ -3475,7 +3475,7 @@
   background: rgba(255, 95, 166, 0.1);
   color: #ffffff;
   border: 1px solid rgba(255, 95, 166, 0.3);
-  border-radius: 99px;
+  border-radius: 14px;
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
@@ -3564,7 +3564,7 @@
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(255, 126, 179, 0.1), rgba(255, 95, 166, 0.15));
+  background: linear-gradient(135deg, rgba(255, 126, 179, 0.1), rgba(255, 95, 143, 0.15));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3615,10 +3615,10 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.7rem 1.8rem;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   border: none;
-  border-radius: 99px;
+  border-radius: 14px;
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
@@ -3686,7 +3686,7 @@
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.1), rgba(255, 95, 166, 0.1));
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.1), rgba(255, 95, 143, 0.1));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3822,7 +3822,7 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.12), rgba(255, 95, 166, 0.12));
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.12), rgba(255, 95, 143, 0.12));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3882,8 +3882,8 @@
 
 .tag {
   padding: 0.4rem 0.85rem;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.08), rgba(255, 95, 166, 0.08));
-  border-radius: 99px;
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.08), rgba(255, 95, 143, 0.08));
+  border-radius: 14px;
   font-size: 0.82rem;
   color: #555b77;
   font-weight: 500;
@@ -3895,7 +3895,7 @@
 }
 
 .tag:hover {
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.12), rgba(255, 95, 166, 0.12));
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.12), rgba(255, 95, 143, 0.12));
 }
 
 .interests-header {
@@ -3913,7 +3913,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   border: none;
   cursor: pointer;
@@ -4086,6 +4086,9 @@
 .recommendation-username {
   font-size: 0.8rem;
   color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .recommendations-empty {
@@ -4204,7 +4207,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   border: none;
   flex-shrink: 0;
@@ -4323,11 +4326,11 @@
 }
 
 .interest-item.current {
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.08), rgba(255, 95, 166, 0.08));
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.08), rgba(255, 95, 143, 0.08));
 }
 
 .interest-item.current:hover {
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.12), rgba(255, 95, 166, 0.12));
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.12), rgba(255, 95, 143, 0.12));
 }
 
 .interest-name {
@@ -4352,7 +4355,7 @@
 }
 
 .add-btn {
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   box-shadow: 0 2px 8px rgba(255, 95, 166, 0.2);
 }
@@ -4399,7 +4402,7 @@
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   font-family: 'Baloo Thambi 2', sans-serif;
   font-size: 0.95rem;
@@ -4487,7 +4490,7 @@
 
 .btn-done {
   padding: 0.75rem 2rem;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   border: none;
   border-radius: 10px;
@@ -4520,7 +4523,7 @@
 }
 
 .tag:hover {
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.18), rgba(255, 95, 166, 0.18));
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.18), rgba(255, 95, 143, 0.18));
 }
 
 /* ── Modal ── */
@@ -4665,7 +4668,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   border: 2px solid white;
   cursor: pointer;
@@ -4825,7 +4828,7 @@
 
 .btn-save {
   padding: 0.6rem 1.5rem;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   border: none;
   border-radius: 12px;
@@ -4899,7 +4902,7 @@
 }
 
 .breadcrumb-back:hover {
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   transform: translateX(-2px);
 }
@@ -5379,7 +5382,7 @@
 
 .banner-crop-header-content i {
   font-size: 1.3rem;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -5635,7 +5638,7 @@ a:focus-visible {
   height: 42px;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   cursor: pointer;
   display: flex;
@@ -5661,7 +5664,7 @@ a:focus-visible {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, rgba(255, 186, 75, 0.1), rgba(255, 95, 166, 0.1));
+  background: linear-gradient(135deg, rgba(255, 154, 77, 0.1), rgba(255, 95, 143, 0.1));
   border-radius: 20px;
   font-size: 0.9rem;
   color: #1a1c2e;
@@ -5701,7 +5704,7 @@ a:focus-visible {
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: white;
   font-family: 'Baloo Thambi 2', sans-serif;
   font-size: 0.95rem;

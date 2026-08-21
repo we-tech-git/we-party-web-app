@@ -80,7 +80,7 @@
 }
 
 .category-chip.selected {
-  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   background-size: 100% 100%;
   color: #fff;
   border: 1.5px solid transparent;

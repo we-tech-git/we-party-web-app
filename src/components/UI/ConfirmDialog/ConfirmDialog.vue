@@ -148,7 +148,7 @@
 }
 
 .confirm-btn--primary {
-  background: linear-gradient(135deg, #ffba4b, #ff5fa6);
+  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
   color: #fff;
 }
 

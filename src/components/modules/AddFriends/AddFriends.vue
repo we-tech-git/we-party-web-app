@@ -366,10 +366,10 @@
   align-items: center;
   gap: 6px;
   padding: 10px 18px 10px 12px;
-  border-radius: 999px;
+  border-radius: 14px;
   border: none;
-  background: linear-gradient(90deg, #FFC25B 0%, #FF5FA6 100%);
-  box-shadow: 0 4px 14px rgba(255, 95, 166, 0.28);
+  background: linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%);
+  box-shadow: 0 4px 14px rgba(255, 95, 143, 0.28);
   color: #fff;
   font-family: 'Poppins', sans-serif;
   font-size: 0.875rem;
@@ -381,7 +381,7 @@
 
 .btn-back:hover {
   transform: translateX(-3px);
-  box-shadow: 0 6px 20px rgba(255, 95, 166, 0.42);
+  box-shadow: 0 6px 20px rgba(255, 95, 143, 0.42);
 }
 
 .btn-back:active {
@@ -432,6 +432,18 @@
   margin-bottom: 2rem;
 }
 
+.search-input-wrapper :deep(.search-input-field:focus) {
+  border-color: transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%) border-box !important;
+  box-shadow: 0 0 0 3px rgba(255, 95, 143, 0.1) !important;
+}
+
+.search-input-wrapper :deep(.search-input-container:focus-within .search-input-icon) {
+  color: #ff5f8f !important;
+}
+
 /* Estados de loading, erro e vazio */
 .loading-state,
 .error-state,
@@ -469,7 +481,7 @@
 .retry-btn {
   margin-top: 1rem;
   padding: 0.5rem 1.5rem;
-  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -587,7 +599,7 @@
 }
 
 .skip-link:hover span {
-  background: linear-gradient(90deg, #FFC25B, #FF5FA6);
+  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -782,7 +794,7 @@
     font-size: 2.75rem;
     line-height: 1.1;
     text-transform: uppercase;
-    background: linear-gradient(to right, #FFC947, #F978A3);
+    background: linear-gradient(to right, #ff9a4d, #ff5f8f);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;

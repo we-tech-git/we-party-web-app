@@ -543,10 +543,10 @@
   align-items: center;
   gap: 6px;
   padding: 10px 18px 10px 12px;
-  border-radius: 999px;
+  border-radius: 14px;
   border: none;
-  background: linear-gradient(90deg, #FFC25B 0%, #FF5FA6 100%);
-  box-shadow: 0 4px 14px rgba(255, 95, 166, 0.28);
+  background: linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%);
+  box-shadow: 0 4px 14px rgba(255, 95, 143, 0.28);
   color: #fff;
   font-family: 'Poppins', sans-serif;
   font-size: 0.875rem;
@@ -558,7 +558,7 @@
 
 .btn-back:hover {
   transform: translateX(-3px);
-  box-shadow: 0 6px 20px rgba(255, 95, 166, 0.42);
+  box-shadow: 0 6px 20px rgba(255, 95, 143, 0.42);
 }
 
 .btn-back:active {
@@ -596,6 +596,18 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.inputs-container :deep(.input-field:focus) {
+  border: 1.5px solid transparent !important;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%) border-box !important;
+  box-shadow: 0 0 0 2px rgba(255, 95, 143, 0.2) !important;
+}
+
+.inputs-container :deep(.input-field:focus + label) {
+  color: #ff5f8f !important;
 }
 
 .input-wrapper {
@@ -708,7 +720,7 @@ h1 {
 }
 
 .terms-checkbox-custom.checked {
-  background: linear-gradient(135deg, #F978A3 0%, #f97316 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #f97316 100%);
   border-color: transparent;
   color: #fff;
 }
@@ -816,9 +828,9 @@ h1 {
 
 .terms-accept-btn {
   padding: 0.55rem 1.4rem;
-  border-radius: 999px;
+  border-radius: 14px;
   border: none;
-  background: linear-gradient(135deg, #F978A3 0%, #f97316 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #f97316 100%);
   color: #fff;
   font-weight: 700;
   font-size: 0.88rem;
@@ -833,9 +845,9 @@ h1 {
 
 .terms-close-btn {
   padding: 0.55rem 1.2rem;
-  border-radius: 999px;
+  border-radius: 14px;
   border: none;
-  background: linear-gradient(135deg, #F978A3 0%, #f97316 100%);
+  background: linear-gradient(135deg, #ff5f8f 0%, #f97316 100%);
   color: #fff;
   font-weight: 600;
   font-size: 0.88rem;
@@ -893,7 +905,7 @@ h1 {
   justify-content: center;
   position: relative;
   padding: 48px;
-  background: linear-gradient(142.35deg, rgba(252, 149, 89, 0.15) -1.66%, rgba(255, 98, 216, 0.15) 100.44%);
+  background: linear-gradient(142.35deg, rgba(255, 154, 77, 0.15) -1.66%, rgba(255, 95, 143, 0.15) 100.44%);
   overflow: hidden;
 }
 
@@ -909,7 +921,7 @@ h1 {
   font-size: 100px;
   line-height: 1.25;
   letter-spacing: 0;
-  background: linear-gradient(to right, #FFC947, #F978A3);
+  background: linear-gradient(to right, #ff9a4d, #ff5f8f);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -989,7 +1001,7 @@ h1 {
     font-size: 2.75rem;
     line-height: 1.1;
     text-transform: uppercase;
-    background: linear-gradient(to right, #FFC947, #F978A3);
+    background: linear-gradient(to right, #ff9a4d, #ff5f8f);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
