@@ -3007,9 +3007,14 @@ h2 .logo-text,
      tilt 3D do mockup. Sem isolar esta tela num contexto "flat" próprio, o
      overflow: hidden acima deixa vazar conteúdo composto separadamente
      (o iframe do feed e o v-menu teleportado do dropdown de usuário),
-     que passa a ignorar os limites arredondados da tela durante o scroll. */
+     que passa a ignorar os limites arredondados da tela durante o scroll.
+     Mesmo com isolation/flat, Chromium ainda promove o <iframe> a uma
+     camada própria e o overflow: hidden sozinho falha em recortá-la durante
+     o scroll interno do feed — por isso o clip-path abaixo reforça o corte
+     diretamente na GPU, contornando esse bug de composição. */
   transform-style: flat;
   isolation: isolate;
+  clip-path: inset(0 round 32px);
 }
 
 .showcase-phone-3d-glass {
@@ -3168,6 +3173,7 @@ h2 .logo-text,
   height: 100%;
   overflow: hidden;
   position: relative;
+  clip-path: inset(0);
 }
 
 .showcase-feed-embed {
