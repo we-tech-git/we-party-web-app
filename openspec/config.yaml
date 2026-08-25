@@ -1,0 +1,28 @@
+schema: spec-driven
+
+context: |
+  App web/PWA do We Party (voltado ao usuário final).
+
+  Stack: Vue 3 (Composition API, `<script setup>`) + TypeScript + Vite 7.
+  UI: Vuetify 3 + Tailwind 4. Estado: Pinia. Rotas: unplugin-vue-router
+  (baseado em arquivos, em `src/pages`). i18n: vue-i18n. PWA:
+  vite-plugin-pwa. HTTP: axios.
+
+  Gerenciador: Yarn Classic. Node >= 22.12 (ver `.nvmrc`).
+  Verificação local: `yarn lint` e `yarn build` (o build já roda type-check).
+
+  A API vem do `we-party-social-backend`. O contrato é o OpenAPI exposto
+  pelo Swagger do Nest — mudança de contrato é tarefa do backend, não daqui.
+
+  Convenção de branch: <tipo>/[WEPARTY-<n>-]<slug-em-kebab-case>.
+  Toda mudança entra por PR contra `main`, com CI verde e preview da Vercel.
+
+rules:
+  proposal:
+    - Escreva em pt-BR.
+    - Aterre a proposta no código real do repositório; não invente tela,
+      componente ou endpoint que você não leu.
+    - Se algo depender do backend, diga explicitamente em vez de assumir.
+  tasks:
+    - Quebre em tarefas que caibam em um PR revisável.
+    - Toda tarefa deve terminar com `yarn lint` e `yarn build` passando.
