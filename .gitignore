@@ -25,4 +25,9 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
-package-lock.json.claude/
+
+# lockfile de outro gerenciador — o projeto usa Yarn Classic
+package-lock.json
+
+# config local de ferramentas de IA (a config de projeto E versionada)
+.claude/settings.local.json

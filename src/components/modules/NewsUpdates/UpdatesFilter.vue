@@ -23,7 +23,7 @@
 </script>
 
 <template>
-  <div class="updates-filter-bar" role="toolbar" aria-label="Filtros de Atualizações">
+  <div aria-label="Filtros de Atualizações" class="updates-filter-bar" role="toolbar">
     <div class="filter-chips-container">
       <!-- Todos -->
       <button

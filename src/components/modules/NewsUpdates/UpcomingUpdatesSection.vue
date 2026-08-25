@@ -15,7 +15,7 @@
 </script>
 
 <template>
-  <section v-if="upcomingUpdates.length > 0" class="upcoming-section" aria-labelledby="upcoming-heading">
+  <section v-if="upcomingUpdates.length > 0" aria-labelledby="upcoming-heading" class="upcoming-section">
     <div class="upcoming-container">
       <!-- Section Header -->
       <div class="upcoming-header">
@@ -55,13 +55,13 @@
 
           <ul v-if="item.highlights?.length" class="upcoming-highlights">
             <li v-for="hl in item.highlights" :key="hl">
-              <v-icon icon="mdi-sparkles" size="14" color="#8b5cf6" />
+              <v-icon color="#8b5cf6" icon="mdi-sparkles" size="14" />
               <span>{{ hl }}</span>
             </li>
           </ul>
 
           <div class="upcoming-mockup-slot">
-            <UpdateVisualMockup :update-id="item.id" :category="item.category" />
+            <UpdateVisualMockup :category="item.category" :update-id="item.id" />
           </div>
         </article>
 

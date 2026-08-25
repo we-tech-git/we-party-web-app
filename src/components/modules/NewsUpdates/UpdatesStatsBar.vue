@@ -7,7 +7,7 @@
 </script>
 
 <template>
-  <section class="stats-bar-section" aria-label="Métricas de Atualizações">
+  <section aria-label="Métricas de Atualizações" class="stats-bar-section">
     <div class="stats-container">
       <div class="stats-bar-card">
         <!-- Item 1: Ano -->
@@ -21,7 +21,7 @@
           </div>
         </div>
 
-        <div class="stat-divider" aria-hidden="true" />
+        <div aria-hidden="true" class="stat-divider" />
 
         <!-- Item 2: Novidades Entregues -->
         <div class="stat-item">
@@ -34,7 +34,7 @@
           </div>
         </div>
 
-        <div class="stat-divider" aria-hidden="true" />
+        <div aria-hidden="true" class="stat-divider" />
 
         <!-- Item 3: Em Roadmap -->
         <div class="stat-item">
@@ -47,7 +47,7 @@
           </div>
         </div>
 
-        <div class="stat-divider" aria-hidden="true" />
+        <div aria-hidden="true" class="stat-divider" />
 
         <!-- Item 4: Status do Produto -->
         <div class="stat-item">

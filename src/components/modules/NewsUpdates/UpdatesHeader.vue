@@ -33,10 +33,10 @@
     <div class="header-container">
       <!-- Brand Logo -->
       <div
+        aria-label="We Party - Ir para a página inicial"
         class="brand-logo"
         role="button"
         tabindex="0"
-        aria-label="We Party - Ir para a página inicial"
         @click="goToHome"
         @keydown.enter="goToHome"
         @keydown.space.prevent="goToHome"
@@ -53,7 +53,7 @@
       </div>
 
       <!-- Navigation & Action CTAs -->
-      <nav class="header-actions" aria-label="Navegação do cabeçalho">
+      <nav aria-label="Navegação do cabeçalho" class="header-actions">
         <button
           class="btn-nav-link"
           type="button"

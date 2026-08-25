@@ -6,13 +6,13 @@
   import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
   import { NEWS_UPDATES } from '@/constants/newsUpdates'
   import FeaturedUpdateCard from './FeaturedUpdateCard.vue'
+  import UpcomingUpdatesSection from './UpcomingUpdatesSection.vue'
   import UpdatesConversionCta from './UpdatesConversionCta.vue'
   import UpdatesFooter from './UpdatesFooter.vue'
   import UpdatesHeader from './UpdatesHeader.vue'
   import UpdatesHero from './UpdatesHero.vue'
   import UpdatesStatsBar from './UpdatesStatsBar.vue'
   import UpdatesTimeline from './UpdatesTimeline.vue'
-  import UpcomingUpdatesSection from './UpcomingUpdatesSection.vue'
 
   gsap.registerPlugin(ScrollTrigger)
 
@@ -48,7 +48,7 @@
   // SCROLL TO TIMELINE
   // ═══════════════════════════════════════════════════════════════
   function scrollToTimeline () {
-    const el = document.getElementById('updates-timeline-section')
+    const el = document.querySelector('#updates-timeline-section')
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
@@ -144,9 +144,9 @@
 
       <!-- Dynamic Status & Stats Bar -->
       <UpdatesStatsBar
+        active-year="2026"
         :released-count="released.length"
         :upcoming-count="upcoming.length"
-        active-year="2026"
       />
 
       <!-- Featured Release Spotlight -->
@@ -157,9 +157,9 @@
 
       <!-- Editorial Timeline Feed with Filters -->
       <UpdatesTimeline
-        :updates="released"
-        :current-filter="activeFilter"
         :counts="categoryCounts"
+        :current-filter="activeFilter"
+        :updates="released"
         @update:filter="activeFilter = $event"
       />
 

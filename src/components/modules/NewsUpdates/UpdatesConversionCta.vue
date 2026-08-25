@@ -30,8 +30,8 @@
 </script>
 
 <template>
-  <section class="updates-cta-section" aria-labelledby="cta-heading">
-    <div class="cta-glow-backdrop" aria-hidden="true" />
+  <section aria-labelledby="cta-heading" class="updates-cta-section">
+    <div aria-hidden="true" class="cta-glow-backdrop" />
 
     <div class="cta-container">
       <div class="cta-card-box">
