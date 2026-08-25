@@ -33,7 +33,7 @@
 </script>
 
 <template>
-  <section id="updates-timeline-section" class="updates-timeline-section" aria-labelledby="timeline-heading">
+  <section id="updates-timeline-section" aria-labelledby="timeline-heading" class="updates-timeline-section">
     <div class="timeline-container">
       <!-- Section Header -->
       <div class="timeline-header-block">
@@ -51,24 +51,24 @@
 
       <!-- Category Filter Toolbar -->
       <UpdatesFilter
-        :current-filter="currentFilter"
         :counts="counts"
+        :current-filter="currentFilter"
         @update:filter="handleFilterChange"
       />
 
       <!-- Timeline Wrapper with Vertical Track -->
       <div class="timeline-track-wrapper">
         <!-- Central vertical line (Desktop) -->
-        <div class="timeline-vertical-line" aria-hidden="true" />
+        <div aria-hidden="true" class="timeline-vertical-line" />
 
         <!-- Timeline Items List -->
         <div v-if="filteredUpdates.length > 0" class="timeline-items-list">
           <UpdateTimelineItem
             v-for="(item, index) in filteredUpdates"
             :key="item.id"
-            :update="item"
             :index="index"
             :is-even="index % 2 === 0"
+            :update="item"
           />
         </div>
 

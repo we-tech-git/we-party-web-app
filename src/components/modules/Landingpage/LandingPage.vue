@@ -107,12 +107,12 @@
     const iframe = event.target as HTMLIFrameElement
     try {
       const doc = iframe.contentDocument
-      if (!doc || doc.getElementById('embed-hide-scrollbar')) return
+      if (!doc || doc.querySelector('#embed-hide-scrollbar')) return
 
       const style = doc.createElement('style')
       style.id = 'embed-hide-scrollbar'
       style.textContent = 'html, body { scrollbar-width: none; } html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; height: 0; }'
-      doc.head.appendChild(style)
+      doc.head.append(style)
     } catch {
       // Cross-origin (ex.: preview em domínio diferente) — sem acesso ao documento, ignora.
     }
@@ -504,9 +504,9 @@
       // 3. Hero — Master Entrance Timeline
       const heroTl = gsap.timeline({ defaults: { ease: 'power4.out' } })
       heroTl
-        .from('.header', { y: -25, opacity: 0, duration: 1.0, ease: 'power3.out' })
+        .from('.header', { y: -25, opacity: 0, duration: 1, ease: 'power3.out' })
         .from('.hero-wordmark-wrap', { y: 70, opacity: 0, scale: 0.94, duration: 1.2, ease: 'power4.out' }, '-=0.6')
-        .from('.hero-tagline-wrap', { y: 35, opacity: 0, duration: 1.0, ease: 'power3.out' }, '-=0.7')
+        .from('.hero-tagline-wrap', { y: 35, opacity: 0, duration: 1, ease: 'power3.out' }, '-=0.7')
         .from('.hero-scroll-indicator', { y: 20, opacity: 0, duration: 0.8, ease: 'power2.out' }, '-=0.4')
 
       // 4. Hero — Scroll Storytelling Scrub (transição suave para a próxima seção)
@@ -606,7 +606,7 @@
         y: 50,
         opacity: 0,
         scale: 0.96,
-        duration: 1.0,
+        duration: 1,
         ease: 'power3.out',
       })
 
@@ -1009,20 +1009,20 @@
         <div class="hero-v2-content">
           <div class="hero-wordmark-wrap">
             <GradientText
-              tag="h1"
+              :animation-speed="4"
               class="hero-wordmark"
               :colors="['#ff9a4d', '#ff5f8f']"
-              :animation-speed="4"
+              tag="h1"
             >
               We Party
             </GradientText>
           </div>
           <div class="hero-tagline-wrap">
             <GradientText
-              tag="p"
+              :animation-speed="4"
               class="hero-tagline"
               :colors="['#ff9a4d', '#ff5f8f']"
-              :animation-speed="4"
+              tag="p"
             >
               A rede social feita para quem ama eventos
             </GradientText>

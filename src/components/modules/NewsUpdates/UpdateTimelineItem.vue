@@ -36,7 +36,7 @@
     :class="{ 'item-reversed': !isEven }"
   >
     <!-- Timeline Center Node Indicator (Desktop) -->
-    <div class="timeline-center-node" aria-hidden="true">
+    <div aria-hidden="true" class="timeline-center-node">
       <div
         class="node-circle"
         :style="{
@@ -44,7 +44,7 @@
           boxShadow: `0 0 0 4px #ffffff, 0 0 0 6px ${NEWS_CATEGORY_META[update.category]?.bgSoft || 'rgba(255, 95, 143, 0.2)'}`,
         }"
       >
-        <v-icon :icon="NEWS_CATEGORY_META[update.category]?.icon || 'mdi-star-four-points'" size="12" color="white" />
+        <v-icon color="white" :icon="NEWS_CATEGORY_META[update.category]?.icon || 'mdi-star-four-points'" size="12" />
       </div>
     </div>
 
@@ -114,8 +114,8 @@
     <div class="timeline-visual-side">
       <div class="visual-container-box">
         <UpdateVisualMockup
-          :update-id="update.id"
           :category="update.category"
+          :update-id="update.id"
         />
       </div>
     </div>
