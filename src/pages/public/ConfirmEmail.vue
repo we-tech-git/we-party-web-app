@@ -12,12 +12,19 @@
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import { useAuth } from '@/composables/useAuth'
+  import { useSeoMeta } from '@/composables/useSeoMeta'
   import router from '@/router'
   import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
   const { login } = useAuth()
 
   const { t } = useI18n()
+
+  useSeoMeta({
+    title: 'Confirmar e-mail | We Party',
+    description: 'Confirme seu e-mail com o código enviado para ativar sua conta We Party.',
+    path: '/public/ConfirmEmail',
+  })
 
   // ===============================
   // ESTADO DO PIN E CONFIRMAÇÃO

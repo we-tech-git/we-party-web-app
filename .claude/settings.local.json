@@ -19,7 +19,12 @@
       "Bash(sort -k5 -rn)",
       "Bash(npx eslint *)",
       "Bash(git stash *)",
-      "Bash(npx vue-tsc *)"
+      "Bash(npx vue-tsc *)",
+      "Bash(taskkill //PID 14752 //F)",
+      "Bash(taskkill //PID 14516 //F)",
+      "Bash(taskkill //PID 11372 //F)",
+      "Bash(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 public/logoweparty.png)",
+      "Bash(node \"C:\\\\Users\\\\Home\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Home-Desktop-WORKS-we-party-web-app\\\\a9a80e04-36c5-4d86-9ad5-814ee8de8d17\\\\scratchpad\\\\gen-favicons.mjs\")"
     ]
   }
 }

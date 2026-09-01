@@ -10,12 +10,14 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build --force",
     "lint": "eslint . --fix",
-    "generate-pwa-icons": "node scripts/gen-pwa-icons.mjs"
+    "generate-pwa-icons": "node scripts/gen-pwa-icons.mjs",
+    "generate-favicons": "node scripts/gen-favicons.mjs"
   },
   "dependencies": {
     "@fontsource/roboto": "5.2.7",
     "@mdi/font": "7.4.47",
     "@types/three": "^0.183.1",
+    "@unhead/vue": "^3.4.0",
     "@vueuse/core": "^14.2.1",
     "@vueuse/motion": "^3.0.3",
     "axios": "^1.12.2",
