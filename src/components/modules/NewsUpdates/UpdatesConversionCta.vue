@@ -83,22 +83,6 @@
             <span>Explorar eventos</span>
           </button>
         </div>
-
-        <!-- Trust Badges -->
-        <div class="cta-trust-strip">
-          <div class="trust-item">
-            <v-icon icon="mdi-check-decagram" size="16" />
-            <span>100% Gratuito</span>
-          </div>
-          <div class="trust-item">
-            <v-icon icon="mdi-lightning-bolt" size="16" />
-            <span>Acesso Instantâneo</span>
-          </div>
-          <div class="trust-item">
-            <v-icon icon="mdi-shield-lock-outline" size="16" />
-            <span>Sem Spam</span>
-          </div>
-        </div>
       </div>
     </div>
   </section>
@@ -298,28 +282,6 @@
   outline-offset: 2px;
 }
 
-/* Trust Strip */
-.cta-trust-strip {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-.trust-item {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 0.85rem;
-  color: #64748b;
-  font-weight: 600;
-}
-
-.trust-item .v-icon {
-  color: #10b981;
-}
-
 @media (max-width: 640px) {
   .cta-card-box {
     padding: 2.5rem 1.25rem;
@@ -330,10 +292,6 @@
   .btn-cta-explore {
     width: 100%;
     justify-content: center;
-  }
-
-  .cta-trust-strip {
-    gap: 1rem;
   }
 }
 

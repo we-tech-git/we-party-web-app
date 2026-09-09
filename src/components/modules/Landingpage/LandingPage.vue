@@ -754,7 +754,21 @@
         ease: 'power3.out',
       })
 
-      // 10. Banner PWA
+      // 10. Novidades — Banner de convite pra página de updates
+      gsap.from('.updates-banner', {
+        scrollTrigger: {
+          trigger: '.updates-banner',
+          start: 'top 88%',
+          toggleActions: 'play none none reverse',
+        },
+        y: 40,
+        opacity: 0,
+        scale: 0.97,
+        duration: 0.9,
+        ease: 'power3.out',
+      })
+
+      // 11. Banner PWA
       gsap.from('.pwa-banner', {
         scrollTrigger: {
           trigger: '.pwa-banner',
@@ -768,7 +782,7 @@
         ease: 'power3.out',
       })
 
-      // 11. Footer
+      // 12. Footer
       gsap.from('.footer-grid-v2 > *', {
         scrollTrigger: {
           trigger: '.footer-v2',
@@ -919,6 +933,9 @@
   }
   function goToFeed () {
     router.push('/public/explore')
+  }
+  function goToUpdates () {
+    router.push('/public/updates')
   }
 
   function goToLoginMobile () {
@@ -1375,6 +1392,27 @@
       </div>
     </section>
 
+    <!-- Novidades -->
+    <section id="novidades" class="updates-teaser">
+      <div class="container">
+        <div class="updates-banner">
+          <span class="updates-banner-deco updates-banner-deco-1">🚀</span>
+          <span class="updates-banner-deco updates-banner-deco-2">✨</span>
+          <div class="updates-banner-info">
+            <div class="updates-banner-icon">🚀</div>
+            <div>
+              <div class="updates-banner-title">Fique por dentro das novidades da We Party</div>
+              <div class="updates-banner-desc">Novos recursos, melhorias e o que vem por aí — acompanhe tudo na nossa página de atualizações.</div>
+            </div>
+          </div>
+          <button class="btn-cta-primary" type="button" @click="goToUpdates">
+            <span>Ver novidades</span>
+            <div class="btn-glow" />
+          </button>
+        </div>
+      </div>
+    </section>
+
     <!-- Footer -->
     <footer class="footer footer-v2">
       <div class="container">
@@ -1511,6 +1549,7 @@
     <!-- Login Required Dialog -->
     <LoginRequiredDialog />
     <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />
+
   </div>
 </template>
 
@@ -3509,6 +3548,86 @@ h2 .logo-text,
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   NOVIDADES — BANNER DE CONVITE PRA PÁGINA DE UPDATES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.updates-teaser {
+  padding: 0 0 6rem;
+  position: relative;
+}
+
+.updates-banner {
+  background: linear-gradient(120deg, var(--dark) 0%, #33244d 60%, #4a2650 100%);
+  border-radius: 28px;
+  padding: 2.75rem 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2.5rem;
+  position: relative;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.updates-banner-deco {
+  position: absolute;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.updates-banner-deco-1 {
+  left: -20px;
+  top: -30px;
+  font-size: 130px;
+}
+
+.updates-banner-deco-2 {
+  right: 10%;
+  bottom: -20px;
+  font-size: 90px;
+}
+
+.updates-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  text-align: left;
+  position: relative;
+  z-index: 1;
+}
+
+.updates-banner-icon {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 20px;
+  background: var(--gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  box-shadow: 0 12px 30px rgba(249, 120, 163, 0.35);
+}
+
+.updates-banner-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 0.4rem;
+}
+
+.updates-banner-desc {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.6;
+}
+
+.updates-banner .btn-cta-primary {
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    FOOTER
    ═══════════════════════════════════════════════════════════════════════════ */
 .footer-v2 {
@@ -3921,13 +4040,15 @@ h2 .logo-text,
     gap: 2.5rem;
   }
 
-  .pwa-banner {
+  .pwa-banner,
+  .updates-banner {
     flex-direction: column;
     align-items: flex-start;
     text-align: left;
   }
 
-  .btn-pwa-install {
+  .btn-pwa-install,
+  .updates-banner .btn-cta-primary {
     align-self: stretch;
     justify-content: center;
   }
@@ -4014,6 +4135,10 @@ h2 .logo-text,
   .faq-v2 {
     padding-top: 5rem;
     padding-bottom: 5rem;
+  }
+
+  .updates-teaser {
+    padding-bottom: 4rem;
   }
 
   .showcase-tab-desc {
@@ -4113,7 +4238,8 @@ h2 .logo-text,
     font-size: 0.95rem;
   }
 
-  .pwa-banner-info {
+  .pwa-banner-info,
+  .updates-banner-info {
     flex-direction: column;
     text-align: center;
   }
