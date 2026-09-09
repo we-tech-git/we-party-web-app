@@ -1,26 +1,27 @@
 <script setup lang="ts">
   import type { FilterOption } from './UpdatesFilter.vue'
-  import type { ReleasedNewsUpdate, UpcomingNewsUpdate } from '@/constants/newsUpdates'
+  import type { NewsUpdate, ReleasedNewsUpdate, UpcomingNewsUpdate } from '@/constants/newsUpdates'
   import gsap from 'gsap'
   import { ScrollTrigger } from 'gsap/ScrollTrigger'
   import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
-  import { NEWS_UPDATES } from '@/constants/newsUpdates'
-  import FeaturedUpdateCard from './FeaturedUpdateCard.vue'
+  import { getPublicUpdates } from '@/api/updates'
+  import { logger } from '@/utils/logger'
   import UpcomingUpdatesSection from './UpcomingUpdatesSection.vue'
   import UpdatesConversionCta from './UpdatesConversionCta.vue'
   import UpdatesFooter from './UpdatesFooter.vue'
   import UpdatesHeader from './UpdatesHeader.vue'
   import UpdatesHero from './UpdatesHero.vue'
-  import UpdatesStatsBar from './UpdatesStatsBar.vue'
   import UpdatesTimeline from './UpdatesTimeline.vue'
 
   gsap.registerPlugin(ScrollTrigger)
 
   // ═══════════════════════════════════════════════════════════════
-  // DATA COMPUTATIONS
+  // DADOS — vêm de GET /updates (só o que um admin já publicou pelo CMS).
   // ═══════════════════════════════════════════════════════════════
+  const newsUpdates = ref<NewsUpdate[]>([])
+
   const released = computed(() =>
-    NEWS_UPDATES
+    newsUpdates.value
       .filter((u): u is ReleasedNewsUpdate => u.status === 'released')
       .toSorted((a, b) => b.releasedAt.localeCompare(a.releasedAt)),
   )
@@ -28,7 +29,7 @@
   const featured = computed(() => released.value[0] || null)
 
   const upcoming = computed(() =>
-    NEWS_UPDATES
+    newsUpdates.value
       .filter((u): u is UpcomingNewsUpdate & { expectedAt: string } =>
         u.status === 'upcoming' && Boolean(u.expectedAt))
       .toSorted((a, b) => a.expectedAt.localeCompare(b.expectedAt)),
@@ -60,70 +61,76 @@
   const pageContainerRef = ref<HTMLElement | null>(null)
   let gsapCtx: gsap.Context | null = null
 
-  onMounted(() => {
-    nextTick(() => {
-      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      if (prefersReducedMotion || !pageContainerRef.value) return
+  onMounted(async () => {
+    try {
+      newsUpdates.value = await getPublicUpdates()
+    } catch (error) {
+      logger.error('Erro ao carregar novidades da plataforma:', error)
+    }
 
-      gsapCtx = gsap.context(() => {
-        // Hero entrance
-        gsap.from('.hero-main-content', {
-          y: 24,
-          opacity: 0,
-          duration: 0.9,
-          ease: 'power3.out',
-        })
+    await nextTick()
 
-        // Floating chips subtle entrance
-        gsap.from('.floating-chip', {
-          scale: 0.8,
-          opacity: 0,
-          stagger: 0.15,
-          duration: 0.8,
-          ease: 'back.out(1.4)',
-          delay: 0.3,
-        })
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (prefersReducedMotion || !pageContainerRef.value) return
 
-        // Stats bar entrance
-        gsap.from('.stats-bar-card', {
+    gsapCtx = gsap.context(() => {
+      // Hero entrance
+      gsap.from('.hero-main-content', {
+        y: 24,
+        opacity: 0,
+        duration: 0.9,
+        ease: 'power3.out',
+      })
+
+      // Floating chips subtle entrance
+      gsap.from('.floating-chip', {
+        scale: 0.8,
+        opacity: 0,
+        stagger: 0.15,
+        duration: 0.8,
+        ease: 'back.out(1.4)',
+        delay: 0.3,
+      })
+
+      // Stats bar entrance
+      gsap.from('.stats-bar-card', {
+        scrollTrigger: {
+          trigger: '.stats-bar-card',
+          start: 'top 90%',
+        },
+        y: 20,
+        opacity: 0,
+        duration: 0.7,
+        ease: 'power2.out',
+      })
+
+      // Featured card entrance
+      gsap.from('.featured-card', {
+        scrollTrigger: {
+          trigger: '.featured-card',
+          start: 'top 85%',
+        },
+        y: 30,
+        opacity: 0,
+        duration: 0.8,
+        ease: 'power3.out',
+      })
+
+      // Timeline items entrance
+      const items = document.querySelectorAll('.timeline-item')
+      for (const item of items) {
+        gsap.from(item, {
           scrollTrigger: {
-            trigger: '.stats-bar-card',
-            start: 'top 90%',
+            trigger: item,
+            start: 'top 85%',
           },
-          y: 20,
+          y: 25,
           opacity: 0,
           duration: 0.7,
           ease: 'power2.out',
         })
-
-        // Featured card entrance
-        gsap.from('.featured-card', {
-          scrollTrigger: {
-            trigger: '.featured-card',
-            start: 'top 85%',
-          },
-          y: 30,
-          opacity: 0,
-          duration: 0.8,
-          ease: 'power3.out',
-        })
-
-        // Timeline items entrance
-        const items = document.querySelectorAll('.timeline-item')
-        for (const item of items) {
-          gsap.from(item, {
-            scrollTrigger: {
-              trigger: item,
-              start: 'top 85%',
-            },
-            y: 25,
-            opacity: 0,
-            duration: 0.7,
-            ease: 'power2.out',
-          })
-        }
-      }, pageContainerRef.value)
-    })
+      }
+    }, pageContainerRef.value)
   })
 
   onUnmounted(() => {
@@ -142,23 +149,14 @@
       <!-- Hero with Social Energy -->
       <UpdatesHero @scroll-to-timeline="scrollToTimeline" />
 
-      <!-- Dynamic Status & Stats Bar -->
-      <UpdatesStatsBar
-        active-year="2026"
-        :released-count="released.length"
-        :upcoming-count="upcoming.length"
-      />
-
-      <!-- Featured Release Spotlight -->
-      <FeaturedUpdateCard
-        v-if="featured"
-        :update="featured"
-      />
-
-      <!-- Editorial Timeline Feed with Filters -->
+      <!-- Editorial Timeline Feed with Filters (inclui Stats Bar e Destaque) -->
       <UpdatesTimeline
+        active-year="2026"
         :counts="categoryCounts"
         :current-filter="activeFilter"
+        :featured="featured"
+        :released-count="released.length"
+        :upcoming-count="upcoming.length"
         :updates="released"
         @update:filter="activeFilter = $event"
       />

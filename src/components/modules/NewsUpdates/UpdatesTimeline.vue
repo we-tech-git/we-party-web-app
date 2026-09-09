@@ -2,7 +2,9 @@
   import type { FilterOption } from './UpdatesFilter.vue'
   import type { ReleasedNewsUpdate } from '@/constants/newsUpdates'
   import { computed } from 'vue'
+  import FeaturedUpdateCard from './FeaturedUpdateCard.vue'
   import UpdatesFilter from './UpdatesFilter.vue'
+  import UpdatesStatsBar from './UpdatesStatsBar.vue'
   import UpdateTimelineItem from './UpdateTimelineItem.vue'
 
   const props = defineProps<{
@@ -14,6 +16,10 @@
       improvement: number
       fix: number
     }
+    featured: ReleasedNewsUpdate | null
+    releasedCount: number
+    upcomingCount: number
+    activeYear?: string | number
   }>()
 
   const emit = defineEmits<{
@@ -48,6 +54,19 @@
           Acompanhe cada etapa de construção da WeParty organizada em ordem cronológica.
         </p>
       </div>
+
+      <!-- Dynamic Status & Stats Bar -->
+      <UpdatesStatsBar
+        :active-year="activeYear"
+        :released-count="releasedCount"
+        :upcoming-count="upcomingCount"
+      />
+
+      <!-- Featured Release Spotlight -->
+      <FeaturedUpdateCard
+        v-if="featured"
+        :update="featured"
+      />
 
       <!-- Category Filter Toolbar -->
       <UpdatesFilter
