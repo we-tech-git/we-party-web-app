@@ -1,22 +1,22 @@
 <script setup lang="ts">
   const emit = defineEmits<{
-    (e: 'scrollToTimeline'): void
+    (e: 'scroll-to-timeline'): void
   }>()
 
   function handleExploreClick () {
-    emit('scrollToTimeline')
+    emit('scroll-to-timeline')
   }
 </script>
 
 <template>
-  <section class="updates-hero" aria-labelledby="hero-heading">
+  <section aria-labelledby="hero-heading" class="updates-hero">
     <!-- Ambient Glow Layers -->
-    <div class="hero-glow-blob-1" aria-hidden="true" />
-    <div class="hero-glow-blob-2" aria-hidden="true" />
+    <div aria-hidden="true" class="hero-glow-blob-1" />
+    <div aria-hidden="true" class="hero-glow-blob-2" />
 
     <div class="hero-container">
       <!-- Floating Social Energy Chips (Desktop/Tablet) -->
-      <div class="floating-chip chip-left-top" aria-hidden="true">
+      <div aria-hidden="true" class="floating-chip chip-left-top">
         <span class="chip-icon-box pink">
           <v-icon icon="mdi-comment-processing-outline" size="14" />
         </span>
@@ -24,21 +24,21 @@
         <span class="pulse-indicator" />
       </div>
 
-      <div class="floating-chip chip-right-top" aria-hidden="true">
+      <div aria-hidden="true" class="floating-chip chip-right-top">
         <span class="chip-icon-box orange">
           <v-icon icon="mdi-map-marker-radius" size="14" />
         </span>
         <span class="chip-label">Eventos perto de você</span>
       </div>
 
-      <div class="floating-chip chip-left-bottom" aria-hidden="true">
+      <div aria-hidden="true" class="floating-chip chip-left-bottom">
         <span class="chip-icon-box purple">
           <v-icon icon="mdi-party-popper" size="14" />
         </span>
         <span class="chip-label">+5.4k presenças confirmadas</span>
       </div>
 
-      <div class="floating-chip chip-right-bottom" aria-hidden="true">
+      <div aria-hidden="true" class="floating-chip chip-right-bottom">
         <span class="chip-icon-box blue">
           <v-icon icon="mdi-lightning-bolt" size="14" />
         </span>

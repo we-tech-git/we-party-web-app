@@ -2,7 +2,9 @@
   import type { FilterOption } from './UpdatesFilter.vue'
   import type { ReleasedNewsUpdate } from '@/constants/newsUpdates'
   import { computed } from 'vue'
+  import FeaturedUpdateCard from './FeaturedUpdateCard.vue'
   import UpdatesFilter from './UpdatesFilter.vue'
+  import UpdatesStatsBar from './UpdatesStatsBar.vue'
   import UpdateTimelineItem from './UpdateTimelineItem.vue'
 
   const props = defineProps<{
@@ -14,6 +16,10 @@
       improvement: number
       fix: number
     }
+    featured: ReleasedNewsUpdate | null
+    releasedCount: number
+    upcomingCount: number
+    activeYear?: string | number
   }>()
 
   const emit = defineEmits<{
@@ -33,7 +39,7 @@
 </script>
 
 <template>
-  <section id="updates-timeline-section" class="updates-timeline-section" aria-labelledby="timeline-heading">
+  <section id="updates-timeline-section" aria-labelledby="timeline-heading" class="updates-timeline-section">
     <div class="timeline-container">
       <!-- Section Header -->
       <div class="timeline-header-block">
@@ -49,26 +55,39 @@
         </p>
       </div>
 
+      <!-- Dynamic Status & Stats Bar -->
+      <UpdatesStatsBar
+        :active-year="activeYear"
+        :released-count="releasedCount"
+        :upcoming-count="upcomingCount"
+      />
+
+      <!-- Featured Release Spotlight -->
+      <FeaturedUpdateCard
+        v-if="featured"
+        :update="featured"
+      />
+
       <!-- Category Filter Toolbar -->
       <UpdatesFilter
-        :current-filter="currentFilter"
         :counts="counts"
+        :current-filter="currentFilter"
         @update:filter="handleFilterChange"
       />
 
       <!-- Timeline Wrapper with Vertical Track -->
       <div class="timeline-track-wrapper">
         <!-- Central vertical line (Desktop) -->
-        <div class="timeline-vertical-line" aria-hidden="true" />
+        <div aria-hidden="true" class="timeline-vertical-line" />
 
         <!-- Timeline Items List -->
         <div v-if="filteredUpdates.length > 0" class="timeline-items-list">
           <UpdateTimelineItem
             v-for="(item, index) in filteredUpdates"
             :key="item.id"
-            :update="item"
             :index="index"
             :is-even="index % 2 === 0"
+            :update="item"
           />
         </div>
 

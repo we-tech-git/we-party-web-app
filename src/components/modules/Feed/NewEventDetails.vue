@@ -1259,7 +1259,7 @@
       data?.goingUsers, data?.going_users, data?.rsvps, data?.users,
     ]
     for (const s of sources) {
-      if (Array.isArray(s) && s.length > 0) return s.filter(isGoingAttendance)
+      if (Array.isArray(s) && s.length > 0) return s.filter((a: any) => isGoingAttendance(a))
     }
     return []
   }

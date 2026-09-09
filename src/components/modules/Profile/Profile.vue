@@ -357,17 +357,14 @@
 
       // ── Extrai eventos confirmados (eventAttendances) que já vem no getUserProfile ──
       // A API retorna eventAttendances no GET /users/:id, evitando chamada adicional
-      if (userData.eventAttendances && Array.isArray(userData.eventAttendances)) {
-        confirmedEventsItems.value = userData.eventAttendances
-          .filter((e: any) => e && (e.id || e.eventId))
-          .map((evt: any) => {
-            // Se eventAttendances contém o objeto do evento completo ou apenas referência
-            const eventData = evt.event || evt
-            return mapConfirmedAttendance(eventData)
-          })
-      } else {
-        confirmedEventsItems.value = []
-      }
+      const attendances = Array.isArray(userData.eventAttendances) ? userData.eventAttendances : []
+      confirmedEventsItems.value = attendances
+        .filter((e: any) => e && (e.id || e.eventId))
+        .map((evt: any) => {
+          // Se eventAttendances contém o objeto do evento completo ou apenas referência
+          const eventData = evt.event || evt
+          return mapConfirmedAttendance(eventData)
+        })
     } catch {
       error.value = t('profile.messages.loadProfileError')
     } finally {

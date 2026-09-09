@@ -28,7 +28,7 @@
 </script>
 
 <template>
-  <section class="featured-update-section" aria-labelledby="featured-update-heading">
+  <section aria-labelledby="featured-update-heading" class="featured-update-section">
     <div class="featured-container">
       <div class="section-label-row">
         <span class="sparkle-bullet">✦</span>
@@ -39,7 +39,7 @@
 
       <article class="featured-card">
         <!-- Card Background Gradient Flare -->
-        <div class="card-flare" aria-hidden="true" />
+        <div aria-hidden="true" class="card-flare" />
 
         <!-- Left Column: Content & Metadata -->
         <div class="featured-content-col">
@@ -105,8 +105,8 @@
         <!-- Right Column: Rich Visual Mockup -->
         <div class="featured-visual-col">
           <UpdateVisualMockup
-            :update-id="update.id"
             :category="update.category"
+            :update-id="update.id"
           />
         </div>
       </article>

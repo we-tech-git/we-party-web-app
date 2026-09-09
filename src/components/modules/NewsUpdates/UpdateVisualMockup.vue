@@ -47,7 +47,7 @@
 
       <div class="comment-input-fake">
         <span class="input-placeholder">Escreva um comentário...</span>
-        <button class="send-btn" type="button" aria-label="Enviar">
+        <button aria-label="Enviar" class="send-btn" type="button">
           <v-icon icon="mdi-send" size="14" />
         </button>
       </div>
@@ -178,7 +178,7 @@
     <div v-else-if="updateId === 'pwa-install'" class="mockup-pwa">
       <div class="pwa-card">
         <div class="app-icon-display">
-          <img src="/logoweparty.png" alt="We Party App Icon" class="pwa-app-icon">
+          <img alt="We Party App Icon" class="pwa-app-icon" src="/logoweparty.png">
           <span class="app-glow" />
         </div>
         <div class="pwa-info">
@@ -248,7 +248,7 @@
       <div class="push-notification-bubble">
         <div class="push-top">
           <div class="push-app">
-            <img src="/logoweparty.png" alt="WeParty" class="push-logo">
+            <img alt="WeParty" class="push-logo" src="/logoweparty.png">
             <span>We Party • Agora</span>
           </div>
           <span class="push-close"><v-icon icon="mdi-bell-ring-outline" size="14" /></span>

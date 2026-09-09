@@ -107,12 +107,12 @@
     const iframe = event.target as HTMLIFrameElement
     try {
       const doc = iframe.contentDocument
-      if (!doc || doc.getElementById('embed-hide-scrollbar')) return
+      if (!doc || doc.querySelector('#embed-hide-scrollbar')) return
 
       const style = doc.createElement('style')
       style.id = 'embed-hide-scrollbar'
       style.textContent = 'html, body { scrollbar-width: none; } html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; height: 0; }'
-      doc.head.appendChild(style)
+      doc.head.append(style)
     } catch {
       // Cross-origin (ex.: preview em domínio diferente) — sem acesso ao documento, ignora.
     }
@@ -504,9 +504,9 @@
       // 3. Hero — Master Entrance Timeline
       const heroTl = gsap.timeline({ defaults: { ease: 'power4.out' } })
       heroTl
-        .from('.header', { y: -25, opacity: 0, duration: 1.0, ease: 'power3.out' })
+        .from('.header', { y: -25, opacity: 0, duration: 1, ease: 'power3.out' })
         .from('.hero-wordmark-wrap', { y: 70, opacity: 0, scale: 0.94, duration: 1.2, ease: 'power4.out' }, '-=0.6')
-        .from('.hero-tagline-wrap', { y: 35, opacity: 0, duration: 1.0, ease: 'power3.out' }, '-=0.7')
+        .from('.hero-tagline-wrap', { y: 35, opacity: 0, duration: 1, ease: 'power3.out' }, '-=0.7')
         .from('.hero-scroll-indicator', { y: 20, opacity: 0, duration: 0.8, ease: 'power2.out' }, '-=0.4')
 
       // 4. Hero — Scroll Storytelling Scrub (transição suave para a próxima seção)
@@ -606,7 +606,7 @@
         y: 50,
         opacity: 0,
         scale: 0.96,
-        duration: 1.0,
+        duration: 1,
         ease: 'power3.out',
       })
 
@@ -754,7 +754,21 @@
         ease: 'power3.out',
       })
 
-      // 10. Banner PWA
+      // 10. Novidades — Banner de convite pra página de updates
+      gsap.from('.updates-banner', {
+        scrollTrigger: {
+          trigger: '.updates-banner',
+          start: 'top 88%',
+          toggleActions: 'play none none reverse',
+        },
+        y: 40,
+        opacity: 0,
+        scale: 0.97,
+        duration: 0.9,
+        ease: 'power3.out',
+      })
+
+      // 11. Banner PWA
       gsap.from('.pwa-banner', {
         scrollTrigger: {
           trigger: '.pwa-banner',
@@ -768,7 +782,7 @@
         ease: 'power3.out',
       })
 
-      // 11. Footer
+      // 12. Footer
       gsap.from('.footer-grid-v2 > *', {
         scrollTrigger: {
           trigger: '.footer-v2',
@@ -1003,20 +1017,20 @@
         <div class="hero-v2-content">
           <div class="hero-wordmark-wrap">
             <GradientText
-              tag="h1"
+              :animation-speed="4"
               class="hero-wordmark"
               :colors="['#ff9a4d', '#ff5f8f']"
-              :animation-speed="4"
+              tag="h1"
             >
               We Party
             </GradientText>
           </div>
           <div class="hero-tagline-wrap">
             <GradientText
-              tag="p"
+              :animation-speed="4"
               class="hero-tagline"
               :colors="['#ff9a4d', '#ff5f8f']"
-              :animation-speed="4"
+              tag="p"
             >
               A rede social feita para quem ama eventos
             </GradientText>
@@ -1370,6 +1384,29 @@
       </div>
     </section>
 
+    <!-- Novidades -->
+    <section id="novidades" class="updates-teaser">
+      <div class="container">
+        <div class="updates-banner">
+          <span class="updates-banner-deco updates-banner-deco-1">🚀</span>
+          <span class="updates-banner-deco updates-banner-deco-2">✨</span>
+          <div class="updates-banner-info">
+            <div class="updates-banner-icon">🚀</div>
+            <div>
+              <div class="updates-banner-title">Fique por dentro das novidades da We Party</div>
+              <div class="updates-banner-desc">Novos recursos, melhorias e o que vem por aí — acompanhe tudo na nossa página de atualizações.</div>
+            </div>
+          </div>
+          <router-link v-slot="{ href, navigate }" custom to="/public/updates">
+            <a class="btn-cta-primary" :href="href" @click="navigate">
+              <span>Ver novidades</span>
+              <div class="btn-glow" />
+            </a>
+          </router-link>
+        </div>
+      </div>
+    </section>
+
     <!-- Footer -->
     <footer class="footer footer-v2">
       <div class="container">
@@ -1509,6 +1546,7 @@
     <!-- Login Required Dialog -->
     <LoginRequiredDialog />
     <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" :timeout="4000" />
+
   </div>
 </template>
 
@@ -3508,6 +3546,86 @@ h2 .logo-text,
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   NOVIDADES — BANNER DE CONVITE PRA PÁGINA DE UPDATES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.updates-teaser {
+  padding: 0 0 6rem;
+  position: relative;
+}
+
+.updates-banner {
+  background: linear-gradient(120deg, var(--dark) 0%, #33244d 60%, #4a2650 100%);
+  border-radius: 28px;
+  padding: 2.75rem 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2.5rem;
+  position: relative;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.updates-banner-deco {
+  position: absolute;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.updates-banner-deco-1 {
+  left: -20px;
+  top: -30px;
+  font-size: 130px;
+}
+
+.updates-banner-deco-2 {
+  right: 10%;
+  bottom: -20px;
+  font-size: 90px;
+}
+
+.updates-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  text-align: left;
+  position: relative;
+  z-index: 1;
+}
+
+.updates-banner-icon {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 20px;
+  background: var(--gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  box-shadow: 0 12px 30px rgba(249, 120, 163, 0.35);
+}
+
+.updates-banner-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 0.4rem;
+}
+
+.updates-banner-desc {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.6;
+}
+
+.updates-banner .btn-cta-primary {
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    FOOTER
    ═══════════════════════════════════════════════════════════════════════════ */
 .footer-v2 {
@@ -3920,13 +4038,15 @@ h2 .logo-text,
     gap: 2.5rem;
   }
 
-  .pwa-banner {
+  .pwa-banner,
+  .updates-banner {
     flex-direction: column;
     align-items: flex-start;
     text-align: left;
   }
 
-  .btn-pwa-install {
+  .btn-pwa-install,
+  .updates-banner .btn-cta-primary {
     align-self: stretch;
     justify-content: center;
   }
@@ -4013,6 +4133,10 @@ h2 .logo-text,
   .faq-v2 {
     padding-top: 5rem;
     padding-bottom: 5rem;
+  }
+
+  .updates-teaser {
+    padding-bottom: 4rem;
   }
 
   .showcase-tab-desc {
@@ -4112,7 +4236,8 @@ h2 .logo-text,
     font-size: 0.95rem;
   }
 
-  .pwa-banner-info {
+  .pwa-banner-info,
+  .updates-banner-info {
     flex-direction: column;
     text-align: center;
   }
