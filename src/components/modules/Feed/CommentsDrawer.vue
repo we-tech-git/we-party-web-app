@@ -9,6 +9,7 @@
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useCommentLikes } from '@/composables/useCommentLikes'
+  import { useUserNavigation } from '@/composables/useUserNavigation'
 
   const props = defineProps<{
     eventId: string | number
@@ -36,6 +37,7 @@
   }
 
   const { loggedUser } = useAuth()
+  const { goToProfile } = useUserNavigation()
   const comments = ref<Comment[]>([])
   const newComment = ref('')
   const loading = ref(false)
@@ -306,7 +308,7 @@
 
             <TransitionGroup v-else name="comment-item">
               <div v-for="comment in comments" :key="comment.id" class="comment-row">
-                <div class="comment-avatar-wrapper">
+                <div class="comment-avatar-wrapper" style="cursor: pointer;" @click.stop="goToProfile(comment.user?.id)">
                   <UserAvatar
                     :image="comment.user?.profileImage"
                     :name="comment.user?.name || ''"
@@ -317,7 +319,7 @@
                 <div class="comment-content">
                   <div class="comment-bubble">
                     <div class="comment-header">
-                      <span class="comment-author">{{ comment.user?.name || 'Usuário' }}</span>
+                      <span class="comment-author" style="cursor: pointer;" @click.stop="goToProfile(comment.user?.id)">{{ comment.user?.name || 'Usuário' }}</span>
                       <span v-if="comment.user?.role === 'ADMIN'" class="comment-admin-badge">Admin</span>
                       <span class="comment-time">{{ formatDate(comment.createdAt) }}</span>
                     </div>
@@ -482,7 +484,7 @@
                     :class="{ 'replies-list--open': expandedReplies[comment.id] }"
                   >
                     <div v-for="reply in comment.replies" :key="reply.id" class="reply-row">
-                      <div class="comment-avatar-wrapper">
+                      <div class="comment-avatar-wrapper" style="cursor: pointer;" @click.stop="goToProfile(reply.user?.id)">
                         <UserAvatar
                           :image="reply.user?.profileImage"
                           :name="reply.user?.name || ''"
@@ -492,7 +494,7 @@
                       <div class="comment-content">
                         <div class="comment-bubble comment-bubble--reply">
                           <div class="comment-header">
-                            <span class="comment-author">{{ reply.user?.name || 'Usuário' }}</span>
+                            <span class="comment-author" style="cursor: pointer;" @click.stop="goToProfile(reply.user?.id)">{{ reply.user?.name || 'Usuário' }}</span>
                             <span v-if="reply.user?.role === 'ADMIN'" class="comment-admin-badge">Admin</span>
                             <span class="comment-time">{{ formatDate(reply.createdAt) }}</span>
                           </div>

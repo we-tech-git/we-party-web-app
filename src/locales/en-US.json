@@ -244,6 +244,16 @@
       "liked": "Liked",
       "settings": "Settings"
     },
+    "public": {
+      "loading1": "Loading profile...",
+      "loading2": "Almost there...",
+      "notFoundTitle": "Profile unavailable",
+      "notFoundDescription": "This profile doesn't exist or is no longer available.",
+      "confirmedTab": "Attending",
+      "confirmedCount": "attending",
+      "emptyLiked": "No liked events yet",
+      "emptyConfirmed": "No confirmed attendance yet"
+    },
     "likedEvents": {
       "title": "Liked events",
       "empty": "No liked events",

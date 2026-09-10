@@ -456,9 +456,11 @@
                 <div class="flex flex-wrap items-center gap-4">
                   <div
                     class="w-14 h-14 rounded-2xl bg-linear-to-br from-yellow-300 to-orange-400 grid place-items-center text-white font-display font-extrabold text-2xl flex-none"
+                    :style="event.organizerId ? { cursor: 'pointer' } : {}"
+                    @click="goToProfile(event.organizerId)"
                   >
                     T</div>
-                  <div class="min-w-0">
+                  <div class="min-w-0" :style="event.organizerId ? { cursor: 'pointer' } : {}" @click="goToProfile(event.organizerId)">
                     <span class="eyebrow">Organizado por</span>
                     <b class="block font-display text-[17px] truncate">{{ event.organizer }}</b>
                   </div>
@@ -960,6 +962,7 @@
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useGeolocation } from '@/composables/useGeolocation'
+  import { useUserNavigation } from '@/composables/useUserNavigation'
   import { SCROLL_THROTTLE_MS } from '@/constants/timing'
   import { useEventsStore } from '@/stores/events'
   import { useShareStore } from '@/stores/share'
@@ -975,6 +978,7 @@
   const eventsStore = useEventsStore()
   const shareStore = useShareStore()
   const { userDisplayName, loggedUser, logout: authLogout } = useAuth()
+  const { goToProfile } = useUserNavigation()
 
   const currentId = computed(() =>
     (Array.isArray(props.eventId) ? props.eventId[0] : props.eventId) || '',
