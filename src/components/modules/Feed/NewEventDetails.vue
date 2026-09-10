@@ -653,7 +653,7 @@
             <div v-show="activeTab === 'cmt'" class="card card--comments">
               <InlineComments
                 :key="currentId"
-                :event-id="currentId"
+                :subject-id="currentId"
                 :visible="activeTab === 'cmt'"
                 @update:count="commentsCount = $event"
               />

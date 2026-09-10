@@ -437,5 +437,21 @@
       "googleSuccess": "Login com Google realizado com sucesso! 🎉",
       "googleGenericError": "Erro ao fazer login com Google"
     }
+  },
+  "interestPage": {
+    "hero": {
+      "followLabel": "Seguir {name}",
+      "followingLabel": "✓ Seguindo"
+    },
+    "featured": {
+      "title": "Em destaque"
+    },
+    "upcoming": {
+      "title": "Próximos eventos"
+    },
+    "topPeople": {
+      "title": "Pessoas dessa tribo"
+    },
+    "followError": "Não deu pra atualizar agora. Tenta de novo em instantes."
   }
 }

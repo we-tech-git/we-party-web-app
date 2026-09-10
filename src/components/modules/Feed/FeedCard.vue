@@ -474,7 +474,7 @@
       </figcaption>
     </figure>
 
-    <InlineComments :event-id="id" :visible="showComments" @update:count="handleUpdateCommentsCount" />
+    <InlineComments :subject-id="id" :visible="showComments" @update:count="handleUpdateCommentsCount" />
 
     <InlineInterests
       :guest-mode="guestMode"

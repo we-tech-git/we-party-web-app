@@ -437,5 +437,21 @@
       "googleSuccess": "Google login successful! 🎉",
       "googleGenericError": "Error signing in with Google"
     }
+  },
+  "interestPage": {
+    "hero": {
+      "followLabel": "Follow {name}",
+      "followingLabel": "✓ Following"
+    },
+    "featured": {
+      "title": "Featured"
+    },
+    "upcoming": {
+      "title": "Upcoming events"
+    },
+    "topPeople": {
+      "title": "People in this tribe"
+    },
+    "followError": "Couldn't update right now. Try again in a bit."
   }
 }

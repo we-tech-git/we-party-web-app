@@ -26,9 +26,20 @@ export interface LikeableComment {
  * usuário clicava de novo e o backend (que é toggle) **descurtia**. É esse o
  * bug de "consigo curtir o mesmo comentário mais de uma vez".
  *
- * @param eventId - getter, porque a tela pode trocar de evento sem remontar.
+ * @param subjectId - getter, porque a tela pode trocar de assunto (evento ou
+ * interesse) sem remontar.
+ * @param toggleFn - qual endpoint chamar pro toggle. Default:
+ * `toggleLikeComment` (comentário de evento). A thread de interesse passa
+ * `toggleLikeInterestComment` — mesmo composable, endpoint diferente, sem
+ * duplicar a lógica de override/rollback acima.
  */
-export function useCommentLikes (eventId: () => string | number) {
+export function useCommentLikes (
+  subjectId: () => string | number,
+  toggleFn: (
+    subjectId: string | number,
+    commentId: string,
+  ) => Promise<any> = toggleLikeComment,
+) {
   // O que o usuário fez nesta sessão, chaveado por id do comentário.
   // Sobrepõe o que veio do GET enquanto o componente estiver montado.
   const likedOverride = ref<Record<string, boolean>>({})
@@ -61,7 +72,7 @@ export function useCommentLikes (eventId: () => string | number) {
     countOverride.value[comment.id] = Math.max(0, previousCount + (wasLiked ? -1 : 1))
 
     try {
-      const res: any = await toggleLikeComment(eventId(), comment.id)
+      const res: any = await toggleFn(subjectId(), comment.id)
 
       // A spec devolve `{ data: { liked, likesCount } }`. Usar esse número como
       // verdade — em vez de manter o ±1 otimista — é o que impede a contagem de

@@ -254,6 +254,13 @@ export interface CommentTreeContext {
   replyText: { value: string }
   sendingReply: { value: boolean }
   replyToName: { value: string }
+  /**
+   * Abre o fluxo de denúncia do comentário — undefined quando a thread não
+   * suporta a ação (comentário de evento, nesta rodada). `CommentNode`
+   * esconde o botão "Reportar" quando isto não existe.
+   */
+  report?: (comment: CommentNodeData) => void
+  isReporting: (id: string) => boolean
 }
 
 export const commentTreeKey: InjectionKey<CommentTreeContext> = Symbol('commentTree')

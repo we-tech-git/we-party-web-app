@@ -30,6 +30,7 @@ declare module 'vue-router/auto-routes' {
     '/public/Congratulations': RouteRecordInfo<'/public/Congratulations', '/public/Congratulations', Record<never, never>, Record<never, never>>,
     '/public/explore': RouteRecordInfo<'/public/explore', '/public/explore', Record<never, never>, Record<never, never>>,
     '/public/Interest': RouteRecordInfo<'/public/Interest', '/public/Interest', Record<never, never>, Record<never, never>>,
+    '/public/interests/[slug]': RouteRecordInfo<'/public/interests/[slug]', '/public/interests/:slug', { slug: ParamValue<true> }, { slug: ParamValue<false> }>,
     '/public/Landingpage': RouteRecordInfo<'/public/Landingpage', '/public/Landingpage', Record<never, never>, Record<never, never>>,
     '/public/Login': RouteRecordInfo<'/public/Login', '/public/Login', Record<never, never>, Record<never, never>>,
     '/public/RequestPassword': RouteRecordInfo<'/public/RequestPassword', '/public/RequestPassword', Record<never, never>, Record<never, never>>,
@@ -96,6 +97,10 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/public/Interest.vue': {
       routes: '/public/Interest'
+      views: never
+    }
+    'src/pages/public/interests/[slug].vue': {
+      routes: '/public/interests/[slug]'
       views: never
     }
     'src/pages/public/Landingpage.vue': {
