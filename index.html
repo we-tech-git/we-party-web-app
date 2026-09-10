@@ -2,6 +2,9 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="icon" href="/logoweparty.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
@@ -15,21 +18,20 @@
       rota): este é um SPA client-side puro, sem SSR/prerender, então
       crawlers sociais (que não executam JS) sempre leem este HTML — meta
       tags dinâmicas por evento/perfil não seriam vistas por eles.
-      TODO: trocar og:image/twitter:image por URL ABSOLUTA (com domínio de
-      produção) quando definida — caminho relativo funciona na maioria das
-      plataformas, mas não é garantido pela especificação OG.
     -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="We Party" />
     <meta property="og:title" content="We Party" />
     <meta property="og:description" content="Descubra eventos perto de você e conecte-se com pessoas que também vão." />
-    <meta property="og:image" content="/pwa-512x512.png" />
+    <meta property="og:url" content="https://wepartyapp.com/" />
+    <meta property="og:image" content="https://wepartyapp.com/pwa-512x512.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="We Party" />
     <meta name="twitter:description" content="Descubra eventos perto de você e conecte-se com pessoas que também vão." />
-    <meta name="twitter:image" content="/pwa-512x512.png" />
+    <meta name="twitter:image" content="https://wepartyapp.com/pwa-512x512.png" />
+    <link rel="canonical" href="https://wepartyapp.com/" />
 
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="We Party" />

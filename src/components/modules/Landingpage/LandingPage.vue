@@ -925,28 +925,6 @@
   })
 
   // Navigation
-  function goToSignup () {
-    router.push('/public/Signup')
-  }
-  function goToLogin () {
-    router.push('/public/Login')
-  }
-  function goToFeed () {
-    router.push('/public/explore')
-  }
-  function goToUpdates () {
-    router.push('/public/updates')
-  }
-
-  function goToLoginMobile () {
-    closeMobileMenu()
-    goToLogin()
-  }
-  function goToSignupMobile () {
-    closeMobileMenu()
-    goToSignup()
-  }
-
   function goToSection (sectionId: string) {
     closeMobileMenu()
     nextTick(() => {
@@ -968,12 +946,18 @@
             <img alt="We Party Logo" class="logo-img" src="/logoweparty.png">
             <span class="logo-text">We Party</span>
           </div>
-          <div class="auth-buttons">
-            <button class="btn-ghost" type="button" @click="goToLogin">Entrar</button>
-            <button class="btn-primary-glow" type="button" @click="goToSignup">
-              <span>CADASTRO</span>
-            </button>
-          </div>
+          <nav aria-label="Menu principal">
+            <div class="auth-buttons">
+              <router-link v-slot="{ href, navigate }" custom to="/public/Login">
+                <a class="btn-ghost" :href="href" @click="navigate">Entrar</a>
+              </router-link>
+              <router-link v-slot="{ href, navigate }" custom to="/public/Signup">
+                <a class="btn-primary-glow" :href="href" @click="navigate">
+                  <span>CADASTRO</span>
+                </a>
+              </router-link>
+            </div>
+          </nav>
           <button
             aria-controls="mobile-menu"
             :aria-expanded="isMobileMenuOpen"
@@ -991,7 +975,7 @@
     <!-- Mobile Menu -->
     <Transition name="mobile-menu-fade">
       <div v-if="isMobileMenuOpen" class="mobile-menu-overlay" @click.self="closeMobileMenu">
-        <nav id="mobile-menu" aria-label="Menu principal" class="mobile-menu-panel">
+        <nav id="mobile-menu" aria-label="Menu mobile" class="mobile-menu-panel">
           <a class="mobile-nav-link" href="#como-funciona" @click.prevent="goToSection('#como-funciona')">
             <v-icon icon="mdi-information-outline" size="20" />
             <span>Como funciona</span>
@@ -999,10 +983,14 @@
 
           <div class="mobile-menu-divider" />
 
-          <button class="mobile-menu-ghost" type="button" @click="goToLoginMobile">Entrar</button>
-          <button class="mobile-menu-primary" type="button" @click="goToSignupMobile">
-            <span>CADASTRO</span>
-          </button>
+          <router-link v-slot="{ href, navigate }" custom to="/public/Login">
+            <a class="mobile-menu-ghost" :href="href" @click="(event: MouseEvent) => { closeMobileMenu(); navigate(event) }">Entrar</a>
+          </router-link>
+          <router-link v-slot="{ href, navigate }" custom to="/public/Signup">
+            <a class="mobile-menu-primary" :href="href" @click="(event: MouseEvent) => { closeMobileMenu(); navigate(event) }">
+              <span>CADASTRO</span>
+            </a>
+          </router-link>
         </nav>
       </div>
     </Transition>
@@ -1013,10 +1001,13 @@
         ref="heroVideo"
         autoplay
         class="hero-video"
+        height="720"
         loop
         muted
         playsinline
-        preload="auto"
+        poster="/hero-poster.jpg"
+        preload="metadata"
+        width="1280"
       >
         <source src="/hero-video.mp4" type="video/mp4">
       </video>
@@ -1075,10 +1066,12 @@
           </p>
 
           <div class="discover-actions">
-            <button class="btn-cta-primary" type="button" @click="goToFeed">
-              <span>Experimentar</span>
-              <div class="btn-glow" />
-            </button>
+            <router-link v-slot="{ href, navigate }" custom to="/public/explore">
+              <a class="btn-cta-primary" :href="href" @click="navigate">
+                <span>Experimentar</span>
+                <div class="btn-glow" />
+              </a>
+            </router-link>
             <div class="discover-avatars">
               <span class="avatar-dot avatar-1" />
               <span class="avatar-dot avatar-2" />
@@ -1109,7 +1102,7 @@
             <div class="discover-event-media" :style="{ background: event.gradient }">
               <img
                 v-if="event.image"
-                alt=""
+                :alt="`Foto do evento ${event.title}`"
                 class="discover-event-image"
                 loading="lazy"
                 :src="event.image"
@@ -1183,7 +1176,6 @@
     <section id="app-showcase" class="app-showcase-v2">
       <div class="container">
         <div class="section-header">
-          <span class="section-overline">PLATAFORMA</span>
           <h2 class="section-title">
             Veja o <span class="logo-text">We Party</span> em ação
           </h2>
@@ -1405,10 +1397,12 @@
               <div class="updates-banner-desc">Novos recursos, melhorias e o que vem por aí — acompanhe tudo na nossa página de atualizações.</div>
             </div>
           </div>
-          <button class="btn-cta-primary" type="button" @click="goToUpdates">
-            <span>Ver novidades</span>
-            <div class="btn-glow" />
-          </button>
+          <router-link v-slot="{ href, navigate }" custom to="/public/updates">
+            <a class="btn-cta-primary" :href="href" @click="navigate">
+              <span>Ver novidades</span>
+              <div class="btn-glow" />
+            </a>
+          </router-link>
         </div>
       </div>
     </section>
@@ -1440,12 +1434,16 @@
             <div class="footer-col-title">PRODUTO</div>
             <button class="footer-link-btn" type="button" @click="goToSection('#como-funciona')">Como funciona</button>
             <button class="footer-link-btn" type="button" @click="goToSection('#features')">Recursos</button>
-            <button class="footer-link-btn" type="button" @click="goToSignup">Criar evento</button>
+            <router-link v-slot="{ href, navigate }" custom to="/public/Signup">
+              <a class="footer-link-btn" :href="href" @click="navigate">Criar evento</a>
+            </router-link>
           </div>
 
           <div class="footer-col">
             <div class="footer-col-title">EMPRESA</div>
-            <button class="footer-link-btn" type="button" @click="router.push('/public/updates')">Novidades</button>
+            <router-link v-slot="{ href, navigate }" custom to="/public/updates">
+              <a class="footer-link-btn" :href="href" @click="navigate">Novidades</a>
+            </router-link>
             <a
               class="footer-link-a"
               href="https://www.wetechhub.com.br/"
@@ -1460,7 +1458,6 @@
           <div class="footer-legal-links">
             <button class="footer-link-btn" type="button" @click="openTermsModal('privacy')">Privacidade</button>
             <button class="footer-link-btn" type="button" @click="openTermsModal('terms')">Termos de uso</button>
-            <button class="footer-link-btn" type="button" @click="openTermsModal('privacy')">Cookies</button>
           </div>
         </div>
       </div>
@@ -3314,7 +3311,6 @@ h2 .logo-text,
 .timeline-bignum {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
   font-size: clamp(4.5rem, 9vw, 8.75rem);
   font-weight: 800;
   color: var(--dark);
@@ -3327,11 +3323,13 @@ h2 .logo-text,
 }
 
 .timeline-bignum-left {
-  left: 0;
+  left: 40px;
+  transform: translate(-50%, -50%);
 }
 
 .timeline-bignum-right {
-  right: 0;
+  right: 40px;
+  transform: translate(50%, -50%);
 }
 
 .timeline-icon {

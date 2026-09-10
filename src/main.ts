@@ -5,6 +5,7 @@
  */
 
 // Composables
+import { createHead } from '@unhead/vue/client'
 import { createApp } from 'vue'
 
 import i18n from '@/plugins/i18n'
@@ -21,9 +22,11 @@ import 'unfonts.css'
 import './styles/main.css'
 
 const app = createApp(App)
+const head = createHead()
 
 registerPlugins(app)
 
+app.use(head)
 app.use(i18n)
 
 // Rede de segurança global: captura erros que escapam do ErrorBoundary
