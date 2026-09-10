@@ -444,13 +444,23 @@
       "followingLabel": "✓ Seguindo"
     },
     "featured": {
-      "title": "Em destaque"
+      "kicker": "Manda ver",
+      "title": "O que tá bombando 🔊"
     },
     "upcoming": {
-      "title": "Próximos eventos"
+      "kicker": "Corre que tá em cima",
+      "title": "Tá chegando 🔥",
+      "today": "é hoje",
+      "tomorrow": "é amanhã",
+      "daysLeft": "faltam {days} dias"
     },
     "topPeople": {
-      "title": "Pessoas dessa tribo"
+      "kicker": "Quem já chegou",
+      "title": "Pessoas dessa tribo 👥"
+    },
+    "comments": {
+      "kicker": "Papo reto",
+      "title": "A voz da tribo 🗣"
     },
     "followError": "Não deu pra atualizar agora. Tenta de novo em instantes."
   }

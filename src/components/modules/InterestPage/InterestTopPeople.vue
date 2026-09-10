@@ -20,6 +20,7 @@
 
 <template>
   <section v-if="people.length > 0" aria-labelledby="top-people-heading" class="itp-section">
+    <p class="itp-kicker">{{ t('interestPage.topPeople.kicker') }}</p>
     <h2 id="top-people-heading" class="itp-title">{{ t('interestPage.topPeople.title') }}</h2>
     <div class="itp-list">
       <button
@@ -38,16 +39,26 @@
 
 <style scoped>
 .itp-section {
-  max-width: 720px;
-  margin: 2rem auto 0;
+  max-width: 810px;
+  margin: 2.5rem auto 0;
   padding: 0 1.25rem;
 }
 
+.itp-kicker {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f978a3;
+}
+
 .itp-title {
-  font-size: 1.05rem;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
   font-weight: 800;
-  color: #16171f;
-  margin: 0 0 0.75rem;
+  color: var(--color-dark);
+  margin: 0 0 1.1rem;
 }
 
 .itp-list {

@@ -444,13 +444,23 @@
       "followingLabel": "✓ Following"
     },
     "featured": {
-      "title": "Featured"
+      "kicker": "Don't miss",
+      "title": "What's popping 🔊"
     },
     "upcoming": {
-      "title": "Upcoming events"
+      "kicker": "Move fast",
+      "title": "Coming up 🔥",
+      "today": "today",
+      "tomorrow": "tomorrow",
+      "daysLeft": "{days} days left"
     },
     "topPeople": {
-      "title": "People in this tribe"
+      "kicker": "Who's already here",
+      "title": "People in this tribe 👥"
+    },
+    "comments": {
+      "kicker": "Straight talk",
+      "title": "The tribe's voice 🗣"
     },
     "followError": "Couldn't update right now. Try again in a bit."
   }
