@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import type { UpcomingNewsUpdate } from '@/constants/newsUpdates'
+  import { parseUpdateDate } from '@/utils/newsUpdatesDate'
   import UpdateVisualMockup from './UpdateVisualMockup.vue'
 
   defineProps<{
@@ -7,11 +8,6 @@
   }>()
 
   const monthYear = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' })
-
-  function parseDate (iso: string) {
-    const [year, month, day] = iso.split('-').map(Number)
-    return new Date(year!, month! - 1, day!)
-  }
 </script>
 
 <template>
@@ -41,7 +37,7 @@
           <div class="upcoming-card-top">
             <span class="eta-badge">
               <v-icon icon="mdi-calendar-clock" size="14" />
-              <span>Previsão: {{ monthYear.format(parseDate(item.expectedAt)) }}</span>
+              <span>Previsão: {{ monthYear.format(parseUpdateDate(item.expectedAt)) }}</span>
             </span>
 
             <span class="wip-pill">

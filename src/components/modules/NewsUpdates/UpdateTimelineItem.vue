@@ -2,6 +2,7 @@
   import type { ReleasedNewsUpdate } from '@/constants/newsUpdates'
   import { useRouter } from 'vue-router'
   import { NEWS_CATEGORY_META } from '@/constants/newsUpdates'
+  import { parseUpdateDate } from '@/utils/newsUpdatesDate'
   import UpdateVisualMockup from './UpdateVisualMockup.vue'
 
   const props = defineProps<{
@@ -17,11 +18,6 @@
     month: 'short',
     year: 'numeric',
   })
-
-  function parseDate (iso: string) {
-    const [year, month, day] = iso.split('-').map(Number)
-    return new Date(year!, month! - 1, day!)
-  }
 
   function handleActionClick () {
     const targetPath = props.update.actionPath || '/public/explore'
@@ -70,7 +66,7 @@
           </span>
 
           <time class="item-date" :datetime="update.releasedAt">
-            {{ dayMonthYear.format(parseDate(update.releasedAt)) }}
+            {{ dayMonthYear.format(parseUpdateDate(update.releasedAt)) }}
           </time>
         </div>
 
