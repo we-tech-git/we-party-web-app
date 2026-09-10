@@ -22,10 +22,17 @@
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useLoading } from '@/composables/useLoading'
+  import { useUserNavigation } from '@/composables/useUserNavigation'
   import { AuthService } from '@/services/auth'
   import { useEventsStore } from '@/stores/events'
   import { useShareStore } from '@/stores/share'
   import { logger } from '@/utils/logger'
+  import {
+    formatShortDate as formatShortDateUtil,
+    type LikedEventItem,
+    mapConfirmedAttendance as mapConfirmedAttendanceUtil,
+    mapLikedEventItem as mapLikedEventItemUtil,
+  } from '@/utils/profileEvents'
 
   // ── Constantes (evita magic numbers) ──
   /** Espelha BIO_MAX_LENGTH do backend (VarChar(500) + validação no service).
@@ -54,6 +61,7 @@
   const router = useRouter()
   const route = useRoute()
   const { loggedUser, updateUser } = useAuth()
+  const { goToProfile } = useUserNavigation()
   const eventsStore = useEventsStore()
   const shareStore = useShareStore()
 
@@ -900,17 +908,9 @@
   }
 
   // ── Format short date for mini cards ──
+  // (extraído pra src/utils/profileEvents.ts — reaproveitado pelo perfil de terceiro)
   function formatShortDate (dateString: string): string {
-    try {
-      const date = new Date(dateString)
-      if (Number.isNaN(date.getTime())) return t('profile.likedEvents.soon')
-
-      const day = date.getDate().toString().padStart(2, '0')
-      const month = (date.getMonth() + 1).toString().padStart(2, '0')
-      return `${day}/${month}`
-    } catch {
-      return t('profile.likedEvents.soon')
-    }
+    return formatShortDateUtil(dateString, t('profile.likedEvents.soon'))
   }
 
   // ── Upload handlers ──
@@ -1174,22 +1174,8 @@
   const settingsNotifications = ref(true)
 
   // ── Liked events ──
-  interface LikedEventItem {
-    id: string | number
-    banner: string
-    creator: { name: string }
-    hostAvatar: string
-    schedule: string
-    title: string
-    description: string
-    confirmed: number
-    interested: number
-    /** Local do evento — não confundir com a localização do perfil, que foi removida. */
-    location?: string
-    likes?: number
-    interests?: string[]
-    commentsCount?: number
-  }
+  // Tipo e mapeamento extraídos pra src/utils/profileEvents.ts (reaproveitados
+  // pelo perfil de terceiro, que precisa da mesma normalização read-only).
   const { startLoading, stopLoading, isLoading: checkLoading } = useLoading()
 
   // Tempo mínimo (ms) que o skeleton fica visível. Sem isso, quando os dados vêm
@@ -1248,82 +1234,19 @@
   }
 
   // ── Helpers para eventos curtidos ──
-  // O payload de confirmados varia conforme a origem: /events traz `confirmedCount`,
-  // enquanto o `event` aninhado em `eventAttendances` do perfil vem só com `_count`
-  // (ou com a própria lista de presenças). Tenta todas as formas antes de cair em 0.
-  function resolveConfirmedCount (evt: any): number {
-    const candidates = [
-      evt?.confirmedCount,
-      evt?.attendancesCount,
-      evt?.attendeesCount,
-      evt?._count?.attendances,
-      evt?._count?.eventAttendances,
-      evt?._count?.attendees,
-      Array.isArray(evt?.attendances) ? evt.attendances.length : undefined,
-      Array.isArray(evt?.eventAttendances) ? evt.eventAttendances.length : undefined,
-      Array.isArray(evt?.attendees) ? evt.attendees.length : undefined,
-    ]
-    for (const value of candidates) {
-      if (typeof value === 'number' && Number.isFinite(value)) return value
-    }
-    return 0
-  }
-
-  /**
-   * A listagem de perfil (`GET /users/:id`) traz o evento aninhado em
-   * `eventAttendances` num formato enxuto, sem os campos de contagem que o
-   * endpoint de detalhe do evento tem (`confirmedCount`, `_count.attendances`
-   * etc.) — então `resolveConfirmedCount` cai em 0 mesmo quando existe
-   * confirmação. Mas o próprio fato do evento estar em `eventAttendances` já
-   * prova que há pelo menos 1 confirmado: o usuário logado. Piso o valor aqui
-   * em vez de em `resolveConfirmedCount`, que também serve a aba de curtidos —
-   * lá 0 pode ser o valor real.
-   */
+  // resolveConfirmedCount/mapLikedEvent/mapConfirmedAttendance/mapLikedEventItem
+  // vivem em src/utils/profileEvents.ts (reaproveitados pelo perfil de terceiro).
+  const eventFallbacks = computed(() => ({
+    dateUndefined: t('profile.likedEvents.dateUndefined'),
+    locationUndefined: t('profile.likedEvents.locationUndefined'),
+    eventTitle: t('profile.likedEvents.eventTitle'),
+    soon: t('profile.likedEvents.soon'),
+  }))
   function mapConfirmedAttendance (evt: any): LikedEventItem {
-    const mapped = mapLikedEvent(evt)
-    return { ...mapped, confirmed: Math.max(1, mapped.confirmed) }
+    return mapConfirmedAttendanceUtil(evt, eventFallbacks.value)
   }
-
-  /**
-   * Mesmo raciocínio de `mapConfirmedAttendance`, aplicado à aba "Curtidos":
-   * o evento só está em `userData.likedEvents` porque o usuário logado o
-   * curtiu, então `likes` é comprovadamente >= 1 mesmo quando o payload enxuto
-   * do perfil não traz nenhum campo de contagem.
-   */
   function mapLikedEventItem (evt: any): LikedEventItem {
-    const mapped = mapLikedEvent(evt)
-    return { ...mapped, likes: Math.max(1, mapped.likes ?? 0) }
-  }
-
-  function mapLikedEvent (evt: any): LikedEventItem {
-    const rawBanner = evt.bannerUrl || evt.banner || (Array.isArray(evt.photos) ? evt.photos[0] : '') || ''
-    const hostName = evt.organizer?.name || evt.hostName || evt.creator?.name || 'Organizador'
-    const resolveSchedule = (e: any): string => {
-      const candidates = [e.date, e.startDate, e.dateTime, e.startAt, e.eventDate, e.start_date, e.schedule]
-      for (const val of candidates) {
-        if (!val) continue
-        const parsed = new Date(val)
-        if (!Number.isNaN(parsed.getTime())) {
-          return parsed.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-        }
-      }
-      return t('profile.likedEvents.dateUndefined')
-    }
-    return {
-      id: evt.id,
-      banner: rawBanner,
-      creator: { name: hostName },
-      hostAvatar: evt.organizer?.avatar || evt.hostAvatar || evt.creator?.profileImage || '',
-      schedule: resolveSchedule(evt),
-      location: evt.location || evt.address || t('profile.likedEvents.locationUndefined'),
-      title: evt.name || evt.title || t('profile.likedEvents.eventTitle'),
-      description: evt.description || '',
-      confirmed: resolveConfirmedCount(evt),
-      interested: evt.interestedCount || 0,
-      likes: evt.likesCount || evt.likes || evt._count?.likes || 0,
-      interests: (evt.eventInterests || evt.interests || evt.categories || []).map((i: any) => typeof i === 'string' ? i : i.interest?.name || i.name).filter(Boolean),
-      commentsCount: evt.commentsCount ?? evt._count?.comments ?? 0,
-    }
+    return mapLikedEventItemUtil(evt, eventFallbacks.value)
   }
 
   async function fetchLikedEvents () {
@@ -2013,14 +1936,14 @@
           <div v-else-if="filteredRecommendedUsers.length > 0" class="recommendations-list-wrapper">
             <ul class="recommendations-list">
               <li v-for="recUser in filteredRecommendedUsers" :key="recUser.id" class="recommendation-item">
-                <div class="recommendation-avatar">
+                <div class="recommendation-avatar" style="cursor: pointer;" @click="goToProfile(recUser.id)">
                   <UserAvatar
                     :image="recUser.profileImage"
                     :name="recUser.name"
                     :size="40"
                   />
                 </div>
-                <div class="recommendation-info">
+                <div class="recommendation-info" style="cursor: pointer;" @click="goToProfile(recUser.id)">
                   <span class="recommendation-name">{{ recUser.name }}</span>
                   <span v-if="recUser.username" class="recommendation-username">@{{ recUser.username }}</span>
                 </div>
@@ -2445,14 +2368,22 @@
               </div>
               <ul v-else-if="followersList.length > 0" class="follow-modal-list">
                 <li v-for="follower in followersList" :key="follower.id" class="follow-modal-item">
-                  <div class="follow-modal-avatar">
+                  <div
+                    class="follow-modal-avatar"
+                    style="cursor: pointer;"
+                    @click="closeFollowersModal(); goToProfile(follower.id)"
+                  >
                     <UserAvatar
                       :image="follower.profileImage"
                       :name="follower.name"
                       :size="48"
                     />
                   </div>
-                  <div class="follow-modal-info">
+                  <div
+                    class="follow-modal-info"
+                    style="cursor: pointer;"
+                    @click="closeFollowersModal(); goToProfile(follower.id)"
+                  >
                     <span class="follow-modal-name">{{ follower.name }}</span>
                     <span v-if="follower.username" class="follow-modal-username">@{{ follower.username }}</span>
                   </div>
@@ -2494,14 +2425,22 @@
               </div>
               <ul v-else-if="followingList.length > 0" class="follow-modal-list">
                 <li v-for="following in followingList" :key="following.id" class="follow-modal-item">
-                  <div class="follow-modal-avatar">
+                  <div
+                    class="follow-modal-avatar"
+                    style="cursor: pointer;"
+                    @click="closeFollowingModal(); goToProfile(following.id)"
+                  >
                     <UserAvatar
                       :image="following.profileImage"
                       :name="following.name"
                       :size="48"
                     />
                   </div>
-                  <div class="follow-modal-info">
+                  <div
+                    class="follow-modal-info"
+                    style="cursor: pointer;"
+                    @click="closeFollowingModal(); goToProfile(following.id)"
+                  >
                     <span class="follow-modal-name">{{ following.name }}</span>
                     <span v-if="following.username" class="follow-modal-username">@{{ following.username }}</span>
                   </div>

@@ -8,6 +8,7 @@
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useCommentLikes } from '@/composables/useCommentLikes'
+  import { useUserNavigation } from '@/composables/useUserNavigation'
   import { useEventsStore } from '@/stores/events'
   import { useShareStore } from '@/stores/share'
 
@@ -65,7 +66,7 @@
     categories: string[]
     confirmedCount: number
     likes?: number
-    organizer?: { name: string, avatar: string }
+    organizer?: { id?: string, name: string, avatar: string }
     sourceUrl?: string
     faq?: FaqItem[]
     images?: {
@@ -237,6 +238,7 @@
   // COMMENTS STATE
   // =====================
   const { loggedUser } = useAuth()
+  const { goToProfile } = useUserNavigation()
 
   interface Comment {
     id: string
@@ -635,6 +637,7 @@
         return likes
       })(),
       organizer: {
+        id: data?.organizer?.id || data?.creator?.id || undefined,
         name: data?.organizer?.name || data?.hostName || data?.creator?.name || 'Organizador',
         avatar: data?.organizer?.avatar || data?.hostAvatar || data?.creator?.profileImage || '',
       },
@@ -1035,7 +1038,11 @@
       </div>
 
       <!-- Organizer Card -->
-      <div class="organizer-card">
+      <div
+        class="organizer-card"
+        :style="event.organizer?.id ? { cursor: 'pointer' } : {}"
+        @click="goToProfile(event.organizer?.id)"
+      >
         <UserAvatar class="organizer-avatar" :image="event.organizer?.avatar" :name="event.organizer?.name || ''" :size="50" />
         <div class="organizer-info">
           <span class="organizer-label">Organizado por</span>
@@ -1241,7 +1248,7 @@
             <!-- Comments -->
             <div v-else class="comments-list">
               <div v-for="comment in comments" :key="comment.id" class="comment-item">
-                <div class="comment-avatar-wrapper">
+                <div class="comment-avatar-wrapper" style="cursor: pointer;" @click="goToProfile(comment.user?.id)">
                   <UserAvatar
                     :image="comment.user?.profileImage"
                     :name="comment.user?.name || ''"
@@ -1252,7 +1259,7 @@
                 <div class="comment-content">
                   <div class="comment-bubble">
                     <div class="comment-header">
-                      <span class="comment-author">{{ comment.user?.name || 'Usuário' }}</span>
+                      <span class="comment-author" style="cursor: pointer;" @click="goToProfile(comment.user?.id)">{{ comment.user?.name || 'Usuário' }}</span>
                       <span v-if="comment.user?.role === 'ADMIN'" class="comment-admin-badge">Admin</span>
                       <span class="comment-time">{{ formatCommentDate(comment.createdAt) }}</span>
                     </div>

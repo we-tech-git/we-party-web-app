@@ -2,6 +2,7 @@
   import type { CommentNodeData } from './commentTree'
   import { computed, inject, ref } from 'vue'
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
+  import { useUserNavigation } from '@/composables/useUserNavigation'
   import { formatDate, getHandle } from './commentDisplay'
   import { commentTreeKey, countComments, MAX_COMMENT_DEPTH } from './commentTree'
 
@@ -12,6 +13,7 @@
   }>()
 
   const ctx = inject(commentTreeKey)!
+  const { goToProfile } = useUserNavigation()
 
   /** No último nível não há para onde aninhar, então o botão some. */
   const canReply = computed(() => props.depth < MAX_COMMENT_DEPTH)
@@ -42,7 +44,7 @@
     }"
   >
     <div class="cn-head">
-      <div class="cn-avatar-col">
+      <div class="cn-avatar-col" style="cursor: pointer;" @click="goToProfile(comment.user.id)">
         <UserAvatar
           :image="comment.user.profileImage"
           :name="comment.user.name"
@@ -52,7 +54,7 @@
 
       <div class="cn-content">
         <div class="cn-meta">
-          <span class="cn-author">{{ comment.user.name }}</span>
+          <span class="cn-author" style="cursor: pointer;" @click="goToProfile(comment.user.id)">{{ comment.user.name }}</span>
           <span v-if="comment.user.role === 'ADMIN'" class="cn-badge cn-badge--admin">Admin</span>
           <span v-if="ctx.isMine(comment)" class="cn-badge cn-badge--you">Você</span>
           <span class="cn-handle">@{{ getHandle(comment.user.name) }}</span>

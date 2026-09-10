@@ -11,11 +11,13 @@
   import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
+  import { useUserNavigation } from '@/composables/useUserNavigation'
   import { type StrokeLinecap, type StrokeLinejoin, svgIcons } from '@/utils/svgSet'
 
   // i18n
   const { t } = useI18n()
   const router = useRouter()
+  const { goToProfile } = useUserNavigation()
 
   // Modelo de dados do usuário listado para convite
   export interface User {
@@ -305,10 +307,10 @@
       <!-- Lista de usuários -->
       <ul v-else class="user-list">
         <li v-for="user in filteredUsers" :key="user.id" class="user-item">
-          <div class="avatar-wrapper">
+          <div class="avatar-wrapper" style="cursor: pointer;" @click="goToProfile(user.id)">
             <UserAvatar class="avatar" :image="user.profileImage" :name="user.name" :size="48" />
           </div>
-          <div class="user-info">
+          <div class="user-info" style="cursor: pointer;" @click="goToProfile(user.id)">
             <span class="name">{{ user.name }}</span>
             <span v-if="user.username" class="username">@{{ user.username }}</span>
           </div>

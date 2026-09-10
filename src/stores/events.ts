@@ -23,6 +23,7 @@ export interface FeedItem {
   id: EventId
   banner: string
   creator: {
+    id?: string
     name: string
   }
   hostAvatar: string
@@ -41,6 +42,11 @@ export interface FeedItem {
   commentsCount?: number
   sourceUrl?: string
   images?: ImageOption[]
+}
+
+/** Id do organizador/criador do evento, qualquer que seja o nome do campo na API. */
+function resolveCreatorId (event: any): string | undefined {
+  return event.organizer?.id || event.creator?.id || undefined
 }
 
 /**
@@ -400,6 +406,7 @@ export const useEventsStore = defineStore('events', () => {
           id: evt.id,
           banner: evt.bannerUrl || evt.banner || '',
           creator: {
+            id: resolveCreatorId(evt),
             name:
             evt.organizer?.name
             || evt.hostName

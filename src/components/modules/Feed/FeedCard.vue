@@ -5,6 +5,7 @@
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import { useEventImages } from '@/composables/useEventImages'
   import { useGuestMode } from '@/composables/useGuestMode'
+  import { useUserNavigation } from '@/composables/useUserNavigation'
   import { useShareStore } from '@/stores/share'
   import { svgIcons } from '@/utils/svgSet'
   import InlineComments from './InlineComments.vue'
@@ -49,6 +50,7 @@
 
   const router = useRouter()
   const { requireLogin } = useGuestMode()
+  const { goToProfile } = useUserNavigation()
 
   /**
    * Navega para detalhes do evento
@@ -62,6 +64,15 @@
 
     // Sempre navega para a página interna de detalhes
     router.push(`/private/event/${props.id}`)
+  }
+
+  function handleHostClick () {
+    if (props.guestMode) {
+      requireLogin('ver o perfil do organizador')
+      return
+    }
+
+    goToProfile(props.eventData.creator?.id)
   }
 
   /**
@@ -199,7 +210,7 @@
       <div class="gradient-bottom" />
 
       <!-- Host tag -->
-      <div class="host-tag">
+      <div class="host-tag" style="cursor: pointer;" @click.stop="handleHostClick">
         <UserAvatar class="host-avatar" :image="hostAvatar" :name="hostName" :size="26" />
         <span>{{ hostName }}</span>
       </div>

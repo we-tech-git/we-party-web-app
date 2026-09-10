@@ -244,6 +244,16 @@
       "liked": "Curtidos",
       "settings": "Preferências"
     },
+    "public": {
+      "loading1": "Carregando perfil...",
+      "loading2": "Quase lá...",
+      "notFoundTitle": "Perfil indisponível",
+      "notFoundDescription": "Esse perfil não existe ou não está mais disponível.",
+      "confirmedTab": "Confirmados",
+      "confirmedCount": "confirmados",
+      "emptyLiked": "Nenhum evento curtido ainda",
+      "emptyConfirmed": "Nenhuma presença confirmada ainda"
+    },
     "likedEvents": {
       "title": "Eventos curtidos",
       "empty": "Nenhum evento curtido",

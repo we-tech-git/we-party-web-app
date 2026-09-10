@@ -31,6 +31,7 @@
   - commentsCount: Número de comentários
   - matchedInterests: Interesses que correspondem ao perfil do usuário
   - guestMode: Se está em modo visitante (sem autenticação)
+  - hostId: Id do organizador/anfitrião (opcional — habilita @host-click)
 
   🔥 EVENTOS:
   - @toggle-save: Disparado ao clicar no botão de favoritar
@@ -39,6 +40,7 @@
   - @share-click: Disparado ao clicar no botão de compartilhar
   - @comments-toggle: Disparado ao abrir/fechar comentários
   - @interests-toggle: Disparado ao abrir/fechar interesses
+  - @host-click: Disparado ao clicar no avatar/nome do organizador (perfil clicável)
 
   💡 EXEMPLO DE USO:
   ```vue
@@ -125,6 +127,8 @@
     banner: string
     hostName: string
     hostAvatar?: string
+    /** Id do organizador — sem ele, o avatar/nome não fica clicável. */
+    hostId?: string | number
     title: string
     description: string
     schedule: string
@@ -143,7 +147,7 @@
   }>()
 
   const emit = defineEmits<{
-    (e: 'toggle-save' | 'toggle-like' | 'details-click' | 'share-click'): void
+    (e: 'toggle-save' | 'toggle-like' | 'details-click' | 'share-click' | 'host-click'): void
     (e: 'comments-toggle' | 'interests-toggle', visible: boolean): void
   }>()
 
@@ -278,7 +282,11 @@
       <div class="gradient-bottom" />
 
       <!-- Host tag -->
-      <div class="host-tag">
+      <div
+        class="host-tag"
+        :style="hostId ? { cursor: 'pointer' } : {}"
+        @click.stop="hostId && emit('host-click')"
+      >
         <UserAvatar class="host-avatar" :image="hostAvatar" :name="hostName" :size="26" />
         <span>{{ hostName }}</span>
       </div>

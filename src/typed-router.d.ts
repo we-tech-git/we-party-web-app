@@ -23,7 +23,8 @@ declare module 'vue-router/auto-routes' {
     '/private/AddFriends': RouteRecordInfo<'/private/AddFriends', '/private/AddFriends', Record<never, never>, Record<never, never>>,
     '/private/event/[id]': RouteRecordInfo<'/private/event/[id]', '/private/event/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     '/private/feed': RouteRecordInfo<'/private/feed', '/private/feed', Record<never, never>, Record<never, never>>,
-    '/private/profile': RouteRecordInfo<'/private/profile', '/private/profile', Record<never, never>, Record<never, never>>,
+    '/private/profile': RouteRecordInfo<'/private/profile', '/private/profile', Record<never, never>, Record<never, never>, '/private/profile/[id]'>,
+    '/private/profile/[id]': RouteRecordInfo<'/private/profile/[id]', '/private/profile/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     '/public/AddFriends': RouteRecordInfo<'/public/AddFriends', '/public/AddFriends', Record<never, never>, Record<never, never>>,
     '/public/ConfirmEmail': RouteRecordInfo<'/public/ConfirmEmail', '/public/ConfirmEmail', Record<never, never>, Record<never, never>>,
     '/public/Congratulations': RouteRecordInfo<'/public/Congratulations', '/public/Congratulations', Record<never, never>, Record<never, never>>,
@@ -70,7 +71,11 @@ declare module 'vue-router/auto-routes' {
       views: never
     }
     'src/pages/private/profile.vue': {
-      routes: '/private/profile'
+      routes: '/private/profile' | '/private/profile/[id]'
+      views: 'default'
+    }
+    'src/pages/private/profile/[id].vue': {
+      routes: '/private/profile/[id]'
       views: never
     }
     'src/pages/public/AddFriends.vue': {

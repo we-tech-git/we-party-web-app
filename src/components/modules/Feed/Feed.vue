@@ -402,7 +402,7 @@
     return {
       id: event.id,
       banner: rawBanner,
-      creator: { name: calculatedHostName },
+      creator: { id: event.organizer?.id || event.creator?.id || undefined, name: calculatedHostName },
       hostAvatar: event.organizer?.avatar || event.hostAvatar || event.creator?.profileImage || '',
       schedule: resolveSchedule(event),
       location: event.location || event.address || event.place || 'Local a definir',
