@@ -1,19 +1,49 @@
 /**
- * TOKENS.CSS — fonte única de valores visuais do produto.
+ * TOKENS.CSS — fonte única de cor do produto (Fase 2 do REFACTOR_AUDIT_PLAN.md).
  *
- * Criado na Fase 0 do REFACTOR_AUDIT_PLAN.md como esqueleto; populado na
- * Fase 2 com os valores hoje espalhados entre `src/plugins/vuetify.ts`,
- * `tailwind.config.ts` e `src/styles/css-variables.css` (ver diagnóstico C1
- * — a paleta escolhida é a já dominante no código: #ff5f8f / #ff9a4d).
+ * Escopo desta fase: só `--color-*`. Resolve o diagnóstico C1 (3 paletas
+ * "primary" incompatíveis — Vuetify #ff5f8f/#ff9a4d, Tailwind indigo
+ * #6366f1 não usado, `css-variables.css` #ffb74d/#ff9ab5) adotando o valor
+ * já mais usado no código hoje (192x/155x hardcoded — ver C1) em vez de
+ * escolher um novo.
  *
- * Depois da Fase 2, nenhum novo hex-code deve ser escrito em `<style>`,
- * `tailwind.config.ts` ou outro CSS do projeto — sempre referenciar uma
- * variável definida aqui.
+ * IMPORTANTE — achado da Fase 2, ainda não resolvido: este arquivo é o
+ * primeiro CSS de :root que o app realmente carrega (importado em
+ * `main.css`). Antes da Fase 2, **nenhum** arquivo de tokens era
+ * carregado — `src/styles/css-variables.css` nunca foi importado em
+ * lugar nenhum, então os ~122 usos de `var(--color-*)`, `var(--radius-*)`,
+ * `var(--shadow-*)`, `var(--font-*)` etc. espalhados em 11 arquivos
+ * (Profile, NotFound, LandingPage, FeedSidebarNav, InterestPage e os
+ * componentes dele, NewsUpdates) sempre caíram no fallback escrito à mão
+ * (quando havia) ou, sem fallback, não faziam nada. Corrigir isso pra
+ * cada categoria de token (radius/sombra/fonte/transição/z-index/
+ * breakpoint) fica para uma próxima fase, com QA visual dedicado — ver
+ * REFACTOR_AUDIT_PLAN.md. `src/styles/css-variables.css` continua
+ * existindo com essas outras categorias, sem uso ainda.
  */
 
 :root {
-  /* Populado na Fase 2 — cor, espaçamento, tipografia, radius, sombra.
-     `--z-*` de src/styles/css-variables.css migra pra cá na mesma fase,
-     já que aquele arquivo hoje é a única fonte de z-index sensata do
-     projeto e não deveria ficar fora dos tokens únicos. */
+  /* ══════════════════════════════════════════════════════════
+     COLORS — paleta canônica (já a mais usada no código, ver C1)
+     ══════════════════════════════════════════════════════════ */
+  --color-primary: #ff5f8f;
+  --color-secondary: #ff9a4d;
+
+  /* Demais cores: mantidas do que já existia em css-variables.css (nunca
+     carregado até aqui, mas coerente com o resto da paleta e sem conflito
+     de "qual é o certo" como primary/secondary tinham). */
+  --color-primary-dark: #ff9f3d;
+  --color-accent: #ffd93d;
+  --color-purple: #8b5cf6;
+  --color-pink: #ec4899;
+  --color-blue: #3b82f6;
+
+  --color-dark: #1a1a2e;
+  --color-dark-2: #16213e;
+  --color-text-dark: #2c3e50;
+  --color-text-light: #6c757d;
+  --color-text-muted: #9ca3af;
+
+  --color-light: #ffffff;
+  --color-bg-light: #f5f5f5;
 }

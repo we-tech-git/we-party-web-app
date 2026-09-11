@@ -4,15 +4,17 @@ import defaultTheme from 'tailwindcss/defaultTheme'
 export default {
   // Ativa dark mode por classe CSS: html.dark { ... }
   darkMode: 'class',
-  // prefixa todas as utilities pra evitar colisão: tw-mx-4, tw-text-lg, etc.
+  // Sem prefixo nas utilities (nunca foi ativado apesar do que um comentário
+  // antigo aqui dizia — corrigido na Fase 2 do REFACTOR_AUDIT_PLAN.md).
   prefix: '',
   theme: {
     extend: {
       colors: {
+        // Referencia src/styles/tokens.css — nunca hex-code novo aqui (Fase 2).
         brand: {
-          50: '#f5f7ff',
-          500: '#6366f1',
-          600: '#4f46e5',
+          50: '#fff5f7',
+          500: 'var(--color-primary)',
+          600: 'var(--color-secondary)',
         },
       },
       fontFamily: {

@@ -2832,8 +2832,8 @@
   content: '';
   width: 6px;
   height: 6px;
-  border-right: 1.5px solid var(--color-primary, #ff5fa6);
-  border-bottom: 1.5px solid var(--color-primary, #ff5fa6);
+  border-right: 1.5px solid var(--color-primary, #ff5f8f);
+  border-bottom: 1.5px solid var(--color-primary, #ff5f8f);
   transform: rotate(-45deg);
   margin-left: 0.15rem;
   opacity: 0.7;
