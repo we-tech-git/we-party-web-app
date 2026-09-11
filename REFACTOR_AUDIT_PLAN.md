@@ -440,7 +440,7 @@ para a fase seguinte depois do PR anterior mergeado.
 
 | Fase | Status | PR | Observação |
 |---|---|---|---|
-| 0 — Fundação | 🟡 Em revisão | _(abrindo)_ | Vitest + Vue Test Utils instalados (`vitest.config.ts`); 1 spec de fumaça (`src/utils/avatar.spec.ts`, 7 testes, verde); `src/styles/tokens.css` criado (esqueleto, populado na Fase 2); `src/components/_revisar_/` criado com `README.md`. `yarn lint`/`yarn build` a validar no PR. |
+| 0 — Fundação | 🟡 Em revisão | branch `chore/fundacao-refatoracao-ds` | Vitest + Vue Test Utils instalados (`vitest.config.ts`); 1 spec de fumaça (`src/utils/avatar.spec.ts`, 7 testes, verde); `src/styles/tokens.css` criado (esqueleto, populado na Fase 2); `src/components/_revisar_/` criado com `README.md`. `yarn lint` e `yarn build` verdes localmente (inclui fix de formatação pré-existente em `Login.vue` que já quebrava o lint em `main`, não relacionado à Fase 0). |
 | 1 — Header/Footer únicos | ⬜ Não iniciada | — | Aguardando merge da Fase 0. |
 | 2 — Tokens visuais únicos | ⬜ Não iniciada | — | Aguardando Fase 1. |
 | 3 — Auditoria de componentes + DS/Storybook | ⬜ Não iniciada | — | Aguardando Fase 2. |
