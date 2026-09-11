@@ -31,3 +31,6 @@ package-lock.json
 
 # config local de ferramentas de IA (a config de projeto E versionada)
 .claude/settings.local.json
+
+# build do Storybook (catálogo de componentes — REFACTOR_AUDIT_PLAN.md, Fase 3)
+storybook-static

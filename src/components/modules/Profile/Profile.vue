@@ -13,6 +13,7 @@
   import AppHeader from '@/components/UI/AppHeader/AppHeader.vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import ConfirmDialog from '@/components/UI/ConfirmDialog/ConfirmDialog.vue'
+  import EventMiniCard from '@/components/UI/EventMiniCard/EventMiniCard.vue'
   import FollowButton from '@/components/UI/FollowButton/FollowButton.vue'
   import ImageCropper from '@/components/UI/ImageCropper/ImageCropper.vue'
   import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
@@ -1630,55 +1631,44 @@
             </div>
             <div v-else-if="likedEventsItems.length > 0">
               <TransitionGroup class="liked-mini-cards-grid" name="mini-card" tag="div">
-                <div
+                <EventMiniCard
                   v-for="item in displayedLikedEvents"
                   :key="item.id"
-                  class="mini-event-card"
+                  :banner-url="item.banner"
+                  :date-label="formatShortDate(item.schedule)"
+                  :location="item.location || t('profile.likedEvents.locationUndefined')"
+                  :title="item.title"
                   @click="router.push(`/private/event/${item.id}`)"
                 >
-                  <div class="mini-card-banner">
-                    <img :alt="item.title" :src="item.banner">
-                    <div class="mini-card-date">
-                      <i class="mdi mdi-calendar" />
-                      {{ formatShortDate(item.schedule) }}
-                    </div>
-                  </div>
-                  <div class="mini-card-content">
-                    <h4 class="mini-card-title">{{ item.title }}</h4>
-                    <div class="mini-card-location">
-                      <i class="mdi mdi-map-marker" />
-                      {{ item.location || t('profile.likedEvents.locationUndefined') }}
-                    </div>
-                    <div class="mini-card-stats">
-                      <span class="mini-stat">
-                        <i class="mdi mdi-account-multiple" />
-                        {{ item.confirmed }}
-                      </span>
-                      <button
-                        class="mini-stat mini-stat-btn"
-                        :title="t('profile.likedEvents.unlikeTooltip')"
-                        @click="handleUnlikeEvent(item.id, $event)"
+                  <template #stats>
+                    <span class="mini-stat">
+                      <i class="mdi mdi-account-multiple" />
+                      {{ item.confirmed }}
+                    </span>
+                    <button
+                      class="mini-stat mini-stat-btn"
+                      :title="t('profile.likedEvents.unlikeTooltip')"
+                      @click="handleUnlikeEvent(item.id, $event)"
+                    >
+                      <svg
+                        class="mini-stat-icon"
+                        :fill="eventsStore.isLiked(item.id) ? 'currentColor' : 'none'"
+                        height="14"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="14"
                       >
-                        <svg
-                          class="mini-stat-icon"
-                          :fill="eventsStore.isLiked(item.id) ? 'currentColor' : 'none'"
-                          height="14"
-                          stroke="currentColor"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          viewBox="0 0 24 24"
-                          width="14"
-                        >
-                          <path
-                            d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                          />
-                        </svg>
-                        {{ eventsStore.getLikeCount(item.id, item.likes || 0) }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                        <path
+                          d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                        />
+                      </svg>
+                      {{ eventsStore.getLikeCount(item.id, item.likes || 0) }}
+                    </button>
+                  </template>
+                </EventMiniCard>
               </TransitionGroup>
 
               <!-- Botões de Mostrar Mais / Recolher -->
@@ -1741,30 +1731,16 @@
             </div>
             <div v-else-if="confirmedEventsItems.length > 0">
               <TransitionGroup class="liked-mini-cards-grid" name="mini-card" tag="div">
-                <div
+                <EventMiniCard
                   v-for="item in displayedConfirmedEvents"
                   :key="item.id"
-                  class="mini-event-card confirmed-card"
+                  :banner-url="item.banner"
+                  confirmed
+                  :date-label="formatShortDate(item.schedule)"
+                  :location="item.location || 'Local não definido'"
+                  :title="item.title"
                   @click="router.push(`/private/event/${item.id}`)"
-                >
-                  <div class="mini-card-banner">
-                    <img :alt="item.title" :src="item.banner">
-                    <div class="mini-card-date">
-                      <i class="mdi mdi-calendar" />
-                      {{ formatShortDate(item.schedule) }}
-                    </div>
-                    <div class="confirmed-badge">
-                      <i class="mdi mdi-check-circle" />
-                    </div>
-                  </div>
-                  <div class="mini-card-content">
-                    <h4 class="mini-card-title">{{ item.title }}</h4>
-                    <div class="mini-card-location">
-                      <i class="mdi mdi-map-marker" />
-                      {{ item.location || 'Local não definido' }}
-                    </div>
-                  </div>
-                </div>
+                />
               </TransitionGroup>
 
               <!-- Botões de Mostrar Mais / Recolher -->
@@ -3066,96 +3042,11 @@
   margin-bottom: 1.5rem;
 }
 
-.mini-event-card {
-  background: white;
-  border-radius: 16px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-}
-
-.mini-event-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(255, 95, 166, 0.15);
-}
-
-.mini-card-banner {
-  position: relative;
-  height: 140px;
-  overflow: hidden;
-}
-
-.mini-card-banner img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.mini-event-card:hover .mini-card-banner img {
-  transform: scale(1.05);
-}
-
-.mini-card-date {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
-  color: white;
-  padding: 0.35rem 0.75rem;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.mini-card-date i {
-  font-size: 0.9rem;
-}
-
-.mini-card-content {
-  padding: 1rem;
-}
-
-.mini-card-title {
-  margin: 0 0 0.5rem;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #1a1c2e;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.3;
-}
-
-.mini-card-location {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: #9aa0b8;
-  font-size: 0.8rem;
-  margin-bottom: 0.75rem;
-}
-
-.mini-card-location i {
-  font-size: 1rem;
-}
-
-.mini-card-stats {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-}
+/* Shell do card (banner/data/título/localização): agora é
+   src/components/UI/EventMiniCard/EventMiniCard.vue (Fase 3 do
+   REFACTOR_AUDIT_PLAN.md) — só o conteúdo do slot #stats (abaixo)
+   continua estilizado aqui, porque varia de verdade entre as telas
+   que usam o card. */
 
 .mini-stat {
   display: inline-flex;
@@ -3216,29 +3107,8 @@
   padding: 0;
 }
 
-.confirmed-card {
-  border: 1px solid rgba(76, 175, 80, 0.2);
-}
-
-.confirmed-card:hover {
-  box-shadow: 0 8px 24px rgba(76, 175, 80, 0.15);
-}
-
-.confirmed-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: linear-gradient(135deg, #4CAF50 0%, #81C784 100%);
-  color: white;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
-}
+/* .confirmed-card / .confirmed-badge: agora vivem em EventMiniCard.vue
+   (prop `confirmed`), junto do resto do shell do card. */
 
 .confirmed-stat {
   color: #4CAF50 !important;
@@ -4973,10 +4843,6 @@
   gap: 0.75rem;
 }
 
-.mini-card-banner {
-  height: 160px;
-}
-
 .show-more-btn {
   width: 100%;
   justify-content: center;
@@ -5384,8 +5250,7 @@
 
 /* Efeito de hover mais suave nos cards */
 .profile-card,
-.sidebar-card,
-.mini-event-card {
+.sidebar-card {
   transition: transform var(--transition-slow), box-shadow var(--transition-slow);
 }
 
@@ -5486,8 +5351,7 @@ a:focus-visible {
 @media (prefers-contrast: high) {
 
   .profile-card,
-  .sidebar-card,
-  .mini-event-card {
+  .sidebar-card {
     border: 2px solid currentColor;
   }
 
