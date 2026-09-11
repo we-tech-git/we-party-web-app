@@ -40,6 +40,10 @@ export default defineConfig({
     }),
     Components({
       dts: 'src/components.d.ts',
+      // src/components/_revisar_/ guarda código arquivado (REFACTOR_AUDIT_PLAN.md,
+      // Fase 1): nunca deve ser detectado como componente, senão colide por
+      // nome de arquivo com o componente ativo que o substituiu.
+      globsExclude: ['**/_revisar_/**'],
     }),
     Vue({
       template: { transformAssetUrls },

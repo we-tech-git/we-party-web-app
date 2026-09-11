@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import AppHeader from '@/components/UI/AppHeader/AppHeader.vue'
   import LoginRequiredDialog from '@/components/UI/LoginRequiredDialog/LoginRequiredDialog.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
@@ -8,7 +9,6 @@
   import { useGuestMode } from '@/composables/useGuestMode'
   import { useInterestPageStore } from '@/stores/interestPage'
   import { logger } from '@/utils/logger'
-  import FeedTopHeader from '../Feed/FeedTopHeader.vue'
   import InlineComments from '../Feed/InlineComments.vue'
   import NotFound from '../NotFound/NotFound.vue'
   import InterestFeaturedEvents from './InterestFeaturedEvents.vue'
@@ -25,7 +25,7 @@
   const { requireLogin } = useGuestMode()
   const { t } = useI18n()
 
-  // Mesmo shape de `Feed.vue` pro `FeedTopHeader` — header e busca são o
+  // Mesmo shape de `Feed.vue` pro `AppHeader` — header e busca são o
   // mesmo componente da rota `/public/explore`, não uma reimplementação.
   const headerUser = computed(() => ({
     name: loggedUser.value?.name || '',
@@ -77,7 +77,7 @@
 
 <template>
   <div class="ip-page">
-    <FeedTopHeader :guest-mode="!isFullyAuthenticated" :user="headerUser" />
+    <AppHeader :guest-mode="!isFullyAuthenticated" :user="headerUser" />
 
     <WePartyLoader v-if="store.loadingHero" fullscreen :messages="['Carregando interesse...']" />
 

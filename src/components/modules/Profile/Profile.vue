@@ -7,10 +7,10 @@
   import { followUserById, getFollowStats, getMyFollowers, getMyFollowing, unfollowUserById } from '@/api/follows'
   import { addUserInterest, getInterests, getUnownedInterestSuggestions, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
   import { getUserInterests, getUserProfile, getUserRecomendations, searchUsers, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
-  import AppFooter from '@/components/AppFooter.vue'
   import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
   import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
-  import FeedTopHeader from '@/components/modules/Feed/FeedTopHeader.vue'
+  import AppFooter from '@/components/UI/AppFooter/AppFooter.vue'
+  import AppHeader from '@/components/UI/AppHeader/AppHeader.vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import ConfirmDialog from '@/components/UI/ConfirmDialog/ConfirmDialog.vue'
   import FollowButton from '@/components/UI/FollowButton/FollowButton.vue'
@@ -1442,7 +1442,7 @@
       ]"
     />
 
-    <FeedTopHeader :user="user" />
+    <AppHeader :user="user" />
 
     <section :aria-label="t('profile.aria.profileContent')" class="layout-shell">
       <FeedSidebarNav :active="activeNav" class="layout-sidebar" :items="navItems" @select="handleNavSelect" />

@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import { useRouter } from 'vue-router'
-  import AppFooter from '@/components/AppFooter.vue'
+  import AppFooter from '@/components/UI/AppFooter/AppFooter.vue'
 
   const router = useRouter()
 
