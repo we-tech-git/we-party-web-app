@@ -7,7 +7,16 @@
     deleteEventComment,
     getEventComments,
     replyToComment,
+    toggleLikeComment,
   } from '@/api/comments'
+  import {
+    addInterestComment,
+    deleteInterestComment,
+    getInterestComments,
+    replyToInterestComment,
+    toggleLikeInterestComment,
+  } from '@/api/interestPage'
+  import { createReport } from '@/api/reports'
   import InlinePanel from '@/components/UI/InlinePanel/InlinePanel.vue'
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import { useAuth } from '@/composables/useAuth'
@@ -23,16 +32,30 @@
     sortCommentTree,
   } from './commentTree'
 
-  const props = defineProps<{
-    eventId: string | number
+  const props = withDefaults(defineProps<{
+    /** Qual API chamar por baixo — 'event' é o comportamento de sempre. */
+    subjectType?: 'event' | 'interest'
+    subjectId: string | number
     visible: boolean
-  }>()
+  }>(), {
+    subjectType: 'event',
+  })
 
   const emit = defineEmits<{
     (e: 'update:count', count: number): void
   }>()
 
   const { loggedUser } = useAuth()
+
+  const isInterest = computed(() => props.subjectType === 'interest')
+
+  // Um par de funções por operação — a única diferença entre a thread de
+  // evento e a de interesse é qual endpoint cada uma chama; a lógica ao
+  // redor (otimista, ordenação, colapso...) é a mesma pros dois.
+  const apiGetComments = computed(() => isInterest.value ? getInterestComments : getEventComments)
+  const apiAddComment = computed(() => isInterest.value ? addInterestComment : addEventComment)
+  const apiReply = computed(() => isInterest.value ? replyToInterestComment : replyToComment)
+  const apiDelete = computed(() => isInterest.value ? deleteInterestComment : deleteEventComment)
 
   const comments = ref<CommentNodeData[]>([])
   const newComment = ref('')
@@ -48,8 +71,19 @@
   const replyText = ref('')
   const sendingReply = ref(false)
 
+  // Denúncia — só ligada em comentário de interesse nesta rodada (ver
+  // PLAN-INTEREST-PAGE.md). Reaproveita o mesmo botão/modal pra comentário
+  // de evento é trocar `v-if="isInterest"` por outra condição, sem código novo.
+  const reportingId = ref<string | null>(null)
+  const reportModalComment = ref<CommentNodeData | null>(null)
+  const reportReason = ref('')
+  const sendingReport = ref(false)
+
   // Like de comentário: implementação única, compartilhada com as demais telas
-  const commentLikes = useCommentLikes(() => props.eventId)
+  const commentLikes = useCommentLikes(
+    () => props.subjectId,
+    isInterest.value ? toggleLikeInterestComment : toggleLikeComment,
+  )
 
   // Threads recolhidas (estilo Reddit) — chaveado por id, vale para qualquer nível
   const collapsedIds = ref<Set<string>>(new Set())
@@ -103,7 +137,7 @@
   async function fetchComments () {
     loading.value = true
     try {
-      const res = await getEventComments(props.eventId)
+      const res = await apiGetComments.value(props.subjectId)
       comments.value = normalizeCommentTree(unwrapList(res, 'comments', 'content'))
       applySort()
       // Os overrides de curtida NÃO são zerados aqui de propósito: a listagem
@@ -129,7 +163,7 @@
     sending.value = true
     errorMessage.value = ''
     try {
-      const res = await addEventComment(props.eventId, text)
+      const res = await apiAddComment.value(props.subjectId, text)
       const created = res?.data?.data ?? res?.data
       const newId = created?.id ?? `temp-${Date.now()}`
 
@@ -193,7 +227,7 @@
     sendingReply.value = true
     errorMessage.value = ''
     try {
-      const res = await replyToComment(props.eventId, parentId, text)
+      const res = await apiReply.value(props.subjectId, parentId, text)
       const created = res?.data?.data ?? res?.data
 
       // Insere sob o pai correto para a resposta aparecer no lugar certo
@@ -249,7 +283,7 @@
     deletingId.value = comment.id
     errorMessage.value = ''
     try {
-      await deleteEventComment(props.eventId, comment.id)
+      await apiDelete.value(props.subjectId, comment.id)
       // Remove em qualquer profundidade, junto com os descendentes —
       // espelha o cascade do backend sem precisar de refetch.
       removeCommentById(comments.value, comment.id)
@@ -264,6 +298,42 @@
   }
 
   const handleToggleLike = commentLikes.toggle
+
+  // Denúncia — só ligada quando subjectType === 'interest' (ver `report` no
+  // treeContext, condicional). Abre um modal simples em vez de disparar na
+  // hora: dar chance de escrever o motivo evita denúncia por engano.
+  function openReportModal (comment: CommentNodeData) {
+    reportModalComment.value = comment
+    reportReason.value = ''
+  }
+
+  function closeReportModal () {
+    reportModalComment.value = null
+    reportReason.value = ''
+  }
+
+  async function submitReport () {
+    const comment = reportModalComment.value
+    if (!comment || sendingReport.value) return
+
+    sendingReport.value = true
+    reportingId.value = comment.id
+    try {
+      await createReport('INTEREST_COMMENT', comment.id, reportReason.value.trim() || undefined)
+      closeReportModal()
+      errorMessage.value = ''
+    } catch (error: any) {
+      // O backend recusa denúncia duplicada com 400 — mensagem específica
+      // em vez do erro genérico, pra quem já denunciou entender por quê.
+      errorMessage.value = error?.response?.status === 400
+        ? (error?.response?.data?.message || 'Você já denunciou este comentário.')
+        : 'Não foi possível enviar a denúncia. Tente novamente.'
+      closeReportModal()
+    } finally {
+      sendingReport.value = false
+      reportingId.value = null
+    }
+  }
 
   function toggleCollapse (comment: CommentNodeData) {
     const next = new Set(collapsedIds.value)
@@ -300,6 +370,12 @@
     replyText,
     sendingReply,
     replyToName,
+    // Só existe pra comentário de interesse nesta rodada — CommentNode
+    // esconde o botão "Reportar" quando `ctx.report` é undefined, então
+    // ligar em comentário de evento depois é só passar esta função aqui
+    // também, sem mexer no CommentNode.
+    report: isInterest.value ? openReportModal : undefined,
+    isReporting: (id: string) => reportingId.value === id,
   }
   provide(commentTreeKey, treeContext)
 
@@ -307,10 +383,10 @@
     if (val) fetchComments()
   })
 
-  // Trocar de evento é o único caso em que os overrides devem ser descartados:
-  // eles são chaveados por id de comentário, que não se repete entre eventos,
-  // mas manter o mapa crescendo à toa não tem propósito.
-  watch(() => props.eventId, () => {
+  // Trocar de assunto é o único caso em que os overrides devem ser descartados:
+  // eles são chaveados por id de comentário, que não se repete entre
+  // eventos/interesses, mas manter o mapa crescendo à toa não tem propósito.
+  watch(() => props.subjectId, () => {
     commentLikes.reset()
     if (props.visible) fetchComments()
   })
@@ -447,6 +523,36 @@
       </button>
     </div>
   </InlinePanel>
+
+  <!-- Denunciar comentário — motivo opcional, mesma regra 2 do AGENTS.md:
+       ação com POST precisa de loading no gatilho + confirmação (aqui, o
+       próprio modal fechar é a confirmação; erro vira mensagem no painel). -->
+  <Teleport to="body">
+    <div v-if="reportModalComment" class="ic-report-overlay" @click.self="closeReportModal">
+      <div class="ic-report-modal">
+        <h3 class="ic-report-title">Reportar comentário</h3>
+        <p class="ic-report-subtitle">Conte o que há de errado (opcional) — a equipe vai revisar.</p>
+        <textarea
+          v-model="reportReason"
+          class="ic-report-textarea"
+          maxlength="500"
+          placeholder="Motivo (opcional)"
+          rows="3"
+        />
+        <div class="ic-report-actions">
+          <button class="ic-report-cancel" type="button" @click="closeReportModal">Cancelar</button>
+          <button
+            class="ic-report-submit"
+            :disabled="sendingReport"
+            type="button"
+            @click="submitReport"
+          >
+            {{ sendingReport ? 'Enviando…' : 'Denunciar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -768,5 +874,93 @@
     padding: 0.55rem 0.8rem;
     font-size: 0.78rem;
   }
+}
+
+/* ─── Modal de denúncia ─── */
+.ic-report-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 1rem;
+}
+
+.ic-report-modal {
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  border-radius: 18px;
+  padding: 1.25rem;
+}
+
+.ic-report-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #16171f;
+}
+
+.ic-report-subtitle {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  color: #8b8fa1;
+}
+
+.ic-report-textarea {
+  width: 100%;
+  border: 1.5px solid #e4e6ef;
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.87rem;
+  color: #1a1a1a;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+}
+
+.ic-report-textarea:focus {
+  border-color: #ff5fa6;
+  box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.12);
+}
+
+.ic-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.ic-report-cancel {
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+  padding: 0.55rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #8b8fa1;
+  cursor: pointer;
+}
+
+.ic-report-cancel:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.ic-report-submit {
+  border: none;
+  border-radius: 12px;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
+  cursor: pointer;
+}
+
+.ic-report-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

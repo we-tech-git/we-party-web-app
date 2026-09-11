@@ -168,6 +168,16 @@
           >
             {{ ctx.isDeleting(comment.id) ? 'Excluindo…' : 'Excluir' }}
           </button>
+
+          <button
+            v-else-if="ctx.report"
+            class="cn-act"
+            :disabled="ctx.isReporting(comment.id)"
+            type="button"
+            @click.stop="ctx.report(comment)"
+          >
+            {{ ctx.isReporting(comment.id) ? 'Denunciando…' : 'Reportar' }}
+          </button>
         </div>
 
         <!-- Campo de resposta, ancorado no nó realmente clicado -->

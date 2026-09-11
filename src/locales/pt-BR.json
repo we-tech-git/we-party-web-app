@@ -437,5 +437,31 @@
       "googleSuccess": "Login com Google realizado com sucesso! 🎉",
       "googleGenericError": "Erro ao fazer login com Google"
     }
+  },
+  "interestPage": {
+    "hero": {
+      "followLabel": "Seguir {name}",
+      "followingLabel": "✓ Seguindo"
+    },
+    "featured": {
+      "kicker": "Manda ver",
+      "title": "O que tá bombando 🔊"
+    },
+    "upcoming": {
+      "kicker": "Corre que tá em cima",
+      "title": "Tá chegando 🔥",
+      "today": "é hoje",
+      "tomorrow": "é amanhã",
+      "daysLeft": "faltam {days} dias"
+    },
+    "topPeople": {
+      "kicker": "Quem já chegou",
+      "title": "Pessoas dessa tribo 👥"
+    },
+    "comments": {
+      "kicker": "Papo reto",
+      "title": "A voz da tribo 🗣"
+    },
+    "followError": "Não deu pra atualizar agora. Tenta de novo em instantes."
   }
 }
