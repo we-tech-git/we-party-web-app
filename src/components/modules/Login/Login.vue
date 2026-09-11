@@ -287,33 +287,35 @@
           <InputLabel
             id="email"
             v-model="email"
+            data-testid="login-email"
             :error="!!formErrors.email"
             :label="$t('login.emailPlaceholder')"
             type="email"
             @update:model-value="formErrors.email = ''"
           />
-          <span v-if="formErrors.email" class="error-message">{{ formErrors.email }}</span>
+          <span v-if="formErrors.email" class="error-message" data-testid="login-email-error">{{ formErrors.email }}</span>
 
           <InputLabel
             id="password"
             v-model="password"
+            data-testid="login-password"
             :error="!!formErrors.password"
             :input-password="true"
             :label="$t('login.passwordPlaceholder')"
             type="password"
             @update:model-value="formErrors.password = ''"
           />
-          <span v-if="formErrors.password" class="error-message">{{ formErrors.password }}</span>
+          <span v-if="formErrors.password" class="error-message" data-testid="login-password-error">{{ formErrors.password }}</span>
 
           <div class="login-options">
             <label class="remember-me">
-              <input v-model="rememberMe" type="checkbox">
+              <input v-model="rememberMe" data-testid="login-remember-me" type="checkbox">
               {{ $t('login.rememberMe') }}
             </label>
             <router-link class="forgot-link" to="/public/RequestPassword">{{ $t('login.forgotPassword') }}</router-link>
           </div>
 
-          <button :aria-busy="isSubmitting" class="btn-primary flex items-center justify-center gap-2" :disabled="isSubmitting" type="submit">
+          <button :aria-busy="isSubmitting" class="btn-primary flex items-center justify-center gap-2" data-testid="login-submit" :disabled="isSubmitting" type="submit">
             <AppLoader v-if="isSubmitting" size="sm" text="Entrando..." variant="text" />
             <span v-else>{{ $t('login.button') }}</span>
           </button>

@@ -12,6 +12,8 @@
     disabled?: boolean
     inputPassword?: boolean
     error?: boolean
+    /** Base para os data-testid do input e do botão de mostrar senha (ex.: "login-email"). */
+    dataTestid?: string
   }
 
   interface Emits {
@@ -26,6 +28,7 @@
     disabled: false,
     inputPassword: false,
     error: false,
+    dataTestid: '',
   })
 
   const emit = defineEmits<Emits>()
@@ -59,6 +62,7 @@
       :id="inputId"
       class="input-field"
       :class="{ 'filled': modelValue, 'has-error': error }"
+      :data-testid="dataTestid || undefined"
       :disabled="disabled"
       :placeholder="placeholder"
       :required="required"
@@ -66,7 +70,13 @@
       :value="modelValue"
       @input="updateValue"
     >
-    <button v-if="inputPassword" class="eye-button" type="button" @click="togglePassword">
+    <button
+      v-if="inputPassword"
+      class="eye-button"
+      :data-testid="dataTestid ? `${dataTestid}-toggle` : undefined"
+      type="button"
+      @click="togglePassword"
+    >
       <svg
         v-if="!showPassword"
         class="eye-icon"
