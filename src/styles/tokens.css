@@ -1,0 +1,19 @@
+/**
+ * TOKENS.CSS — fonte única de valores visuais do produto.
+ *
+ * Criado na Fase 0 do REFACTOR_AUDIT_PLAN.md como esqueleto; populado na
+ * Fase 2 com os valores hoje espalhados entre `src/plugins/vuetify.ts`,
+ * `tailwind.config.ts` e `src/styles/css-variables.css` (ver diagnóstico C1
+ * — a paleta escolhida é a já dominante no código: #ff5f8f / #ff9a4d).
+ *
+ * Depois da Fase 2, nenhum novo hex-code deve ser escrito em `<style>`,
+ * `tailwind.config.ts` ou outro CSS do projeto — sempre referenciar uma
+ * variável definida aqui.
+ */
+
+:root {
+  /* Populado na Fase 2 — cor, espaçamento, tipografia, radius, sombra.
+     `--z-*` de src/styles/css-variables.css migra pra cá na mesma fase,
+     já que aquele arquivo hoje é a única fonte de z-index sensata do
+     projeto e não deveria ficar fora dos tokens únicos. */
+}
