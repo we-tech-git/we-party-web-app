@@ -1,6 +1,15 @@
 /**
  * CSS VARIABLES - Sistema de Design We Party
  * Padronização de valores CSS para manutenção e consistência
+ *
+ * ⚠️ ACHADO DA FASE 2 (REFACTOR_AUDIT_PLAN.md) — este arquivo nunca foi
+ * importado em lugar nenhum do app; nada aqui está de fato ativo hoje.
+ * A seção de cor migrou pra `src/styles/tokens.css` (que passou a ser
+ * carregado de verdade) e foi removida daqui pra não ter dois lugares
+ * definindo `--color-primary`. As demais categorias abaixo (z-index,
+ * breakpoint, gradiente, sombra, blur, transição, radius, spacing,
+ * tipografia) continuam sem uso — ativar isso é trabalho de uma próxima
+ * fase, com QA visual dedicado (ver nota em `tokens.css`), não desta.
  */
 
 :root {
@@ -25,25 +34,7 @@
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1280px;
 
-  /* ══════════════════════════════════════════════════════════
-     COLORS
-     ══════════════════════════════════════════════════════════ */
-  --color-primary: #ffb74d;
-  --color-primary-dark: #ff9f3d;
-  --color-secondary: #ff9ab5;
-  --color-accent: #ffd93d;
-  --color-purple: #8b5cf6;
-  --color-pink: #ec4899;
-  --color-blue: #3b82f6;
-
-  --color-dark: #1a1a2e;
-  --color-dark-2: #16213e;
-  --color-text-dark: #2c3e50;
-  --color-text-light: #6c757d;
-  --color-text-muted: #9ca3af;
-
-  --color-light: #ffffff;
-  --color-bg-light: #f5f5f5;
+  /* Cor: migrou pra src/styles/tokens.css (Fase 2) — não duplicar aqui. */
 
   /* ══════════════════════════════════════════════════════════
      GRADIENTS

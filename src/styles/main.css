@@ -1,4 +1,5 @@
-﻿@import "tailwindcss/preflight";
+﻿@import "./tokens.css";
+@import "tailwindcss/preflight";
 @import "tailwindcss/theme";
 @import "tailwindcss/utilities";
 @import "./shared-styles.css";

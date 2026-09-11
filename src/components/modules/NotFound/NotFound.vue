@@ -122,7 +122,7 @@
 .deco-dot--1 {
   width: 80px;
   height: 80px;
-  background: var(--color-primary, #ffb74d);
+  background: var(--color-primary, #ff5f8f);
   top: 8%;
   left: 5%;
   animation: float 6s ease-in-out infinite;
@@ -131,7 +131,7 @@
 .deco-dot--2 {
   width: 50px;
   height: 50px;
-  background: var(--color-secondary, #ff9ab5);
+  background: var(--color-secondary, #ff9a4d);
   top: 15%;
   right: 8%;
   animation: float 8s ease-in-out infinite reverse;
@@ -149,7 +149,7 @@
 .deco-dot--4 {
   width: 60px;
   height: 60px;
-  background: var(--color-primary, #ffb74d);
+  background: var(--color-primary, #ff5f8f);
   bottom: 30%;
   right: 5%;
   animation: float 5s ease-in-out infinite 0.5s;
@@ -158,7 +158,7 @@
 .deco-dot--5 {
   width: 35px;
   height: 35px;
-  background: var(--color-secondary, #ff9ab5);
+  background: var(--color-secondary, #ff9a4d);
   top: 45%;
   left: 10%;
   animation: float 9s ease-in-out infinite 2s;
@@ -181,13 +181,13 @@
 }
 
 .deco-star--1 {
-  color: var(--color-primary, #ffb74d);
+  color: var(--color-primary, #ff5f8f);
   top: 25%;
   left: 18%;
 }
 
 .deco-star--2 {
-  color: var(--color-secondary, #ff9ab5);
+  color: var(--color-secondary, #ff9a4d);
   top: 20%;
   right: 22%;
   animation-delay: -3s;
@@ -211,7 +211,7 @@
 .deco-triangle--1 {
   border-left: 20px solid transparent;
   border-right: 20px solid transparent;
-  border-bottom: 35px solid var(--color-primary, #ffb74d);
+  border-bottom: 35px solid var(--color-primary, #ff5f8f);
   top: 35%;
   right: 6%;
   animation-delay: 1s;
@@ -220,7 +220,7 @@
 .deco-triangle--2 {
   border-left: 14px solid transparent;
   border-right: 14px solid transparent;
-  border-bottom: 24px solid var(--color-secondary, #ff9ab5);
+  border-bottom: 24px solid var(--color-secondary, #ff9a4d);
   bottom: 40%;
   left: 7%;
   animation-delay: 3s;
@@ -443,7 +443,7 @@
 
 .nf-back-btn:hover {
   background: rgba(255, 154, 181, 0.12);
-  color: var(--color-secondary, #ff9ab5);
+  color: var(--color-secondary, #ff9a4d);
 }
 
 /* ===========================
