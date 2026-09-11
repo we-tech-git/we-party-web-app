@@ -61,6 +61,7 @@ src/
 - NUNCA push direto em `main` — sempre via branch + PR
 - Rodar `type-check` e `lint` antes de commitar
 - Branch de trabalho de agent: `<agent>/<feature>`; docs: `docs/<slug>`
+- **Toda abertura de PR usa o template `.github/PULL_REQUEST_TEMPLATE.md`** (`Tarefa`, `O que muda`, `Como testar`, `Checklist`, `Novidades`) — preencher as seções de verdade, não abrir PR com corpo livre nem apagar seções. Sem tarefa no Plane, explicar o porquê em `## Tarefa` em vez de omitir a seção.
 
 ## Regras de implementação (frontend) — OBRIGATÓRIAS
 

@@ -315,7 +315,13 @@
             <router-link class="forgot-link" to="/public/RequestPassword">{{ $t('login.forgotPassword') }}</router-link>
           </div>
 
-          <button :aria-busy="isSubmitting" class="btn-primary flex items-center justify-center gap-2" data-testid="login-submit" :disabled="isSubmitting" type="submit">
+          <button
+            :aria-busy="isSubmitting"
+            class="btn-primary flex items-center justify-center gap-2"
+            data-testid="login-submit"
+            :disabled="isSubmitting"
+            type="submit"
+          >
             <AppLoader v-if="isSubmitting" size="sm" text="Entrando..." variant="text" />
             <span v-else>{{ $t('login.button') }}</span>
           </button>
