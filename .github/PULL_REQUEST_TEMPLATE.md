@@ -12,7 +12,7 @@
 
 ## Checklist
 
-- [ ] Branch segue o padrão `<tipo>/[WEPARTY-<n>-]<slug>`
+- [ ] Branch segue o padrão `<tipo>/WEPARTY-<n>[-<slug>]` ou `<tipo>/<slug>`
 - [ ] `yarn lint` e `yarn build` passam localmente
 - [ ] Preview da Vercel validado
 - [ ] Mudanças de comportamento (não só formatação) estão descritas acima
