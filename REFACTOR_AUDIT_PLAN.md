@@ -443,7 +443,7 @@ para a fase seguinte depois do PR anterior mergeado.
 | Fase | Status | PR | Observação |
 |---|---|---|---|
 | 0 — Fundação | 🟢 Concluída | [#40](https://github.com/we-tech-git/we-party-web-app/pull/40) (mergeado) | Vitest + Vue Test Utils instalados; teste de fumaça verde; `tokens.css` esqueleto; `_revisar_/` criado; regra de template de PR adicionada ao `AGENTS.md` (pedido à parte do time). |
-| 1 — Header/Footer únicos | 🟡 Em revisão | _(abrindo)_ | `AppHeader`/`AppFooter` únicos criados e em uso (área autenticada + app inteiro, respectivamente); `EventDetails.vue`/`EventView.vue` descobertos como código morto e arquivados (correção registrada em B1b); `NewEventDetails.vue` -318 linhas, `LandingPage.vue` -349 linhas. `yarn lint`/`yarn test`/`yarn build` verdes; validação visual feita via browser (Landingpage). |
+| 1 — Header/Footer únicos | 🟡 Em revisão | [#41](https://github.com/we-tech-git/we-party-web-app/pull/41) | `AppHeader`/`AppFooter` únicos criados e em uso (área autenticada + app inteiro, respectivamente); `EventDetails.vue`/`EventView.vue` descobertos como código morto e arquivados (correção registrada em B1b); `NewEventDetails.vue` -318 linhas, `LandingPage.vue` -349 linhas. `yarn lint`/`yarn test`/`yarn build` verdes; validação visual feita via browser (Landingpage). |
 | 2 — Tokens visuais únicos | ⬜ Não iniciada | — | Aguardando Fase 1. |
 | 3 — Auditoria de componentes + DS/Storybook | ⬜ Não iniciada | — | Aguardando Fase 2. |
 | 4 — Testes de regressão nos mega-arquivos | ⬜ Não iniciada | — | Aguardando Fase 3 (pode em paralelo com 3, mas depende de 0). |
