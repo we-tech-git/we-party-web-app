@@ -24,6 +24,7 @@
 
   import EventSearchAutocomplete from '@/components/modules/Feed/EventSearchAutocomplete.vue'
   import FeedTrendsPanel from '@/components/modules/Feed/FeedTrendsPanel.vue'
+  import AppHeader from '@/components/UI/AppHeader/AppHeader.vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
@@ -34,7 +35,6 @@
   import { logger } from '@/utils/logger'
   import FeedCard from './FeedCard.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
-  import FeedTopHeader from './FeedTopHeader.vue'
 
   // Props do componente
   const props = defineProps<{
@@ -1117,7 +1117,7 @@
 </script>
 <template>
   <div class="feed-page">
-    <FeedTopHeader :guest-mode="props.guestMode" :user="user">
+    <AppHeader :guest-mode="props.guestMode" :user="user">
       <template #center-content>
         <section class="feed-controls">
           <div class="search-wrapper">
@@ -1259,7 +1259,7 @@
           </Transition>
         </section>
       </template>
-    </FeedTopHeader>
+    </AppHeader>
 
     <section class="feed-shell">
       <FeedSidebarNav

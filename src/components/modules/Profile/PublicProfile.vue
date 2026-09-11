@@ -8,7 +8,7 @@
    * followers/following, isFollowing) — sem "eventos criados" nesta rodada
    * (fora de escopo, ver PLAN-USER-PROFILE-NAVIGATION.md).
    *
-   * Reaproveita: `UserAvatar`, `FollowButton`, `FeedTopHeader`/`FeedSidebarNav`
+   * Reaproveita: `UserAvatar`, `FollowButton`, `AppHeader`/`FeedSidebarNav`
    * (mesmo chrome do resto da área logada), e a normalização de eventos de
    * `src/utils/profileEvents.ts` (extraída de `Profile.vue`).
    */
@@ -20,7 +20,7 @@
   import { followUserById, getFollowers, getFollowing, unfollowUserById } from '@/api/follows'
   import { getUserProfile } from '@/api/users'
   import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
-  import FeedTopHeader from '@/components/modules/Feed/FeedTopHeader.vue'
+  import AppHeader from '@/components/UI/AppHeader/AppHeader.vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import FollowButton from '@/components/UI/FollowButton/FollowButton.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
@@ -46,7 +46,7 @@
   const { goToProfile } = useUserNavigation()
   const snackbar = useSnackbar()
 
-  // ── FeedTopHeader espera os dados do VISITANTE logado, não do perfil visitado ──
+  // ── AppHeader espera os dados do VISITANTE logado, não do perfil visitado ──
   const viewerSummary = computed(() => ({
     name: loggedUser.value?.name || '',
     avatar: loggedUser.value?.profileImage || '',
@@ -243,7 +243,7 @@
       :messages="[t('profile.public.loading1'), t('profile.public.loading2')]"
     />
 
-    <FeedTopHeader :user="viewerSummary" />
+    <AppHeader :user="viewerSummary" />
 
     <section :aria-label="t('profile.aria.profileContent')" class="layout-shell">
       <FeedSidebarNav :active="activeNav" class="layout-sidebar" :items="navItems" @select="handleNavSelect" />

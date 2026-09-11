@@ -1,126 +1,11 @@
 <template>
-  <!-- ===== TOP NAV ===== -->
-  <header
-    :class="[
-      'fixed top-0 inset-x-0 z-50 flex items-center gap-3 sm:gap-4 px-4 sm:px-6 lg:px-14 transition-all duration-300',
-      navSolid
-        ? 'bg-white/90 backdrop-blur-lg border-b border-black/5 text-ink py-3'
-        : 'text-white py-4'
-    ]"
-  >
-    <!-- Left: logo + nav -->
-    <div class="flex items-center gap-1 lg:gap-2 shrink-0">
-      <div
-        class="brand-logo-wrapper flex items-center gap-2.5 cursor-pointer"
-        @click="goHome"
-      >
-        <img
-          alt="We Party Logo"
-          class="brand-logo-img"
-          src="/logoweparty.png"
-        >
-        <span class="brand-title notranslate" translate="no">WE PARTY</span>
-      </div>
-
-      <nav class="hidden md:flex gap-1 lg:gap-2 ml-1 lg:ml-2">
-        <a
-          v-for="item in navLinks"
-          :key="item.label"
-          :class="[
-            'flex items-center gap-2 px-3 lg:px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all duration-150',
-            item.active
-              ? navSolid ? 'bg-grad-main text-white' : 'bg-white/20'
-              : navSolid ? 'hover:bg-pink-50 hover:text-weparty-pink' : 'hover:bg-white/25 hover:text-white'
-          ]"
-          :href="item.href"
-          @click.prevent="handleNav(item)"
-        >{{ item.label }}</a>
-      </nav>
-    </div>
-
-    <!-- Center: search (flex-1 fills all available space like FeedTopHeader) -->
-    <div class="nav-search hidden lg:flex flex-1 min-w-0 mx-4 lg:mx-6">
-      <EventSearchAutocomplete
-        v-model="searchQuery"
-        placeholder="Buscar eventos, artistas..."
-        @search="handleSearch"
-      />
-    </div>
-
-    <!-- Right: user menu -->
-    <v-menu location="bottom end" transition="slide-y-transition">
-      <template #activator="{ props: menuProps }">
-        <div
-          v-bind="menuProps"
-          :class="[
-            'hidden md:flex items-center gap-2 border rounded-2xl px-3 py-1.5 font-bold cursor-pointer transition-all ml-auto lg:ml-0',
-            navSolid ? 'bg-white border-black/8 shadow-pink-sm text-ink' : 'bg-white/16 border-white/25 text-white'
-          ]"
-        >
-          <UserAvatar
-            :image="userAvatar"
-            :name="userName"
-            :radius="12"
-            :size="32"
-          />
-          <span>{{ userName }}</span>
-        </div>
-      </template>
-
-      <v-list class="user-dropdown-list" density="compact" :lines="false">
-        <div class="user-dropdown-header">
-          <UserAvatar class="dropdown-avatar" :image="userAvatar" :name="userName" :size="44" />
-          <div class="dropdown-user-info">
-            <p class="dropdown-user-name">{{ userName }}</p>
-            <p v-if="loggedUser?.email" class="dropdown-user-email">{{ loggedUser.email }}</p>
-          </div>
-        </div>
-
-        <v-divider class="my-1" />
-
-        <v-list-item class="dropdown-action-item" rounded="lg" @click="router.push('/private/profile')">
-          <template #prepend>
-            <svg
-              fill="none"
-              height="18"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-              width="18"
-            >
-              <circle cx="12" cy="8" r="4" />
-              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-            </svg>
-          </template>
-          <v-list-item-title>Perfil</v-list-item-title>
-        </v-list-item>
-
-        <v-divider class="my-1" />
-
-        <v-list-item class="dropdown-action-item dropdown-logout" rounded="lg" @click="logout">
-          <template #prepend>
-            <svg
-              fill="none"
-              height="18"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-              width="18"
-            >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" x2="9" y1="12" y2="12" />
-            </svg>
-          </template>
-          <v-list-item-title>Sair</v-list-item-title>
-        </v-list-item>
-      </v-list>
-    </v-menu>
-  </header>
+  <!-- ===== TOP NAV =====
+       Header único do app (REFACTOR_AUDIT_PLAN.md, Fase 1) — antes esta
+       página reimplementava à mão um header "padronizado com o
+       FeedTopHeader" (ver histórico do arquivo). Substituído pelo
+       componente de verdade: menos CSS duplicado e um só lugar pra
+       corrigir bug de header daqui pra frente. -->
+  <AppHeader :user="headerUser" />
 
   <!-- ===== HERO ===== -->
   <section
@@ -948,22 +833,20 @@
 </template>
 
 <script setup lang="ts">
-  import { useThrottleFn } from '@vueuse/core'
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import { unwrapItem, unwrapList } from '@/api'
   import { getEventComments } from '@/api/comments'
   import { getEventById, getMyAttendance, getTrendingEvents } from '@/api/event'
   import { checkIsFollowing, followUserById, unfollowUserById } from '@/api/follows'
-  import EventSearchAutocomplete from '@/components/modules/Feed/EventSearchAutocomplete.vue'
   import InlineComments from '@/components/modules/Feed/InlineComments.vue'
+  import AppHeader from '@/components/UI/AppHeader/AppHeader.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useGeolocation } from '@/composables/useGeolocation'
   import { useUserNavigation } from '@/composables/useUserNavigation'
-  import { SCROLL_THROTTLE_MS } from '@/constants/timing'
   import { useEventsStore } from '@/stores/events'
   import { useShareStore } from '@/stores/share'
 
@@ -977,7 +860,7 @@
   const router = useRouter()
   const eventsStore = useEventsStore()
   const shareStore = useShareStore()
-  const { userDisplayName, loggedUser, logout: authLogout } = useAuth()
+  const { userDisplayName, loggedUser } = useAuth()
   const { goToProfile } = useUserNavigation()
 
   const currentId = computed(() =>
@@ -987,18 +870,10 @@
   // Usuário logado (substitui o mock "Igor")
   const userName = computed(() => userDisplayName.value)
   const userAvatar = computed(() => loggedUser.value?.profileImage || '')
-
-  function logout () {
-    authLogout()
-    router.push('/public/Login')
-  }
-
-  // ── Nav scroll ───────────────────────────────────────────────
-  const navSolid = ref(false)
-  function onScroll () {
-    navSolid.value = window.scrollY > 40
-  }
-  const throttledOnScroll = useThrottleFn(onScroll, SCROLL_THROTTLE_MS)
+  // Shape esperado pelo AppHeader único (Fase 1 do REFACTOR_AUDIT_PLAN.md)
+  // — login/logout do menu do usuário agora são resolvidos dentro do
+  // próprio AppHeader, não mais copiados aqui.
+  const headerUser = computed(() => ({ name: userName.value, avatar: userAvatar.value }))
 
   // ── Snackbar ─────────────────────────────────────────────────
   const SNACKBAR_COLORS = { success: '#22c55e', error: '#ef4444' } as const
@@ -1557,42 +1432,6 @@
   function goBack () {
     router.back()
   }
-  function goHome () {
-    router.push('/private/feed')
-  }
-  const navLinks = [
-    { label: 'Home', href: '/private/feed', active: false, action: 'home' },
-    { label: 'Top eventos', href: '/private/feed?tab=top-events', active: false, action: 'top-events' },
-    { label: 'Eventos favoritos', href: '/private/feed?tab=favorites', active: false, action: 'favorites' },
-    { label: 'Perfil', href: '/private/profile', active: false, action: 'profile' },
-  ]
-  function handleNav (item: { action: string }) {
-    switch (item.action) {
-      case 'profile': {
-        router.push('/private/profile')
-        break
-      }
-      case 'top-events': {
-        router.push({ path: '/private/feed', query: { tab: 'top-events' } })
-        break
-      }
-      case 'favorites': {
-        router.push({ path: '/private/feed', query: { tab: 'favorites' } })
-        break
-      }
-      default: {
-        router.push('/private/feed')
-      }
-    }
-  }
-
-  // ── Busca no header (mesmo comportamento do FeedTopHeader) ────
-  const searchQuery = ref('')
-  function handleSearch (query: string) {
-    if (query.trim()) {
-      router.push({ path: '/private/feed', query: { search: query.trim() } })
-    }
-  }
 
   // ── Tabs (o badge de comentários reflete a contagem real) ─────
   const activeTab = ref('info')
@@ -1852,9 +1691,7 @@
 
   let timer: ReturnType<typeof setInterval> | undefined
   onMounted(() => {
-    window.addEventListener('scroll', throttledOnScroll, { passive: true })
     window.addEventListener('resize', measureDescription)
-    onScroll()
     // Captura a localização (cacheada por sessão) para a "Distância de você"
     getCoords().then(c => {
       userCoords.value = c
@@ -1868,7 +1705,6 @@
     if (!eventsStore.isInitialized.favorites) eventsStore.syncFavoritesWithServer()
   })
   onUnmounted(() => {
-    window.removeEventListener('scroll', throttledOnScroll)
     window.removeEventListener('resize', measureDescription)
     if (timer) clearInterval(timer)
   })
@@ -1980,131 +1816,9 @@
     font-family: 'Poppins', sans-serif;
 }
 
-/* ── Brand (padronizado com o FeedTopHeader) ─────────────────── */
-.brand-logo-wrapper {
-    transition: opacity 0.2s ease;
-}
-
-.brand-logo-wrapper:hover {
-    opacity: 0.8;
-}
-
-.brand-logo-img {
-    width: 40px;
-    height: 40px;
-    object-fit: contain;
-}
-
-.brand-title {
-    font-family: "Baloo Thambi 2", serif;
-    font-weight: 800;
-    font-size: 2rem;
-    line-height: 1;
-    background: linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    white-space: nowrap;
-}
-
-/* ── Busca no header (mesmo visual do FeedTopHeader) ──────────── */
-.nav-search :deep(.search-input-field) {
-    padding-top: 0.7rem;
-    padding-bottom: 0.7rem;
-    border-radius: 20px;
-    background: #ffffff;
-    border-color: transparent;
-    box-shadow: 0 12px 30px rgba(14, 23, 58, 0.12);
-}
-
-.nav-search :deep(.search-input-field:focus) {
-    border-color: #ff5fa6;
-}
-
-.nav-search :deep(.autocomplete-wrapper.is-open .search-input-field) {
-    border-bottom-left-radius: 0 !important;
-    border-bottom-right-radius: 0 !important;
-}
-
-/* ── Dropdown do usuário (mesmo do FeedTopHeader) ─────────────── */
-:deep(.user-dropdown-list) {
-    min-width: 230px;
-    padding: 8px !important;
-    border-radius: 16px !important;
-    box-shadow: 0 8px 32px rgba(14, 23, 58, 0.12) !important;
-}
-
-.user-dropdown-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 10px 10px;
-}
-
-.dropdown-avatar {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-weight: 700;
-    font-size: 1.1rem;
-    flex-shrink: 0;
-    box-shadow: 0 4px 10px rgba(14, 23, 58, 0.12);
-}
-
-.dropdown-user-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.dropdown-user-name {
-    font-weight: 700;
-    font-size: 0.9rem;
-    color: #1a1a2e;
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.dropdown-user-email {
-    font-size: 0.75rem;
-    color: #888;
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-:deep(.dropdown-action-item) {
-    border-radius: 10px !important;
-    gap: 10px;
-    font-size: 0.875rem;
-    color: #333;
-    transition: background 0.15s ease;
-}
-
-:deep(.dropdown-action-item .v-list-item__prepend) {
-    width: 28px;
-    min-width: 28px;
-}
-
-:deep(.dropdown-action-item:hover) {
-    background: rgba(255, 95, 166, 0.07) !important;
-}
-
-:deep(.dropdown-logout) {
-    color: #ff4757 !important;
-}
-
-:deep(.dropdown-logout:hover) {
-    background: rgba(255, 71, 87, 0.07) !important;
-}
+/* Header/dropdown do usuário: estilo agora vive só em
+   src/components/UI/AppHeader/AppHeader.vue (Fase 1 do
+   REFACTOR_AUDIT_PLAN.md) — nada pra duplicar aqui. */
 
 .eyebrow {
     font-size: 11px;

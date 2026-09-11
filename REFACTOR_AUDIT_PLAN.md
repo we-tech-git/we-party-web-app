@@ -27,7 +27,7 @@ Convenção de prioridade usada em todo o documento:
 
 - **51.527 linhas** em `.vue`/`.ts` (134 arquivos), 2 devs ativos, ~220 commits.
 - **Zero testes** (`0` arquivos `.spec`/`.test`; `tsconfig.app.json` já exclui um diretório `__tests__` que **não existe**).
-- 4 arquivos concentram **35%** de todo o código do projeto: `Profile.vue` (5.782 linhas), `EventDetails.vue` (5.491), `LandingPage.vue` (4.250), `Feed.vue` (2.740).
+- 4 arquivos concentravam **35%** de todo o código do projeto: `Profile.vue` (5.782 linhas), `EventDetails.vue` (5.491), `LandingPage.vue` (4.250), `Feed.vue` (2.740). **Atualizado na Fase 1:** `EventDetails.vue` era código morto (não decompor, ver B1b) — arquivado; `LandingPage.vue` já caiu pra 3.947 linhas (footer/modal migraram pro `AppFooter`); o mega-arquivo real que entra no lugar dele é `NewEventDetails.vue` (2.234 linhas, já reduzido de 2.520).
 - Nesses arquivos, **entre 45% e 72% das linhas são `<style>`** (CSS manual, escopado por componente), não lógica. O problema não é só "componente grande fazendo coisa demais" — é CSS duplicado e não reutilizado, arquivo por arquivo.
 - **3 paletas de cor "primary" diferentes e incompatíveis** coexistem: Vuetify (`#ff5f8f`), Tailwind (`#6366f1`), CSS vars (`#ffb74d`). Não há um único design token.
 - `v-card` do Vuetify é usado em **1 arquivo**; **16 arquivos** reimplementam seu próprio `.card` em CSS puro.
@@ -56,8 +56,9 @@ Convenção de prioridade usada em todo o documento:
 
 | # | Problema | Evidência | Prioridade | Impacto | Esforço | Risco |
 |---|---|---|---|---|---|---|
-| B1 | Mega-arquivos concentrando template + lógica + estilo | `Profile.vue` 5.782 linhas / `EventDetails.vue` 5.491 / `LandingPage.vue` 4.250 / `Feed.vue` 2.740 | **P0** | Alto — inviabiliza revisão de PR e teste | Alto | Médio (exige cobertura antes) |
-| B2 | O CSS domina o tamanho dos mega-arquivos, não a lógica | `EventDetails.vue`: 3.978/5.491 linhas (72%) são `<style>`; `Profile.vue`: 3.316/5.782 (57%); `LandingPage.vue`: 2.698/4.250 (63%); `Feed.vue`: 1.243/2.740 (45%) | **P0** | Alto — indica ausência de componentes de UI reutilizáveis, não só "componente grande" | Alto | Médio |
+| B1 | Mega-arquivos concentrando template + lógica + estilo | `Profile.vue` 5.782 linhas / `LandingPage.vue` 4.250 / `Feed.vue` 2.740 / `NewEventDetails.vue` 2.520 | **P0** | Alto — inviabiliza revisão de PR e teste | Alto | Médio (exige cobertura antes) |
+| B1b | **Correção (achada na Fase 1):** `EventDetails.vue` (5.491 linhas) + `EventView.vue` (843) citados originalmente em B1 não são mega-arquivo pra decompor — são **código morto confirmado**, sem nenhuma rota/componente ativo importando (`[id].vue` já usa `NewEventDetails.vue`, com comentário próprio dizendo isso). Arquivados em `src/components/_revisar_/` na Fase 1, não entram mais no B1/Fase 5 | `src/pages/private/event/[id].vue`, `src/components.d.ts` (única referência restante, autogerada) | — | — | — | Resolvido na Fase 1 |
+| B2 | O CSS domina o tamanho dos mega-arquivos, não a lógica | `Profile.vue`: 3.316/5.782 linhas (57%) são `<style>`; `LandingPage.vue`: 2.485/3.947 (63%, após a Fase 1 remover footer/modal); `Feed.vue`: 1.243/2.740 (45%); `NewEventDetails.vue`: 506/2.234 (23%, após a Fase 1 remover o header hand-copiado — o exemplo original aqui, `EventDetails.vue` 72%, era código morto, ver B1b) | **P0** | Alto — indica ausência de componentes de UI reutilizáveis, não só "componente grande" | Alto | Médio |
 | B3 | Componente duplicado por cópia (fork), não por composição | `src/components/FeedCardStandalone.vue` é near-cópia de `src/components/modules/Feed/FeedCard.vue` — mesmo footer, mesma estrutura, pequenas divergências já introduzidas (`aria-label` vs `title` no botão de like, comparar `FeedCard.vue:346-360` com `FeedCardStandalone.vue:412-425`) | **P1** | Alto — bug corrigido em um não é corrigido no outro | Médio | Baixo |
 | B4 | `Profile.vue` concentra cropper de imagem escrito à mão | já sinalizado no próprio `AGENTS.md:75-76` | P1 | Médio | Alto | Médio |
 | B5 | Uso de `: any` / `as any` espalhado | 197 ocorrências em `src/**/*.{ts,vue}` | P2 | Médio — reduz a proteção real do TypeScript | Médio (progressivo) | Baixo |
@@ -92,8 +93,8 @@ Convenção de prioridade usada em todo o documento:
 
 | # | Problema | Evidência | Prioridade |
 |---|---|---|---|
-| F1 | Cabeçalho: 3 implementações divergentes | Componente dedicado `FeedTopHeader.vue` (`src/components/modules/Feed/FeedTopHeader.vue:87`) **vs** header inline próprio em `LandingPage.vue:942` **vs** header inline próprio em `NewEventDetails.vue:3` — nenhum reaproveita o outro | **P0** | Alto | Médio | Baixo |
-| F2 | Rodapé: 3-4 implementações divergentes | Componente dedicado `AppFooter.vue:6`, usado em só 2 lugares (`NotFound.vue`, `Profile.vue`) **vs** footer inline próprio em `LandingPage.vue:1411` (`footer-v2`) **vs** footer duplicado entre `FeedCard.vue:346` e `FeedCardStandalone.vue:412` (ver B3) | **P0** | Alto | Médio | Baixo |
+| F1 | Cabeçalho: 3 implementações divergentes na área autenticada — **Resolvido na Fase 1** | Componente dedicado `FeedTopHeader.vue`, já reaproveitado em `Feed.vue`/`Profile.vue`/`PublicProfile.vue`/`InterestPage.vue` **vs** header hand-copiado ("padronizado com o FeedTopHeader", ver comentários do próprio arquivo) em `NewEventDetails.vue:3-123` **vs** o de `EventDetails.vue` (código morto, ver B1b). Decisão do time: `FeedTopHeader` migra pra `src/components/UI/AppHeader/AppHeader.vue` e vira único **só na área autenticada**; a Landingpage pública mantém seu próprio header de marketing (não é duplicação no mesmo sentido — ver seção 3, Fase 1) | **P0** | Alto | Médio | Baixo |
+| F2 | Rodapé: 3 implementações divergentes de rodapé de página — **Resolvido na Fase 1** | Componente dedicado `AppFooter.vue`, usado em só 2 lugares (`NotFound.vue`, `Profile.vue`) **vs** footer inline próprio em `LandingPage.vue:1411` (`footer-v2`). **Correção:** o `<footer>` de `FeedCard.vue`/`FeedCardStandalone.vue`, citado originalmente aqui, na inspeção da Fase 1 se confirmou ser a barra de curtir/comentar do *card de evento*, não um rodapé de página — é duplicação real (B3), mas não desta consolidação; fica pra Fase 6. Decisão do time: footer da Landingpage vira o único, migrado pra `src/components/UI/AppFooter/AppFooter.vue`, usado também fora dela (`NotFound.vue`, `Profile.vue`, e a própria Landingpage) | **P0** | Alto | Médio | Baixo |
 | F3 | Regra de reuso existe no `AGENTS.md` mas aponta para 2 pastas diferentes, formalizando a fragmentação (A2) em vez de resolvê-la | `AGENTS.md:69` | P1 | Médio | Baixo |
 
 ### 1.7 Testes
@@ -216,7 +217,7 @@ Sem teste nenhum hoje, o objetivo não é "cobertura alta rápido", é **destrav
 
 1. **Vitest + Vue Test Utils** para composables e stores primeiro (lógica pura, mais fácil de testar, maior ROI: `useValidation`, `useRateLimit`, `useAuth`, `stores/events.ts`).
 2. **Testes de componente** para os componentes de UI do Design System (são pequenos, estáveis e usados em todo lugar — testar um valida N telas).
-3. **Testes de regressão "de aprovação"** (snapshot leve de comportamento, não visual) especificamente para `Profile.vue`, `EventDetails.vue`, `LandingPage.vue`, `Feed.vue` **antes** de cada um ser refatorado — não depois.
+3. **Testes de regressão "de aprovação"** (snapshot leve de comportamento, não visual) especificamente para `Profile.vue`, `LandingPage.vue`, `Feed.vue`, `NewEventDetails.vue` **antes** de cada um ser refatorado — não depois. (`EventDetails.vue` saiu da lista na Fase 1: era código morto, ver B1b.)
 4. **E2E não é deste repositório.** Já existe um projeto dedicado, `weparty-automation` (Cypress, roda contra produção, Page Objects em `cypress/support/pages/`, seletor padrão `data-testid` via `cy.getBySel`, dados de fixture, `cy.intercept` obrigatório em toda chamada que altera estado). Ver a regra transversal na seção 3 — o trabalho deste repo é **expor `data-testid`** nos componentes; escrever/manter o teste E2E em si é responsabilidade do `weparty-automation`, seguindo o `AGENTS.md` de lá.
 
 ### 2.9 Quando usar (ou não) Design Patterns e estado global
@@ -262,19 +263,20 @@ O próximo `CT-XXX` livre e a massa de dado legível vêm de `docs/massa-de-test
 - **Validação:** `yarn lint && yarn build` continuam verdes; `yarn vitest run` roda (mesmo com 0 testes ainda).
 - **Resultado esperado:** base pronta para todo o resto.
 
-### Fase 1 — Header e footer: escolher um de cada, arquivar o resto
-- **Objetivo:** eliminar F1/F2 (3-4 headers/footers divergentes), resolvendo também A1 (causa raiz). **Decisão já tomada** (não é mais avaliação de qual reaproveitar): o header vira o da página do Feed; o footer vira o da Landingpage (`/public`).
-- **O que muda:**
-  - `FeedTopHeader.vue` (`src/components/modules/Feed/FeedTopHeader.vue`) migra para `src/components/UI/AppHeader/` e passa a ser o único header do app.
-  - O footer hoje em `LandingPage.vue:1411` (`footer footer-v2`) migra para `src/components/UI/AppFooter/`, substituindo o `AppFooter.vue` atual, e passa a ser o único footer do app.
-  - `src/layouts/default.vue` passa a renderizar `AppHeader` + `<router-view/>` + `AppFooter`.
-  - O código **descartado** — header inline de `LandingPage.vue`, header inline de `NewEventDetails.vue`, footer de `FeedCard.vue`/`FeedCardStandalone.vue`, o `AppFooter.vue` antigo — **não é apagado**: move para `src/components/_revisar_/` tal como está, para consulta futura. Nenhuma página importa mais nada de lá depois desta fase.
-  - Páginas que tinham header/footer inline passam a consumir o layout único; CSS de header/footer duplicado sai dessas páginas.
+### Fase 1 — Header e footer: escolher um de cada, arquivar o resto ✅ (implementado — PR em validação)
+- **Objetivo:** eliminar F1/F2, resolvendo também A1 (causa raiz). **Decisão do time** (ver pergunta respondida durante a execução): o header do Feed vira único **só na área autenticada** (a Landingpage pública mantém seu próprio header de marketing, por ser um header legítimo e distinto, não uma cópia); o footer vira o da Landingpage, usado em todo o app (público e autenticado).
+- **O que foi feito:**
+  - `FeedTopHeader.vue` migrou para `src/components/UI/AppHeader/AppHeader.vue` — usado em `Feed.vue`, `Profile.vue`, `PublicProfile.vue`, `InterestPage.vue` (já usavam) e agora também `NewEventDetails.vue` (que reimplementava à mão um header "padronizado com o FeedTopHeader" — ~140 linhas de template/CSS/lógica removidas, inclusive um scroll-listener próprio que só existia pra esse header).
+  - Footer da Landingpage (com modal de Termos/Privacidade, que morava junto) migrou para `src/components/UI/AppFooter/AppFooter.vue`, **autocontido**: os links de seção ("Como funciona"/"Recursos"), que antes só funcionavam por já estar na Landingpage, agora navegam pra lá com `#hash` — a Landingpage ganhou um `watch(route.hash)` + scroll-on-mount pra isso funcionar vindo de qualquer página. Usado agora em `LandingPage.vue`, `NotFound.vue` e `Profile.vue` (que já usava o `AppFooter.vue` antigo).
+  - **Achado durante a execução, fora do escopo original:** `EventDetails.vue`/`EventView.vue` (citados no diagnóstico original como mega-arquivo/header duplicado) são **código morto confirmado** — nenhuma rota os usa (`[id].vue` já roteia pra `NewEventDetails.vue`). Corrigido no diagnóstico (B1b) e arquivados em `_revisar_` junto com o resto.
+  - `src/components/_revisar_/` recebeu: `AppFooter.vue` antigo, `EventDetails.vue`, `EventView.vue`. **Não foram pra lá** (decisão explícita, ver F1/F2 corrigidos): o header da Landingpage (fora de escopo) e o `<footer>` de `FeedCard`/`FeedCardStandalone` (não é rodapé de página — é B3, Fase 6).
+  - `_revisar_/` precisou ser excluída do auto-import (`vite.config.mts`, `Components({ globsExclude: ['**/_revisar_/**'] })`) — sem isso, o `unplugin-vue-components` colidia por nome de arquivo entre o `AppFooter.vue` novo e o arquivado.
+  - **Não foi feito** (ajuste de escopo em relação ao plano original): wiring via `src/layouts/default.vue`. Investigando o código, cada página já importa e renderiza `FeedTopHeader`/`AppFooter` diretamente, inclusive com slots por página (ex. o `#center-content` de busca/filtros do `Feed.vue`, ~140 linhas) — forçar isso por um layout compartilhado exigiria replicar esses slots por fora, sem ganho real. O padrão de reuso explícito por página, já estabelecido, foi mantido.
 - **Dependências:** Fase 0.
-- **Risco:** médio-alto — é a mudança mais visível ao usuário, e páginas hoje sem o header/footer do Feed (ex. Landingpage, EventDetails) passam a ganhar essa casca. Fazer página por página, comparando visualmente antes/depois; confirmar com o time se algum comportamento hoje específico de um header/footer descartado (ex. busca no `FeedTopHeader`, CTA específico do footer da Landingpage) precisa ser preservado no componente canônico antes de arquivar o resto.
-- **Validação:** checklist manual de cada página afetada (Login, Landing, Feed, EventDetails, Profile) + revisão visual lado a lado.
-- **Checkpoint 3.0:** `data-testid` no `AppHeader`/`AppFooter` consolidados + sub-agente no `weparty-automation` para o teste de navegação básica (header presente/funcional em todas as páginas).
-- **Resultado esperado:** 1 header, 1 footer ativos no app; o resto preservado e fora do caminho em `_revisar_`; redução imediata de centenas de linhas de CSS duplicado.
+- **Risco:** médio-alto — mudança visível (header some do `NewEventDetails.vue`, perde o efeito "transparente sobre o hero" e os atalhos de nav próprios; footer aparece em páginas que não tinham). Validado visualmente via browser (Landingpage: header inalterado, footer novo renderiza e funciona, modal de Termos abre, link com `#hash` rola corretamente ao navegar de fora) e via `yarn lint`/`yarn test`/`yarn build`, todos verdes.
+- **Validação:** ver acima — checklist visual feito na própria execução, não só planejado.
+- **Checkpoint 3.0:** ainda não acionado nesta fase — fica para quando o time confirmar o PR; a expectativa é cobrir "header/footer presentes e funcionais" como teste de fumaça no `weparty-automation`.
+- **Resultado esperado → obtido:** 1 header ativo na área autenticada, 1 footer ativo no app inteiro; ~650 linhas de CSS/lógica duplicada removidas (`NewEventDetails.vue` -318 linhas, `LandingPage.vue` -349 linhas); +6.334 linhas de código morto (`EventDetails.vue`+`EventView.vue`) tiradas do caminho ativo.
 
 ### Fase 2 — Tokens visuais únicos
 - **Objetivo:** resolver C1/I3 (3 paletas "primary" incompatíveis), adotando o valor **já mais usado no código** (critério de decisão da seção 2.6), não uma escolha nova.
@@ -301,7 +303,7 @@ O próximo `CT-XXX` livre e a massa de dado legível vêm de `docs/massa-de-test
 
 ### Fase 4 — Testes de regressão nos mega-arquivos, ANTES de refatorá-los
 - **Objetivo:** destravar a Fase 5 com segurança.
-- **O que muda:** escrever testes de comportamento (não de implementação) para os fluxos principais de `Profile.vue`, `EventDetails.vue`, `LandingPage.vue`, `Feed.vue` — o que o usuário consegue fazer, não como o componente é escrito por dentro.
+- **O que muda:** escrever testes de comportamento (não de implementação) para os fluxos principais de `Profile.vue`, `LandingPage.vue`, `Feed.vue`, `NewEventDetails.vue` — o que o usuário consegue fazer, não como o componente é escrito por dentro. (Lista corrigida na Fase 1: `EventDetails.vue` era código morto, ver B1b — não entra mais aqui.)
 - **Dependências:** Fase 0 (Vitest instalado).
 - **Risco:** nenhum (só adiciona testes).
 - **Validação:** testes passam contra o código atual, antes de qualquer refatoração.
@@ -309,7 +311,7 @@ O próximo `CT-XXX` livre e a massa de dado legível vêm de `docs/massa-de-test
 
 ### Fase 5 — Decompor os mega-arquivos (CSS primeiro, depois lógica)
 - **Objetivo:** atacar B1/B2, o maior item de débito técnico do projeto.
-- **Ordem dentro da fase, por arquivo (repetir para `EventDetails.vue` → `Profile.vue` → `LandingPage.vue` → `Feed.vue`, do maior % de CSS para o menor):**
+- **Ordem dentro da fase, por arquivo (repetir para `LandingPage.vue` → `Profile.vue` → `Feed.vue` → `NewEventDetails.vue`, do maior % de CSS para o menor, medido após a Fase 1 — ver B2):**
   1. Extrair blocos de `<style>` repetíveis para componentes do Design System (Fase 3) — isso sozinho deve reduzir a maioria das linhas, dado que B2 mostrou que CSS é 45-72% do arquivo.
   2. Extrair subcomponentes de template puramente apresentacionais (ex.: cards internos, seções da landing) para `components/modules/<Feature>/`.
   3. Extrair lógica de estado/efeito isolável para composables (2.3).
@@ -440,8 +442,8 @@ para a fase seguinte depois do PR anterior mergeado.
 
 | Fase | Status | PR | Observação |
 |---|---|---|---|
-| 0 — Fundação | 🟡 Em revisão | [#40](https://github.com/we-tech-git/we-party-web-app/pull/40) | Vitest + Vue Test Utils instalados (`vitest.config.ts`); 1 spec de fumaça (`src/utils/avatar.spec.ts`, 7 testes, verde); `src/styles/tokens.css` criado (esqueleto, populado na Fase 2); `src/components/_revisar_/` criado com `README.md`. `yarn lint` e `yarn build` verdes (inclui fix de formatação pré-existente em `Login.vue` que já quebrava o lint em `main`, não relacionado à Fase 0). |
-| 1 — Header/Footer únicos | ⬜ Não iniciada | — | Aguardando merge da Fase 0. |
+| 0 — Fundação | 🟢 Concluída | [#40](https://github.com/we-tech-git/we-party-web-app/pull/40) (mergeado) | Vitest + Vue Test Utils instalados; teste de fumaça verde; `tokens.css` esqueleto; `_revisar_/` criado; regra de template de PR adicionada ao `AGENTS.md` (pedido à parte do time). |
+| 1 — Header/Footer únicos | 🟡 Em revisão | _(abrindo)_ | `AppHeader`/`AppFooter` únicos criados e em uso (área autenticada + app inteiro, respectivamente); `EventDetails.vue`/`EventView.vue` descobertos como código morto e arquivados (correção registrada em B1b); `NewEventDetails.vue` -318 linhas, `LandingPage.vue` -349 linhas. `yarn lint`/`yarn test`/`yarn build` verdes; validação visual feita via browser (Landingpage). |
 | 2 — Tokens visuais únicos | ⬜ Não iniciada | — | Aguardando Fase 1. |
 | 3 — Auditoria de componentes + DS/Storybook | ⬜ Não iniciada | — | Aguardando Fase 2. |
 | 4 — Testes de regressão nos mega-arquivos | ⬜ Não iniciada | — | Aguardando Fase 3 (pode em paralelo com 3, mas depende de 0). |
