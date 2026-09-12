@@ -1,8 +1,8 @@
 <script lang="ts" setup>
   import { watchEffect } from 'vue'
   import { useI18n } from 'vue-i18n'
-  import ShareSheet from '@/components/modules/UI/ShareSheet/ShareSheet.vue'
   import ErrorBoundary from '@/components/UI/ErrorBoundary/ErrorBoundary.vue'
+  import ShareSheet from '@/components/UI/ShareSheet/ShareSheet.vue'
 
   const { locale } = useI18n()
 

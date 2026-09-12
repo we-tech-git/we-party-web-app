@@ -22,6 +22,7 @@
   import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
   import AppHeader from '@/components/UI/AppHeader/AppHeader.vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import EventMiniCard from '@/components/UI/EventMiniCard/EventMiniCard.vue'
   import FollowButton from '@/components/UI/FollowButton/FollowButton.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
@@ -342,24 +343,19 @@
 
           <div class="tab-panel">
             <div v-if="activeItems.length > 0" class="mini-cards-grid">
-              <div
+              <EventMiniCard
                 v-for="item in activeItems"
                 :key="item.id"
-                class="mini-event-card"
+                :banner-url="item.banner"
+                :date-label="formatShortDate(item.schedule)"
+                :location="item.location || t('profile.likedEvents.locationUndefined')"
+                :title="item.title"
                 @click="router.push(`/private/event/${item.id}`)"
               >
-                <div class="mini-card-banner">
-                  <img :alt="item.title" :src="item.banner">
-                  <div class="mini-card-date">{{ formatShortDate(item.schedule) }}</div>
-                </div>
-                <div class="mini-card-content">
-                  <h4 class="mini-card-title">{{ item.title }}</h4>
-                  <div class="mini-card-location">{{ item.location || t('profile.likedEvents.locationUndefined') }}</div>
-                  <div class="mini-card-stats">
-                    <span class="mini-stat">{{ item.confirmed }} {{ t('profile.public.confirmedCount') }}</span>
-                  </div>
-                </div>
-              </div>
+                <template #stats>
+                  <span class="mini-stat">{{ item.confirmed }} {{ t('profile.public.confirmedCount') }}</span>
+                </template>
+              </EventMiniCard>
             </div>
             <div v-else class="empty-state">
               <p>{{ activeTab === 'liked' ? t('profile.public.emptyLiked') : t('profile.public.emptyConfirmed') }}</p>
@@ -623,60 +619,10 @@
   gap: 1rem;
 }
 
-.mini-event-card {
-  background: #fff;
-  border: 1px solid #ececee;
-  border-radius: 16px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform .15s ease;
-}
-
-.mini-event-card:hover {
-  transform: translateY(-2px);
-}
-
-.mini-card-banner {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  background: #f3f4f6;
-}
-
-.mini-card-banner img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.mini-card-date {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  background: rgba(0, 0, 0, .6);
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.2rem 0.5rem;
-  border-radius: 8px;
-}
-
-.mini-card-content {
-  padding: 0.75rem;
-}
-
-.mini-card-title {
-  font-size: 0.9rem;
-  font-weight: 800;
-  margin: 0 0 0.3rem;
-}
-
-.mini-card-location {
-  font-size: 0.78rem;
-  color: #6b7280;
-}
-
-.mini-card-stats {
-  margin-top: 0.5rem;
+/* Shell do card (banner/data/título/localização): agora é
+   src/components/UI/EventMiniCard/EventMiniCard.vue (Fase 3 do
+   REFACTOR_AUDIT_PLAN.md). Só o conteúdo do slot #stats continua aqui. */
+.mini-stat {
   font-size: 0.78rem;
   color: #9ca3af;
   font-weight: 700;
