@@ -15,6 +15,7 @@
   import { usePwaInstall } from '@/composables/usePwaInstall'
   import { logger } from '@/utils/logger'
   import LandingFaqSection from './LandingFaqSection.vue'
+  import LandingUpdatesTeaser from './LandingUpdatesTeaser.vue'
 
   gsap.registerPlugin(ScrollTrigger)
 
@@ -1326,27 +1327,9 @@
     <LandingFaqSection />
 
     <!-- Novidades -->
-    <section id="novidades" class="updates-teaser">
-      <div class="container">
-        <div class="updates-banner">
-          <span class="updates-banner-deco updates-banner-deco-1">🚀</span>
-          <span class="updates-banner-deco updates-banner-deco-2">✨</span>
-          <div class="updates-banner-info">
-            <div class="updates-banner-icon">🚀</div>
-            <div>
-              <div class="updates-banner-title">Fique por dentro das novidades da We Party</div>
-              <div class="updates-banner-desc">Novos recursos, melhorias e o que vem por aí — acompanhe tudo na nossa página de atualizações.</div>
-            </div>
-          </div>
-          <router-link v-slot="{ href, navigate }" custom to="/public/updates">
-            <a class="btn-cta-primary" :href="href" @click="navigate">
-              <span>Ver novidades</span>
-              <div class="btn-glow" />
-            </a>
-          </router-link>
-        </div>
-      </div>
-    </section>
+    <!-- Novidades — extraído pra LandingUpdatesTeaser.vue na Fase 5 do
+         REFACTOR_AUDIT_PLAN.md (2ª fatia da decomposição). -->
+    <LandingUpdatesTeaser />
 
     <!-- Footer único do app (REFACTOR_AUDIT_PLAN.md, Fase 1) — inclui o
          modal de Termos/Privacidade, que morava aqui e virou autocontido. -->
@@ -3228,85 +3211,8 @@ h2 .logo-text,
   white-space: nowrap;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   NOVIDADES — BANNER DE CONVITE PRA PÁGINA DE UPDATES
-   ═══════════════════════════════════════════════════════════════════════════ */
-.updates-teaser {
-  padding: 0 0 6rem;
-  position: relative;
-}
-
-.updates-banner {
-  background: linear-gradient(120deg, var(--dark) 0%, #33244d 60%, #4a2650 100%);
-  border-radius: 28px;
-  padding: 2.75rem 3rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2.5rem;
-  position: relative;
-  overflow: hidden;
-  will-change: transform;
-}
-
-.updates-banner-deco {
-  position: absolute;
-  opacity: 0.08;
-  pointer-events: none;
-}
-
-.updates-banner-deco-1 {
-  left: -20px;
-  top: -30px;
-  font-size: 130px;
-}
-
-.updates-banner-deco-2 {
-  right: 10%;
-  bottom: -20px;
-  font-size: 90px;
-}
-
-.updates-banner-info {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  text-align: left;
-  position: relative;
-  z-index: 1;
-}
-
-.updates-banner-icon {
-  width: 64px;
-  height: 64px;
-  flex-shrink: 0;
-  border-radius: 20px;
-  background: var(--gradient);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 30px;
-  box-shadow: 0 12px 30px rgba(249, 120, 163, 0.35);
-}
-
-.updates-banner-title {
-  font-size: 1.3rem;
-  font-weight: 800;
-  color: #fff;
-  margin-bottom: 0.4rem;
-}
-
-.updates-banner-desc {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.65);
-  line-height: 1.6;
-}
-
-.updates-banner .btn-cta-primary {
-  white-space: nowrap;
-  position: relative;
-  z-index: 1;
-}
+/* Seção "Novidades" (banner de convite): migrou pra
+   LandingUpdatesTeaser.vue (Fase 5, parte 2) — nada pra estilizar aqui. */
 
 /* Footer: migrou pra src/components/UI/AppFooter/AppFooter.vue
    (REFACTOR_AUDIT_PLAN.md, Fase 1) — nada de footer pra estilizar aqui. */
@@ -3501,15 +3407,13 @@ h2 .logo-text,
     gap: 2.5rem;
   }
 
-  .pwa-banner,
-  .updates-banner {
+  .pwa-banner {
     flex-direction: column;
     align-items: flex-start;
     text-align: left;
   }
 
-  .btn-pwa-install,
-  .updates-banner .btn-cta-primary {
+  .btn-pwa-install {
     align-self: stretch;
     justify-content: center;
   }
@@ -3595,10 +3499,6 @@ h2 .logo-text,
   .how-it-works-v2 {
     padding-top: 5rem;
     padding-bottom: 5rem;
-  }
-
-  .updates-teaser {
-    padding-bottom: 4rem;
   }
 
   .showcase-tab-desc {
@@ -3693,8 +3593,7 @@ h2 .logo-text,
     font-size: 0.95rem;
   }
 
-  .pwa-banner-info,
-  .updates-banner-info {
+  .pwa-banner-info {
     flex-direction: column;
     text-align: center;
   }
