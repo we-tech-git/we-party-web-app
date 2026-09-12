@@ -44,6 +44,7 @@ declare module 'vue' {
     InterestUpcomingList: typeof import('./components/modules/InterestPage/InterestUpcomingList.vue')['default']
     LandingFaqSection: typeof import('./components/modules/Landingpage/LandingFaqSection.vue')['default']
     LandingPage: typeof import('./components/modules/Landingpage/LandingPage.vue')['default']
+    LandingUpdatesTeaser: typeof import('./components/modules/Landingpage/LandingUpdatesTeaser.vue')['default']
     LanguageSwitcher: typeof import('./components/LanguageSwitcher.vue')['default']
     Login: typeof import('./components/modules/Login/Login.vue')['default']
     LoginRequiredDialog: typeof import('./components/UI/LoginRequiredDialog/LoginRequiredDialog.vue')['default']
