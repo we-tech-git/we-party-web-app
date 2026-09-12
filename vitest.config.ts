@@ -16,5 +16,16 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.spec.ts'],
+    setupFiles: ['src/test/setup.ts'],
+    // Sem isso, `import * as components from 'vuetify/components'` (usado
+    // pra registrar o Vuetify inteiro em teste — ver src/test/vuetify.ts)
+    // quebra: o barrel da Vuetify importa `.css` por efeito colateral, e
+    // fora do pipeline do Vite (`server.deps.inline`) o Node tenta
+    // resolver isso como módulo JS de verdade e falha.
+    server: {
+      deps: {
+        inline: ['vuetify'],
+      },
+    },
   },
 })
