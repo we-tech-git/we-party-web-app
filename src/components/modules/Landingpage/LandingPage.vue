@@ -9,7 +9,6 @@
   import { unwrapList } from '@/api'
   import { getAllPublicEvents, getPublicTrendingEvents } from '@/api/event'
   import AppFooter from '@/components/UI/AppFooter/AppFooter.vue'
-  import GradientText from '@/components/UI/GradientText/GradientText.vue'
   import LoginRequiredDialog from '@/components/UI/LoginRequiredDialog/LoginRequiredDialog.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import { useGuestMode } from '@/composables/useGuestMode'
@@ -18,6 +17,7 @@
   import LandingDiscoverSection from './LandingDiscoverSection.vue'
   import LandingFaqSection from './LandingFaqSection.vue'
   import LandingFeaturesSection from './LandingFeaturesSection.vue'
+  import LandingHeroSection from './LandingHeroSection.vue'
   import LandingHowItWorksSection from './LandingHowItWorksSection.vue'
   import LandingUpdatesTeaser from './LandingUpdatesTeaser.vue'
 
@@ -52,8 +52,6 @@
   // Element Refs
   const landingEl = ref<HTMLElement | null>(null)
   const headerEl = ref<HTMLElement | null>(null)
-  const heroSection = ref<HTMLElement | null>(null)
-  const heroVideo = ref<HTMLVideoElement | null>(null)
 
   // Animation refs & GSAP context
   const isLoaded = ref(false)
@@ -420,10 +418,12 @@
         .from('.hero-scroll-indicator', { y: 20, opacity: 0, duration: 0.8, ease: 'power2.out' }, '-=0.4')
 
       // 4. Hero — Scroll Storytelling Scrub (transição suave para a próxima seção)
-      if (!reducedMotion.value && heroSection.value) {
+      // Hero agora é LandingHeroSection.vue (Fase 5, parte 6) — o ScrollTrigger
+      // mira a seção pelo seletor CSS, mesmo padrão das fatias anteriores.
+      if (!reducedMotion.value) {
         gsap.timeline({
           scrollTrigger: {
-            trigger: heroSection.value,
+            trigger: '.hero',
             start: 'top top',
             end: 'bottom top',
             scrub: 1.1,
@@ -808,11 +808,16 @@
       goToSection(route.hash)
     }
 
+    // heroSection/heroVideo eram refs Vue; hero agora é LandingHeroSection.vue
+    // (Fase 5, parte 6) — IntersectionObserver/`.pause()` só precisam de um
+    // Element de verdade, então buscamos pelo seletor a partir de landingEl.
+    const heroSectionEl = landingEl.value?.querySelector<HTMLElement>('.hero') ?? null
+
     if (reducedMotion.value) {
-      heroVideo.value?.pause()
+      landingEl.value?.querySelector<HTMLVideoElement>('.hero-video')?.pause()
     }
 
-    if (heroSection.value) {
+    if (heroSectionEl) {
       const headerHeight = headerEl.value?.offsetHeight ?? 80
       heroObserver = new IntersectionObserver(
         entries => {
@@ -821,7 +826,7 @@
         },
         { rootMargin: `-${headerHeight}px 0px 0px 0px`, threshold: 0 },
       )
-      heroObserver.observe(heroSection.value)
+      heroObserver.observe(heroSectionEl)
     }
 
     if (phoneScreenEl.value) {
@@ -920,54 +925,11 @@
     </Transition>
 
     <!-- Hero Cinematográfica -->
-    <section ref="heroSection" class="hero hero-v2">
-      <video
-        ref="heroVideo"
-        autoplay
-        class="hero-video"
-        height="720"
-        loop
-        muted
-        playsinline
-        poster="/hero-poster.jpg"
-        preload="metadata"
-        width="1280"
-      >
-        <source src="/hero-video.mp4" type="video/mp4">
-      </video>
-      <div class="hero-video-overlay" />
-
-      <div class="container">
-        <div class="hero-v2-content">
-          <div class="hero-wordmark-wrap">
-            <GradientText
-              :animation-speed="4"
-              class="hero-wordmark"
-              :colors="['#ff9a4d', '#ff5f8f']"
-              tag="h1"
-            >
-              We Party
-            </GradientText>
-          </div>
-          <div class="hero-tagline-wrap">
-            <GradientText
-              :animation-speed="4"
-              class="hero-tagline"
-              :colors="['#ff9a4d', '#ff5f8f']"
-              tag="p"
-            >
-              A rede social feita para quem ama eventos
-            </GradientText>
-          </div>
-        </div>
-      </div>
-
-      <!-- Indicador de Scroll -->
-      <div class="hero-scroll-indicator" @click="goToSection('#descubra')">
-        <span class="indicator-mouse"><span class="indicator-wheel" /></span>
-        <span class="indicator-text">Role para explorar</span>
-      </div>
-    </section>
+    <!-- Hero — extraído pra LandingHeroSection.vue na Fase 5 do
+         REFACTOR_AUDIT_PLAN.md (6ª fatia da decomposição). `goToSection`
+         fecha o menu mobile antes de rolar, por isso continua no pai — o
+         filho só emite o evento. -->
+    <LandingHeroSection @go-to-section="goToSection" />
 
     <!-- Descubra eventos -->
     <!-- Descubra — extraído pra LandingDiscoverSection.vue na Fase 5 do
@@ -1591,139 +1553,7 @@ h2 .logo-text,
 /* .live-dot + @keyframes blink: migraram pra LandingDiscoverSection.vue
    (Fase 5, parte 5) — nada de "MISC" pra guardar aqui. */
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   HERO CINEMATOGRÁFICA
-   ═══════════════════════════════════════════════════════════════════════════ */
-.hero {
-  min-height: 94vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 11rem 0 5rem;
-  position: relative;
-  overflow: hidden;
-  text-align: center;
-}
-
-.hero-video {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  pointer-events: none;
-  will-change: transform, opacity;
-}
-
-.hero-video-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background:
-    radial-gradient(circle at 50% 65%, rgba(255, 95, 143, 0.3), transparent 50%),
-    radial-gradient(circle at 15% 15%, rgba(255, 154, 60, 0.22), transparent 45%),
-    radial-gradient(circle at 85% 25%, rgba(139, 92, 246, 0.25), transparent 45%),
-    linear-gradient(180deg, rgba(20, 18, 32, 0.55) 0%, rgba(20, 18, 32, 0.4) 45%, rgba(20, 18, 32, 0.72) 100%);
-  pointer-events: none;
-}
-
-.hero-v2-content {
-  position: relative;
-  z-index: 2;
-  max-width: 1500px;
-  margin: 0 auto;
-  will-change: transform, opacity;
-}
-
-.hero-wordmark-wrap,
-.hero-tagline-wrap {
-  display: block;
-}
-
-.hero-wordmark {
-  font-family: 'Baloo Thambi 2', cursive;
-  font-size: clamp(4.5rem, 19vw, 15rem);
-  line-height: 1;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  margin: 0 0 1.5rem;
-  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.35));
-}
-
-.hero-tagline {
-  font-size: clamp(1.4rem, 3.2vw, 2.5rem);
-  font-weight: 600;
-  margin: 0;
-  filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.3));
-}
-
-/* Indicador de scroll cinematográfico */
-.hero-scroll-indicator {
-  position: absolute;
-  bottom: 2.2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.55rem;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.75);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  will-change: transform, opacity;
-}
-
-.hero-scroll-indicator:hover {
-  color: #fff;
-  transform: translateX(-50%) translateY(2px);
-}
-
-.indicator-mouse {
-  width: 22px;
-  height: 34px;
-  border-radius: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.6);
-  position: relative;
-  display: flex;
-  justify-content: center;
-}
-
-.indicator-wheel {
-  width: 4px;
-  height: 6px;
-  background: #fff;
-  border-radius: 2px;
-  margin-top: 6px;
-  animation: scroll-wheel 1.8s ease-in-out infinite;
-}
-
-@keyframes scroll-wheel {
-  0% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-  60% {
-    transform: translateY(10px);
-    opacity: 0;
-  }
-  61% {
-    transform: translateY(0);
-    opacity: 0;
-  }
-  100% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.indicator-text {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
+/* Hero: migrou pra LandingHeroSection.vue (Fase 5, parte 6). */
 
 /* Seção "Descubra": migrou pra LandingDiscoverSection.vue (Fase 5, parte
    5). .btn-cta-primary/.discover-avatars/.avatar-* abaixo continuam
@@ -2640,10 +2470,6 @@ h2 .logo-text,
     display: inline-flex;
   }
 
-  .hero {
-    padding: 8rem 0 3rem;
-  }
-
   .app-showcase-v2 {
     padding-top: 5rem;
     padding-bottom: 5rem;
@@ -2699,10 +2525,6 @@ h2 .logo-text,
 }
 
 @media (max-width: 480px) {
-  .hero-wordmark {
-    font-size: 3rem;
-  }
-
   .showcase-phone-wrap {
     perspective: 900px;
     padding: 1.5rem 0 2.5rem;
