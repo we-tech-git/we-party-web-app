@@ -346,4 +346,18 @@
   margin: 0;
   font-size: 0.95rem;
 }
+
+/* Duplicado de Profile.vue — regra global de acessibilidade (achado
+   retroativo: nenhum modal extraído nas partes 1-6 tinha isso, então
+   `prefers-reduced-motion` não afetava a transição de entrada/saída
+   deles; ver REFACTOR_AUDIT_PLAN.md). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 </style>
