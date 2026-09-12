@@ -105,6 +105,30 @@
   font-weight: 400;
 }
 
+/* Também duplicado de LandingPage.vue (mesmo motivo do heading acima) —
+   achado depois do merge: sem isso, a seção renderiza sem centralizar e
+   sem padding lateral, "colada" na esquerda em qualquer largura de tela. */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 1rem;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    FAQ — BALÕES DE CONVERSA
    ═══════════════════════════════════════════════════════════════════════════ */
