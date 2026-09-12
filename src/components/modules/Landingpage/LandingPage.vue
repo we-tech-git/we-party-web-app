@@ -1,6 +1,7 @@
 <script setup lang="ts">
-  import { useWindowScroll, useWindowSize } from '@vueuse/core'
+  import type { DiscoverEventCard } from './types'
 
+  import { useWindowScroll, useWindowSize } from '@vueuse/core'
   import gsap from 'gsap'
   import { ScrollTrigger } from 'gsap/ScrollTrigger'
   import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -14,6 +15,7 @@
   import { useGuestMode } from '@/composables/useGuestMode'
   import { usePwaInstall } from '@/composables/usePwaInstall'
   import { logger } from '@/utils/logger'
+  import LandingDiscoverSection from './LandingDiscoverSection.vue'
   import LandingFaqSection from './LandingFaqSection.vue'
   import LandingFeaturesSection from './LandingFeaturesSection.vue'
   import LandingHowItWorksSection from './LandingHowItWorksSection.vue'
@@ -52,7 +54,6 @@
   const headerEl = ref<HTMLElement | null>(null)
   const heroSection = ref<HTMLElement | null>(null)
   const heroVideo = ref<HTMLVideoElement | null>(null)
-  const discoverCardsEl = ref<HTMLElement | null>(null)
 
   // Animation refs & GSAP context
   const isLoaded = ref(false)
@@ -159,19 +160,6 @@
   }
 
   // Data
-  interface DiscoverEventCard {
-    emoji: string
-    category: string
-    tag: string
-    tagColor: string
-    title: string
-    likes: number
-    comments: number
-    when: string
-    gradient: string
-    image: string
-  }
-
   const fallbackDiscoverEvents: DiscoverEventCard[] = [
     {
       emoji: '🎶', category: 'Música', tag: 'Festa', tagColor: '#F978A3', title: 'Festa na Cobertura',
@@ -723,13 +711,13 @@
 
       // Configura microinterações do mouse
       setupMagneticButtons(landingEl.value!)
-      if (discoverCardsEl.value) {
-        setupDiscoverCardsInteractivity(discoverCardsEl.value)
-      }
-      // Grid de features agora é LandingFeaturesSection.vue (Fase 5, parte
-      // 3) — setupFeaturesSpotlight só faz querySelectorAll, então passar a
-      // raiz da página (landingEl) funciona igual, sem precisar de
-      // defineExpose pro ref interno do componente filho.
+      // Grid de discover/features agora são LandingDiscoverSection.vue
+      // (Fase 5, parte 5) e LandingFeaturesSection.vue (parte 3) —
+      // setupDiscoverCardsInteractivity/setupFeaturesSpotlight só fazem
+      // querySelectorAll, então passar a raiz da página (landingEl)
+      // funciona igual, sem precisar de defineExpose pro ref interno do
+      // componente filho.
+      setupDiscoverCardsInteractivity(landingEl.value!)
       setupFeaturesSpotlight(landingEl.value!)
     }, landingEl.value)
   }
@@ -982,87 +970,12 @@
     </section>
 
     <!-- Descubra eventos -->
-    <section id="descubra" class="discover">
-      <div class="discover-bg" />
-      <div class="container discover-grid">
-        <div class="discover-content">
-          <div class="discover-badge">
-            <span>🎉</span>
-            <span>Feito para quem ama sair de casa</span>
-          </div>
+    <!-- Descubra — extraído pra LandingDiscoverSection.vue na Fase 5 do
+         REFACTOR_AUDIT_PLAN.md (5ª fatia da decomposição). `discoverEvents`/
+         `usersOnline` continuam aqui porque "app-showcase" (abaixo, ainda
+         não extraída) também os usa. -->
+    <LandingDiscoverSection :events="discoverEvents" :users-online="usersOnline" />
 
-          <h2 class="discover-title">
-            Descubra eventos perto de você e conecte-se
-            <span class="title-gradient"> com pessoas que também vão</span>
-          </h2>
-
-          <p class="discover-text">
-            Encontre festas, shows e experiências na sua cidade, veja quem vai participar e interaja
-            com outros usuários antes mesmo do evento começar.
-          </p>
-
-          <div class="discover-actions">
-            <router-link v-slot="{ href, navigate }" custom to="/public/explore">
-              <a class="btn-cta-primary" :href="href" @click="navigate">
-                <span>Experimentar</span>
-                <div class="btn-glow" />
-              </a>
-            </router-link>
-            <div class="discover-avatars">
-              <span class="avatar-dot avatar-1" />
-              <span class="avatar-dot avatar-2" />
-              <span class="avatar-dot avatar-3" />
-              <span class="avatar-label">+2.3k na sua região</span>
-            </div>
-          </div>
-
-          <div class="discover-live-card">
-            <span class="discover-live-emoji">🔥</span>
-            <div class="discover-live-body">
-              <div class="discover-live-top">
-                <span class="discover-live-number">+{{ usersOnline }}</span>
-                <span class="discover-live-badge"><span class="live-dot" />AO VIVO</span>
-              </div>
-              <div class="discover-live-text">pessoas descobrindo eventos agora</div>
-            </div>
-          </div>
-        </div>
-
-        <div ref="discoverCardsEl" class="discover-cards">
-          <div
-            v-for="(event, index) in discoverEvents"
-            :key="event.title"
-            class="discover-event-card"
-            :class="`discover-event-card-${index + 1}`"
-          >
-            <div class="discover-event-media" :style="{ background: event.gradient }">
-              <img
-                v-if="event.image"
-                :alt="`Foto do evento ${event.title}`"
-                class="discover-event-image"
-                loading="lazy"
-                :src="event.image"
-              >
-              <span class="discover-event-category">{{ event.emoji }} {{ event.category }}</span>
-              <span class="discover-event-share"><v-icon icon="mdi-share-variant-outline" size="14" /></span>
-              <div class="discover-event-overlay">
-                <span class="discover-event-tag" :style="{ background: event.tagColor }">{{ event.tag }}</span>
-                <div class="discover-event-title">{{ event.title }}</div>
-              </div>
-            </div>
-            <div class="discover-event-footer">
-              <div class="discover-event-stats">
-                <span>❤️ {{ event.likes }}</span>
-                <span>💬 {{ event.comments }}</span>
-              </div>
-              <span class="discover-event-when" :style="{ color: event.tagColor }">{{ event.when }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Features Grid -->
     <!-- Features — extraído pra LandingFeaturesSection.vue na Fase 5 do
          REFACTOR_AUDIT_PLAN.md (3ª fatia da decomposição). -->
     <LandingFeaturesSection />
@@ -1675,28 +1588,8 @@ h2 .logo-text,
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   MISC
-   ═══════════════════════════════════════════════════════════════════════════ */
-.live-dot {
-  width: 8px;
-  height: 8px;
-  background: var(--gradient);
-  border-radius: 50%;
-  animation: blink 1s ease-in-out infinite;
-  display: inline-block;
-}
-
-@keyframes blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.3;
-  }
-}
+/* .live-dot + @keyframes blink: migraram pra LandingDiscoverSection.vue
+   (Fase 5, parte 5) — nada de "MISC" pra guardar aqui. */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    HERO CINEMATOGRÁFICA
@@ -1832,82 +1725,9 @@ h2 .logo-text,
   text-transform: uppercase;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   DESCUBRA EVENTOS
-   ═══════════════════════════════════════════════════════════════════════════ */
-.discover {
-  position: relative;
-  padding: 5rem 0 8rem;
-  overflow: hidden;
-}
-
-.discover-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 10% 20%, rgba(255, 201, 71, 0.12) 0%, transparent 45%),
-    radial-gradient(circle at 95% 85%, rgba(139, 92, 246, 0.12) 0%, transparent 45%);
-}
-
-.discover-grid {
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 4rem;
-  align-items: center;
-}
-
-.discover-content {
-  text-align: left;
-}
-
-.discover-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.75);
-  color: var(--primary-dark);
-  font-weight: 700;
-  font-size: 0.85rem;
-  padding: 0.55rem 1.2rem;
-  border-radius: 999px;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 4px 16px rgba(249, 120, 163, 0.18);
-}
-
-.discover-title {
-  font-size: clamp(1.85rem, 3.4vw, 2.75rem);
-  line-height: 1.28;
-  font-weight: 800;
-  color: #1e293b;
-  letter-spacing: -0.02em;
-  margin: 0 0 1.5rem;
-}
-
-.title-gradient {
-  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.discover-text {
-  font-size: 1.05rem;
-  line-height: 1.75;
-  color: var(--text-light);
-  max-width: 460px;
-  margin: 0 0 2.25rem;
-}
-
-.discover-actions {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-  margin-bottom: 2rem;
-}
-
+/* Seção "Descubra": migrou pra LandingDiscoverSection.vue (Fase 5, parte
+   5). .btn-cta-primary/.discover-avatars/.avatar-* abaixo continuam
+   aqui — "app-showcase" (mais abaixo, ainda não extraída) também usa. */
 .btn-cta-primary {
   display: flex;
   align-items: center;
@@ -1976,193 +1796,8 @@ h2 .logo-text,
   background: linear-gradient(135deg, #8bd3ff, #a58bff);
 }
 
-.avatar-label {
-  font-size: 0.85rem;
-  color: var(--text-light);
-  font-weight: 600;
-  margin-left: 0.6rem;
-}
-
-.discover-live-card {
-  display: inline-flex;
-  align-items: center;
-  gap: 1rem;
-  background: #fff;
-  border-radius: 18px;
-  padding: 1.1rem 1.6rem;
-  box-shadow: 0 16px 40px rgba(249, 120, 163, 0.2);
-}
-
-.discover-live-emoji {
-  font-size: 1.6rem;
-}
-
-.discover-live-top {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.discover-live-number {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: var(--primary);
-}
-
-.discover-live-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--secondary);
-  letter-spacing: 0.05em;
-}
-
-.discover-live-text {
-  font-size: 0.85rem;
-  color: #1e293b;
-  font-weight: 600;
-  margin-top: 0.15rem;
-}
-
-.discover-cards {
-  position: relative;
-  min-height: 620px;
-  perspective: 1200px;
-}
-
-.discover-event-card {
-  position: absolute;
-  width: 240px;
-  background: #fff;
-  border-radius: 22px;
-  padding: 10px;
-  box-shadow: 0 20px 45px rgba(249, 120, 163, 0.22);
-  transform-style: preserve-3d;
-  will-change: transform;
-  backface-visibility: hidden;
-  cursor: pointer;
-}
-
-.discover-event-card-1 {
-  top: 0;
-  left: 0;
-  transform: rotate(-6deg);
-  z-index: 1;
-}
-
-.discover-event-card-2 {
-  top: 240px;
-  right: 0;
-  transform: rotate(5deg);
-  z-index: 2;
-}
-
-.discover-event-card-3 {
-  bottom: 0;
-  left: 5%;
-  transform: rotate(-3deg);
-  z-index: 1;
-}
-
-.discover-event-media {
-  position: relative;
-  width: 100%;
-  height: 180px;
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.discover-event-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  will-change: transform;
-}
-
-.discover-event-media::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.72) 100%);
-}
-
-.discover-event-category {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 1;
-  background: rgba(255, 255, 255, 0.92);
-  border-radius: 999px;
-  padding: 5px 10px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #1a1a2e;
-}
-
-.discover-event-share {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-}
-
-.discover-event-overlay {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  right: 10px;
-  z-index: 1;
-}
-
-.discover-event-tag {
-  display: inline-block;
-  color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 999px;
-  margin-bottom: 7px;
-}
-
-.discover-event-title {
-  color: #fff;
-  font-weight: 800;
-  font-size: 16px;
-  line-height: 1.2;
-}
-
-.discover-event-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 4px 2px;
-}
-
-.discover-event-stats {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 11px;
-  color: #9a9aab;
-  font-weight: 600;
-}
-
-.discover-event-when {
-  font-size: 11px;
-  font-weight: 700;
-}
+/* Resto de "Descubra" (live counter, cards de evento): migrou junto pra
+   LandingDiscoverSection.vue. */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SECTION HEADERS
@@ -2965,15 +2600,8 @@ h2 .logo-text,
    RESPONSIVO
    ═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 1024px) {
-  .discover-grid,
   .showcase-grid {
     grid-template-columns: 1fr;
-  }
-
-  .discover-cards {
-    min-height: 460px;
-    max-width: 460px;
-    margin: 0 auto;
   }
 
   .footer-grid-v2 {
@@ -3014,58 +2642,6 @@ h2 .logo-text,
 
   .hero {
     padding: 8rem 0 3rem;
-  }
-
-  .discover {
-    padding: 2rem 0 5rem;
-  }
-
-  .discover-grid {
-    grid-template-columns: 1fr;
-    gap: 2.5rem;
-  }
-
-  .discover-content {
-    text-align: center;
-  }
-
-  .discover-text {
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .discover-actions {
-    justify-content: center;
-  }
-
-  .discover-live-card {
-    margin: 0 auto;
-  }
-
-  /* No mobile a colagem rotacionada não cabe — vira uma lista empilhada normal */
-  .discover-cards {
-    position: static;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-    min-height: auto;
-    width: 100%;
-    max-width: 420px;
-    margin: 0 auto;
-    perspective: none;
-  }
-
-  .discover-event-card,
-  .discover-event-card-1,
-  .discover-event-card-2,
-  .discover-event-card-3 {
-    position: static;
-    width: 100%;
-    top: auto;
-    bottom: auto;
-    left: auto;
-    right: auto;
-    transform: none;
   }
 
   .app-showcase-v2 {
