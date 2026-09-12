@@ -5,7 +5,6 @@
  */
 
 import axios from 'axios'
-import { STORAGE_KEYS } from '@/common/storage'
 import { logger } from '@/utils/logger'
 import { AuthService } from './auth'
 
@@ -45,20 +44,19 @@ export class SocialAuthService {
         )
 
         if (backendResponse.success && backendResponse.token) {
-          // Salva os dados de autenticação
+          // Salva os dados de autenticação — única fonte de verdade da
+          // sessão (Fase 6 do REFACTOR_AUDIT_PLAN.md, item D1). Este
+          // arquivo também gravava STORAGE_KEYS.AUTH_TOKEN/USER_ID direto
+          // no localStorage; confirmado que nada no código-base lê essas
+          // 2 chaves (só `auth.ts` as limpa no logout) — eram gravação
+          // redundante desde alguma versão anterior do fluxo de login
+          // social, removida.
           AuthService.saveAuthData({
             success: true,
             message: backendResponse.message,
             token: backendResponse.token,
             user: backendResponse.user,
           })
-
-          // Salva dados específicos
-          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, backendResponse.token)
-          localStorage.setItem(
-            STORAGE_KEYS.USER_ID,
-            backendResponse.user?.id || '',
-          )
 
           return {
             success: true,

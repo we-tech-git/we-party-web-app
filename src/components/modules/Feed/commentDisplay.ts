@@ -1,7 +1,12 @@
 /**
- * Helpers de apresentação compartilhados por InlineComments e CommentNode.
- * Versões equivalentes ainda vivem inline em CommentsDrawer, EventDetails e
- * NewEventDetails — migrar aquelas para cá é um passo seguinte.
+ * Helpers de apresentação compartilhados por InlineComments, CommentNode e
+ * CommentsDrawer (Fase 6 do REFACTOR_AUDIT_PLAN.md, item D3 — a versão
+ * inline em CommentsDrawer.vue era idêntica a esta e foi migrada pra cá;
+ * `EventDetails.vue`, citado antes aqui, é código morto arquivado em
+ * `_revisar_/`, não precisa migrar; `NewEventDetails.vue` usa
+ * formatLong/formatShort/formatTime — funções com propósito diferente
+ * (data/hora do próprio evento, não tempo relativo de comentário), não
+ * são duplicatas desta).
  */
 
 const AVATAR_COLORS = [

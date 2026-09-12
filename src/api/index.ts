@@ -123,7 +123,7 @@ export async function callApi (
   }
 
   if (auth) {
-    const token = localStorage.getItem('ACCESS_TOKEN')
+    const token = AuthService.getToken()
     headers = {
       ...headers,
       Authorization: `Bearer ${token}`,
@@ -197,7 +197,7 @@ export async function callApi (
       })
 
       // Só faz logout se havia um usuário logado E recebeu erro de autenticação
-      const hadToken = localStorage.getItem('ACCESS_TOKEN')
+      const hadToken = AuthService.getToken()
       if (
         hadToken
         && (error.response?.status === 401
