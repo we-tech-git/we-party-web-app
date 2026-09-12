@@ -52,6 +52,12 @@ jobs:
       - name: Lint
         run: yarn lint
 
+      # Fase 7 do REFACTOR_AUDIT_PLAN.md (G3): antes disso o CI rodava
+      # lint + type-check + build sem nenhuma etapa de teste — regressão de
+      # comportamento não bloqueava PR.
+      - name: Testes
+        run: yarn test
+
       # `build` roda type-check + build-only via run-p, então cobre os dois.
       # Não precisa de .env: as VITE_* ausentes viram undefined, não quebram
       # o build. Quem injeta as variáveis de verdade é a Vercel.

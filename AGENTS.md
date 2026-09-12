@@ -18,7 +18,8 @@ Este arquivo é lido por agents ANTES de qualquer alteração neste repo. É o *
 - `preview` — serve o build (`vite preview`)
 - `type-check` — `vue-tsc --build`
 - `lint` — ESLint (`eslint . --fix`, config `eslint-config-vuetify`)
-> **Package manager:** não fixado — existem **`yarn.lock`** e **`package-lock.json`** no repo. Padronizar em um só (confirmar com o time antes).
+- `test` — Vitest (`vitest run`) — ver `docs/TESTING.md`
+> **Package manager:** `yarn` (`yarn.lock` é o lockfile versionado).
 
 ## Arquitetura
 ```
@@ -33,7 +34,7 @@ src/
 ├── layouts/              # layouts (vue-layouts-next)
 ├── api/                  # chamadas HTTP ao backend (por recurso)
 ├── services/             # ex.: socialAuth (Google/Facebook)
-├── stores/               # Pinia: app, events, share
+├── stores/               # Pinia: events, interestPage, share
 ├── composables/          # lógica reutilizável (Composition API)
 ├── components/           # UI/ e modules/
 ├── plugins/              # i18n, vuetify (registrados no bootstrap)
@@ -53,7 +54,7 @@ src/
 - `VITE__FACEBOOK_APP_ID` — login Facebook (fallback `VITE_FACEBOOK_APP_ID`)
 
 ## Documentação (no repo)
-- `docs/` — specs e guias (ex.: `GOOGLE_OAUTH_FRONTEND_INTEGRATION.md`, `QUICK_START_SOCIAL_AUTH.md`, guias de otimização/correções)
+- `docs/README.md` — índice: aponta pra `REFACTOR_AUDIT_PLAN.md` (histórico do diagnóstico/plano de refatoração), `docs/DESIGN_SYSTEM.md` (catálogo do DS + critério de reuso), `docs/TESTING.md` (como testar), `src/styles/README.md` (tokens/CSS), contratos de API (`docs/BACKEND_*_SPEC.md`) e `docs/archive/` (relatórios históricos, não referência viva)
 - `README.md` — scaffolding Vuetify
 
 ## Safety
@@ -62,16 +63,26 @@ src/
 - Rodar `type-check` e `lint` antes de commitar
 - Branch de trabalho de agent: `<agent>/<feature>`; docs: `docs/<slug>`
 - **Toda abertura de PR usa o template `.github/PULL_REQUEST_TEMPLATE.md`** (`Tarefa`, `O que muda`, `Como testar`, `Checklist`, `Novidades`) — preencher as seções de verdade, não abrir PR com corpo livre nem apagar seções. Sem tarefa no Plane, explicar o porquê em `## Tarefa` em vez de omitir a seção.
+- **Não tocar** em `openspec/`, `.opencode/`, `.claude/commands/opsx/*`, `.claude/skills/openspec-*` — infraestrutura de um esforço futuro separado, sem relação com este app.
+
+### Antes de abrir PR
+- `yarn type-check` e `yarn lint` sem erro.
+- `yarn test` (`vitest run`) verde — ver `docs/TESTING.md` para onde/como escrever teste novo.
+- `yarn build` sem erro (pega problema que `lint`/`test` não cobrem, ex.: sintaxe de CSS quebrada em `<style scoped>`).
 
 ## Regras de implementação (frontend) — OBRIGATÓRIAS
 
 ### 1. Reuso antes de criar
-Antes de escrever botão, input, modal, chip, loader, snackbar ou qualquer bloco de UI:
-1. Procure em `src/components/UI/` (AppLoader, AuthLayout, ErrorBoundary, SearchInput, SelectableChip, Snackbar, SocialAuthButtons, LoginRequiredDialog, WePartyLoader, inputLabel) e em `src/components/modules/UI/`.
-2. Considere também o Vuetify: `v-btn`, `v-dialog`, `v-text-field` etc. já cobrem muito caso — não reimplemente.
-3. Se existe algo **parecido mas não igual**, estenda via prop/slot em vez de duplicar o template.
-4. Lógica compartilhada vira **composable** em `src/composables/` (o projeto já tem useAuth, useValidation, useRateLimit, useEventImages...), não bloco copiado.
-5. Só crie componente novo quando nada acima serve.
+`src/components/UI/` é a **única** pasta de Design System (`components/modules/UI/` não existe mais). Antes de escrever botão, input, modal, chip, loader, snackbar ou qualquer bloco de UI, veja o catálogo e o critério de reuso/criação completo em [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) — resumo:
+1. Existe no Vuetify (`v-btn`, `v-dialog`, `v-text-field`...)? Use, configurado via tema/props.
+2. Existe em `src/components/UI/` (ver catálogo + Storybook, `yarn storybook`)? Estenda via prop/slot, nunca copie o template.
+3. Padrão visual novo aparecendo pela 2ª vez? Crie em `src/components/UI/` com story, migre as ocorrências existentes.
+4. É único de uma tela e não se repete? Fica local ao componente de módulo.
+5. Lógica compartilhada vira **composable** em `src/composables/` (o projeto já tem useAuth, useValidation, useRateLimit, useEventImages...), não bloco copiado.
+
+- **Header/Footer**: sempre via `AppHeader`/`AppFooter` (`src/components/UI/`); nunca criar `<header>`/`<footer>` inline numa página. Implementações antigas ficam arquivadas em `src/components/_revisar_/`, não são reaproveitadas.
+- **Cor/espaçamento/radius**: vêm de `src/styles/tokens.css` (ver [`src/styles/README.md`](src/styles/README.md)); nunca hex-code novo em `<style>` ou `tailwind.config.ts`.
+- **`data-testid` + E2E**: toda funcionalidade nova com interação relevante (botão, toggle, item de lista clicável) ganha `data-testid` (kebab-case, prefixado pelo componente/tela, ex. `feed-card-like`) no momento em que é escrita. O teste E2E correspondente é responsabilidade do `weparty-automation` (`../weparty-automation/AGENTS.md`), não deste repositório — ver [`docs/TESTING.md`](docs/TESTING.md).
 
 > ⚠️ `src/components/modules/Profile/Profile.vue` tem ~167KB num arquivo só, com cropper
 > de imagem escrito à mão. Ao mexer nele, **extraia** o que tocar em vez de aumentar o monolito.
