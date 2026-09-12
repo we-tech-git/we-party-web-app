@@ -45,6 +45,7 @@ declare module 'vue' {
     LandingDiscoverSection: typeof import('./components/modules/Landingpage/LandingDiscoverSection.vue')['default']
     LandingFaqSection: typeof import('./components/modules/Landingpage/LandingFaqSection.vue')['default']
     LandingFeaturesSection: typeof import('./components/modules/Landingpage/LandingFeaturesSection.vue')['default']
+    LandingHeroSection: typeof import('./components/modules/Landingpage/LandingHeroSection.vue')['default']
     LandingHowItWorksSection: typeof import('./components/modules/Landingpage/LandingHowItWorksSection.vue')['default']
     LandingPage: typeof import('./components/modules/Landingpage/LandingPage.vue')['default']
     LandingUpdatesTeaser: typeof import('./components/modules/Landingpage/LandingUpdatesTeaser.vue')['default']
