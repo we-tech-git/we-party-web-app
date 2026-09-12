@@ -108,70 +108,11 @@
 
     <div class="relative z-10 max-w-295 mx-auto px-4 md:px-10">
 
-      <!-- Floating social bar -->
-      <div
-        class="relative z-10 -mt-10 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-4 sm:gap-6 bg-white border border-black/5 rounded-3xl px-5 py-5 sm:px-6 shadow-card"
-      >
-        <div class="flex items-center gap-3 sm:gap-4">
-          <div class="flex items-center">
-            <div
-              v-for="(av, i) in attendeeAvatars"
-              :key="i"
-              :style="{ marginLeft: i > 0 ? '-12px' : '0', zIndex: attendeeAvatars.length - i }"
-            >
-              <UserAvatar
-                :image="av.image"
-                :name="av.name"
-                :size="40"
-                :style="{ border: '2.5px solid white', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }"
-              />
-            </div>
-          </div>
-
-          <div class="leading-tight">
-            <span class="font-bold"><b class="text-weparty-pink">{{ goingCount }}</b> pessoas vão</span>
-            <small class="block text-gray-400 font-semibold text-sm">Confirme e chame a galera 🎉</small>
-          </div>
-        </div>
-
-        <div class="hidden sm:block w-px self-stretch bg-black/8 my-1" />
-
-        <div class="flex items-center gap-5 sm:gap-6">
-          <div class="flex items-center gap-3">
-            <span class="w-11 h-11 rounded-[13px] bg-pink-50 text-weparty-pink grid place-items-center flex-none">
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path
-                  d="M12 21s-7.5-4.6-10-9C.6 9 2 5 5.5 5 8 5 9.4 6.6 12 9c2.6-2.4 4-4 6.5-4C22 5 23.4 9 22 12c-2.5 4.4-10 9-10 9z"
-                />
-              </svg>
-            </span>
-            <div>
-              <b class="text-[19px] font-display">{{ likeCount }}</b>
-              <small class="block text-gray-400 font-semibold text-xs -mt-0.5">curtidas</small>
-            </div>
-          </div>
-
-          <div class="w-px self-stretch bg-black/8 my-1" />
-
-          <div class="flex items-center gap-3">
-            <span class="w-11 h-11 rounded-[13px] bg-emerald-50 text-emerald-600 grid place-items-center flex-none">
-              <svg
-                class="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.4"
-                viewBox="0 0 24 24"
-              >
-                <path d="M20 6L9 17l-5-5" />
-              </svg>
-            </span>
-            <div>
-              <b class="text-[19px] font-display">{{ goingCount }}</b>
-              <small class="block text-gray-400 font-semibold text-xs -mt-0.5">confirmados</small>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Floating social bar — extraído pra EventSocialBar.vue na Fase 5 do
+           REFACTOR_AUDIT_PLAN.md (5ª fatia da decomposição). Puramente de
+           exibição — attendeeAvatars/goingCount/likeCount continuam aqui,
+           compartilhados com hero/card de ação/barra inferior mobile. -->
+      <EventSocialBar :attendee-avatars="attendeeAvatars" :going-count="goingCount" :like-count="likeCount" />
 
       <!-- Content grid -->
       <div class="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-7 items-start mt-6">
@@ -360,177 +301,29 @@
                 </div>
               </div>
 
-              <!-- FAQs — só aparece se houver FAQs da API -->
-              <div v-if="hasFaqs" class="faq-card">
-                <button class="faq-header" @click="showFaqs = !showFaqs">
-                  <span class="faq-header-icon">
-                    <svg
-                      class="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2.2"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle cx="12" cy="12" r="9" />
-                      <path d="M12 8h.01M12 12v4" />
-                    </svg>
-                  </span>
-                  <div class="faq-header-text">
-                    <span class="faq-header-title">Perguntas Frequentes</span>
-                    <span class="faq-header-sub">Tire suas dúvidas sobre o evento</span>
-                  </div>
-                  <span class="faq-header-badge">{{ normalizedFaqs.length }}</span>
-                  <span class="faq-header-chevron" :class="{ rotated: showFaqs }">
-                    <svg
-                      class="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2.6"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
-                  </span>
-                </button>
-
-                <Transition name="faq-expand">
-                  <div v-if="showFaqs" class="faq-list">
-                    <div
-                      v-for="(faq, index) in normalizedFaqs"
-                      :key="index"
-                      class="faq-row"
-                      :class="{ active: openFaqIndex === index }"
-                    >
-                      <button class="faq-row-btn" @click="toggleFaq(index)">
-                        <span class="faq-row-num">{{ index + 1 }}</span>
-                        <span class="faq-row-label">{{ faq.question }}</span>
-                        <span class="faq-row-chevron" :class="{ rotated: openFaqIndex === index }">
-                          <svg
-                            class="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2.6"
-                            viewBox="0 0 24 24"
-                          >
-                            <path d="M6 9l6 6 6-6" />
-                          </svg>
-                        </span>
-                      </button>
-                      <Transition name="faq-expand">
-                        <div v-if="openFaqIndex === index" class="faq-row-answer">
-                          <span class="faq-answer-tag">R</span>
-                          <p>{{ faq.answer }}</p>
-                        </div>
-                      </Transition>
-                    </div>
-                  </div>
-                </Transition>
-              </div>
+              <!-- FAQs — extraído pra EventFaqAccordion.vue na Fase 5 do
+                   REFACTOR_AUDIT_PLAN.md (1ª fatia da decomposição de
+                   NewEventDetails.vue). Autocontido: recebe o array cru de
+                   FAQs e cuida da própria normalização/estado. -->
+              <EventFaqAccordion :faqs="event.faq" />
             </div>
           </Transition>
 
-          <!-- PANEL: Atrações -->
+          <!-- PANEL: Atrações — extraído pra EventLineupPanel.vue na Fase 5
+               do REFACTOR_AUDIT_PLAN.md (4ª fatia da decomposição). -->
           <Transition name="fade">
-            <div v-show="activeTab === 'lineup'" class="card">
-              <div class="card-header">
-                <span class="card-icon bg-violet-50 text-violet-600">
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M9 18V5l12-2v13" />
-                    <circle cx="6" cy="18" r="3" />
-                    <circle cx="18" cy="16" r="3" />
-                  </svg>
-                </span>
-                <h3>Atrações <span class="text-gray-400 font-semibold text-sm">· {{ event.lineup.length
-                }} confirmadas</span></h3>
-              </div>
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-1">
-                <div
-                  v-for="artist in event.lineup"
-                  :key="artist.name"
-                  class="bg-white border border-black/5 rounded-[18px] overflow-hidden shadow-sm hover:-translate-y-1 transition-all cursor-pointer"
-                >
-                  <div
-                    class="h-28 grid place-items-center text-white/85 text-4xl"
-                    style="background: linear-gradient(135deg,#3a1430,#5b2167)"
-                  >{{ artist.emoji }}
-                  </div>
-                  <div class="p-4 min-w-0">
-                    <b class="text-[15px] block truncate">{{ artist.name }}</b>
-                    <small class="block text-gray-400 font-semibold truncate">{{ artist.role }}</small>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <EventLineupPanel v-show="activeTab === 'lineup'" :lineup="event.lineup" />
           </Transition>
 
-          <!-- PANEL: Local -->
+          <!-- PANEL: Local — extraído pra EventLocationPanel.vue na Fase 5
+               do REFACTOR_AUDIT_PLAN.md (3ª fatia da decomposição). -->
           <Transition name="fade">
-            <div v-show="activeTab === 'local'" class="card">
-              <div class="card-header">
-                <span class="card-icon bg-pink-50 text-weparty-pink">
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 21s-7-5.5-7-11a7 7 0 0114 0c0 5.5-7 11-7 11z" />
-                    <circle cx="12" cy="10" r="2.5" />
-                  </svg>
-                </span>
-                <h3>Onde acontece</h3>
-              </div>
-              <!-- Mapa real (Google Maps), igual à tela de detalhes antiga -->
-              <div class="relative h-56 rounded-2xl overflow-hidden border border-black/5 bg-[#f1f3f9]">
-                <iframe
-                  v-if="mapEmbedUrl"
-                  allowfullscreen
-                  class="w-full h-full"
-                  loading="lazy"
-                  referrerpolicy="no-referrer-when-downgrade"
-                  :src="mapEmbedUrl"
-                  style="border:0"
-                  title="Mapa do local do evento"
-                />
-                <div v-else class="absolute inset-0 grid place-items-center text-gray-400 font-semibold text-sm">
-                  Localização não disponível
-                </div>
-              </div>
-              <div class="flex flex-wrap items-center gap-4 mt-4">
-                <span
-                  class="w-11 h-11 rounded-[13px] bg-pink-50 text-weparty-pink grid place-items-center flex-none"
-                >
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 21s-7-5.5-7-11a7 7 0 0114 0c0 5.5-7 11-7 11z" />
-                    <circle cx="12" cy="10" r="2.5" />
-                  </svg>
-                </span>
-                <div class="min-w-0">
-                  <b class="text-[15px]">{{ event.venue }}</b>
-                  <small class="block text-gray-400 font-semibold">{{ event.city }}, PR ·
-                    Brasil</small>
-                </div>
-                <button
-                  class="btn-soft ml-auto flex-none flex items-center gap-2 rounded-2xl px-4 py-2.5 font-extrabold text-sm transition-all hover:-translate-y-0.5"
-                  @click="openMap"
-                >
-                  Como chegar →
-                </button>
-              </div>
-            </div>
+            <EventLocationPanel
+              v-show="activeTab === 'local'"
+              :city="event.city"
+              :location="event.location"
+              :venue="event.venue"
+            />
           </Transition>
 
           <!-- PANEL: Comentários -->
@@ -669,75 +462,11 @@
             </div>
           </div>
 
-          <!-- Trending card -->
-          <div class="bg-white border border-black/5 rounded-3xl p-5 shadow-sm">
-            <h3 class="font-display font-bold text-[19px]">O que tá rolando?</h3>
-            <p class="text-gray-400 font-semibold text-sm mb-2">Tendência na sua cidade</p>
-
-            <a
-              v-for="trend in visibleTrending"
-              :key="trend.id"
-              class="trend-card flex items-center gap-3 p-3 mb-2.5 rounded-2xl transition-all cursor-pointer hover:-translate-y-0.5"
-              href="#"
-              @click.prevent="goToTrend(trend)"
-            >
-              <img
-                v-if="trend.image"
-                :alt="trend.title"
-                class="w-12 h-12 rounded-2xl flex-none object-cover"
-                loading="lazy"
-                :src="trend.image"
-              >
-              <span
-                v-else
-                class="w-12 h-12 rounded-2xl flex-none grid place-items-center text-white font-display font-extrabold text-xl"
-                :style="{ background: trend.color }"
-              >{{ trend.initial }}</span>
-              <div class="min-w-0">
-                <span
-                  class="block text-[10px] font-extrabold tracking-widest uppercase text-weparty-pink truncate"
-                >{{
-                  trend.venue }}</span>
-                <b class="text-sm block leading-tight my-0.5 truncate">{{ trend.title }}</b>
-                <small class="text-gray-400 font-semibold text-xs">🤍 {{ trend.likes }} curtidas</small>
-              </div>
-            </a>
-
-            <button
-              v-if="trendHasMore"
-              class="w-full mt-3.5 bg-pink-50 text-weparty-pink font-extrabold rounded-2xl py-3 flex items-center justify-center gap-2 hover:bg-pink-100 transition-all disabled:opacity-60"
-              :disabled="trendLoading"
-              @click="showMoreTrending"
-            >
-              {{ trendLoading ? 'Carregando...' : 'Mostrar mais' }}
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.6"
-                viewBox="0 0 24 24"
-              >
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </button>
-
-            <button
-              v-else-if="trendIsExpanded"
-              class="w-full mt-3.5 bg-pink-50 text-weparty-pink font-extrabold rounded-2xl py-3 flex items-center justify-center gap-2 hover:bg-pink-100 transition-all"
-              @click="showLessTrending"
-            >
-              Mostrar menos
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.6"
-                viewBox="0 0 24 24"
-              >
-                <path d="M18 15l-6-6-6 6" />
-              </svg>
-            </button>
-          </div>
+          <!-- Trending card — extraído pra EventTrendingCard.vue na Fase 5
+               do REFACTOR_AUDIT_PLAN.md (2ª fatia da decomposição). Busca
+               continua aqui (usa resolveAsset/eventsStore, compartilhados
+               com outras partes do arquivo). -->
+          <EventTrendingCard :loading="trendLoading" :trending="trending" />
         </aside>
       </div>
     </div>
@@ -839,10 +568,14 @@
   import { getEventComments } from '@/api/comments'
   import { getEventById, getMyAttendance, getTrendingEvents } from '@/api/event'
   import { checkIsFollowing, followUserById, unfollowUserById } from '@/api/follows'
+  import EventFaqAccordion from '@/components/modules/Feed/EventFaqAccordion.vue'
+  import EventLineupPanel from '@/components/modules/Feed/EventLineupPanel.vue'
+  import EventLocationPanel from '@/components/modules/Feed/EventLocationPanel.vue'
+  import EventSocialBar from '@/components/modules/Feed/EventSocialBar.vue'
+  import EventTrendingCard from '@/components/modules/Feed/EventTrendingCard.vue'
   import InlineComments from '@/components/modules/Feed/InlineComments.vue'
   import AppHeader from '@/components/UI/AppHeader/AppHeader.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
-  import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useGeolocation } from '@/composables/useGeolocation'
@@ -1082,40 +815,8 @@
     return null
   }
 
-  // ── FAQs (mesma dinâmica da tela de detalhes antiga) ─────────
-  const openFaqIndex = ref<number | null>(null)
-  const showFaqs = ref(false)
-
-  // Gradientes padrão para FAQs (usados quando a API não envia gradient)
-  const defaultGradients = [
-    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)',
-    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-    'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
-    'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-  ]
-
-  // Normaliza as FAQs vindas da API com fallbacks seguros
-  const normalizedFaqs = computed(() => {
-    if (!Array.isArray(event.value.faq) || event.value.faq.length === 0) {
-      return []
-    }
-    return event.value.faq.map((faq, index) => ({
-      question: faq.question || 'Pergunta não informada',
-      answer: faq.answer || 'Resposta não disponível',
-      icon: faq.icon || 'mdi-help-circle-outline',
-      gradient: faq.gradient || defaultGradients[index % defaultGradients.length],
-    }))
-  })
-
-  const hasFaqs = computed(() => normalizedFaqs.value.length > 0)
-
-  function toggleFaq (index: number) {
-    openFaqIndex.value = openFaqIndex.value === index ? null : index
-  }
+  // FAQs: migraram pra EventFaqAccordion.vue (Fase 5, parte 1) — normalização
+  // e estado de abrir/fechar ficaram autocontidos lá.
 
   // Avatares da barra "pessoas vão" — conectados a dados reais.
   // Prioriza a lista de presenças vinda no payload do evento; quando indisponível,
@@ -1384,27 +1085,8 @@
     }
   }
 
-  // ── Mapa (mesma lógica da tela de detalhes antiga) ───────────
-  const mapLocation = computed(() => event.value.location || event.value.venue || '')
-
-  // URL do iframe de mapa: usa o Embed API quando há chave; senão, fallback público.
-  const mapEmbedUrl = computed(() => {
-    const loc = mapLocation.value
-    if (!loc) return ''
-    const encoded = encodeURIComponent(loc)
-    const apiKey = import.meta.env.VITE__GOOGLE_MAPS_API_KEY
-    if (apiKey) {
-      return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encoded}&zoom=15`
-    }
-    return `https://maps.google.com/maps?q=${encoded}&t=&z=15&ie=UTF8&iwloc=&output=embed`
-  })
-
-  function openMap () {
-    const loc = mapLocation.value
-    if (!loc) return
-    const query = encodeURIComponent(loc)
-    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank', 'noopener,noreferrer')
-  }
+  // Mapa: migrou pra EventLocationPanel.vue (Fase 5, parte 3) — cálculo da
+  // URL do embed e "Como chegar" ficaram autocontidos lá.
 
   const confirming = ref(false)
   async function toggleRsvp () {
@@ -1517,16 +1199,8 @@
     likes: number
   }
   const trending = ref<TrendVM[]>([])
-  // Quantidade de tendências buscadas e exibidas inicialmente (comportamento da tela antiga:
-  // o botão "Mostrar mais" expande de uma vez e vira "Mostrar menos" para recolher).
   const TREND_FETCH_SIZE = 20
-  const TREND_INITIAL_COUNT = 5
-  const visibleCount = ref(TREND_INITIAL_COUNT)
   const trendLoading = ref(false)
-
-  const visibleTrending = computed(() => trending.value.slice(0, visibleCount.value))
-  const trendHasMore = computed(() => trending.value.length > visibleCount.value)
-  const trendIsExpanded = computed(() => visibleCount.value > TREND_INITIAL_COUNT)
 
   function mapTrend (e: any, i: number): TrendVM {
     const likes = e.likesCount || e.likes || e._count?.likes || 0
@@ -1563,21 +1237,8 @@
     }
   }
 
-  // Expande de uma vez todas as tendências carregadas.
-  function showMoreTrending () {
-    visibleCount.value = trending.value.length
-  }
-
-  // Recolhe de volta à quantidade inicial.
-  function showLessTrending () {
-    visibleCount.value = TREND_INITIAL_COUNT
-  }
-
-  // Abre o evento em destaque — mesmo destino usado no Feed/EventView
-  function goToTrend (trend: TrendVM) {
-    if (!trend.id) return
-    router.push(`/private/event/${trend.id}`)
-  }
+  // "Mostrar mais/menos"/goToTrend: migraram pra EventTrendingCard.vue
+  // (Fase 5, parte 2) — exibição e navegação ficaram autocontidas lá.
 
   // ── Carregamento do evento ───────────────────────────────────
   function toCount (value: unknown): number | null {
@@ -1863,17 +1524,8 @@
     transition: width .6s cubic-bezier(.2, .7, .3, 1);
 }
 
-/* ── Cards de tendência ("O que tá rolando?") ──────────────────
-   Fundo rosa-pêssego suave da marca, no lugar do branco apagado. */
-.trend-card {
-    background: linear-gradient(135deg, #fff6f9 0%, #fff1e8 100%);
-    border: 1px solid rgba(255, 95, 166, .12);
-}
-
-.trend-card:hover {
-    border-color: rgba(255, 95, 166, .30);
-    box-shadow: 0 12px 26px -16px rgba(123, 38, 96, .55);
-}
+/* Cards de tendência: migraram pra EventTrendingCard.vue (Fase 5, parte
+   2) — nada pra estilizar aqui. */
 
 /* ── Cards ─────────────────────────────────────────────────── */
 .card {
@@ -2013,218 +1665,8 @@
     }
 }
 
-/* ── FAQs ──────────────────────────────────────────────────── */
-.faq-card {
-    background: #fff;
-    border: 1px solid rgba(34, 26, 61, .06);
-    border-radius: 22px;
-    overflow: hidden;
-    box-shadow: 0 6px 20px -12px rgba(123, 38, 96, .3);
-}
-
-.faq-header {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    border: none;
-    background: linear-gradient(135deg, #FFF0F6 0%, #FFF8F0 100%);
-    cursor: pointer;
-    padding: 20px 22px;
-    text-align: left;
-    transition: background 0.2s;
-}
-
-.faq-header:hover {
-    background: linear-gradient(135deg, #ffe3ef 0%, #fff1e8 100%);
-}
-
-.faq-header-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 13px;
-    background: linear-gradient(135deg, #ff5f8f 0%, #ff9a4d 100%);
-    color: #fff;
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-    box-shadow: 0 4px 14px rgba(255, 95, 166, .3);
-}
-
-.faq-header-text {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.faq-header-title {
-    font-family: 'Poppins', sans-serif;
-    font-size: 1rem;
-    font-weight: 700;
-    color: #221A3D;
-}
-
-.faq-header-sub {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: #9ca3af;
-}
-
-.faq-header-badge {
-    font-size: 11px;
-    font-weight: 800;
-    color: #ff5fa6;
-    background: #fff0f6;
-    border: 1px solid #ffd9e6;
-    border-radius: 14px;
-    padding: 2px 9px;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-.faq-header-chevron {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background: rgba(255, 95, 166, .12);
-    color: #ff5fa6;
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-    transition: transform 0.25s ease, background 0.2s;
-}
-
-.faq-header-chevron.rotated {
-    transform: rotate(180deg);
-    background: rgba(255, 95, 166, .22);
-}
-
-.faq-list {
-    display: flex;
-    flex-direction: column;
-}
-
-.faq-row {
-    border-top: 1px solid rgba(34, 26, 61, .05);
-    transition: background 0.15s;
-}
-
-.faq-row-btn {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 13px;
-    padding: 15px 22px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    text-align: left;
-    transition: background 0.15s;
-}
-
-.faq-row-btn:hover {
-    background: #FBF7FB;
-}
-
-.faq-row.active > .faq-row-btn {
-    background: #FBF7FB;
-}
-
-.faq-row-num {
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
-    background: #fff0f6;
-    border: 1px solid #ffd9e6;
-    color: #ff5fa6;
-    font-size: 11px;
-    font-weight: 800;
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-    transition: background 0.2s, color 0.2s;
-}
-
-.faq-row.active .faq-row-num {
-    background: linear-gradient(135deg, #ff5f8f, #ff9a4d);
-    border-color: transparent;
-    color: #fff;
-}
-
-.faq-row-label {
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: #221A3D;
-    line-height: 1.4;
-    flex: 1;
-}
-
-.faq-row.active .faq-row-label {
-    color: #ff5fa6;
-}
-
-.faq-row-chevron {
-    color: #d1d5db;
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-    transition: transform 0.25s ease, color 0.2s;
-}
-
-.faq-row-chevron.rotated {
-    transform: rotate(180deg);
-    color: #ff5fa6;
-}
-
-.faq-row-answer {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 0 22px 18px 61px;
-    background: #FBF7FB;
-    border-top: 1px solid rgba(255, 95, 166, .08);
-}
-
-.faq-answer-tag {
-    width: 22px;
-    height: 22px;
-    border-radius: 7px;
-    background: linear-gradient(135deg, #ff5f8f, #ff9a4d);
-    color: #fff;
-    font-size: 10px;
-    font-weight: 800;
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-    margin-top: 14px;
-}
-
-.faq-row-answer p {
-    margin: 14px 0 0;
-    font-size: 0.875rem;
-    color: #6b7280;
-    line-height: 1.65;
-    font-weight: 500;
-}
-
-/* FAQ Expand Transition */
-.faq-expand-enter-active,
-.faq-expand-leave-active {
-    transition: all 0.3s ease;
-}
-
-.faq-expand-enter-from,
-.faq-expand-leave-to {
-    max-height: 0;
-    opacity: 0;
-}
-
-.faq-expand-enter-to,
-.faq-expand-leave-from {
-    max-height: 500px;
-    opacity: 1;
-}
+/* FAQs: migraram pra EventFaqAccordion.vue (Fase 5, parte 1) — nada pra
+   estilizar aqui. */
 
 /* ── Text selection ────────────────────────────────────────── */
 ::selection {
