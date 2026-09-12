@@ -1,4 +1,5 @@
 <script setup lang="ts">
+  import type { FollowUser, UserInterest } from './types'
   import type { NavItem } from '@/types/navigation'
   import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
@@ -7,7 +8,6 @@
   import { followUserById, getFollowStats, getMyFollowers, getMyFollowing, unfollowUserById } from '@/api/follows'
   import { addUserInterest, getInterests, getUnownedInterestSuggestions, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
   import { getUserInterests, getUserProfile, getUserRecomendations, searchUsers, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
-  import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
   import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
   import AppFooter from '@/components/UI/AppFooter/AppFooter.vue'
   import AppHeader from '@/components/UI/AppHeader/AppHeader.vue'
@@ -15,7 +15,6 @@
   import ConfirmDialog from '@/components/UI/ConfirmDialog/ConfirmDialog.vue'
   import EventMiniCard from '@/components/UI/EventMiniCard/EventMiniCard.vue'
   import FollowButton from '@/components/UI/FollowButton/FollowButton.vue'
-  import ImageCropper from '@/components/UI/ImageCropper/ImageCropper.vue'
   import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
   import SelectableChip from '@/components/UI/SelectableChip/SelectableChip.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
@@ -34,7 +33,13 @@
     mapConfirmedAttendance as mapConfirmedAttendanceUtil,
     mapLikedEventItem as mapLikedEventItemUtil,
   } from '@/utils/profileEvents'
+  import ProfileBannerCropModal from './ProfileBannerCropModal.vue'
+  import ProfileCropModal from './ProfileCropModal.vue'
+  import ProfileEditModal from './ProfileEditModal.vue'
   import ProfileFollowListModal from './ProfileFollowListModal.vue'
+  import ProfileInterestsModal from './ProfileInterestsModal.vue'
+  import ProfileRequestInterestModal from './ProfileRequestInterestModal.vue'
+  import ProfileSettingsPanel from './ProfileSettingsPanel.vue'
 
   // ── Constantes (evita magic numbers) ──
   /** Espelha BIO_MAX_LENGTH do backend (VarChar(500) + validação no service).
@@ -74,14 +79,6 @@
   const uploadingBanner = ref(false)
 
   // ── Followers/Following state ──
-  interface FollowUser {
-    id: string | number
-    name: string
-    username?: string
-    profileImage?: string
-    isFollowing?: boolean
-  }
-
   const followStats = ref({ followers: 0, following: 0 })
   const followersList = ref<FollowUser[]>([])
   const followingList = ref<FollowUser[]>([])
@@ -180,10 +177,6 @@
   })
 
   // ── User interests ──
-  interface UserInterest {
-    id: string
-    name: string
-  }
   const userInterests = ref<UserInterest[]>([])
   // Loading dedicado do card de interesses (independente do load principal da página),
   // para mostrar o loader sempre que os interesses forem (re)carregados.
@@ -201,20 +194,17 @@
     return user.banner && user.banner.trim() !== '' && !user.banner.includes('unsplash')
   })
 
-  // ── File inputs refs ──
-  const modalAvatarInputRef = ref<HTMLInputElement | null>(null)
-  const modalBannerInputRef = ref<HTMLInputElement | null>(null)
-
   // ── Recorte de imagem (Cropper.js) ──
-  // A geometria do recorte fica no componente ImageCropper; aqui só controlamos
-  // abertura do modal, upload e feedback.
-  const AVATAR_ASPECT = 1
-  const BANNER_ASPECT = 16 / 5
-
+  // A geometria do recorte fica no componente ImageCropper, dentro de
+  // ProfileCropModal.vue/ProfileBannerCropModal.vue (Fase 5, partes 5/6)
+  // — aqui só controlamos abertura do modal, upload e feedback. Os
+  // componentes emitem `confirmed` com o blob recortado; o resto (nome
+  // do arquivo, prévia local, fechar modal) continua aqui porque
+  // `pendingAvatarFile`/`pendingBannerFile` são lidos por `saveProfile`
+  // no modal de Editar Perfil.
   const showCropModal = ref(false)
   const cropImageSrc = ref('')
   const cropMimeType = ref('image/jpeg')
-  const avatarCropperRef = ref<InstanceType<typeof ImageCropper> | null>(null)
   let pendingAvatarInput: HTMLInputElement | null = null
 
   /** Imagens recortadas aguardando o "Salvar" do modal de edição. */
@@ -226,7 +216,6 @@
   const showBannerCropModal = ref(false)
   const bannerCropImageSrc = ref('')
   const bannerCropMimeType = ref('image/jpeg')
-  const bannerCropperRef = ref<InstanceType<typeof ImageCropper> | null>(null)
   let pendingBannerInput: HTMLInputElement | null = null
 
   function openCropModal (imageSrc: string, input: HTMLInputElement) {
@@ -272,10 +261,7 @@
    * O upload só acontece em `saveProfile()`; assim fechar o modal de edição
    * descarta a troca, como qualquer outro campo do formulário.
    */
-  async function confirmCrop () {
-    const blob = await avatarCropperRef.value?.getCroppedBlob()
-    if (!blob) return
-
+  function confirmCrop (blob: Blob) {
     // Libera a prévia anterior antes de trocar, senão o object URL vaza.
     if (pendingAvatarPreview.value) URL.revokeObjectURL(pendingAvatarPreview.value)
 
@@ -290,10 +276,7 @@
   }
 
   /** Idem `confirmCrop`, para a capa. */
-  async function confirmBannerCrop () {
-    const blob = await bannerCropperRef.value?.getCroppedBlob()
-    if (!blob) return
-
+  function confirmBannerCrop (blob: Blob) {
     if (pendingBannerPreview.value) URL.revokeObjectURL(pendingBannerPreview.value)
 
     pendingBannerFile.value = new File([blob], fileNameFor('banner', bannerCropMimeType.value), { type: blob.type })
@@ -915,73 +898,12 @@
     return formatShortDateUtil(dateString, t('profile.likedEvents.soon'))
   }
 
-  // ── Upload handlers ──
-  function triggerModalAvatarUpload () {
-    modalAvatarInputRef.value?.click()
-  }
-
-  function triggerModalBannerUpload () {
-    modalBannerInputRef.value?.click()
-  }
-
-  async function handleAvatarChange (event: Event) {
-    const input = event.target as HTMLInputElement
-    const file = input.files?.[0]
-    if (!file) return
-
-    // Validação do arquivo
-    const maxSize = 5 * 1024 * 1024 // 5MB
-    if (file.size > maxSize) {
-      showSnackbar(t('profile.messages.fileSizeError'), '#ef4444')
-      input.value = ''
-      return
-    }
-
-    if (!file.type.startsWith('image/')) {
-      showSnackbar(t('profile.messages.fileTypeError'), '#ef4444')
-      input.value = ''
-      return
-    }
-
-    // Abre o modal de crop em vez de fazer upload direto
-    const reader = new FileReader()
-    reader.addEventListener('load', e => {
-      const result = (e.target as FileReader)?.result as string
-      if (result) {
-        openCropModal(result, input)
-      }
-    })
-    reader.readAsDataURL(file)
-  }
-
-  async function handleBannerChange (event: Event) {
-    const input = event.target as HTMLInputElement
-    const file = input.files?.[0]
-    if (!file) return
-
-    // Validação do arquivo
-    const maxSize = 5 * 1024 * 1024 // 5MB
-    if (file.size > maxSize) {
-      showSnackbar(t('profile.messages.fileSizeError'), '#ef4444')
-      input.value = ''
-      return
-    }
-
-    if (!file.type.startsWith('image/')) {
-      showSnackbar(t('profile.messages.fileTypeError'), '#ef4444')
-      input.value = ''
-      return
-    }
-
-    // Abre o modal de enquadramento da capa
-    const reader = new FileReader()
-    reader.addEventListener('load', e => {
-      const result = (e.target as FileReader)?.result as string
-      if (result) {
-        openBannerCropModal(result, input)
-      }
-    })
-    reader.readAsDataURL(file)
+  // Triggers/handlers de upload (avatar/capa): migraram pra
+  // ProfileEditModal.vue (Fase 5, parte 4) — o componente emite
+  // avatar-selected/banner-selected/upload-error, tratados logo abaixo em
+  // onAvatarSelected/onBannerSelected.
+  function onUploadError (message: string) {
+    showSnackbar(message, '#ef4444')
   }
 
   // ── Navigation ──
@@ -1770,68 +1692,16 @@
             </div>
           </div>
 
-          <!-- Settings -->
-          <div v-if="activeTab === 'settings'" class="settings-panel">
-            <div class="settings-group">
-              <h4 class="settings-group-title">{{ t('profile.settings.general') }}</h4>
-              <div class="setting-item" @click="settingsNotifications = !settingsNotifications">
-                <div class="setting-left">
-                  <div class="setting-icon-wrap">
-                    <i class="mdi mdi-bell-outline" />
-                  </div>
-                  <div>
-                    <span class="setting-name">{{ t('profile.settings.notifications') }}</span>
-                    <span class="setting-desc">{{ t('profile.settings.notificationsDesc') }}</span>
-                  </div>
-                </div>
-                <div class="toggle-switch" :class="{ checked: settingsNotifications }" />
-              </div>
-
-              <div class="setting-item language-setting">
-                <div class="setting-left">
-                  <div class="setting-icon-wrap">
-                    <i class="mdi mdi-web" />
-                  </div>
-                  <div>
-                    <span class="setting-name">{{ t('profile.settings.language') }}</span>
-                    <span class="setting-desc">{{ t('profile.settings.languageDesc') }}</span>
-                  </div>
-                </div>
-                <div class="language-selector">
-                  <LanguageSwitcher />
-                </div>
-              </div>
-
-            </div>
-
-            <div class="settings-group">
-              <h4 class="settings-group-title">{{ t('profile.settings.account') }}</h4>
-              <div class="setting-item" @click="openEditModal">
-                <div class="setting-left">
-                  <div class="setting-icon-wrap">
-                    <i class="mdi mdi-account-edit-outline" />
-                  </div>
-                  <div>
-                    <span class="setting-name">{{ t('profile.settings.editProfile') }}</span>
-                    <span class="setting-desc">{{ t('profile.settings.editProfileDesc') }}</span>
-                  </div>
-                </div>
-                <i class="mdi mdi-chevron-right setting-arrow" />
-              </div>
-              <div class="setting-item danger" @click="handleLogout">
-                <div class="setting-left">
-                  <div class="setting-icon-wrap danger">
-                    <i class="mdi mdi-logout" />
-                  </div>
-                  <div>
-                    <span class="setting-name">{{ t('profile.settings.logout') }}</span>
-                    <span class="setting-desc">{{ t('profile.settings.logoutDesc') }}</span>
-                  </div>
-                </div>
-                <i class="mdi mdi-chevron-right setting-arrow" />
-              </div>
-            </div>
-          </div>
+          <!-- Settings — extraído pra ProfileSettingsPanel.vue na Fase 5 do
+               REFACTOR_AUDIT_PLAN.md (1ª fatia do conteúdo principal, após
+               os 7 modais). -->
+          <ProfileSettingsPanel
+            v-if="activeTab === 'settings'"
+            :notifications-enabled="settingsNotifications"
+            @edit-profile="openEditModal"
+            @logout="handleLogout"
+            @update:notifications-enabled="settingsNotifications = $event"
+          />
         </div>
       </main>
 
@@ -1943,127 +1813,32 @@
 
     <AppFooter />
 
-    <!-- Edit Profile Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showEditModal" class="modal-overlay" @click.self="closeEditModal">
-          <div class="modal-container">
-            <div class="modal-header">
-              <h2>{{ t('profile.editModal.title') }}</h2>
-              <button class="modal-close" @click="closeEditModal">
-                <i class="mdi mdi-close" />
-              </button>
-            </div>
-
-            <div class="modal-body">
-              <!-- Hidden file inputs for modal -->
-              <input
-                ref="modalBannerInputRef"
-                accept="image/*"
-                hidden
-                type="file"
-                @change="handleBannerChange"
-              >
-              <input
-                ref="modalAvatarInputRef"
-                accept="image/*"
-                hidden
-                type="file"
-                @change="handleAvatarChange"
-              >
-
-              <!-- Avatar edit section -->
-              <div class="modal-avatar-section">
-                <div
-                  class="modal-banner"
-                  :class="{ 'no-banner': !displayBanner }"
-                  :style="displayBanner ? { backgroundImage: `url(${displayBanner})` } : {}"
-                >
-                  <div class="modal-banner-overlay" />
-                  <button
-                    class="modal-banner-edit"
-                    :disabled="uploadingBanner"
-                    title="Alterar capa"
-                    @click="triggerModalBannerUpload"
-                  >
-                    <i v-if="uploadingBanner" class="mdi mdi-loading mdi-spin" />
-                    <i v-else class="mdi mdi-camera-outline" />
-                  </button>
-                </div>
-                <div class="modal-avatar-wrapper" @click="triggerModalAvatarUpload">
-                  <UserAvatar
-                    class="modal-avatar-img"
-                    :image="displayAvatar"
-                    :name="user.name"
-                    :size="72"
-                  />
-                  <button
-                    class="modal-avatar-edit"
-                    :disabled="uploadingAvatar"
-                    :title="t('profile.editModal.changeAvatar')"
-                  >
-                    <i v-if="uploadingAvatar" class="mdi mdi-loading mdi-spin" />
-                    <i v-else class="mdi mdi-camera-outline" />
-                  </button>
-                </div>
-              </div>
-
-              <!-- Form fields -->
-              <div class="form-group">
-                <label class="form-label" for="edit-name">{{ t('profile.editModal.name') }}</label>
-                <input
-                  id="edit-name"
-                  v-model="editForm.name"
-                  class="form-input"
-                  maxlength="50"
-                  :placeholder="t('profile.editModal.namePlaceholder')"
-                  type="text"
-                >
-                <span class="char-count">{{ editForm.name.length }}/50</span>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="edit-username">{{ t('profile.editModal.username') }}</label>
-                <div class="input-with-prefix">
-                  <span class="input-prefix">@</span>
-                  <input
-                    id="edit-username"
-                    v-model="editForm.username"
-                    class="form-input with-prefix"
-                    maxlength="30"
-                    :placeholder="t('profile.editModal.usernamePlaceholder')"
-                    type="text"
-                  >
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="edit-bio">{{ t('profile.editModal.bio') }}</label>
-                <textarea
-                  id="edit-bio"
-                  v-model="editForm.bio"
-                  class="form-textarea"
-                  :maxlength="BIO_MAX_LENGTH"
-                  :placeholder="t('profile.editModal.bioPlaceholder')"
-                  rows="3"
-                />
-                <span class="char-count">{{ editForm.bio.length }}/{{ BIO_MAX_LENGTH }}</span>
-              </div>
-            </div>
-
-            <div class="modal-footer">
-              <button class="btn-cancel" :disabled="saving" @click="closeEditModal">
-                {{ t('profile.editModal.cancel') }}
-              </button>
-              <button class="btn-save" :disabled="saving" @click="saveProfile">
-                <i v-if="saving" class="mdi mdi-loading mdi-spin" />
-                {{ saving ? t('profile.editModal.saving') : t('profile.editModal.save') }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+    <!-- Modal de Editar Perfil — extraído pra ProfileEditModal.vue na Fase 5
+         do REFACTOR_AUDIT_PLAN.md (4ª fatia da decomposição de
+         Profile.vue). Estado (editForm/saving/pendingAvatarFile etc.) e
+         chamadas de API continuam aqui — são compartilhados com os
+         modais de recorte, ainda não extraídos. -->
+    <ProfileEditModal
+      :avatar-name="user.name"
+      :bio="editForm.bio"
+      :bio-max-length="BIO_MAX_LENGTH"
+      :display-avatar="displayAvatar"
+      :display-banner="displayBanner"
+      :name="editForm.name"
+      :saving="saving"
+      :uploading-avatar="uploadingAvatar"
+      :uploading-banner="uploadingBanner"
+      :username="editForm.username"
+      :visible="showEditModal"
+      @avatar-selected="openCropModal"
+      @banner-selected="openBannerCropModal"
+      @close="closeEditModal"
+      @save="saveProfile"
+      @update:bio="editForm.bio = $event"
+      @update:name="editForm.name = $event"
+      @update:username="editForm.username = $event"
+      @upload-error="onUploadError"
+    />
 
     <!-- Confirmação de descarte ao fechar o modal de edição -->
     <ConfirmDialog
@@ -2076,257 +1851,61 @@
       @confirm="discardAndCloseEditModal"
     />
 
-    <!-- Crop Avatar Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showCropModal" class="modal-overlay crop-modal-overlay" @click.self="closeCropModal">
-          <div class="crop-modal-container">
-            <div class="crop-modal-header">
-              <h2>{{ t('profile.cropModal.title') }}</h2>
-              <button class="modal-close" @click="closeCropModal">
-                <i class="mdi mdi-close" />
-              </button>
-            </div>
+    <!-- Modais de Recorte de Avatar/Capa — extraídos pra
+         ProfileCropModal.vue/ProfileBannerCropModal.vue na Fase 5 do
+         REFACTOR_AUDIT_PLAN.md (5ª/6ª e últimas fatias da decomposição de
+         Profile.vue). Estado (pendingAvatarFile etc.) continua aqui —
+         compartilhado com o modal de Editar Perfil. -->
+    <ProfileCropModal
+      :image-src="cropImageSrc"
+      :mime-type="cropMimeType"
+      :uploading="uploadingAvatar"
+      :visible="showCropModal"
+      @close="closeCropModal"
+      @confirmed="confirmCrop"
+    />
+    <ProfileBannerCropModal
+      :image-src="bannerCropImageSrc"
+      :mime-type="bannerCropMimeType"
+      :uploading="uploadingBanner"
+      :visible="showBannerCropModal"
+      @close="closeBannerCropModal"
+      @confirmed="confirmBannerCrop"
+    />
 
-            <div class="crop-modal-body">
-              <ImageCropper
-                ref="avatarCropperRef"
-                :aspect-ratio="AVATAR_ASPECT"
-                circle
-                :output-mime-type="cropMimeType"
-                :output-size="CONFIG.AVATAR_OUTPUT_SIZE"
-                :src="cropImageSrc"
-              />
-            </div>
-
-            <div class="crop-modal-footer">
-              <button class="btn-cancel" @click="closeCropModal">{{ t('profile.cropModal.cancel') }}</button>
-              <button class="btn-save" :disabled="uploadingAvatar" @click="confirmCrop">
-                <i v-if="uploadingAvatar" class="mdi mdi-loading mdi-spin" />
-                {{ uploadingAvatar ? t('profile.cropModal.uploading') : t('profile.cropModal.apply') }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
-    <!-- Banner Crop Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div
-          v-if="showBannerCropModal"
-          class="modal-overlay banner-crop-modal-overlay"
-          @click.self="closeBannerCropModal"
-        >
-          <div class="banner-crop-modal-container">
-            <div class="crop-modal-header">
-              <div class="banner-crop-header-content">
-                <i class="mdi mdi-panorama" />
-                <h2>Enquadrar Foto de Capa</h2>
-              </div>
-              <button class="modal-close" @click="closeBannerCropModal">
-                <i class="mdi mdi-close" />
-              </button>
-            </div>
-
-            <div class="banner-crop-modal-body">
-              <p class="banner-crop-hint">
-                <i class="mdi mdi-gesture-swipe" />
-                Arraste para reposicionar · Use os controles abaixo para ajustar o zoom
-              </p>
-
-              <ImageCropper
-                ref="bannerCropperRef"
-                :aspect-ratio="BANNER_ASPECT"
-                :output-mime-type="bannerCropMimeType"
-                :output-size="1600"
-                :src="bannerCropImageSrc"
-              />
-            </div>
-
-            <div class="crop-modal-footer">
-              <button class="btn-cancel" @click="closeBannerCropModal">Cancelar</button>
-              <button class="btn-save" :disabled="uploadingBanner" @click="confirmBannerCrop">
-                <i v-if="uploadingBanner" class="mdi mdi-loading mdi-spin" />
-                {{ uploadingBanner ? 'Enviando...' : 'Aplicar' }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
-    <!-- Manage Interests Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showInterestsModal" class="modal-overlay" @click.self="closeInterestsModal">
-          <div class="interests-modal-container">
-            <div class="interests-modal-header">
-              <h2>{{ t('profile.interestsModal.title') }}</h2>
-              <button class="modal-close" @click="closeInterestsModal">
-                <i class="mdi mdi-close" />
-              </button>
-            </div>
-
-            <div class="interests-modal-body">
-              <!-- Busca de interesses -->
-              <div class="interests-search-section">
-                <SearchInput
-                  v-model="interestsSearchQuery"
-                  :loading="isSearchingInterests"
-                  :placeholder="t('profile.interests.searchPlaceholder')"
-                  @clear="handleClearInterestsSearch"
-                  @search="handleInterestsSearch"
-                />
-              </div>
-
-              <!-- Estado de loading -->
-              <div v-if="isSearchingInterests && interestsSearchQuery.trim()" class="loading-suggestions">
-                <AppLoader size="md" :text="t('profile.interests.searching') || 'Buscando interesses...'" />
-              </div>
-
-              <!-- Resultados da busca -->
-              <div v-else-if="interestsSearchQuery.trim() && searchedInterests.length > 0" class="search-results-section">
-                <h4>{{ t('profile.interests.searchResults') }}</h4>
-                <div class="interests-list">
-                  <div v-for="interest in searchedInterests" :key="interest.id" class="interest-item">
-                    <span class="interest-name">{{ interest.name }}</span>
-                    <button class="add-btn" @click="addInterestToUser(interest)">
-                      <i class="mdi mdi-plus" />
-                      {{ t('profile.interests.add') }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Mensagem quando não há resultados -->
-              <div
-                v-else-if="interestsSearchQuery.trim() && !isSearchingInterests && searchedInterests.length === 0"
-                class="no-results"
-              >
-                <i class="mdi mdi-emoticon-sad-outline" />
-                <p>{{ t('profile.interests.noResults') }}</p>
-                <button class="request-interest-btn" @click="openRequestModal">
-                  <i class="mdi mdi-plus-circle" />
-                  {{ t('profile.interests.requestNew') }}
-                </button>
-              </div>
-
-              <!-- Sugestões de interesses (quando não há busca ativa) -->
-              <div v-if="!interestsSearchQuery.trim()" class="suggestions-section">
-                <h4>{{ t('profile.interests.suggestions') }}</h4>
-                <div v-if="isLoadingSuggestions" class="loading-suggestions">
-                  <AppLoader size="md" :text="t('profile.interests.loadingSuggestions')" />
-                </div>
-                <div v-else-if="suggestedInterests.length > 0" class="interests-list">
-                  <div v-for="interest in suggestedInterests" :key="interest.id" class="interest-item">
-                    <span class="interest-name">{{ interest.name }}</span>
-                    <button class="add-btn" @click="addInterestToUser(interest)">
-                      <i class="mdi mdi-plus" />
-                      {{ t('profile.interests.add') }}
-                    </button>
-                  </div>
-                </div>
-                <p v-else class="empty-suggestions">
-                  {{ t('profile.interests.noSuggestions') }}
-                </p>
-              </div>
-
-              <!-- Meus interesses atuais -->
-              <div class="current-interests-section">
-                <h4>{{ t('profile.interests.myInterests') }} ({{ tempUserInterests.length }})</h4>
-                <div v-if="tempUserInterests.length > 0" class="interests-list">
-                  <div v-for="interest in tempUserInterests" :key="interest.id" class="interest-item current">
-                    <span class="interest-name">{{ interest.name }}</span>
-                    <button class="remove-btn" @click="removeInterestFromUser(interest.id)">
-                      <i class="mdi mdi-close" />
-                      {{ t('profile.interests.remove') }}
-                    </button>
-                  </div>
-                </div>
-                <p v-else class="empty-message">
-                  {{ t('profile.interests.emptyMessage') }}
-                </p>
-              </div>
-            </div>
-
-            <div class="interests-modal-footer">
-              <button class="btn-cancel" @click="closeInterestsModal">
-                {{ t('profile.interestsModal.cancel') }}
-              </button>
-              <button class="btn-done" :disabled="isSavingInterests" @click="saveInterestsChanges">
-                <i v-if="isSavingInterests" class="mdi mdi-loading mdi-spin" />
-                {{ isSavingInterests ? t('profile.interestsModal.saving') : t('profile.interestsModal.done') }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
-    <!-- Request New Interests Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showRequestModal" class="modal-overlay" @click.self="closeRequestModal">
-          <div class="request-modal-container">
-            <div class="request-modal-header">
-              <h2>{{ t('profile.requestInterestModal.title') }}</h2>
-              <button class="modal-close" @click="closeRequestModal">
-                <i class="mdi mdi-close" />
-              </button>
-            </div>
-
-            <div class="request-modal-body">
-              <p class="request-description">
-                {{ t('profile.requestInterestModal.description') }}
-              </p>
-
-              <div class="input-wrapper">
-                <label class="input-label" for="newInterest">{{ t('profile.requestInterestModal.label') }}</label>
-                <div class="input-group">
-                  <input
-                    id="newInterest"
-                    v-model="newInterestName"
-                    class="request-input"
-                    :placeholder="t('profile.requestInterestModal.placeholder')"
-                    type="text"
-                    @keyup.enter="addToPending"
-                  >
-                  <button class="add-pending-btn" type="button" @click="addToPending">
-                    <i class="mdi mdi-plus" />
-                  </button>
-                </div>
-              </div>
-
-              <div v-if="pendingInterests.length > 0" class="pending-list">
-                <span v-for="(item, index) in pendingInterests" :key="index" class="pending-chip">
-                  {{ item }}
-                  <button class="remove-pending-btn" type="button" @click="removePending(index)">
-                    <i class="mdi mdi-close" />
-                  </button>
-                </span>
-              </div>
-            </div>
-
-            <div class="request-modal-footer">
-              <button class="btn-cancel" @click="closeRequestModal">
-                {{ t('profile.requestInterestModal.cancel') }}
-              </button>
-              <button
-                class="btn-submit"
-                :disabled="(pendingInterests.length === 0 && !newInterestName.trim()) || isSubmittingRequest"
-                @click="submitNewInterestRequest"
-              >
-                <i v-if="isSubmittingRequest" class="mdi mdi-loading mdi-spin" />
-                {{ isSubmittingRequest ? t('profile.requestInterestModal.submitting') :
-                  t('profile.requestInterestModal.submit') }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+    <!-- Modal de Gerenciar Interesses e Solicitar Novo Interesse — extraídos
+         pra ProfileInterestsModal.vue/ProfileRequestInterestModal.vue na
+         Fase 5 do REFACTOR_AUDIT_PLAN.md (2ª/3ª fatias da decomposição de
+         Profile.vue). Estado e chamadas de API continuam aqui. -->
+    <ProfileInterestsModal
+      :current-interests="tempUserInterests"
+      :loading-suggestions="isLoadingSuggestions"
+      :saving="isSavingInterests"
+      :search-query="interestsSearchQuery"
+      :search-results="searchedInterests"
+      :searching="isSearchingInterests"
+      :suggestions="suggestedInterests"
+      :visible="showInterestsModal"
+      @add="addInterestToUser"
+      @clear-search="handleClearInterestsSearch"
+      @close="closeInterestsModal"
+      @remove="removeInterestFromUser"
+      @request-new="openRequestModal"
+      @save="saveInterestsChanges"
+      @search="handleInterestsSearch"
+      @update:search-query="interestsSearchQuery = $event"
+    />
+    <ProfileRequestInterestModal
+      :name="newInterestName"
+      :pending="pendingInterests"
+      :submitting="isSubmittingRequest"
+      :visible="showRequestModal"
+      @add-pending="addToPending"
+      @close="closeRequestModal"
+      @remove-pending="removePending"
+      @submit="submitNewInterestRequest"
+      @update:name="newInterestName = $event"
+    />
 
     <!-- Modais de Seguidores/Seguindo — extraídos pra ProfileFollowListModal.vue
          na Fase 5 do REFACTOR_AUDIT_PLAN.md (1ª fatia da decomposição de
@@ -2664,24 +2243,11 @@
   border: 1px solid rgba(255, 95, 166, 0.2);
 }
 
-/* Modal banner sem imagem */
-.modal-banner.no-banner {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-/* Modal avatar placeholder */
-.modal-avatar-wrapper {
-  cursor: pointer;
-}
-
-.modal-avatar-img.avatar-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 700;
-  font-size: 1.5rem;
-}
+/* .modal-banner.no-banner/.modal-avatar-wrapper: migraram pra
+   ProfileEditModal.vue junto com o resto do modal de editar perfil.
+   `.modal-avatar-img.avatar-placeholder` não foi (mesmo achado do
+   `.avatar-placeholder-modal` da parte 1: nunca tinha uso real, o
+   `UserAvatar` não gera essa classe). */
 
 /* Loading spinner */
 .mdi-spin {
@@ -3355,142 +2921,6 @@
   transform: translateY(-1px);
 }
 
-/* ── Settings ── */
-.settings-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.settings-group {
-  background: white;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.04);
-}
-
-.settings-group-title {
-  margin: 0;
-  padding: 1rem 1.25rem 0.5rem;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #9aa0b8;
-  font-weight: 700;
-}
-
-.setting-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.85rem 1.25rem;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.setting-item:hover {
-  background: rgba(0, 0, 0, 0.015);
-}
-
-.setting-item:not(:last-child) {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-}
-
-.setting-left {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-}
-
-.setting-icon-wrap {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(255, 154, 77, 0.1), rgba(255, 95, 143, 0.1));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.15rem;
-  color: #ff5fa6;
-}
-
-.setting-icon-wrap.danger {
-  background: rgba(244, 63, 94, 0.08);
-  color: #f43f5e;
-}
-
-.setting-name {
-  display: block;
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: #1a1c2e;
-}
-
-.setting-desc {
-  display: block;
-  font-size: 0.78rem;
-  color: #9aa0b8;
-  margin-top: 1px;
-}
-
-.setting-arrow {
-  font-size: 1.25rem;
-  color: #c4c9de;
-}
-
-.setting-item.danger .setting-name {
-  color: #f43f5e;
-}
-
-.setting-item.danger .setting-desc {
-  color: #fca5a5;
-}
-
-.toggle-switch {
-  width: 44px;
-  height: 24px;
-  background: #e0e2ed;
-  border-radius: 99px;
-  position: relative;
-  cursor: pointer;
-  transition: background 0.2s;
-  flex-shrink: 0;
-}
-
-.toggle-switch::after {
-  content: '';
-  position: absolute;
-  left: 2px;
-  top: 2px;
-  width: 20px;
-  height: 20px;
-  background: white;
-  border-radius: 50%;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-.toggle-switch.checked {
-  background: #22c55e;
-}
-
-.toggle-switch.checked::after {
-  transform: translateX(20px);
-}
-
-/* ── Language Setting ── */
-.setting-item.language-setting {
-  cursor: default;
-}
-
-.setting-item.language-setting:hover {
-  background: transparent;
-}
-
-.language-selector {
-  flex-shrink: 0;
-}
-
 /* ── Sidebar Cards ── */
 .sidebar-card {
   background: white;
@@ -3824,627 +3254,23 @@
    também removida: já estava morta (sem nenhum uso no template desde que
    os modais passaram a usar o componente UserAvatar). */
 
-/* ── Manage Interests Modal ── */
-.interests-modal-container {
-  background: white;
-  border-radius: 20px;
-  width: min(560px, 90vw);
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-}
-
-.interests-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  flex-shrink: 0;
-}
-
-.interests-modal-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #1a1c2e;
-  font-weight: 700;
-}
-
-.interests-modal-body {
-  padding: 1.5rem 2rem;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.interests-search-section {
-  margin-bottom: 1.5rem;
-}
-
-.search-results-section {
-  margin-bottom: 2rem;
-}
-
-.search-results-section h4,
-.suggestions-section h4,
-.current-interests-section h4 {
-  margin: 0 0 1rem;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #9aa0b8;
-  font-weight: 600;
-}
-
-.interests-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.interest-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.875rem 1rem;
-  background: rgba(0, 0, 0, 0.02);
-  border-radius: 10px;
-  transition: all 0.2s;
-}
-
-.interest-item:hover {
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.interest-item.current {
-  background: linear-gradient(135deg, rgba(255, 154, 77, 0.08), rgba(255, 95, 143, 0.08));
-}
-
-.interest-item.current:hover {
-  background: linear-gradient(135deg, rgba(255, 154, 77, 0.12), rgba(255, 95, 143, 0.12));
-}
-
-.interest-name {
-  font-size: 0.95rem;
-  color: #1a1c2e;
-  font-weight: 500;
-}
-
-.add-btn,
-.remove-btn {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 600;
-  font-family: 'Baloo Thambi 2', sans-serif;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  transition: all 0.2s;
-}
-
-.add-btn {
-  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
-  color: white;
-  box-shadow: 0 2px 8px rgba(255, 95, 166, 0.2);
-}
-
-.add-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.3);
-}
-
-.add-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.remove-btn {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-
-.remove-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  transform: translateY(-2px);
-}
-
-.no-results {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: #9aa0b8;
-}
-
-.no-results i {
-  font-size: 3rem;
-  margin-bottom: 0.5rem;
-  opacity: 0.5;
-}
-
-.no-results p {
-  margin: 0 0 1rem 0;
-  font-size: 0.95rem;
-}
-
-.request-interest-btn {
-  margin-top: 1rem;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
-  color: white;
-  font-family: 'Baloo Thambi 2', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(255, 95, 166, 0.2);
-}
-
-.request-interest-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.3);
-}
-
-.request-interest-btn i {
-  font-size: 1.2rem;
-}
-
-.suggestions-section {
-  margin-top: 1rem;
-}
-
-.loading-suggestions {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 1rem;
-  gap: 0.75rem;
-  color: #9aa0b8;
-}
-
-.empty-suggestions {
-  text-align: center;
-  padding: 2rem 1rem;
-  color: #9aa0b8;
-  font-size: 0.9rem;
-  margin: 0;
-}
-
-.current-interests-section {
-  margin-top: 2rem;
-}
-
-.empty-message {
-  text-align: center;
-  padding: 2rem 1rem;
-  color: #9aa0b8;
-  font-size: 0.9rem;
-  margin: 0;
-}
-
-.interests-modal-footer {
-  padding: 1.25rem 2rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  flex-shrink: 0;
-}
-
-.btn-cancel {
-  padding: 0.75rem 2rem;
-  background: transparent;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 12px;
-  color: #6c7080;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-cancel:hover {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.2);
-}
-
-.btn-cancel:active {
-  transform: scale(0.98);
-}
-
-.btn-done {
-  padding: 0.75rem 2rem;
-  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 1rem;
-  font-weight: 600;
-  font-family: 'Baloo Thambi 2', sans-serif;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.2);
-}
-
-.btn-done:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(255, 95, 166, 0.3);
-}
-
-.btn-done:active {
-  transform: translateY(0);
-}
-
-.btn-done:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-done:disabled:hover {
-  transform: none;
-  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.2);
-}
+/* Modais de Gerenciar Interesses / Solicitar Novo Interesse: migraram pra
+   ProfileInterestsModal.vue/ProfileRequestInterestModal.vue (Fase 5,
+   partes 2/3). O `.btn-cancel`/`.btn-done` que estavam aqui eram a
+   versão "correta" desses 2 modais — havia uma 2ª definição de
+   `.btn-cancel` mais abaixo (do modal de Editar Perfil) que, por vir
+   depois no CSS, vencia a cascata e vazava pra estes modais também;
+   isolando em componentes próprios, esse vazamento acaba (ver
+   REFACTOR_AUDIT_PLAN.md). */
 
 .tag:hover {
   background: linear-gradient(135deg, rgba(255, 154, 77, 0.18), rgba(255, 95, 143, 0.18));
 }
 
-/* ── Modal ── */
-.modal-overlay {
-  /* O modal é teleportado para <body>, fora de .profile-page-layout,
-     então precisa redeclarar os tokens do design system que usa. */
-  --color-primary: #ff5fa6;
-  --color-text-primary: #1a1c2e;
-  --color-text-secondary: #555b77;
-  --color-border: rgba(0, 0, 0, 0.04);
-  --color-border-strong: #e0e2ed;
-  --shadow-primary: 0 4px 16px rgba(255, 95, 166, 0.25);
-
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(3px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-
-.modal-container {
-  background: white;
-  border-radius: 20px;
-  width: 100%;
-  max-width: 520px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12);
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  position: sticky;
-  top: 0;
-  background: white;
-  border-radius: 20px 20px 0 0;
-  z-index: 1;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 1.15rem;
-  color: #1a1c2e;
-}
-
-.modal-close {
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  color: #555b77;
-  transition: all 0.2s;
-}
-
-.modal-close:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: #1a1c2e;
-}
-
-.modal-body {
-  padding: 0 1.5rem 1.5rem;
-}
-
-/* Avatar section in modal */
-.modal-avatar-section {
-  position: relative;
-  margin-bottom: 2.5rem;
-}
-
-.modal-banner {
-  height: 120px;
-  background-size: cover;
-  background-position: center;
-  border-radius: 12px;
-  position: relative;
-  overflow: hidden;
-  margin-top: 1rem;
-}
-
-.modal-banner-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.25);
-}
-
-.modal-banner-edit {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  transition: background 0.2s;
-}
-
-.modal-banner-edit:hover {
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.modal-avatar-wrapper {
-  position: absolute;
-  bottom: -32px;
-  left: 1.5rem;
-}
-
-.modal-avatar-img {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  border: 4px solid white;
-  object-fit: cover;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.modal-avatar-edit {
-  position: absolute;
-  bottom: 0;
-  right: -4px;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
-  color: white;
-  border: 2px solid white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.85rem;
-  transition: transform 0.2s;
-}
-
-.modal-avatar-edit:hover {
-  transform: scale(1.1);
-}
-
-/* Form */
-.form-group {
-  margin-bottom: 1.25rem;
-  position: relative;
-}
-
-.form-label {
-  display: block;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #555b77;
-  margin-bottom: 0.4rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.7rem 0.9rem;
-  border: 1.5px solid #e0e2ed;
-  border-radius: 12px;
-  font-size: 0.92rem;
-  color: #1a1c2e !important;
-  font-family: inherit;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  outline: none;
-  box-sizing: border-box;
-  background-color: #fafbfc !important;
-}
-
-.form-input:focus {
-  border-color: #ff5fa6;
-  box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
-  background-color: white !important;
-}
-
-.form-textarea {
-  width: 100%;
-  padding: 0.7rem 0.9rem;
-  border: 1.5px solid #e0e2ed;
-  border-radius: 12px;
-  font-size: 0.92rem;
-  color: #1a1c2e !important;
-  font-family: inherit;
-  resize: vertical;
-  outline: none;
-  min-height: 80px;
-  box-sizing: border-box;
-  background-color: #fafbfc !important;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.form-textarea:focus {
-  border-color: #ff5fa6;
-  box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
-  background-color: white !important;
-}
-
-.char-count {
-  position: absolute;
-  right: 0.75rem;
-  bottom: -1.2rem;
-  font-size: 0.7rem;
-  color: #c4c9de;
-}
-
-.input-with-prefix {
-  display: flex;
-  align-items: center;
-  border: 1.5px solid #e0e2ed;
-  border-radius: 12px;
-  background-color: #fafbfc !important;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.input-with-prefix:focus-within {
-  border-color: #ff5fa6;
-  box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
-  background-color: white !important;
-}
-
-.input-prefix {
-  padding: 0 0 0 0.9rem;
-  color: #9aa0b8;
-  font-weight: 600;
-  font-size: 0.92rem;
-}
-
-.form-input.with-prefix {
-  border: none;
-  background-color: transparent !important;
-  padding-left: 0.25rem;
-  box-shadow: none;
-}
-
-.form-input.with-prefix:focus {
-  box-shadow: none;
-}
-
-.input-with-icon {
-  position: relative;
-}
-
-.input-icon {
-  position: absolute;
-  left: 0.85rem;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 1.1rem;
-  color: #9aa0b8;
-}
-
-.form-input.with-icon {
-  padding-left: 2.5rem;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  background: #fafbfc;
-  border-radius: 0 0 20px 20px;
-}
-
-.btn-cancel {
-  padding: 0.6rem 1.25rem;
-  background: transparent;
-  border: 1.5px solid #e0e2ed;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 0.88rem;
-  color: #555b77;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-cancel:hover {
-  border-color: #c4c9de;
-  background: rgba(0, 0, 0, 0.02);
-}
-
-.btn-save {
-  padding: 0.6rem 1.5rem;
-  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 0.88rem;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.25);
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.btn-save:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(255, 95, 166, 0.35);
-}
-
-.btn-save:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-/* Modal Transitions */
-.modal-enter-active {
-  transition: all 0.15s ease-out;
-}
-
-.modal-leave-active {
-  transition: all 0.1s ease-in;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-enter-from .modal-container {
-  transform: scale(0.97) translateY(8px);
-}
-
-.modal-leave-to .modal-container {
-  transform: scale(0.98) translateY(4px);
-}
+/* Todos os 7 modais de Profile.vue foram extraídos (Fase 5, partes 1-6)
+   — o esqueleto genérico (.modal-overlay, .modal-close, transições de
+   entrada/saída) não tem mais nenhum consumidor aqui, cada componente
+   extraído tem sua própria cópia. */
 
 /* ── Breadcrumb ── */
 .breadcrumb-nav {
@@ -4598,10 +3424,12 @@
   display: none;
 }
 
-.modal-container {
-  max-width: 100%;
-  border-radius: var(--radius-lg);
-}
+/* Havia uma 2ª declaração de `.modal-container` aqui (max-width: 100%,
+   border-radius: var(--radius-lg)) sem nenhum @media guardando — vencia a
+   cascata incondicionalmente sobre a declaração "correta" em
+   ProfileEditModal.vue, e `--radius-lg` nem resolve no escopo teleportado
+   (mesmo tipo de achado do C1b). Removida como parte da extração: a
+   versão que sobrou é a com cantos arredondados de verdade (20px). */
 
 .liked-mini-cards-grid,
 .skeleton-event-grid {
@@ -4862,140 +3690,15 @@
   }
 }
 
-/* ── Crop Modal ── */
-.crop-modal-overlay {
-  z-index: 10001;
-}
-
-.crop-modal-container {
-  background: #1a1c2e;
-  border-radius: 20px;
-  width: min(420px, 92vw);
-  max-height: 90vh;
-  overflow: hidden;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
-  animation: modal-pop 0.3s ease;
-}
-
-.crop-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.crop-modal-header h2 {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #fff;
-  margin: 0;
-}
-
-.crop-modal-header .modal-close {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.crop-modal-header .modal-close:hover {
-  color: #fff;
-}
-
-.crop-modal-body {
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.25rem;
-}
-
-.crop-modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.crop-modal-footer .btn-cancel {
-  color: rgba(255, 255, 255, 0.7);
-  border-color: rgba(255, 255, 255, 0.15);
-}
-
-.crop-modal-footer .btn-cancel:hover {
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-/* ── Banner Crop Modal ── */
-.banner-crop-modal-overlay {
-  z-index: 10002;
-}
-
-.banner-crop-modal-container {
-  background: #1a1c2e;
-  border-radius: 20px;
-  width: min(660px, 92vw);
-  max-height: 90vh;
-  overflow: hidden;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
-  animation: modal-pop 0.3s ease;
-}
-
-.banner-crop-header-content {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  color: #fff;
-}
-
-.banner-crop-header-content i {
-  font-size: 1.3rem;
-  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.banner-crop-modal-body {
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
-.banner-crop-hint {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.45);
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0;
-  text-align: center;
-}
-
-.banner-crop-hint i {
-  font-size: 1rem;
-  opacity: 0.7;
-}
-
 /* ═════════════════════════════════════════════════════
    MICRO-INTERAÇÕES E ANIMAÇÕES
    ═════════════════════════════════════════════════════ */
 
+/* `@keyframes modal-pop`: migrou pra ProfileCropModal.vue/
+   ProfileBannerCropModal.vue (Fase 5, partes 5/6) — só esses 2 modais
+   usavam. */
+
 /* Animação de pulso para indicador online */
-@keyframes modal-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
 @keyframes pulse-online {
 
   0%,
@@ -5126,171 +3829,9 @@ a:focus-visible {
   }
 }
 
-/* ── Request New Interests Modal ── */
-.request-modal-container {
-  background: white;
-  border-radius: 20px;
-  width: min(480px, 90vw);
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-}
-
-.request-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.request-modal-header h2 {
-  margin: 0;
-  font-size: 1.4rem;
-  color: #1a1c2e;
-  font-weight: 700;
-}
-
-.request-modal-body {
-  padding: 2rem;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.request-description {
-  color: #555b77;
-  font-size: 0.95rem;
-  margin-bottom: 1.5rem;
-  line-height: 1.6;
-}
-
-.input-wrapper {
-  margin-bottom: 1.5rem;
-}
-
-.input-label {
-  display: block;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #1a1c2e;
-  margin-bottom: 0.5rem;
-}
-
-.input-group {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.request-input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border: 2px solid rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-family: 'Baloo Thambi 2', sans-serif;
-  transition: all 0.2s;
-}
-
-.request-input:focus {
-  outline: none;
-  border-color: #ff5fa6;
-  box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.1);
-}
-
-.add-pending-btn {
-  width: 42px;
-  height: 42px;
-  border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.add-pending-btn:hover {
-  transform: scale(1.05);
-}
-
-.pending-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.pending-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, rgba(255, 154, 77, 0.1), rgba(255, 95, 143, 0.1));
-  border-radius: 20px;
-  font-size: 0.9rem;
-  color: #1a1c2e;
-  font-weight: 500;
-}
-
-.remove-pending-btn {
-  width: 18px;
-  height: 18px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.85rem;
-  padding: 0;
-  transition: all 0.2s;
-}
-
-.remove-pending-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  transform: scale(1.1);
-}
-
-.request-modal-footer {
-  padding: 1.5rem 2rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-}
-
-.btn-submit {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
-  color: white;
-  font-family: 'Baloo Thambi 2', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.2s;
-}
-
-.btn-submit:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 95, 166, 0.3);
-}
-
-.btn-submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* Modal de Solicitar Novo Interesse: migrou pra
+   ProfileRequestInterestModal.vue (Fase 5, parte 3) — nada pra
+   estilizar aqui. */
 
 /* ═════════════════════════════════════════════════════
    SCROLLABLE CARDS - Limita altura e adiciona scroll

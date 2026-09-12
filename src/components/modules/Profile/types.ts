@@ -7,3 +7,8 @@ export interface FollowUser {
   profileImage?: string
   isFollowing?: boolean
 }
+
+export interface UserInterest {
+  id: string
+  name: string
+}
