@@ -57,6 +57,7 @@ declare module 'vue' {
     NewsUpdates: typeof import('./components/modules/NewsUpdates/NewsUpdates.vue')['default']
     NotFound: typeof import('./components/modules/NotFound/NotFound.vue')['default']
     Profile: typeof import('./components/modules/Profile/Profile.vue')['default']
+    ProfileFollowListModal: typeof import('./components/modules/Profile/ProfileFollowListModal.vue')['default']
     PublicProfile: typeof import('./components/modules/Profile/PublicProfile.vue')['default']
     RequestPassword: typeof import('./components/modules/PasswordRecovery/RequestPassword.vue')['default']
     ResetPassword: typeof import('./components/modules/PasswordRecovery/ResetPassword.vue')['default']

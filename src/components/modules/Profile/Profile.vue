@@ -34,6 +34,7 @@
     mapConfirmedAttendance as mapConfirmedAttendanceUtil,
     mapLikedEventItem as mapLikedEventItemUtil,
   } from '@/utils/profileEvents'
+  import ProfileFollowListModal from './ProfileFollowListModal.vue'
 
   // ── Constantes (evita magic numbers) ──
   /** Espelha BIO_MAX_LENGTH do backend (VarChar(500) + validação no service).
@@ -2327,113 +2328,26 @@
       </Transition>
     </Teleport>
 
-    <!-- Modal de Seguidores -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showFollowersModal" class="modal-overlay" @click.self="closeFollowersModal">
-          <div class="modal-container follow-modal">
-            <div class="modal-header">
-              <h2>{{ t('profile.followersModal.title') }}</h2>
-              <button class="modal-close" type="button" @click="closeFollowersModal">
-                <i class="mdi mdi-close" />
-              </button>
-            </div>
-            <div class="modal-body follow-modal-body">
-              <div v-if="loadingFollowers" class="follow-modal-loading">
-                <AppLoader size="sm" :text="t('profile.followersModal.loading')" />
-              </div>
-              <ul v-else-if="followersList.length > 0" class="follow-modal-list">
-                <li v-for="follower in followersList" :key="follower.id" class="follow-modal-item">
-                  <div
-                    class="follow-modal-avatar"
-                    style="cursor: pointer;"
-                    @click="closeFollowersModal(); goToProfile(follower.id)"
-                  >
-                    <UserAvatar
-                      :image="follower.profileImage"
-                      :name="follower.name"
-                      :size="48"
-                    />
-                  </div>
-                  <div
-                    class="follow-modal-info"
-                    style="cursor: pointer;"
-                    @click="closeFollowersModal(); goToProfile(follower.id)"
-                  >
-                    <span class="follow-modal-name">{{ follower.name }}</span>
-                    <span v-if="follower.username" class="follow-modal-username">@{{ follower.username }}</span>
-                  </div>
-                  <button
-                    class="follow-modal-btn"
-                    :class="{ following: follower.isFollowing }"
-                    type="button"
-                    @click="toggleFollowUser(follower)"
-                  >
-                    {{ follower.isFollowing ? t('profile.followersModal.following') : t('profile.followersModal.follow')
-                    }}
-                  </button>
-                </li>
-              </ul>
-              <div v-else class="follow-modal-empty">
-                <i class="mdi mdi-account-group-outline" />
-                <p>{{ t('profile.followersModal.empty') }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
-    <!-- Modal de Seguindo -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showFollowingModal" class="modal-overlay" @click.self="closeFollowingModal">
-          <div class="modal-container follow-modal">
-            <div class="modal-header">
-              <h2>{{ t('profile.followingModal.title') }}</h2>
-              <button class="modal-close" type="button" @click="closeFollowingModal">
-                <i class="mdi mdi-close" />
-              </button>
-            </div>
-            <div class="modal-body follow-modal-body">
-              <div v-if="loadingFollowing" class="follow-modal-loading">
-                <AppLoader size="sm" :text="t('profile.followingModal.loading')" />
-              </div>
-              <ul v-else-if="followingList.length > 0" class="follow-modal-list">
-                <li v-for="following in followingList" :key="following.id" class="follow-modal-item">
-                  <div
-                    class="follow-modal-avatar"
-                    style="cursor: pointer;"
-                    @click="closeFollowingModal(); goToProfile(following.id)"
-                  >
-                    <UserAvatar
-                      :image="following.profileImage"
-                      :name="following.name"
-                      :size="48"
-                    />
-                  </div>
-                  <div
-                    class="follow-modal-info"
-                    style="cursor: pointer;"
-                    @click="closeFollowingModal(); goToProfile(following.id)"
-                  >
-                    <span class="follow-modal-name">{{ following.name }}</span>
-                    <span v-if="following.username" class="follow-modal-username">@{{ following.username }}</span>
-                  </div>
-                  <button class="follow-modal-btn following" type="button" @click="toggleFollowUser(following)">
-                    {{ t('profile.followingModal.unfollow') }}
-                  </button>
-                </li>
-              </ul>
-              <div v-else class="follow-modal-empty">
-                <i class="mdi mdi-account-search-outline" />
-                <p>{{ t('profile.followingModal.empty') }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+    <!-- Modais de Seguidores/Seguindo — extraídos pra ProfileFollowListModal.vue
+         na Fase 5 do REFACTOR_AUDIT_PLAN.md (1ª fatia da decomposição de
+         Profile.vue). toggleFollowUser continua aqui porque também é usado
+         pela lista de recomendações (fora dos modais) e mexe em followStats. -->
+    <ProfileFollowListModal
+      :list="followersList"
+      :loading="loadingFollowers"
+      variant="followers"
+      :visible="showFollowersModal"
+      @close="closeFollowersModal"
+      @toggle-follow="toggleFollowUser"
+    />
+    <ProfileFollowListModal
+      :list="followingList"
+      :loading="loadingFollowing"
+      variant="following"
+      :visible="showFollowingModal"
+      @close="closeFollowingModal"
+      @toggle-follow="toggleFollowUser"
+    />
 
     <!-- Snackbar de notificações -->
     <Snackbar v-model="snackbarVisible" :color="snackbarColor" :message="snackbarMessage" />
@@ -3905,158 +3819,10 @@
   margin: 0;
 }
 
-/* ── Follow Modal ── */
-.follow-modal {
-  width: min(480px, 90vw);
-  max-height: 70vh;
-}
-
-.follow-modal-body {
-  padding: 0 !important;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.follow-modal-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 3rem 1rem;
-  color: var(--color-text-muted);
-}
-
-.follow-modal-loading i {
-  font-size: 2rem;
-  color: var(--color-primary);
-}
-
-.follow-modal-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.follow-modal-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--color-border);
-  transition: background var(--transition-fast);
-}
-
-.follow-modal-item:last-child {
-  border-bottom: none;
-}
-
-.follow-modal-item:hover {
-  background: rgba(255, 95, 166, 0.04);
-}
-
-.follow-modal-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.follow-modal-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.avatar-placeholder-modal {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 600;
-  font-size: 1rem;
-}
-
-.follow-modal-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.follow-modal-name {
-  font-weight: 600;
-  font-size: 1rem;
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.follow-modal-username {
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.follow-modal-btn {
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-full);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
-  color: white;
-  border: none;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.follow-modal-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-primary);
-}
-
-.follow-modal-btn.following {
-  background: transparent;
-  border: 1px solid var(--color-border-strong);
-  color: var(--color-text-secondary);
-}
-
-.follow-modal-btn.following:hover {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: #ef4444;
-  color: #ef4444;
-  box-shadow: none;
-}
-
-.follow-modal-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 3rem 1rem;
-  color: var(--color-text-muted);
-}
-
-.follow-modal-empty i {
-  font-size: 3rem;
-  opacity: 0.5;
-}
-
-.follow-modal-empty p {
-  margin: 0;
-  font-size: 0.95rem;
-}
+/* Modais de Seguidores/Seguindo: migraram pra ProfileFollowListModal.vue
+   (Fase 5, parte 1) — nada pra estilizar aqui. `.avatar-placeholder-modal`
+   também removida: já estava morta (sem nenhum uso no template desde que
+   os modais passaram a usar o componente UserAvatar). */
 
 /* ── Manage Interests Modal ── */
 .interests-modal-container {
