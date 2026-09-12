@@ -10,6 +10,7 @@
   import { useAuth } from '@/composables/useAuth'
   import { useCommentLikes } from '@/composables/useCommentLikes'
   import { useUserNavigation } from '@/composables/useUserNavigation'
+  import { formatDate } from './commentDisplay'
 
   const props = defineProps<{
     eventId: string | number
@@ -60,20 +61,8 @@
     expandedReplies.value[commentId] = !expandedReplies.value[commentId]
   }
 
-  function formatDate (dateStr: string): string {
-    const d = new Date(dateStr)
-    if (Number.isNaN(d.getTime())) return ''
-    const now = new Date()
-    const diffMs = now.getTime() - d.getTime()
-    const diffMin = Math.floor(diffMs / 60_000)
-    if (diffMin < 1) return 'agora'
-    if (diffMin < 60) return `${diffMin}min`
-    const diffH = Math.floor(diffMin / 60)
-    if (diffH < 24) return `${diffH}h`
-    const diffD = Math.floor(diffH / 24)
-    if (diffD < 7) return `${diffD}d`
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-  }
+  // formatDate: migrou pra ./commentDisplay.ts (Fase 6, item D3 do
+  // REFACTOR_AUDIT_PLAN.md) — era idêntica à versão de lá.
 
   function isMyComment (comment: Comment): boolean {
     return loggedUser.value?.id === comment.user?.id

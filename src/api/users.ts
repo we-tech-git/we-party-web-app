@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { AuthService } from '@/services/auth'
 import { logger } from '@/utils/logger'
 import { callApi } from './index'
 
@@ -229,11 +230,11 @@ export async function updateUserProfile (userId: string, data: {
 }
 
 async function patchUserProfileFormData (formData: FormData) {
-  const token = localStorage.getItem('ACCESS_TOKEN')
+  const token = AuthService.getToken()
   const baseUrl = import.meta.env.VITE__BASE_URL
 
   if (!token) {
-    throw new Error('Token de autenticaÃ§Ã£o nÃ£o encontrado')
+    throw new Error('Token de autenticação não encontrado')
   }
 
   const response = await axios({
@@ -255,7 +256,7 @@ export async function uploadProfileImage (file: File) {
   const formData = new FormData()
   formData.append('profilePhoto', file)
 
-  const token = localStorage.getItem('ACCESS_TOKEN')
+  const token = AuthService.getToken()
   const baseUrl = import.meta.env.VITE__BASE_URL
 
   if (!token) {
@@ -288,7 +289,7 @@ export async function uploadBannerImage (file: File) {
   const formData = new FormData()
   formData.append('coverPhoto', file)
 
-  const token = localStorage.getItem('ACCESS_TOKEN')
+  const token = AuthService.getToken()
   const baseUrl = import.meta.env.VITE__BASE_URL
 
   if (!token) {

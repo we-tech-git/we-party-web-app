@@ -31,7 +31,6 @@ declare module 'vue' {
     FeaturedUpdateCard: typeof import('./components/modules/NewsUpdates/FeaturedUpdateCard.vue')['default']
     Feed: typeof import('./components/modules/Feed/Feed.vue')['default']
     FeedCard: typeof import('./components/modules/Feed/FeedCard.vue')['default']
-    FeedCardStandalone: typeof import('./components/FeedCardStandalone.vue')['default']
     FeedSidebarNav: typeof import('./components/modules/Feed/FeedSidebarNav.vue')['default']
     FeedTrendingMobile: typeof import('./components/modules/Feed/FeedTrendingMobile.vue')['default']
     FeedTrendsPanel: typeof import('./components/modules/Feed/FeedTrendsPanel.vue')['default']

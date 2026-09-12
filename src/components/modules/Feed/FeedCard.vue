@@ -185,7 +185,7 @@
 </script>
 
 <template>
-  <article class="feed-card" :class="{ 'highlight-card': highlight }">
+  <article class="feed-card" :class="{ 'highlight-card': highlight }" data-testid="feed-card">
     <div v-if="highlight && rank" class="rank-badge">
       <span>#</span>{{ rank }}
     </div>
@@ -350,6 +350,7 @@
               :aria-pressed="liked"
               class="stat stat-action"
               :class="{ liked }"
+              data-testid="feed-card-like"
               type="button"
               @click.stop="handleToggleLike"
             >
@@ -374,6 +375,7 @@
               aria-label="Comentários"
               class="stat stat-action comments-action"
               :class="{ active: showComments }"
+              data-testid="feed-card-comments-toggle"
               type="button"
               @click.stop="handleCommentsToggle"
             >
@@ -444,7 +446,13 @@
                 offset="10"
               >Detalhes</v-tooltip>
             </button>
-            <button aria-label="Compartilhar" class="icon-button" type="button" @click.prevent="handleShare">
+            <button
+              aria-label="Compartilhar"
+              class="icon-button"
+              data-testid="feed-card-share"
+              type="button"
+              @click.prevent="handleShare"
+            >
               <svg
                 v-if="svgIcons.shareIcon"
                 fill="none"

@@ -13,6 +13,14 @@ importado por nenhuma página/componente ativo.
   (EventView/EventDetails) permanece no projeto, mas fora de uso"). Movidos
   pra cá em vez de apagados, seguindo o mesmo princípio deste diretório —
   ver correção no diagnóstico do `REFACTOR_AUDIT_PLAN.md` (item B1).
+- **`FeedCardStandalone.vue`** (Fase 6) — mesma situação: **código morto
+  confirmado**, não `FeedCard` "com uma variação real" como o item B3 do
+  diagnóstico supunha. `grep -rn "FeedCardStandalone" src/` (fora deste
+  arquivo e deste README) não retorna nenhuma página, rota ou componente
+  ativo importando-o. A duplicação de fato (barra de curtir/comentar/ver
+  interesses) só existia entre um componente vivo (`FeedCard.vue`) e um
+  morto — não havia "2 implementações do mesmo conceito" pra consolidar,
+  só uma implementação viva e um arquivo órfão. Ver Fase 6 no plano.
 
 ## O que NÃO foi movido pra cá, apesar de aparecer no diagnóstico original
 
@@ -20,11 +28,6 @@ importado por nenhuma página/componente ativo.
   header do Feed vira único só na área autenticada; a Landingpage pública
   mantém seu próprio header de marketing onde está, por ser um header
   legítimo e distinto, não uma cópia do outro.
-- **Footer do `FeedCard`/`FeedCardStandalone`** — na inspeção do código
-  durante a Fase 1 ficou confirmado que é a barra de curtir/comentar/ver
-  interesses do **card de evento**, não um rodapé de página. É duplicação
-  real entre `FeedCard` e `FeedCardStandalone` (item B3 do diagnóstico), mas
-  isso é assunto da Fase 6, não da consolidação de header/footer de página.
 
 Decisão de remoção definitiva do que estiver aqui fica para depois deste
 esforço — ver seção "Princípios" do `REFACTOR_AUDIT_PLAN.md`.
