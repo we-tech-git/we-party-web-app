@@ -28,6 +28,7 @@ declare module 'vue' {
     FeedCard: typeof import('./components/modules/Feed/FeedCard.vue')['default']
     FeedCardStandalone: typeof import('./components/FeedCardStandalone.vue')['default']
     FeedSidebarNav: typeof import('./components/modules/Feed/FeedSidebarNav.vue')['default']
+    FeedTrendingMobile: typeof import('./components/modules/Feed/FeedTrendingMobile.vue')['default']
     FeedTrendsPanel: typeof import('./components/modules/Feed/FeedTrendsPanel.vue')['default']
     FollowButton: typeof import('./components/UI/FollowButton/FollowButton.vue')['default']
     GradientText: typeof import('./components/UI/GradientText/GradientText.vue')['default']
