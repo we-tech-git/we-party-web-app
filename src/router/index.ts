@@ -6,23 +6,80 @@
  */
 
 // Composables
+import type { RouteRecordRaw } from 'vue-router'
 import { setupLayouts } from 'virtual:generated-layouts'
 import { createRouter, createWebHistory } from 'vue-router'
 import { routes as autoRoutes } from 'vue-router/auto-routes'
 import { privateRouteGuard, publicRouteGuard } from '@/composables/useAuth'
 import { logger } from '@/utils/logger'
 
+/**
+ * Route groups `(private)` / `(public)` viram nós-pai com `path: '/'` e
+ * **sem** `component`. O `setupLayouts` trata o grupo `(private)` (que não
+ * tem child `path: ''`) como se fosse a própria home: envolve em layout
+ * default em `/` e a landing (`(public)/index.vue`) nunca renderiza —
+ * `#app` fica vazio em produção.
+ *
+ * Achata esses wrappers pathless promovendo os filhos a rotas de 1º nível
+ * com path absoluto, antes do `setupLayouts`.
+ */
+function joinRoutePath (parentPath: string, childPath: string): string {
+  if (!childPath || childPath === '') {
+    return parentPath === '' ? '/' : parentPath
+  }
+  if (childPath.startsWith('/')) {
+    return childPath
+  }
+  const base = parentPath === '/' ? '' : parentPath.replace(/\/$/, '')
+  const joined = `${base}/${childPath}`.replace(/\/+/g, '/')
+  return joined.startsWith('/') ? joined : `/${joined}`
+}
+
+function flattenGroupRoutes (routes: RouteRecordRaw[], parentPath = ''): RouteRecordRaw[] {
+  const result: RouteRecordRaw[] = []
+
+  for (const route of routes) {
+    const isGroupWrapper
+      = !route.component
+        && Array.isArray(route.children)
+        && route.children.length > 0
+
+    if (isGroupWrapper) {
+      const groupPath = joinRoutePath(parentPath, route.path || '')
+      result.push(...flattenGroupRoutes(route.children!, groupPath))
+      continue
+    }
+
+    const absolutePath = joinRoutePath(parentPath, route.path || '')
+
+    if (route.children?.length) {
+      result.push({
+        ...route,
+        path: absolutePath,
+        children: route.children,
+      })
+      continue
+    }
+
+    result.push({
+      ...route,
+      path: absolutePath,
+    })
+  }
+
+  return result
+}
+
 // Lazy loading aplicado automaticamente pelas auto-routes do unplugin-vue-router
 // As rotas são carregadas sob demanda, reduzindo o bundle inicial
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  // `src/pages/(public)/index.vue` já serve a landing page diretamente em
-  // `/` (route group — a pasta não entra na URL, `index.vue` mapeia pra raiz
-  // do grupo). Sem redirect: entrar em `/` mostra a landing sem trocar a URL
-  // visível pra `/landingpage`.
+  // `src/pages/(public)/index.vue` serve a landing em `/`. Grupos de rota
+  // são achatados (ver `flattenGroupRoutes`) pra o layout do grupo private
+  // não engolir a raiz.
   routes: [
-    ...setupLayouts(autoRoutes),
+    ...setupLayouts(flattenGroupRoutes(autoRoutes as RouteRecordRaw[])),
   ],
 })
 
