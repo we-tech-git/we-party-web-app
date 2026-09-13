@@ -5,7 +5,7 @@
   useSeoMeta({
     title: 'Seus interesses | We Party',
     description: 'Escolha seus interesses no We Party para receber recomendações de eventos personalizadas.',
-    path: '/Interest',
+    path: '/interest',
   })
 </script>
 

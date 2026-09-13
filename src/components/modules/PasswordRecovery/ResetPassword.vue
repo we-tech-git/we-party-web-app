@@ -44,7 +44,7 @@
     // pin.value = '123456' // PIN de teste
     } else {
     // Se estiver em produção e não houver parâmetros, redireciona
-    // router.push({ name: '/RequestPassword' })
+    // router.push({ name: '/request-password' })
     }
 
     verifyToken()
@@ -70,12 +70,12 @@
         showSnackbar(t('resetPassword.successMessage'), '#4caf50')
         // Redireciona para a página de login após um breve atraso
         setTimeout(() => {
-          router.push({ name: '/Login' })
+          router.push({ name: '/login' })
         }, 2000)
         return
       }
     // setTimeout(() => {
-    //   router.push({ name: '/Login' })
+    //   router.push({ name: '/login' })
     // }, 2000)
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || t('resetPassword.errors.generic')
@@ -114,7 +114,7 @@
       // Redireciona de volta para a página de solicitação de senha após um breve atraso
       showSnackbar(localErrorMessage, '#f44336')
       setTimeout(() => {
-        router.push({ name: '/RequestPassword' })
+        router.push({ name: '/request-password' })
       }, 3000)
     }
   }

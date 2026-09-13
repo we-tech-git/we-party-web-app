@@ -5,7 +5,7 @@
   useSeoMeta({
     title: 'Criar conta | We Party',
     description: 'Cadastre-se gratuitamente no We Party e comece a descobrir festas, shows e eventos perto de você.',
-    path: '/Signup',
+    path: '/signup',
   })
 </script>
 

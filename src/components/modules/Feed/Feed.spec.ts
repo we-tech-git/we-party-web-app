@@ -51,7 +51,7 @@ function mountFeed (props: Record<string, unknown> = {}) {
       { path: '/', component: { template: '<div />' } },
       { path: '/feed', component: { template: '<div />' } },
       { path: '/profile', component: { template: '<div />' } },
-      { path: '/Login', component: { template: '<div />' } },
+      { path: '/login', component: { template: '<div />' } },
     ],
   })
 

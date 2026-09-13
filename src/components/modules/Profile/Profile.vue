@@ -1335,7 +1335,7 @@
 
   function handleLogout () {
     AuthService.logout()
-    router.push('/Login')
+    router.push('/login')
   }
 
   function handleBackNavigation () {

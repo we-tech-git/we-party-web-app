@@ -19,7 +19,7 @@
   const snackbarColor = ref('#ff9800')
 
   function backToLogin () {
-    router.push({ name: '/Login' })
+    router.push({ name: '/login' })
   }
 
   // ===============================

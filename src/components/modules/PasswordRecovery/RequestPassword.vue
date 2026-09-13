@@ -57,7 +57,7 @@
       // Aguarda um pouco para o usuário ler a mensagem e então redireciona
       localStorage.setItem(STORAGE_KEYS.RESET_PASSWORD_EMAIL, JSON.stringify(email.value))
       setTimeout(() => {
-        router.push({ name: '/VerifyPin', query: { email: email.value } })
+        router.push({ name: '/verify-pin', query: { email: email.value } })
       }, 2000)
     } catch (error: any) {
       const localErrorMessage = error.response?.data?.message || t('forgotPassword.errors.generic')

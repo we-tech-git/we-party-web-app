@@ -11,7 +11,7 @@
   useSeoMeta({
     title: 'Cadastro concluído | We Party',
     description: 'Sua conta We Party foi criada com sucesso. Comece agora a descobrir eventos perto de você.',
-    path: '/Congratulations',
+    path: '/congratulations',
   })
 </script>
 

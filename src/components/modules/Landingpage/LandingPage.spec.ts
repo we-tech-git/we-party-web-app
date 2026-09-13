@@ -20,9 +20,8 @@ function mountLandingPage () {
     history: createMemoryHistory(),
     routes: [
       { path: '/', component: { template: '<div />' } },
-      { path: '/Login', component: { template: '<div />' } },
-      { path: '/Signup', component: { template: '<div />' } },
-      { path: '/Landingpage', component: { template: '<div />' } },
+      { path: '/login', component: { template: '<div />' } },
+      { path: '/signup', component: { template: '<div />' } },
       { path: '/updates', component: { template: '<div />' } },
       { path: '/explore', component: { template: '<div />' } },
     ],

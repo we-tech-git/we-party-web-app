@@ -13,11 +13,11 @@
   }
 
   function goToSignup () {
-    router.push('/Signup')
+    router.push('/signup')
   }
 
   function goToLogin () {
-    router.push('/Login')
+    router.push('/login')
   }
 
   function goToHome () {

@@ -200,7 +200,7 @@
       localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
 
       setTimeout(() => {
-        router.push('/ConfirmEmail')
+        router.push('/confirm-email')
       }, 1500)
     } catch (error: any) {
       logger.error('Erro ao registrar usuário:', error)
@@ -256,7 +256,7 @@
 <template>
   <AuthLayout>
     <template #form-content>
-      <button class="btn-back" type="button" @click="router.push('/Login')">
+      <button class="btn-back" type="button" @click="router.push('/login')">
         <svg
           class="btn-back__arrow"
           fill="none"
@@ -423,7 +423,7 @@
 
         <p class="login-link-text">
           {{ $t('signup.hasAccount') }}
-          <a href="/Login">{{ $t('signup.loginLink') }}</a>
+          <a href="/login">{{ $t('signup.loginLink') }}</a>
         </p>
         <button :aria-busy="isSubmitting" class="btn-primary flex items-center justify-center gap-2" :disabled="isSubmitting" type="submit">
           <AppLoader v-if="isSubmitting" size="sm" text="Enviando..." variant="text" />

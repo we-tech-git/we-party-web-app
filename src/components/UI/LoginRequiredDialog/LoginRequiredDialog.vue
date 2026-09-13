@@ -42,7 +42,7 @@
     // login do Google não deve rodar ali dentro — leva o usuário direto
     // para a página real de cadastro, na janela de topo.
     if (isEmbeddedInIframe() && window.top) {
-      window.top.location.href = '/Signup'
+      window.top.location.href = '/signup'
       return
     }
 

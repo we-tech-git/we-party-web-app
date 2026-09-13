@@ -28,7 +28,7 @@
 
   function logout () {
     authLogout()
-    router.push('/Login')
+    router.push('/login')
   }
 
   // No modo guest embutido (iframe do mockup), o menu do usuário é exibido
@@ -54,10 +54,10 @@
 
   function goToLogin () {
     if (isEmbedded && window.top) {
-      window.top.location.href = '/Login'
+      window.top.location.href = '/login'
       return
     }
-    router.push('/Login')
+    router.push('/login')
   }
 
   function navigateToHome () {
@@ -68,10 +68,10 @@
 
   function goToSignup () {
     if (isEmbedded && window.top) {
-      window.top.location.href = '/Signup'
+      window.top.location.href = '/signup'
       return
     }
-    router.push('/Signup')
+    router.push('/signup')
   }
 
   const defaultSearchQuery = ref('')

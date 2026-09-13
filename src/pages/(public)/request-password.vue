@@ -5,7 +5,7 @@
   useSeoMeta({
     title: 'Recuperar senha | We Party',
     description: 'Solicite a redefinição da sua senha para voltar a acessar sua conta We Party.',
-    path: '/RequestPassword',
+    path: '/request-password',
   })
 </script>
 

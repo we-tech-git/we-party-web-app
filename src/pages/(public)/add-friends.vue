@@ -9,7 +9,7 @@
   useSeoMeta({
     title: 'Adicionar amigos | We Party',
     description: 'Encontre e adicione amigos no We Party para saber quais eventos eles vão curtir com você.',
-    path: '/AddFriends',
+    path: '/add-friends',
   })
 </script>
 

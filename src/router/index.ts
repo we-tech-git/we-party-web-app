@@ -17,16 +17,11 @@ import { logger } from '@/utils/logger'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  // `src/pages/(public)/index.vue` já serve a landing page diretamente em
+  // `/` (route group — a pasta não entra na URL, `index.vue` mapeia pra raiz
+  // do grupo). Sem redirect: entrar em `/` mostra a landing sem trocar a URL
+  // visível pra `/landingpage`.
   routes: [
-    // Redirect da rota raiz para a landing page
-    {
-      path: '',
-      redirect: '/Landingpage',
-    },
-    {
-      path: '/',
-      redirect: '/Landingpage',
-    },
     ...setupLayouts(autoRoutes),
   ],
 })

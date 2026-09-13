@@ -161,7 +161,7 @@
           showSnackbar(errorMessage, '#ff9800')
           localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
           setTimeout(() => {
-            router.push('/ConfirmEmail')
+            router.push('/confirm-email')
           }, 3000)
         } else {
           // Trata outros erros lógicos que podem vir do backend
@@ -177,7 +177,7 @@
         showSnackbar(errorMessage, '#ff9800')
         localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
         setTimeout(() => {
-          router.push('/ConfirmEmail')
+          router.push('/confirm-email')
         }, 3000)
       } else {
         showSnackbar(errorMessage, '#ef4444')
@@ -312,7 +312,7 @@
               <input v-model="rememberMe" data-testid="login-remember-me" type="checkbox">
               {{ $t('login.rememberMe') }}
             </label>
-            <router-link class="forgot-link" to="/RequestPassword">{{ $t('login.forgotPassword') }}</router-link>
+            <router-link class="forgot-link" to="/request-password">{{ $t('login.forgotPassword') }}</router-link>
           </div>
 
           <button
@@ -340,7 +340,7 @@
 
       <div class="footer-row">
         <p class="login-link-text">
-          {{ $t('login.noAccount') }} <router-link to="/Signup">{{ $t('login.signupLink') }}</router-link>
+          {{ $t('login.noAccount') }} <router-link to="/signup">{{ $t('login.signupLink') }}</router-link>
         </p>
         <p class="free-text">É de graça <span class="heart">❤</span></p>
       </div>

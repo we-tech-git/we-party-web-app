@@ -8,7 +8,7 @@
     if (window.history.length > 1) {
       router.back()
     } else {
-      router.push('/Landingpage')
+      router.push('/')
     }
   }
 </script>
@@ -32,7 +32,7 @@
 
     <!-- Brand header -->
     <header class="nf-header">
-      <router-link class="nf-brand" to="/Landingpage">
+      <router-link class="nf-brand" to="/">
         <img alt="We Party" class="nf-brand__logo" src="/logoweparty.png">
       </router-link>
     </header>
@@ -62,7 +62,7 @@
             <span aria-hidden="true" class="nf-card__arrow">→</span>
           </router-link>
 
-          <router-link class="nf-card nf-card--accent" :to="{ path: '/Login', query: { force: 'true' } }">
+          <router-link class="nf-card nf-card--accent" :to="{ path: '/login', query: { force: 'true' } }">
             <span class="nf-card__icon">🔑</span>
             <div class="nf-card__body">
               <span class="nf-card__title">Fazer Login</span>
@@ -71,7 +71,7 @@
             <span aria-hidden="true" class="nf-card__arrow">→</span>
           </router-link>
 
-          <router-link class="nf-card nf-card--soft" to="/Landingpage">
+          <router-link class="nf-card nf-card--soft" to="/">
             <span class="nf-card__icon">🏠</span>
             <div class="nf-card__body">
               <span class="nf-card__title">Página Inicial</span>

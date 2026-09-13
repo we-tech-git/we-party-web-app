@@ -62,7 +62,7 @@ function resetInactivityTimer () {
 
     // Opcional: Redirecionar para login
     if (typeof window !== 'undefined') {
-      window.location.href = '/Login?reason=inactivity'
+      window.location.href = '/login?reason=inactivity'
     }
   }, INACTIVITY_TIMEOUT_MS)
 }
@@ -289,11 +289,11 @@ export function privateRouteGuard (path?: string) {
     if (path?.includes('/feed')) {
       return '/explore'
     }
-    return '/Login'
+    return '/login'
   }
 
   if (user && user.isEmailVerified === false) {
-    return '/ConfirmEmail'
+    return '/confirm-email'
   }
 
   return true
@@ -314,7 +314,7 @@ export function publicRouteGuard (forceAccess?: boolean) {
  */
 export function roleGuard (requiredRoles: string[]) {
   if (!AuthService.isAuthenticated()) {
-    return '/Login'
+    return '/login'
   }
 
   if (!AuthService.hasAnyRole(requiredRoles)) {

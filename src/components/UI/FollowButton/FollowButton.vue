@@ -2,7 +2,7 @@
   /**
    * Botão de seguir/deixar de seguir reutilizável.
    *
-   * Visual e comportamento extraídos da lista de convites (`/AddFriends`):
+   * Visual e comportamento extraídos da lista de convites (`/add-friends`):
    * contorno em gradiente com ícone de "adicionar" quando não segue, e preenchido
    * com ícone de check ("seguindo") quando segue. Os textos são configuráveis via
    * props para cada contexto ("Seguir"/"Seguindo", "Enviar"/"Enviado", etc.).

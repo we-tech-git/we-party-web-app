@@ -13,7 +13,7 @@
   }
 
   function goToSignup () {
-    router.push('/Signup')
+    router.push('/signup')
   }
 </script>
 
