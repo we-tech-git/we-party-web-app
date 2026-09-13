@@ -21,6 +21,7 @@
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
+  import { useInterestNavigation } from '@/composables/useInterestNavigation'
   import { useLoading } from '@/composables/useLoading'
   import { useUserNavigation } from '@/composables/useUserNavigation'
   import { AuthService } from '@/services/auth'
@@ -69,6 +70,7 @@
   const route = useRoute()
   const { loggedUser, updateUser } = useAuth()
   const { goToProfile } = useUserNavigation()
+  const { goToInterest } = useInterestNavigation()
   const eventsStore = useEventsStore()
   const shareStore = useShareStore()
 
@@ -1460,8 +1462,15 @@
               <div v-if="userInterests.length > 0" :aria-label="t('profile.yourInterests')" class="interests-section">
                 <div class="interests-chips-wrapper">
                   <ul class="interests-chips" role="list">
-                    <li v-for="interest in userInterests" :key="interest.id" class="interest-chip">
-                      {{ interest.name }}
+                    <li v-for="interest in userInterests" :key="interest.id">
+                      <button
+                        class="interest-chip"
+                        data-testid="profile-interest-chip"
+                        type="button"
+                        @click="goToInterest(interest.id)"
+                      >
+                        {{ interest.name }}
+                      </button>
                     </li>
                   </ul>
                 </div>
@@ -1719,7 +1728,16 @@
           </div>
           <div v-else-if="userInterests.length > 0" class="interests-tags-wrapper">
             <div class="interests-tags">
-              <span v-for="interest in userInterests" :key="interest.id" class="tag">
+              <span
+                v-for="interest in userInterests"
+                :key="interest.id"
+                class="tag tag--clickable"
+                data-testid="profile-interest-tag"
+                role="link"
+                tabindex="0"
+                @click="goToInterest(interest.id)"
+                @keydown.enter.prevent="goToInterest(interest.id)"
+              >
                 {{ interest.name }}
                 <button
                   class="remove-interest-btn"
@@ -2241,6 +2259,9 @@
   font-size: 0.8rem;
   font-weight: 500;
   border: 1px solid rgba(255, 95, 166, 0.2);
+  cursor: pointer;
+  font-family: inherit;
+  line-height: inherit;
 }
 
 /* .modal-banner.no-banner/.modal-avatar-wrapper: migraram pra
@@ -3744,6 +3765,15 @@ a:focus-visible {
 .interest-chip:hover,
 .tag:hover {
   transform: translateY(-1px);
+}
+
+.interest-chip:hover {
+  border-color: rgba(255, 95, 166, 0.45);
+  background: linear-gradient(135deg, rgba(255, 95, 143, 0.18) 0%, rgba(139, 92, 246, 0.18) 100%);
+}
+
+.tag--clickable {
+  cursor: pointer;
 }
 
 /* Animação de entrada para conteúdo carregado */

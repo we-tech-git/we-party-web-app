@@ -5,6 +5,7 @@
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import { useEventImages } from '@/composables/useEventImages'
   import { useGuestMode } from '@/composables/useGuestMode'
+  import { useInterestNavigation } from '@/composables/useInterestNavigation'
   import { useUserNavigation } from '@/composables/useUserNavigation'
   import { useShareStore } from '@/stores/share'
   import { svgIcons } from '@/utils/svgSet'
@@ -51,6 +52,7 @@
   const router = useRouter()
   const { requireLogin } = useGuestMode()
   const { goToProfile } = useUserNavigation()
+  const { goToInterest } = useInterestNavigation()
 
   /**
    * Navega para detalhes do evento
@@ -182,6 +184,16 @@
     if (!props.matchedInterests || props.matchedInterests.length === 0) return false
     return props.matchedInterests.some(m => m.toLowerCase() === tag.toLowerCase())
   }
+
+  function resolveInterestId (tag: string): string | undefined {
+    return props.interestRefs?.find(ref => ref.name.toLowerCase() === tag.toLowerCase())?.id
+  }
+
+  function handleInterestClick (e: Event, tag: string) {
+    e.stopPropagation()
+    const id = resolveInterestId(tag)
+    if (id) goToInterest(id)
+  }
 </script>
 
 <template>
@@ -279,12 +291,15 @@
           <div class="container-card-info">
             <!-- Interest tags -->
             <div v-if="visibleInterestTags.length > 0" class="interest-tags">
-              <span
+              <button
                 v-for="tag in visibleInterestTags"
                 :key="tag"
                 class="interest-tag"
-                :class="{ matched: isMatchedInterest(tag) }"
-              >{{ tag }}</span>
+                :class="{ matched: isMatchedInterest(tag), clickable: !!resolveInterestId(tag) }"
+                data-testid="feed-card-interest-tag"
+                type="button"
+                @click="handleInterestClick($event, tag)"
+              >{{ tag }}</button>
               <span v-if="overflowCount > 0" class="interest-tag more">+{{ overflowCount }}</span>
             </div>
 
@@ -913,6 +928,19 @@
   white-space: nowrap;
   transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   transform: translateZ(0);
+  font-family: inherit;
+  line-height: inherit;
+  cursor: default;
+}
+
+.interest-tag.clickable {
+  cursor: pointer;
+}
+
+.interest-tag.clickable:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
 }
 
 .interest-tag.matched {
