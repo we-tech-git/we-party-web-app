@@ -234,7 +234,7 @@
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(interestsToSave))
-      router.push('/public/AddFriends')
+      router.push('/AddFriends')
     } catch (error) {
       console.error('Erro ao salvar interesses:', error)
     } finally {
@@ -243,7 +243,7 @@
   }
 
   function skipStep () {
-    router.push('/public/AddFriends')
+    router.push('/AddFriends')
   }
 
   function closeModal () {

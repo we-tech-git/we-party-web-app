@@ -200,7 +200,7 @@
       localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
 
       setTimeout(() => {
-        router.push('/public/ConfirmEmail')
+        router.push('/ConfirmEmail')
       }, 1500)
     } catch (error: any) {
       logger.error('Erro ao registrar usuário:', error)
@@ -240,7 +240,7 @@
         triggerConfetti()
         showSnackbar(t('signup.snackbar.googleSuccess'), '#22c55e')
         setTimeout(() => {
-          router.push('/private/feed')
+          router.push('/feed')
         }, 1500)
       } else {
         showSnackbar(result.message || t('signup.snackbar.googleGenericError'), '#ef4444')
@@ -256,7 +256,7 @@
 <template>
   <AuthLayout>
     <template #form-content>
-      <button class="btn-back" type="button" @click="router.push('/public/login')">
+      <button class="btn-back" type="button" @click="router.push('/Login')">
         <svg
           class="btn-back__arrow"
           fill="none"
@@ -423,7 +423,7 @@
 
         <p class="login-link-text">
           {{ $t('signup.hasAccount') }}
-          <a href="/public/login">{{ $t('signup.loginLink') }}</a>
+          <a href="/Login">{{ $t('signup.loginLink') }}</a>
         </p>
         <button :aria-busy="isSubmitting" class="btn-primary flex items-center justify-center gap-2" :disabled="isSubmitting" type="submit">
           <AppLoader v-if="isSubmitting" size="sm" text="Enviando..." variant="text" />

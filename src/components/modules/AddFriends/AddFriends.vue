@@ -227,11 +227,11 @@
   }
 
   function finishSelection () {
-    router.push('/public/Congratulations')
+    router.push('/Congratulations')
   }
 
   function skipStep () {
-    router.push('/public/Congratulations')
+    router.push('/Congratulations')
   }
 
   // Refaz a última ação (busca ou recomendações)

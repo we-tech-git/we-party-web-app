@@ -18,7 +18,7 @@
   })
 
   function handleActionClick () {
-    const targetPath = props.update.actionPath || '/public/explore'
+    const targetPath = props.update.actionPath || '/explore'
     router.push(targetPath)
   }
 </script>

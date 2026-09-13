@@ -16,7 +16,7 @@ interface SeoMetaOptions {
   title: string
   /** Descrição única da página, em pt-BR, para meta description / og:description. */
   description: string
-  /** Caminho da rota (ex.: "/public/Login"). Usado para montar canonical e og:url. */
+  /** Caminho da rota (ex.: "/Login"). Usado para montar canonical e og:url. */
   path: string
   /** URL absoluta da imagem para og:image/twitter:image. */
   image?: string

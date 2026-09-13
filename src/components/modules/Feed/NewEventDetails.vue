@@ -1106,7 +1106,7 @@
     shareStore.open({
       title: event.value.title,
       text: 'Veja esse evento que encontrei que você também pode gostar',
-      url: `${window.location.origin}/private/event/${currentId.value}`,
+      url: `${window.location.origin}/event/${currentId.value}`,
     })
   }
 

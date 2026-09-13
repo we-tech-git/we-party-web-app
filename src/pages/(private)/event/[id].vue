@@ -13,7 +13,7 @@
     },
   })
 
-  const route = useRoute('/private/event/[id]')
+  const route = useRoute('/event/[id]')
   const eventId = computed(() => route.params.id)
 </script>
 

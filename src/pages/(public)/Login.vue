@@ -5,7 +5,7 @@
   useSeoMeta({
     title: 'Entrar | We Party',
     description: 'Acesse sua conta We Party para descobrir eventos perto de você e continuar de onde parou.',
-    path: '/public/Login',
+    path: '/Login',
   })
 </script>
 

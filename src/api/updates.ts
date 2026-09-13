@@ -4,7 +4,7 @@ import { callApi } from '.'
 
 /**
  * Busca as novidades publicadas da plataforma (público — sem autenticação).
- * Alimenta a página /public/updates. O backend só devolve o que um admin já
+ * Alimenta a página /updates. O backend só devolve o que um admin já
  * publicou pelo CMS — nunca rascunho.
  */
 export async function getPublicUpdates (): Promise<NewsUpdate[]> {

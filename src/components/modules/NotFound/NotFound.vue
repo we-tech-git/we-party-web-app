@@ -8,7 +8,7 @@
     if (window.history.length > 1) {
       router.back()
     } else {
-      router.push('/public/Landingpage')
+      router.push('/Landingpage')
     }
   }
 </script>
@@ -32,7 +32,7 @@
 
     <!-- Brand header -->
     <header class="nf-header">
-      <router-link class="nf-brand" to="/public/Landingpage">
+      <router-link class="nf-brand" to="/Landingpage">
         <img alt="We Party" class="nf-brand__logo" src="/logoweparty.png">
       </router-link>
     </header>
@@ -53,7 +53,7 @@
 
         <!-- Navigation suggestion cards -->
         <nav aria-label="Sugestões de navegação" class="nf-nav-cards">
-          <router-link class="nf-card nf-card--primary" to="/private/feed">
+          <router-link class="nf-card nf-card--primary" to="/feed">
             <span class="nf-card__icon">🎪</span>
             <div class="nf-card__body">
               <span class="nf-card__title">Feed de Eventos</span>
@@ -62,7 +62,7 @@
             <span aria-hidden="true" class="nf-card__arrow">→</span>
           </router-link>
 
-          <router-link class="nf-card nf-card--accent" :to="{ path: '/public/Login', query: { force: 'true' } }">
+          <router-link class="nf-card nf-card--accent" :to="{ path: '/Login', query: { force: 'true' } }">
             <span class="nf-card__icon">🔑</span>
             <div class="nf-card__body">
               <span class="nf-card__title">Fazer Login</span>
@@ -71,7 +71,7 @@
             <span aria-hidden="true" class="nf-card__arrow">→</span>
           </router-link>
 
-          <router-link class="nf-card nf-card--soft" to="/public/Landingpage">
+          <router-link class="nf-card nf-card--soft" to="/Landingpage">
             <span class="nf-card__icon">🏠</span>
             <div class="nf-card__body">
               <span class="nf-card__title">Página Inicial</span>

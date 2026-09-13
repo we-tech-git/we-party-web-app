@@ -9,15 +9,15 @@
   const isScrolled = computed(() => scrollY.value > 20)
 
   function goToExplore () {
-    router.push('/public/explore')
+    router.push('/explore')
   }
 
   function goToSignup () {
-    router.push('/public/Signup')
+    router.push('/Signup')
   }
 
   function goToLogin () {
-    router.push('/public/Login')
+    router.push('/Login')
   }
 
   function goToHome () {

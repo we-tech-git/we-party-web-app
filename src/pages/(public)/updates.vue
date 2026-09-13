@@ -9,7 +9,7 @@
   useSeoMeta({
     title: 'Novidades | We Party',
     description: 'Fique por dentro das últimas novidades, atualizações e melhorias do We Party.',
-    path: '/public/updates',
+    path: '/updates',
   })
 </script>
 

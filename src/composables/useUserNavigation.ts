@@ -22,11 +22,11 @@ export function useUserNavigation () {
     }
 
     if (String(userId) === String(loggedUser.value?.id ?? '')) {
-      router.push('/private/profile')
+      router.push('/profile')
       return
     }
 
-    router.push(`/private/profile/${userId}`)
+    router.push(`/profile/${userId}`)
   }
 
   return { goToProfile }

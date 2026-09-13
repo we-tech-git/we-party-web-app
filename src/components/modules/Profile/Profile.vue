@@ -494,7 +494,7 @@
   })
 
   // ── Handler para busca de usuários (chamado pelo SearchInput com debounce) ──
-  // Mesmo comportamento da página /public/AddFriends: busca real no backend
+  // Mesmo comportamento da página /AddFriends: busca real no backend
   // (GET /social/search), com cancelamento da requisição anterior para evitar
   // respostas fora de ordem.
   async function handleUserSearch (query: string) {
@@ -919,7 +919,7 @@
   function handleNavSelect (id: string) {
     if (id === 'home' || id === 'top-events' || id === 'favorites') {
       router.push({
-        path: '/private/feed',
+        path: '/feed',
         query: id === 'home' ? {} : { tab: id },
       })
     }
@@ -1335,16 +1335,16 @@
 
   function handleLogout () {
     AuthService.logout()
-    router.push('/public/Login')
+    router.push('/Login')
   }
 
   function handleBackNavigation () {
-    router.push({ path: '/private/feed', query: { tab: 'favorites' } })
+    router.push({ path: '/feed', query: { tab: 'favorites' } })
   }
 
   // ── Share Profile ──
   function handleShareProfile () {
-    const profileUrl = `${window.location.origin}/private/profile`
+    const profileUrl = `${window.location.origin}/profile`
     const shareText = user.bio || `Confira o perfil de ${user.name} no WE PARTY!`
 
     shareStore.open({
@@ -1561,7 +1561,7 @@
                   :date-label="formatShortDate(item.schedule)"
                   :location="item.location || t('profile.likedEvents.locationUndefined')"
                   :title="item.title"
-                  @click="router.push(`/private/event/${item.id}`)"
+                  @click="router.push(`/event/${item.id}`)"
                 >
                   <template #stats>
                     <span class="mini-stat">
@@ -1626,7 +1626,7 @@
               </div>
               <h3>{{ t('profile.likedEvents.empty') }}</h3>
               <p>{{ t('profile.likedEvents.emptyDescription') }}</p>
-              <button class="empty-action" @click="router.push('/private/feed')">
+              <button class="empty-action" @click="router.push('/feed')">
                 <i class="mdi mdi-compass-outline" />
                 {{ t('profile.likedEvents.exploreEvents') }}
               </button>
@@ -1662,7 +1662,7 @@
                   :date-label="formatShortDate(item.schedule)"
                   :location="item.location || 'Local não definido'"
                   :title="item.title"
-                  @click="router.push(`/private/event/${item.id}`)"
+                  @click="router.push(`/event/${item.id}`)"
                 />
               </TransitionGroup>
 
@@ -1685,7 +1685,7 @@
               <h3>Nenhuma presença confirmada</h3>
               <p>Você ainda não confirmou presença em nenhum evento. Explore e confirme sua presença nos eventos que
                 deseja participar!</p>
-              <button class="empty-action" @click="router.push('/private/feed')">
+              <button class="empty-action" @click="router.push('/feed')">
                 <i class="mdi mdi-compass-outline" />
                 Explorar eventos
               </button>

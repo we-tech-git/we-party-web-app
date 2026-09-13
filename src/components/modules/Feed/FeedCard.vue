@@ -63,7 +63,7 @@
     }
 
     // Sempre navega para a página interna de detalhes
-    router.push(`/private/event/${props.id}`)
+    router.push(`/event/${props.id}`)
   }
 
   function handleHostClick () {
@@ -148,7 +148,7 @@
     shareStore.open({
       title: props.title,
       text: 'Veja esse evento que encontrei que você também pode gostar',
-      url: `${window.location.origin}/private/event/${props.id}`,
+      url: `${window.location.origin}/event/${props.id}`,
     })
   }
 

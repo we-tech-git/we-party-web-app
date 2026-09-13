@@ -14,7 +14,7 @@
   const instagramUrl = 'https://instagram.com/weparty'
 
   function goToLandingSection (sectionId: string) {
-    router.push({ path: '/public/Landingpage', hash: `#${sectionId}` })
+    router.push({ path: '/Landingpage', hash: `#${sectionId}` })
   }
 
   const showTermsModal = ref(false)
@@ -52,14 +52,14 @@
           <div class="footer-col-title">PRODUTO</div>
           <button class="footer-link-btn" type="button" @click="goToLandingSection('como-funciona')">Como funciona</button>
           <button class="footer-link-btn" type="button" @click="goToLandingSection('features')">Recursos</button>
-          <router-link v-slot="{ href, navigate }" custom to="/public/Signup">
+          <router-link v-slot="{ href, navigate }" custom to="/Signup">
             <a class="footer-link-btn" :href="href" @click="navigate">Criar evento</a>
           </router-link>
         </div>
 
         <div class="footer-col">
           <div class="footer-col-title">EMPRESA</div>
-          <router-link v-slot="{ href, navigate }" custom to="/public/updates">
+          <router-link v-slot="{ href, navigate }" custom to="/updates">
             <a class="footer-link-btn" :href="href" @click="navigate">Novidades</a>
           </router-link>
           <a

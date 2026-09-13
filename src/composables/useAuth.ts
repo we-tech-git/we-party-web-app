@@ -62,7 +62,7 @@ function resetInactivityTimer () {
 
     // Opcional: Redirecionar para login
     if (typeof window !== 'undefined') {
-      window.location.href = '/public/Login?reason=inactivity'
+      window.location.href = '/Login?reason=inactivity'
     }
   }, INACTIVITY_TIMEOUT_MS)
 }
@@ -286,14 +286,14 @@ export function privateRouteGuard (path?: string) {
 
   if (!authenticated) {
     // Se está tentando acessar o feed privado sem login, redireciona para explore público
-    if (path?.includes('/private/feed')) {
-      return '/public/explore'
+    if (path?.includes('/feed')) {
+      return '/explore'
     }
-    return '/public/Login'
+    return '/Login'
   }
 
   if (user && user.isEmailVerified === false) {
-    return '/public/ConfirmEmail'
+    return '/ConfirmEmail'
   }
 
   return true
@@ -303,7 +303,7 @@ export function publicRouteGuard (forceAccess?: boolean) {
   const authenticated = AuthService.isAuthenticated()
 
   if (authenticated && !forceAccess) {
-    return '/private/feed'
+    return '/feed'
   }
 
   return true
@@ -314,11 +314,11 @@ export function publicRouteGuard (forceAccess?: boolean) {
  */
 export function roleGuard (requiredRoles: string[]) {
   if (!AuthService.isAuthenticated()) {
-    return '/public/Login'
+    return '/Login'
   }
 
   if (!AuthService.hasAnyRole(requiredRoles)) {
-    return '/private/unauthorized'
+    return '/unauthorized'
   }
 
   return true

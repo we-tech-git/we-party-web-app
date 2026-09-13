@@ -23,7 +23,7 @@
   useSeoMeta({
     title: 'Confirmar e-mail | We Party',
     description: 'Confirme seu e-mail com o código enviado para ativar sua conta We Party.',
-    path: '/public/ConfirmEmail',
+    path: '/ConfirmEmail',
   })
 
   // ===============================
@@ -169,7 +169,7 @@
         }
 
         setTimeout(() => {
-          router.push('/public/Interest')
+          router.push('/Interest')
         }, 1500)
       } else {
         // Se o backend retornar 200 mas success: false

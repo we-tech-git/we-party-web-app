@@ -3,7 +3,7 @@
   import { useRoute } from 'vue-router'
   import PublicProfile from '@/components/modules/Profile/PublicProfile.vue'
 
-  const route = useRoute('/private/profile/[id]')
+  const route = useRoute('/profile/[id]')
   const userId = computed(() => String(route.params.id))
 </script>
 

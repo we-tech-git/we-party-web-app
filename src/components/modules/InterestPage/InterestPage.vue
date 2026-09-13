@@ -26,7 +26,7 @@
   const { t } = useI18n()
 
   // Mesmo shape de `Feed.vue` pro `AppHeader` — header e busca são o
-  // mesmo componente da rota `/public/explore`, não uma reimplementação.
+  // mesmo componente da rota `/explore`, não uma reimplementação.
   const headerUser = computed(() => ({
     name: loggedUser.value?.name || '',
     avatar: loggedUser.value?.profileImage || '',

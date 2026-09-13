@@ -49,7 +49,7 @@
         </p>
 
         <div class="discover-actions">
-          <router-link v-slot="{ href, navigate }" custom to="/public/explore">
+          <router-link v-slot="{ href, navigate }" custom to="/explore">
             <a class="btn-cta-primary" :href="href" @click="navigate">
               <span>Experimentar</span>
               <div class="btn-glow" />

@@ -44,7 +44,7 @@
       requireLogin('ver detalhes do evento')
       return
     }
-    router.push(`/private/event/${eventItem.id}`)
+    router.push(`/event/${eventItem.id}`)
   }
 
 </script>

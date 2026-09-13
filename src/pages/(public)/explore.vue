@@ -10,7 +10,7 @@
   useSeoMeta({
     title: 'Explorar eventos | We Party',
     description: 'Veja o feed de eventos do We Party e experimente a plataforma antes de criar sua conta.',
-    path: '/public/explore',
+    path: '/explore',
   })
 </script>
 

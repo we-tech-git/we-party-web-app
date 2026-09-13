@@ -76,9 +76,9 @@ function mountNewEventDetails (props: Record<string, unknown> = {}) {
     history: createMemoryHistory(),
     routes: [
       { path: '/', component: { template: '<div />' } },
-      { path: '/private/feed', component: { template: '<div />' } },
-      { path: '/private/profile', component: { template: '<div />' } },
-      { path: '/public/Login', component: { template: '<div />' } },
+      { path: '/feed', component: { template: '<div />' } },
+      { path: '/profile', component: { template: '<div />' } },
+      { path: '/Login', component: { template: '<div />' } },
     ],
   })
 

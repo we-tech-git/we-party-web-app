@@ -25,7 +25,7 @@ export interface InterestPerson {
 }
 
 /**
- * Estado da landing page pública de um interesse (`/public/interests/:slug`).
+ * Estado da landing page pública de um interesse (`/interests/:slug`).
  * Setup-store no molde de `useEventsStore` — um `fetchPage` por visita à
  * página, loading/erro por seção via `useLoading()` (mesma chave usada nos
  * componentes: `interest-page:hero`), `toggleFollow` otimista com rollback

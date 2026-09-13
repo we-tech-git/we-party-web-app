@@ -148,7 +148,7 @@
 
         showSnackbar(t('login.snackbar.success'), '#22c55e')
         setTimeout(() => {
-          router.push('/private/feed')
+          router.push('/feed')
         }, 1500)
       } else {
         // Extrai a mensagem de erro da resposta, como "Email não verificado"
@@ -161,7 +161,7 @@
           showSnackbar(errorMessage, '#ff9800')
           localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
           setTimeout(() => {
-            router.push('/public/ConfirmEmail')
+            router.push('/ConfirmEmail')
           }, 3000)
         } else {
           // Trata outros erros lógicos que podem vir do backend
@@ -177,7 +177,7 @@
         showSnackbar(errorMessage, '#ff9800')
         localStorage.setItem(STORAGE_KEYS.NEW_CREATED_USER, JSON.stringify(email.value))
         setTimeout(() => {
-          router.push('/public/ConfirmEmail')
+          router.push('/ConfirmEmail')
         }, 3000)
       } else {
         showSnackbar(errorMessage, '#ef4444')
@@ -226,9 +226,9 @@
 
       // Mostra sucesso e redireciona
       showSnackbar(t('login.snackbar.googleSuccess'), '#22c55e')
-      logger.log('[GOOGLE AUTH] 🎉 Redirecionando para /private/feed')
+      logger.log('[GOOGLE AUTH] 🎉 Redirecionando para /feed')
       setTimeout(() => {
-        router.push('/private/feed')
+        router.push('/feed')
       }, 1500)
     } catch (error: any) {
       logger.error('[GOOGLE AUTH] ❌ Erro ao processar sucesso:', error)
@@ -312,7 +312,7 @@
               <input v-model="rememberMe" data-testid="login-remember-me" type="checkbox">
               {{ $t('login.rememberMe') }}
             </label>
-            <router-link class="forgot-link" to="/public/RequestPassword">{{ $t('login.forgotPassword') }}</router-link>
+            <router-link class="forgot-link" to="/RequestPassword">{{ $t('login.forgotPassword') }}</router-link>
           </div>
 
           <button
@@ -340,7 +340,7 @@
 
       <div class="footer-row">
         <p class="login-link-text">
-          {{ $t('login.noAccount') }} <router-link to="/public/Signup">{{ $t('login.signupLink') }}</router-link>
+          {{ $t('login.noAccount') }} <router-link to="/Signup">{{ $t('login.signupLink') }}</router-link>
         </p>
         <p class="free-text">É de graça <span class="heart">❤</span></p>
       </div>

@@ -5,7 +5,7 @@
   useSeoMeta({
     title: 'Redefinir senha | We Party',
     description: 'Crie uma nova senha para sua conta We Party.',
-    path: '/public/ResetPassword',
+    path: '/ResetPassword',
   })
 </script>
 

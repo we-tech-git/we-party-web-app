@@ -20,12 +20,12 @@
   function goToSignup () {
     triggerConfetti()
     setTimeout(() => {
-      router.push('/public/Signup')
+      router.push('/Signup')
     }, 150)
   }
 
   function goToExplore () {
-    router.push('/public/explore')
+    router.push('/explore')
   }
 </script>
 

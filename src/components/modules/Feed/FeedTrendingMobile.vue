@@ -43,7 +43,7 @@
       requireLogin('ver detalhes do evento')
       return
     }
-    router.push(`/private/event/${eventId}`)
+    router.push(`/event/${eventId}`)
     emit('update:visible', false)
   }
 </script>

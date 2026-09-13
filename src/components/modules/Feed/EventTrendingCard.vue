@@ -46,7 +46,7 @@
 
   function goToTrend (trend: TrendVM) {
     if (!trend.id) return
-    router.push(`/private/event/${trend.id}`)
+    router.push(`/event/${trend.id}`)
   }
 </script>
 

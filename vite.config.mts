@@ -22,6 +22,26 @@ export default defineConfig({
     tailwindcss(),
     VueRouter({
       dts: 'src/typed-router.d.ts',
+      // Rotas nascidas em `src/pages/(private)/` (route group — a pasta
+      // organiza o arquivo mas não entra na URL) ganham `meta.requiresAuth`
+      // automaticamente. É esse meta que `src/router/index.ts` usa pro guard
+      // de autenticação — antes disso a proteção vinha do prefixo `/private`
+      // na própria URL, que deixou de existir.
+      extendRoute (route) {
+        if (route.component?.includes('/pages/(private)/')) {
+          route.addToMeta({ requiresAuth: true })
+        }
+
+        // `path` já sai sem o segmento de grupo (`(private)`/`(public)`) —
+        // é pra isso que o grupo serve. `name`, por padrão, NÃO: o
+        // unplugin-vue-router mantém `/(public)/Login` como nome mesmo com
+        // path `/Login`. Sem isso, `useRoute('/Login')`/`router.push({ name:
+        // '/Login' })` (usados em toda a base) deixam de bater com o nome
+        // real da rota — normalizamos o nome pra combinar com o path visível.
+        if (typeof route.name === 'string') {
+          route.name = route.name.replace(/^\/\((?:private|public)\)/, '')
+        }
+      },
     }),
     Layouts(),
     AutoImport({
