@@ -28,7 +28,7 @@
   })))
 
   function goToEvent (id: string) {
-    router.push(`/private/event/${id}`)
+    router.push(`/event/${id}`)
   }
 </script>
 

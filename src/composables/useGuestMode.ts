@@ -55,10 +55,10 @@ export function useGuestMode () {
   function goToLogin () {
     closeDialog()
     if (isEmbeddedInIframe() && window.top) {
-      window.top.location.href = '/public/Login'
+      window.top.location.href = '/login'
       return
     }
-    router.push('/public/Login')
+    router.push('/login')
   }
 
   /**
@@ -67,10 +67,10 @@ export function useGuestMode () {
   function goToSignup () {
     closeDialog()
     if (isEmbeddedInIframe() && window.top) {
-      window.top.location.href = '/public/Signup'
+      window.top.location.href = '/signup'
       return
     }
-    router.push('/public/Signup')
+    router.push('/signup')
   }
 
   return {

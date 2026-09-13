@@ -42,7 +42,7 @@
     // login do Google não deve rodar ali dentro — leva o usuário direto
     // para a página real de cadastro, na janela de topo.
     if (isEmbeddedInIframe() && window.top) {
-      window.top.location.href = '/public/Signup'
+      window.top.location.href = '/signup'
       return
     }
 
@@ -54,7 +54,7 @@
         showSnackbar(t('loginRequiredDialog.snackbar.googleSuccess'), '#22c55e')
         closeDialog()
         setTimeout(() => {
-          router.push('/private/feed')
+          router.push('/feed')
         }, 1500)
       } else {
         showSnackbar(result.message || t('loginRequiredDialog.snackbar.googleGenericError'), '#ef4444')

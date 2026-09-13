@@ -26,7 +26,7 @@
             <div class="updates-banner-desc">Novos recursos, melhorias e o que vem por aí — acompanhe tudo na nossa página de atualizações.</div>
           </div>
         </div>
-        <router-link v-slot="{ href, navigate }" custom to="/public/updates">
+        <router-link v-slot="{ href, navigate }" custom to="/updates">
           <a class="btn-cta-primary" :href="href" @click="navigate">
             <span>Ver novidades</span>
             <div class="btn-glow" />

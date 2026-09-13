@@ -68,12 +68,15 @@
           class="bg-grad-main text-white text-[11px] font-extrabold tracking-wide px-3.5 py-1.5 rounded-full uppercase"
         >🔥
           Em alta</span>
-        <span
+        <button
           v-for="tag in event.tags"
-          :key="tag"
+          :key="tag.id || tag.name"
           class="bg-white/16 backdrop-blur-sm border border-white/28 text-white text-[11px] font-extrabold tracking-wide px-3.5 py-1.5 rounded-full uppercase"
-        >{{
-          tag }}</span>
+          :class="{ 'cursor-pointer hover:bg-white/28': !!tag.id, 'cursor-default': !tag.id }"
+          data-testid="event-details-interest-tag"
+          type="button"
+          @click="tag.id && goToInterest(tag.id)"
+        >{{ tag.name }}</button>
       </div>
 
       <h1
@@ -579,6 +582,7 @@
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useGeolocation } from '@/composables/useGeolocation'
+  import { useInterestNavigation } from '@/composables/useInterestNavigation'
   import { useUserNavigation } from '@/composables/useUserNavigation'
   import { useEventsStore } from '@/stores/events'
   import { useShareStore } from '@/stores/share'
@@ -595,6 +599,7 @@
   const shareStore = useShareStore()
   const { userDisplayName, loggedUser } = useAuth()
   const { goToProfile } = useUserNavigation()
+  const { goToInterest } = useInterestNavigation()
 
   const currentId = computed(() =>
     (Array.isArray(props.eventId) ? props.eventId[0] : props.eventId) || '',
@@ -634,6 +639,10 @@
     answer: string
     gradient: string
   }
+  interface InterestTag {
+    id?: string
+    name: string
+  }
   interface EventVM {
     id: string | number
     title: string
@@ -644,7 +653,7 @@
     venue: string
     city: string
     location: string
-    tags: string[]
+    tags: InterestTag[]
     organizer: string
     organizerId: string | number
     description: string
@@ -779,6 +788,22 @@
 
     const coords = resolveCoords(data)
 
+    const rawInterests = data?.eventInterests || data?.interests || []
+    const interestTagsFromRefs: InterestTag[] = (Array.isArray(rawInterests) ? rawInterests : [])
+      .map((i: any) => {
+        const source = typeof i === 'string' ? null : (i?.interest ?? i)
+        if (!source && typeof i === 'string') return { name: i }
+        const name = source?.name
+        if (!name) return null
+        const id = source?.id ?? source?.interestId
+        return { name: String(name), id: id ? String(id) : undefined }
+      })
+      .filter(Boolean) as InterestTag[]
+
+    const tags: InterestTag[] = interestTagsFromRefs.length > 0
+      ? interestTagsFromRefs
+      : (Array.isArray(categories) ? categories : []).map((name: string) => ({ name: String(name) }))
+
     return {
       id: data?.id ?? '',
       title: data?.name || data?.title || 'Evento sem título',
@@ -789,7 +814,7 @@
       venue,
       city,
       location,
-      tags: categories,
+      tags,
       organizer: data?.organizer?.name || data?.hostName || data?.creator?.name || 'Organizador',
       organizerId: data?.organizer?.id || data?.creator?.id || data?.hostId || data?.userId || data?.ownerId || '',
       description: data?.description || 'Sem descrição disponível.',
@@ -1049,7 +1074,7 @@
   const eventInfoGrid = computed<InfoGridItem[]>(() => [
     { emoji: '🎟️', label: 'Classificação', value: 'Livre' },
     { emoji: '🗺️', label: 'Localização', value: venueLabel.value, tab: 'local' },
-    { emoji: '🎼', label: 'Gênero', value: event.value.tags[0] || 'Diversos' },
+    { emoji: '🎼', label: 'Gênero', value: event.value.tags[0]?.name || 'Diversos' },
     { emoji: '🧭', label: 'Distância de você', value: distanceLabel.value },
   ])
 
@@ -1106,7 +1131,7 @@
     shareStore.open({
       title: event.value.title,
       text: 'Veja esse evento que encontrei que você também pode gostar',
-      url: `${window.location.origin}/private/event/${currentId.value}`,
+      url: `${window.location.origin}/event/${currentId.value}`,
     })
   }
 

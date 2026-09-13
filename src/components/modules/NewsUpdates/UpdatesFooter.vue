@@ -9,11 +9,11 @@
   }
 
   function goToExplore () {
-    router.push('/public/explore')
+    router.push('/explore')
   }
 
   function goToSignup () {
-    router.push('/public/Signup')
+    router.push('/signup')
   }
 </script>
 
@@ -66,8 +66,8 @@
         <div class="footer-nav-col">
           <h4 class="footer-column-title">Plataforma</h4>
           <ul class="footer-links-list">
-            <li><router-link class="footer-link" to="/public/updates">O que há de novo</router-link></li>
-            <li><router-link class="footer-link" to="/public/explore">Modo Visitante</router-link></li>
+            <li><router-link class="footer-link" to="/updates">O que há de novo</router-link></li>
+            <li><router-link class="footer-link" to="/explore">Modo Visitante</router-link></li>
             <li><span class="footer-version-tag">Versão 2026</span></li>
           </ul>
         </div>

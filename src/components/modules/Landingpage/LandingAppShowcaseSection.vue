@@ -291,7 +291,7 @@
                       <iframe
                         class="showcase-feed-embed"
                         loading="lazy"
-                        src="/public/explore"
+                        src="/explore"
                         :style="{ transform: `scale(${feedEmbedScale})` }"
                         title="Feed de Eventos da We Party, ao vivo"
                         @load="onFeedEmbedLoad"

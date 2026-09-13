@@ -17,16 +17,11 @@ import { logger } from '@/utils/logger'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  // `src/pages/(public)/index.vue` já serve a landing page diretamente em
+  // `/` (route group — a pasta não entra na URL, `index.vue` mapeia pra raiz
+  // do grupo). Sem redirect: entrar em `/` mostra a landing sem trocar a URL
+  // visível pra `/landingpage`.
   routes: [
-    // Redirect da rota raiz para a landing page
-    {
-      path: '',
-      redirect: '/public/Landingpage',
-    },
-    {
-      path: '/',
-      redirect: '/public/Landingpage',
-    },
     ...setupLayouts(autoRoutes),
   ],
 })
@@ -36,8 +31,11 @@ const router = createRouter({
 // ===============================
 
 router.beforeEach((to, from, next) => {
-  // Verifica se é uma rota privada
-  if (to.path.startsWith('/private')) {
+  // Verifica se é uma rota privada — marcada via `extendRoute` em
+  // `vite.config.mts` pra toda rota nascida em `src/pages/(private)/`.
+  // As URLs não têm mais o prefixo `/private`, então o sinal não pode mais
+  // vir do path; vem do meta da rota.
+  if (to.meta.requiresAuth) {
     const canAccess = privateRouteGuard(to.path)
     if (typeof canAccess === 'string') {
       next(canAccess)
@@ -47,7 +45,7 @@ router.beforeEach((to, from, next) => {
 
   // Verifica se é uma rota pública de autenticação e usuário já está logado
   const path = to.path.toLowerCase()
-  if (path.startsWith('/public') && (path.includes('login') || path.includes('signup'))) {
+  if (path.includes('login') || path.includes('signup')) {
     const forceAccess = to.query.force === 'true'
     const shouldRedirect = publicRouteGuard(forceAccess)
     if (typeof shouldRedirect === 'string') {

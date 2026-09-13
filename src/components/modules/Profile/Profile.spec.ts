@@ -68,11 +68,11 @@ function mountProfile () {
     history: createMemoryHistory(),
     routes: [
       { path: '/', component: { template: '<div />' } },
-      { path: '/public/Login', component: { template: '<div />' } },
-      { path: '/private/feed', component: { template: '<div />' } },
-      { path: '/private/profile', component: { template: '<div />' } },
-      { path: '/public/Signup', component: { template: '<div />' } },
-      { path: '/public/updates', component: { template: '<div />' } },
+      { path: '/login', component: { template: '<div />' } },
+      { path: '/feed', component: { template: '<div />' } },
+      { path: '/profile', component: { template: '<div />' } },
+      { path: '/signup', component: { template: '<div />' } },
+      { path: '/updates', component: { template: '<div />' } },
     ],
   })
 

@@ -20,11 +20,10 @@ function mountLandingPage () {
     history: createMemoryHistory(),
     routes: [
       { path: '/', component: { template: '<div />' } },
-      { path: '/public/Login', component: { template: '<div />' } },
-      { path: '/public/Signup', component: { template: '<div />' } },
-      { path: '/public/Landingpage', component: { template: '<div />' } },
-      { path: '/public/updates', component: { template: '<div />' } },
-      { path: '/public/explore', component: { template: '<div />' } },
+      { path: '/login', component: { template: '<div />' } },
+      { path: '/signup', component: { template: '<div />' } },
+      { path: '/updates', component: { template: '<div />' } },
+      { path: '/explore', component: { template: '<div />' } },
     ],
   })
 

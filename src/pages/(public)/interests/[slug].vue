@@ -13,7 +13,7 @@
     },
   })
 
-  const route = useRoute('/public/interests/[slug]')
+  const route = useRoute('/interests/[slug]')
   const slug = computed(() => String(route.params.slug))
   const store = useInterestPageStore()
 
@@ -27,7 +27,7 @@
       title: interest ? `${interest.name} | We Party` : 'We Party',
       description: interest?.welcomeText || interest?.description
         || 'Descubra eventos, pessoas e conversas por interesse no We Party.',
-      path: `/public/interests/${slug.value}`,
+      path: `/interests/${slug.value}`,
       image: interest?.coverImageUrl || undefined,
     }
   })

@@ -1,5 +1,5 @@
 /**
- * Conteúdo da página de Novidades (/public/updates).
+ * Conteúdo da página de Novidades (/updates).
  *
  * Fonte única de verdade das atualizações exibidas ao público. O conteúdo é
  * versionado junto do código: para publicar uma novidade, adicione um item
@@ -95,7 +95,7 @@ export const NEWS_UPDATES: NewsUpdate[] = [
     badge: 'DESTAQUE',
     version: 'v1.6',
     actionLabel: 'Ver no feed',
-    actionPath: '/public/explore',
+    actionPath: '/explore',
     highlights: ['Respostas aninhadas e menções', 'Contador de comentários por evento em tempo real', 'Reações com emojis'],
   },
   {
@@ -108,7 +108,7 @@ export const NEWS_UPDATES: NewsUpdate[] = [
     tag: 'Experiência & Visual',
     version: 'v1.5.2',
     actionLabel: 'Explorar eventos',
-    actionPath: '/public/explore',
+    actionPath: '/explore',
     highlights: ['Localização no mapa interativo', 'Lista de quem vai na festa', 'Compartilhamento em 1 clique'],
   },
   {
@@ -168,7 +168,7 @@ export const NEWS_UPDATES: NewsUpdate[] = [
     tag: 'Descoberta Local',
     version: 'v1.2.0',
     actionLabel: 'Explorar perto',
-    actionPath: '/public/explore',
+    actionPath: '/explore',
     highlights: ['Ordenação por distância', 'Filtro por raio de km', 'Sugestões no seu bairro'],
   },
   {
@@ -181,7 +181,7 @@ export const NEWS_UPDATES: NewsUpdate[] = [
     tag: 'Acesso Rápido',
     version: 'v1.1.0',
     actionLabel: 'Explorar agora',
-    actionPath: '/public/explore',
+    actionPath: '/explore',
     highlights: ['Feed público desbloqueado', 'Visualização de eventos sem cadastro prévio'],
   },
   {

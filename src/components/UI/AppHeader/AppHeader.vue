@@ -28,7 +28,7 @@
 
   function logout () {
     authLogout()
-    router.push('/public/Login')
+    router.push('/login')
   }
 
   // No modo guest embutido (iframe do mockup), o menu do usuário é exibido
@@ -39,7 +39,7 @@
       requireLogin('acessar seu perfil')
       return
     }
-    router.push('/private/profile')
+    router.push('/profile')
   }
 
   function handleLogoutClick () {
@@ -54,31 +54,31 @@
 
   function goToLogin () {
     if (isEmbedded && window.top) {
-      window.top.location.href = '/public/Login'
+      window.top.location.href = '/login'
       return
     }
-    router.push('/public/Login')
+    router.push('/login')
   }
 
   function navigateToHome () {
     // Logo leva cada usuário ao "seu" feed: autenticado → feed privado,
     // visitante → explore público (a antiga rota /home não tinha guard)
-    router.push(isAuthenticated.value ? '/private/feed' : '/public/explore')
+    router.push(isAuthenticated.value ? '/feed' : '/explore')
   }
 
   function goToSignup () {
     if (isEmbedded && window.top) {
-      window.top.location.href = '/public/Signup'
+      window.top.location.href = '/signup'
       return
     }
-    router.push('/public/Signup')
+    router.push('/signup')
   }
 
   const defaultSearchQuery = ref('')
 
   function handleDefaultSearch (query: string) {
     if (query.trim()) {
-      router.push({ path: '/private/feed', query: { search: query.trim() } })
+      router.push({ path: '/feed', query: { search: query.trim() } })
     }
   }
 </script>

@@ -126,13 +126,13 @@
     suggestions.value = []
 
     // Visitante: explica por que precisa logar, em vez de mandar
-    // silenciosamente para /public/Login sem contexto (P29)
+    // silenciosamente para /Login sem contexto (P29)
     if (props.guestMode) {
       requireLogin('ver os detalhes deste evento')
       return
     }
 
-    router.push({ path: `/private/event/${suggestion.id}` })
+    router.push({ path: `/event/${suggestion.id}` })
   }
 
   function handleKeydown (event: KeyboardEvent) {

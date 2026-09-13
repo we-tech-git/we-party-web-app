@@ -1,7 +1,7 @@
 /**
  * Normalização de eventos (curtidos/confirmados) pro card compacto do
  * perfil — usado tanto por `Profile.vue` (perfil próprio) quanto pela view
- * de perfil de terceiro (`pages/private/profile/[id].vue`).
+ * de perfil de terceiro (`pages/profile/[id].vue`).
  *
  * Extraído de `Profile.vue` (regra do AGENTS.md: extrair o que se toca em
  * vez de aumentar o monólito). Sem dependência de vue-i18n aqui de

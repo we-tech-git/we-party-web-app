@@ -5,7 +5,7 @@
   useSeoMeta({
     title: 'Verificar código | We Party',
     description: 'Informe o código de verificação enviado para confirmar sua identidade no We Party.',
-    path: '/public/VerifyPin',
+    path: '/verify-pin',
   })
 </script>
 

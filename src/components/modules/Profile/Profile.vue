@@ -21,6 +21,7 @@
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
+  import { useInterestNavigation } from '@/composables/useInterestNavigation'
   import { useLoading } from '@/composables/useLoading'
   import { useUserNavigation } from '@/composables/useUserNavigation'
   import { AuthService } from '@/services/auth'
@@ -69,6 +70,7 @@
   const route = useRoute()
   const { loggedUser, updateUser } = useAuth()
   const { goToProfile } = useUserNavigation()
+  const { goToInterest } = useInterestNavigation()
   const eventsStore = useEventsStore()
   const shareStore = useShareStore()
 
@@ -494,7 +496,7 @@
   })
 
   // ── Handler para busca de usuários (chamado pelo SearchInput com debounce) ──
-  // Mesmo comportamento da página /public/AddFriends: busca real no backend
+  // Mesmo comportamento da página /AddFriends: busca real no backend
   // (GET /social/search), com cancelamento da requisição anterior para evitar
   // respostas fora de ordem.
   async function handleUserSearch (query: string) {
@@ -919,7 +921,7 @@
   function handleNavSelect (id: string) {
     if (id === 'home' || id === 'top-events' || id === 'favorites') {
       router.push({
-        path: '/private/feed',
+        path: '/feed',
         query: id === 'home' ? {} : { tab: id },
       })
     }
@@ -1335,16 +1337,16 @@
 
   function handleLogout () {
     AuthService.logout()
-    router.push('/public/Login')
+    router.push('/login')
   }
 
   function handleBackNavigation () {
-    router.push({ path: '/private/feed', query: { tab: 'favorites' } })
+    router.push({ path: '/feed', query: { tab: 'favorites' } })
   }
 
   // ── Share Profile ──
   function handleShareProfile () {
-    const profileUrl = `${window.location.origin}/private/profile`
+    const profileUrl = `${window.location.origin}/profile`
     const shareText = user.bio || `Confira o perfil de ${user.name} no WE PARTY!`
 
     shareStore.open({
@@ -1460,8 +1462,15 @@
               <div v-if="userInterests.length > 0" :aria-label="t('profile.yourInterests')" class="interests-section">
                 <div class="interests-chips-wrapper">
                   <ul class="interests-chips" role="list">
-                    <li v-for="interest in userInterests" :key="interest.id" class="interest-chip">
-                      {{ interest.name }}
+                    <li v-for="interest in userInterests" :key="interest.id">
+                      <button
+                        class="interest-chip"
+                        data-testid="profile-interest-chip"
+                        type="button"
+                        @click="goToInterest(interest.id)"
+                      >
+                        {{ interest.name }}
+                      </button>
                     </li>
                   </ul>
                 </div>
@@ -1561,7 +1570,7 @@
                   :date-label="formatShortDate(item.schedule)"
                   :location="item.location || t('profile.likedEvents.locationUndefined')"
                   :title="item.title"
-                  @click="router.push(`/private/event/${item.id}`)"
+                  @click="router.push(`/event/${item.id}`)"
                 >
                   <template #stats>
                     <span class="mini-stat">
@@ -1626,7 +1635,7 @@
               </div>
               <h3>{{ t('profile.likedEvents.empty') }}</h3>
               <p>{{ t('profile.likedEvents.emptyDescription') }}</p>
-              <button class="empty-action" @click="router.push('/private/feed')">
+              <button class="empty-action" @click="router.push('/feed')">
                 <i class="mdi mdi-compass-outline" />
                 {{ t('profile.likedEvents.exploreEvents') }}
               </button>
@@ -1662,7 +1671,7 @@
                   :date-label="formatShortDate(item.schedule)"
                   :location="item.location || 'Local não definido'"
                   :title="item.title"
-                  @click="router.push(`/private/event/${item.id}`)"
+                  @click="router.push(`/event/${item.id}`)"
                 />
               </TransitionGroup>
 
@@ -1685,7 +1694,7 @@
               <h3>Nenhuma presença confirmada</h3>
               <p>Você ainda não confirmou presença em nenhum evento. Explore e confirme sua presença nos eventos que
                 deseja participar!</p>
-              <button class="empty-action" @click="router.push('/private/feed')">
+              <button class="empty-action" @click="router.push('/feed')">
                 <i class="mdi mdi-compass-outline" />
                 Explorar eventos
               </button>
@@ -1719,7 +1728,16 @@
           </div>
           <div v-else-if="userInterests.length > 0" class="interests-tags-wrapper">
             <div class="interests-tags">
-              <span v-for="interest in userInterests" :key="interest.id" class="tag">
+              <span
+                v-for="interest in userInterests"
+                :key="interest.id"
+                class="tag tag--clickable"
+                data-testid="profile-interest-tag"
+                role="link"
+                tabindex="0"
+                @click="goToInterest(interest.id)"
+                @keydown.enter.prevent="goToInterest(interest.id)"
+              >
                 {{ interest.name }}
                 <button
                   class="remove-interest-btn"
@@ -2241,6 +2259,9 @@
   font-size: 0.8rem;
   font-weight: 500;
   border: 1px solid rgba(255, 95, 166, 0.2);
+  cursor: pointer;
+  font-family: inherit;
+  line-height: inherit;
 }
 
 /* .modal-banner.no-banner/.modal-avatar-wrapper: migraram pra
@@ -3744,6 +3765,15 @@ a:focus-visible {
 .interest-chip:hover,
 .tag:hover {
   transform: translateY(-1px);
+}
+
+.interest-chip:hover {
+  border-color: rgba(255, 95, 166, 0.45);
+  background: linear-gradient(135deg, rgba(255, 95, 143, 0.18) 0%, rgba(139, 92, 246, 0.18) 100%);
+}
+
+.tag--clickable {
+  cursor: pointer;
 }
 
 /* Animação de entrada para conteúdo carregado */

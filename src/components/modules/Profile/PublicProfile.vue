@@ -1,6 +1,6 @@
 <script setup lang="ts">
   /**
-   * Perfil público de um terceiro (`/private/profile/:id`).
+   * Perfil público de um terceiro (`/profile/:id`).
    *
    * Read-only por natureza: quem visita não pode editar nada aqui — sem
    * cropper, sem upload, sem gerenciar interesses/settings. Só dados que o
@@ -63,10 +63,10 @@
   ])
   function handleNavSelect (id: string) {
     if (id === 'profile') {
-      router.push('/private/profile')
+      router.push('/profile')
       return
     }
-    router.push({ path: '/private/feed', query: id === 'home' ? {} : { tab: id } })
+    router.push({ path: '/feed', query: id === 'home' ? {} : { tab: id } })
   }
 
   // ── Estado do perfil ──
@@ -94,7 +94,7 @@
     // Link direto pro próprio id (digitado ou de um card antigo em cache) —
     // manda pra rota de edição em vez de renderizar a versão read-only.
     if (String(props.userId) === String(loggedUser.value?.id ?? '')) {
-      router.replace('/private/profile')
+      router.replace('/profile')
       return
     }
 
@@ -261,7 +261,7 @@
           <div class="not-found-icon">🕵️</div>
           <h2>{{ t('profile.public.notFoundTitle') }}</h2>
           <p>{{ t('profile.public.notFoundDescription') }}</p>
-          <button class="empty-action" @click="router.push('/private/feed')">
+          <button class="empty-action" @click="router.push('/feed')">
             {{ t('profile.likedEvents.exploreEvents') }}
           </button>
         </div>
@@ -350,7 +350,7 @@
                 :date-label="formatShortDate(item.schedule)"
                 :location="item.location || t('profile.likedEvents.locationUndefined')"
                 :title="item.title"
-                @click="router.push(`/private/event/${item.id}`)"
+                @click="router.push(`/event/${item.id}`)"
               >
                 <template #stats>
                   <span class="mini-stat">{{ item.confirmed }} {{ t('profile.public.confirmedCount') }}</span>

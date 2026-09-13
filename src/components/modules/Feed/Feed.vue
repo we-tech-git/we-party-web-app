@@ -939,7 +939,7 @@
 
   watch(activeNav, val => {
     if (val === 'profile') {
-      router.push('/private/profile')
+      router.push('/profile')
       return
     }
 

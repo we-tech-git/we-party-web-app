@@ -706,10 +706,10 @@
           </div>
           <nav aria-label="Menu principal">
             <div class="auth-buttons">
-              <router-link v-slot="{ href, navigate }" custom to="/public/Login">
+              <router-link v-slot="{ href, navigate }" custom to="/login">
                 <a class="btn-ghost" :href="href" @click="navigate">Entrar</a>
               </router-link>
-              <router-link v-slot="{ href, navigate }" custom to="/public/Signup">
+              <router-link v-slot="{ href, navigate }" custom to="/signup">
                 <a class="btn-primary-glow" :href="href" @click="navigate">
                   <span>CADASTRO</span>
                 </a>
@@ -741,10 +741,10 @@
 
           <div class="mobile-menu-divider" />
 
-          <router-link v-slot="{ href, navigate }" custom to="/public/Login">
+          <router-link v-slot="{ href, navigate }" custom to="/login">
             <a class="mobile-menu-ghost" :href="href" @click="(event: MouseEvent) => { closeMobileMenu(); navigate(event) }">Entrar</a>
           </router-link>
-          <router-link v-slot="{ href, navigate }" custom to="/public/Signup">
+          <router-link v-slot="{ href, navigate }" custom to="/signup">
             <a class="mobile-menu-primary" :href="href" @click="(event: MouseEvent) => { closeMobileMenu(); navigate(event) }">
               <span>CADASTRO</span>
             </a>
