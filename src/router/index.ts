@@ -39,10 +39,10 @@ function flattenGroupRoutes (routes: RouteRecordRaw[], parentPath = ''): RouteRe
   const result: RouteRecordRaw[] = []
 
   for (const route of routes) {
-    const isGroupWrapper =
-      !route.component
-      && Array.isArray(route.children)
-      && route.children.length > 0
+    const isGroupWrapper
+      = !route.component
+        && Array.isArray(route.children)
+        && route.children.length > 0
 
     if (isGroupWrapper) {
       const groupPath = joinRoutePath(parentPath, route.path || '')
