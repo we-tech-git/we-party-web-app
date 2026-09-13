@@ -256,7 +256,7 @@ O próximo `CT-XXX` livre e a massa de dado legível vêm de `docs/massa-de-test
 
 **Pontos de checkpoint neste plano:** ao final da Fase 1 (AppHeader/AppFooter), ao final de cada componente prioritário da Fase 3 (seção 4.2), a cada extração significativa da Fase 5, e ao consolidar `FeedCard`/`FeedCardStandalone` na Fase 6.
 
-### Fase 0 — Fundação (sem risco, sem depender de nada)
+### Fase 0 — Fundação (sem risco, sem depender de nada) ✅ concluída
 - **Objetivo:** instalar só as ferramentas que as fases seguintes exigem. Documentação (`AGENTS.md`, `docs/`) fica **de fora** desta fase — é feita de uma vez, consolidada, na Fase 7, para não picotar a doc em vários commits parciais como aconteceu com `docs/` hoje (H1).
 - **O que muda:** instalar Vitest + Vue Test Utils; criar `src/styles/tokens.css` vazio/inicial (será populado na Fase 2); criar a pasta `src/components/_revisar_/` (vazia, com um `README.md` de uma linha explicando o propósito, para a Fase 1 já ter onde mover código).
 - **Dependências:** nenhuma.
@@ -264,7 +264,7 @@ O próximo `CT-XXX` livre e a massa de dado legível vêm de `docs/massa-de-test
 - **Validação:** `yarn lint && yarn build` continuam verdes; `yarn vitest run` roda (mesmo com 0 testes ainda).
 - **Resultado esperado:** base pronta para todo o resto.
 
-### Fase 1 — Header e footer: escolher um de cada, arquivar o resto ✅ (implementado — PR em validação)
+### Fase 1 — Header e footer: escolher um de cada, arquivar o resto ✅ concluída
 - **Objetivo:** eliminar F1/F2, resolvendo também A1 (causa raiz). **Decisão do time** (ver pergunta respondida durante a execução): o header do Feed vira único **só na área autenticada** (a Landingpage pública mantém seu próprio header de marketing, por ser um header legítimo e distinto, não uma cópia); o footer vira o da Landingpage, usado em todo o app (público e autenticado).
 - **O que foi feito:**
   - `FeedTopHeader.vue` migrou para `src/components/UI/AppHeader/AppHeader.vue` — usado em `Feed.vue`, `Profile.vue`, `PublicProfile.vue`, `InterestPage.vue` (já usavam) e agora também `NewEventDetails.vue` (que reimplementava à mão um header "padronizado com o FeedTopHeader" — ~140 linhas de template/CSS/lógica removidas, inclusive um scroll-listener próprio que só existia pra esse header).
@@ -279,7 +279,7 @@ O próximo `CT-XXX` livre e a massa de dado legível vêm de `docs/massa-de-test
 - **Checkpoint 3.0:** ainda não acionado nesta fase — fica para quando o time confirmar o PR; a expectativa é cobrir "header/footer presentes e funcionais" como teste de fumaça no `weparty-automation`.
 - **Resultado esperado → obtido:** 1 header ativo na área autenticada, 1 footer ativo no app inteiro; ~650 linhas de CSS/lógica duplicada removidas (`NewEventDetails.vue` -318 linhas, `LandingPage.vue` -349 linhas); +6.334 linhas de código morto (`EventDetails.vue`+`EventView.vue`) tiradas do caminho ativo.
 
-### Fase 2 — Tokens visuais únicos (escopo: só cor) ✅ (implementado — PR em validação)
+### Fase 2 — Tokens visuais únicos (escopo: só cor) ✅ concluída
 - **Objetivo:** resolver C1/I3 (3 paletas "primary" incompatíveis), adotando o valor **já mais usado no código** (critério de decisão da seção 2.6), não uma escolha nova.
 - **Achado que mudou o escopo, confirmado com o time antes de executar:** `css-variables.css` nunca era importado em lugar nenhum — resolver C1 sozinho já significava "ligar" um arquivo de tokens pela primeira vez, e esse arquivo também define `--radius-*`/`--shadow-*`/`--font-*`/`--transition-*`/`--blur-*`/`--z-*`/`--breakpoint-*`, usados sem fallback em 11 arquivos (86 ocorrências). Ativar tudo de uma vez arriscava mudar a aparência de páginas inteiras nunca desenhadas/testadas com esses valores realmente aplicados (Interest, LandingPage, NewsUpdates, FeedSidebarNav, Profile, NotFound). Decisão: **esta fase resolve só `--color-*`**; as outras categorias continuam em `css-variables.css`, documentadas como achado em aberto (item C1b) para uma fase futura com QA visual dedicado.
 - **O que foi feito:**
@@ -295,7 +295,7 @@ O próximo `CT-XXX` livre e a massa de dado legível vêm de `docs/massa-de-test
 - **Validação:** checagem visual feita via browser na página 404 (pública, sem depender de login) e na Landingpage (confirmando ausência de efeito colateral); `Profile.vue` precisa de validação visual de quem tem login de teste — pontos a conferir listados no PR.
 - **Resultado esperado → obtido:** uma cor "primary"/"secondary" no app inteiro, de uma fonte só (`tokens.css`), sem alterar o tom que a maior parte do app já mostrava — e resolvendo, de brinde, um bug real (4 pontos de cor sem efeito em `Profile.vue`, spinner do `AppLoader` com cor fora da marca).
 
-### Fase 3 — Auditoria de componentes + Design System inicial + Storybook (ver seção 4 para detalhe)
+### Fase 3 — Auditoria de componentes + Design System inicial + Storybook (ver seção 4 para detalhe) ✅ concluída
 
 **3a. Auditoria (acontece antes de montar qualquer coisa nova) ✅ (feita — resultado abaixo)**
 - Levantar, por padrão visual/funcional (card, botão, badge, modal, avatar, input...), em quantos arquivos/páginas ele se repete hoje (o mesmo tipo de contagem já usada em C2 do diagnóstico: `v-card` em 1 arquivo vs. 16 arquivos com `.card` própria; 21 arquivos com `.btn-`/`.button-` própria).
@@ -326,7 +326,7 @@ O próximo `CT-XXX` livre e a massa de dado legível vêm de `docs/massa-de-test
 - **Checkpoint 3.0:** não acionado nesta fase — não há fluxo novo pra cobrir E2E (o clique do `EventMiniCard` já existia e navega igual a antes); fica pra quando `Button`/`Modal` entrarem.
 - **Resultado esperado → obtido:** catálogo do Storybook existe e roda; 1 duplicação real (de 3 confirmadas na auditoria) já eliminada; as outras 2 (`Button`, `Modal`) documentadas com decisão tomada, prontas para PRs incrementais futuros sem precisar reabrir a investigação.
 
-### Fase 4 — Testes de regressão nos mega-arquivos, ANTES de refatorá-los ✅ (implementado — PR em validação)
+### Fase 4 — Testes de regressão nos mega-arquivos, ANTES de refatorá-los ✅ concluída
 - **Objetivo:** destravar a Fase 5 com segurança.
 - **O que foi feito:** testes de comportamento (não de implementação) com Vue Test Utils para os 4 arquivos — `Feed.vue` (4 testes), `LandingPage.vue` (4), `Profile.vue` (3), `NewEventDetails.vue` (4) — total 15 testes novos, cobrindo: monta sem lançar erro, busca dado pela API certa, mostra conteúdo esperado (título/local/CTA), 1-2 interações-chave (abrir/fechar menu mobile, trocar `guestMode`). Não é cobertura exaustiva — é o suficiente pra pegar quebra grosseira durante a extração de componentes/composables na Fase 5.
 - **Achados de infraestrutura de teste (reaproveitáveis daqui pra frente, inclusive na Fase 5):**
@@ -341,7 +341,7 @@ O próximo `CT-XXX` livre e a massa de dado legível vêm de `docs/massa-de-test
 - **Validação:** `yarn vitest run` — 22 testes (15 novos + 7 da Fase 0), todos verdes contra o código atual, antes de qualquer refatoração. `yarn lint`/`yarn build` também verdes.
 - **Resultado esperado → obtido:** rede de segurança pronta para a Fase 5 — e a infraestrutura de teste (setup, Vuetify, padrão de mock) já resolvida, então cada extração de componente na Fase 5 não paga esse custo de novo.
 
-### Fase 5 — Decompor os mega-arquivos (CSS primeiro, depois lógica) 🟡 EM ANDAMENTO (multi-PR)
+### Fase 5 — Decompor os mega-arquivos (CSS primeiro, depois lógica) ✅ concluída (multi-PR)
 - **Objetivo:** atacar B1/B2, o maior item de débito técnico do projeto.
 - **Ordem dentro da fase, por arquivo (repetir para `LandingPage.vue` → `Profile.vue` → `Feed.vue` → `NewEventDetails.vue`, do maior % de CSS para o menor, medido após a Fase 1 — ver B2):**
   1. Extrair blocos de `<style>` repetíveis para componentes do Design System (Fase 3) — isso sozinho deve reduzir a maioria das linhas, dado que B2 mostrou que CSS é 45-72% do arquivo.
