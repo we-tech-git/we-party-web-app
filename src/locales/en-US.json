@@ -313,7 +313,9 @@
       "searching": "Searching interests...",
       "requestNew": "Request new interest",
       "emptyMessage": "You haven't added any interests yet.",
-      "suggestionsHint": "How about starting with these?"
+      "suggestionsHint": "How about starting with these?",
+      "showAll": "Show all interests",
+      "showLess": "Show less"
     },
     "editModal": {
       "title": "Edit Profile",

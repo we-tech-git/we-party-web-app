@@ -11,6 +11,7 @@
   import AuthLayout from '@/components/UI/AuthLayout/AuthLayout.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import SocialAuthButtons from '@/components/UI/SocialAuthButtons/SocialAuthButtons.vue'
+  import TermsPrivacyModal from '@/components/UI/TermsPrivacyModal/TermsPrivacyModal.vue'
   import router from '@/router'
   import { socialAuthService } from '@/services/socialAuth'
   import { logger } from '@/utils/logger'
@@ -31,10 +32,10 @@
   // Aceite de termos
   const acceptedTerms = ref(false)
   const showTermsModal = ref(false)
-  const termsModalPdf = ref<'terms' | 'privacy'>('terms')
+  const termsModalDocument = ref<'terms' | 'privacy'>('terms')
 
   function openTermsModal (type: 'terms' | 'privacy') {
-    termsModalPdf.value = type
+    termsModalDocument.value = type
     showTermsModal.value = true
   }
   const snackbarVisible = ref(false)
@@ -413,9 +414,9 @@
             </span>
             <span class="terms-text">
               Li e aceito os
-              <button class="terms-link" type="button" @click.prevent="openTermsModal('terms')">Termos de Uso</button>
+              <button class="terms-link" data-testid="signup-open-terms" type="button" @click.prevent="openTermsModal('terms')">Termos de Uso</button>
               e a
-              <button class="terms-link" type="button" @click.prevent="openTermsModal('privacy')">Política de
+              <button class="terms-link" data-testid="signup-open-privacy" type="button" @click.prevent="openTermsModal('privacy')">Política de
                 Privacidade</button>
             </span>
           </label>
@@ -441,52 +442,12 @@
       </form>
 
       <!-- Modal de Termos / Política -->
-      <Teleport to="body">
-        <Transition name="modal-fade">
-          <div v-if="showTermsModal" class="terms-modal-overlay" @click.self="showTermsModal = false">
-            <div class="terms-modal">
-              <div class="terms-modal-header">
-                <h3 class="terms-modal-title">
-                  {{ termsModalPdf === 'terms' ? 'Termos de Uso' : 'Política de Privacidade' }}
-                </h3>
-                <button class="terms-modal-close" type="button" @click="showTermsModal = false">
-                  <svg
-                    fill="none"
-                    height="18"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    width="18"
-                  >
-                    <path d="M18 6 6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div class="terms-modal-body">
-                <iframe
-                  class="terms-pdf-viewer"
-                  :src="termsModalPdf === 'terms' ? '/termos-de-uso.pdf' : '/politica-de-privacidade.pdf'"
-                  title="Documento legal"
-                />
-              </div>
-              <div class="terms-modal-footer">
-                <button
-                  class="terms-accept-btn"
-                  type="button"
-                  @click="() => { acceptedTerms = true; showTermsModal = false }"
-                >
-                  ✓ Aceitar e continuar
-                </button>
-                <button class="terms-close-btn" type="button" @click="showTermsModal = false">
-                  Fechar
-                </button>
-              </div>
-            </div>
-          </div>
-        </Transition>
-      </Teleport>
+      <TermsPrivacyModal
+        v-model="showTermsModal"
+        :document="termsModalDocument"
+        show-accept-button
+        @accept="acceptedTerms = true"
+      />
     </template>
 
     <template #brand-content>
@@ -746,129 +707,6 @@ h1 {
 
 .terms-link:hover {
   text-decoration-color: #f97316;
-}
-
-/* ---- Modal de Termos ---- */
-.terms-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-
-.terms-modal {
-  background: #fff;
-  border-radius: 20px;
-  width: 100%;
-  max-width: 640px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
-}
-
-.terms-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.2rem 1.5rem;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.terms-modal-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0;
-}
-
-.terms-modal-close {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: #f3f4f6;
-  color: #6b7280;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.terms-modal-close:hover {
-  background: #fee2e2;
-  color: #ef4444;
-}
-
-.terms-modal-body {
-  flex: 1;
-  overflow: hidden;
-}
-
-.terms-pdf-viewer {
-  width: 100%;
-  height: 100%;
-  min-height: 420px;
-  border: none;
-}
-
-.terms-modal-footer {
-  display: flex;
-  gap: 10px;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #f3f4f6;
-  justify-content: flex-end;
-}
-
-.terms-accept-btn {
-  padding: 0.55rem 1.4rem;
-  border-radius: 14px;
-  border: none;
-  background: linear-gradient(135deg, #ff5f8f 0%, #f97316 100%);
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.88rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.terms-accept-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(249, 120, 163, 0.4);
-}
-
-.terms-close-btn {
-  padding: 0.55rem 1.2rem;
-  border-radius: 14px;
-  border: none;
-  background: linear-gradient(135deg, #ff5f8f 0%, #f97316 100%);
-  color: #fff;
-  font-weight: 600;
-  font-size: 0.88rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(249, 120, 163, 0.3);
-}
-
-.terms-close-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(249, 120, 163, 0.4);
-}
-
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.25s ease;
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
 }
 
 .login-link-text {
