@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { ref } from 'vue'
   import { useRouter } from 'vue-router'
+  import TermsPrivacyModal from '@/components/UI/TermsPrivacyModal/TermsPrivacyModal.vue'
 
   // Footer único do app (REFACTOR_AUDIT_PLAN.md, Fase 1) — conteúdo migrado
   // do footer da Landingpage pública (decisão do time), usado agora também
@@ -18,9 +19,9 @@
   }
 
   const showTermsModal = ref(false)
-  const termsModalPdf = ref<'terms' | 'privacy'>('terms')
+  const termsModalDocument = ref<'terms' | 'privacy'>('terms')
   function openTermsModal (type: 'terms' | 'privacy') {
-    termsModalPdf.value = type
+    termsModalDocument.value = type
     showTermsModal.value = true
   }
 </script>
@@ -74,53 +75,15 @@
       <div class="footer-bottom">
         <span>© {{ currentYear }} We Party. Todos os direitos reservados.</span>
         <div class="footer-legal-links">
-          <button class="footer-link-btn" type="button" @click="openTermsModal('privacy')">Privacidade</button>
-          <button class="footer-link-btn" type="button" @click="openTermsModal('terms')">Termos de uso</button>
+          <button class="footer-link-btn" data-testid="app-footer-open-privacy" type="button" @click="openTermsModal('privacy')">Privacidade</button>
+          <button class="footer-link-btn" data-testid="app-footer-open-terms" type="button" @click="openTermsModal('terms')">Termos de uso</button>
         </div>
       </div>
     </div>
   </footer>
 
   <!-- Modal de Termos / Política — autocontido, funciona em qualquer página -->
-  <Teleport to="body">
-    <Transition name="app-footer-modal-fade">
-      <div v-if="showTermsModal" class="terms-modal-overlay" @click.self="showTermsModal = false">
-        <div class="terms-modal">
-          <div class="terms-modal-header">
-            <h3 class="terms-modal-title">
-              {{ termsModalPdf === 'terms' ? 'Termos de Uso' : 'Política de Privacidade' }}
-            </h3>
-            <button class="terms-modal-close" type="button" @click="showTermsModal = false">
-              <svg
-                fill="none"
-                height="18"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="18"
-              >
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div class="terms-modal-body">
-            <iframe
-              class="terms-pdf-viewer"
-              :src="termsModalPdf === 'terms' ? '/termos-de-uso.pdf' : '/politica-de-privacidade.pdf'"
-              title="Documento legal"
-            />
-          </div>
-          <div class="terms-modal-footer">
-            <button class="terms-close-btn" type="button" @click="showTermsModal = false">
-              Fechar
-            </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
+  <TermsPrivacyModal v-model="showTermsModal" :document="termsModalDocument" />
 </template>
 
 <style scoped>
@@ -259,131 +222,6 @@
 
 .footer-legal-links .footer-link-btn:hover {
   color: #ff9a4d;
-}
-
-.terms-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  z-index: 3000;
-}
-
-.terms-modal {
-  background: white;
-  border-radius: 20px;
-  width: 100%;
-  max-width: 900px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
-}
-
-.terms-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  background: linear-gradient(135deg, #FFF8FA 0%, #FFFDFE 100%);
-}
-
-.terms-modal-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #333;
-  margin: 0;
-  background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.terms-modal-close {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.05);
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  color: #666;
-}
-
-.terms-modal-close:hover {
-  background: rgba(249, 120, 163, 0.15);
-  color: #F978A3;
-  transform: rotate(90deg);
-}
-
-.terms-modal-body {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-}
-
-.terms-pdf-viewer {
-  width: 100%;
-  height: 100%;
-  min-height: 500px;
-  border: none;
-}
-
-.terms-modal-footer {
-  display: flex;
-  gap: 1rem;
-  padding: 1.5rem 2rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-  background: #FAFAFA;
-  justify-content: flex-end;
-}
-
-.terms-close-btn {
-  padding: 0.85rem 2rem;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 2px solid rgba(0, 0, 0, 0.1);
-  background: white;
-  color: #666;
-}
-
-.terms-close-btn:hover {
-  border-color: #F978A3;
-  color: #F978A3;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(249, 120, 163, 0.2);
-}
-
-.app-footer-modal-fade-enter-active,
-.app-footer-modal-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.app-footer-modal-fade-enter-active .terms-modal,
-.app-footer-modal-fade-leave-active .terms-modal {
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.app-footer-modal-fade-enter-from,
-.app-footer-modal-fade-leave-to {
-  opacity: 0;
-}
-
-.app-footer-modal-fade-enter-from .terms-modal,
-.app-footer-modal-fade-leave-to .terms-modal {
-  transform: scale(0.9) translateY(30px);
 }
 
 @media (max-width: 768px) {

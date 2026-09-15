@@ -35,6 +35,7 @@
     mapLikedEventItem as mapLikedEventItemUtil,
   } from '@/utils/profileEvents'
   import ProfileBannerCropModal from './ProfileBannerCropModal.vue'
+  import ProfileBioInterests from './ProfileBioInterests.vue'
   import ProfileCropModal from './ProfileCropModal.vue'
   import ProfileEditModal from './ProfileEditModal.vue'
   import ProfileFollowListModal from './ProfileFollowListModal.vue'
@@ -1459,22 +1460,7 @@
               <p v-else class="bio bio-placeholder">{{ t('profile.bioPlaceholder') }}</p>
 
               <!-- User Interests -->
-              <div v-if="userInterests.length > 0" :aria-label="t('profile.yourInterests')" class="interests-section">
-                <div class="interests-chips-wrapper">
-                  <ul class="interests-chips" role="list">
-                    <li v-for="interest in userInterests" :key="interest.id">
-                      <button
-                        class="interest-chip"
-                        data-testid="profile-interest-chip"
-                        type="button"
-                        @click="goToInterest(interest.id)"
-                      >
-                        {{ interest.name }}
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              </div>
+              <ProfileBioInterests v-if="userInterests.length > 0" :interests="userInterests" />
 
               <!-- Follow Stats -->
               <div class="follow-stats-row">
@@ -2238,31 +2224,7 @@
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
-/* Interesses do usuário */
-.interests-section {
-  margin: 1rem 0;
-}
-
-.interests-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.interest-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.35rem 0.75rem;
-  background: linear-gradient(135deg, rgba(255, 95, 143, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
-  color: #ff5fa6;
-  border-radius: 14px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  border: 1px solid rgba(255, 95, 166, 0.2);
-  cursor: pointer;
-  font-family: inherit;
-  line-height: inherit;
-}
+/* Chips de interesse da bio: migraram pra ProfileBioInterests.vue. */
 
 /* .modal-banner.no-banner/.modal-avatar-wrapper: migraram pra
    ProfileEditModal.vue junto com o resto do modal de editar perfil.
@@ -3756,20 +3718,13 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
-/* Transição suave para interesse chips */
-.interest-chip,
+/* Transição suave para interesse chips (sidebar) */
 .tag {
   transition: all var(--transition-normal);
 }
 
-.interest-chip:hover,
 .tag:hover {
   transform: translateY(-1px);
-}
-
-.interest-chip:hover {
-  border-color: rgba(255, 95, 166, 0.45);
-  background: linear-gradient(135deg, rgba(255, 95, 143, 0.18) 0%, rgba(139, 92, 246, 0.18) 100%);
 }
 
 .tag--clickable {

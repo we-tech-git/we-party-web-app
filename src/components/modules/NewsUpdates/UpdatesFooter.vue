@@ -1,8 +1,17 @@
 <script setup lang="ts">
+  import { ref } from 'vue'
   import { useRouter } from 'vue-router'
+  import TermsPrivacyModal from '@/components/UI/TermsPrivacyModal/TermsPrivacyModal.vue'
 
   const router = useRouter()
   const currentYear = new Date().getFullYear()
+
+  const showTermsModal = ref(false)
+  const termsModalDocument = ref<'terms' | 'privacy'>('terms')
+  function openTermsModal (type: 'terms' | 'privacy') {
+    termsModalDocument.value = type
+    showTermsModal.value = true
+  }
 
   function goToHome () {
     router.push('/')
@@ -77,24 +86,14 @@
           <h4 class="footer-column-title">Institucional</h4>
           <ul class="footer-links-list">
             <li>
-              <a
-                class="footer-link"
-                href="/termos-de-uso.pdf"
-                rel="noopener noreferrer"
-                target="_blank"
-              >
+              <button class="footer-link-btn" data-testid="updates-footer-open-terms" type="button" @click="openTermsModal('terms')">
                 Termos de Uso
-              </a>
+              </button>
             </li>
             <li>
-              <a
-                class="footer-link"
-                href="/politica-de-privacidade.pdf"
-                rel="noopener noreferrer"
-                target="_blank"
-              >
+              <button class="footer-link-btn" data-testid="updates-footer-open-privacy" type="button" @click="openTermsModal('privacy')">
                 Privacidade
-              </a>
+              </button>
             </li>
             <li>
               <a
@@ -118,6 +117,8 @@
       </div>
     </div>
   </footer>
+
+  <TermsPrivacyModal v-model="showTermsModal" :document="termsModalDocument" />
 </template>
 
 <style scoped>

@@ -321,7 +321,81 @@
         .from('.hero-tagline-wrap', { y: 35, opacity: 0, duration: 1, ease: 'power3.out' }, '-=0.7')
         .from('.hero-scroll-indicator', { y: 20, opacity: 0, duration: 0.8, ease: 'power2.out' }, '-=0.4')
 
-      // 4. Hero — Scroll Storytelling Scrub (transição suave para a próxima seção)
+      // 4. Header — Morphing contínuo de full-width para floating pill
+      if (!reducedMotion.value) {
+        const isMobile = windowWidth.value <= 768
+        const headerTimeline = gsap.timeline({
+          scrollTrigger: {
+            trigger: '.hero',
+            start: 'top top',
+            end: '+=280',
+            scrub: 0.5,
+            onUpdate: self => {
+              navSolid.value = self.progress > 0.5
+            },
+          },
+        })
+
+        headerTimeline
+          .to('.header', {
+            paddingTop: '1rem',
+            paddingBottom: '0.5rem',
+            ease: 'none',
+          }, 0)
+          .fromTo(
+            '.header-content',
+            {
+              width: '100%',
+              maxWidth: '100%',
+              backgroundColor: 'rgba(255, 255, 255, 0)',
+              backdropFilter: 'blur(0px)',
+              WebkitBackdropFilter: 'blur(0px)',
+              borderColor: 'rgba(255, 154, 77, 0)',
+              boxShadow: '0 0 0 rgba(255, 95, 143, 0)',
+              borderRadius: '0px',
+              paddingTop: '0.5rem',
+              paddingBottom: '0.5rem',
+              paddingLeft: '1rem',
+              paddingRight: '1rem',
+            },
+            {
+              width: '100%',
+              maxWidth: '1100px',
+              backgroundColor: 'rgba(255, 255, 255, 0.92)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              borderColor: 'rgba(255, 154, 77, 0.18)',
+              boxShadow: '0 16px 40px rgba(255, 95, 143, 0.2)',
+              borderRadius: '16px',
+              paddingTop: isMobile ? '0.55rem' : '0.65rem',
+              paddingBottom: isMobile ? '0.55rem' : '0.65rem',
+              paddingLeft: isMobile ? '1.15rem' : '1.75rem',
+              paddingRight: isMobile ? '0.6rem' : '0.85rem',
+              ease: 'none',
+            },
+            0,
+          )
+          .to(
+            '.btn-ghost',
+            {
+              color: '#334155',
+              textShadow: '0 0 0 rgba(0, 0, 0, 0)',
+              ease: 'none',
+            },
+            0,
+          )
+          .to(
+            '.mobile-menu-btn',
+            {
+              color: '#2c3e50',
+              textShadow: '0 0 0 rgba(0, 0, 0, 0)',
+              ease: 'none',
+            },
+            0,
+          )
+      }
+
+      // 5. Hero — Scroll Storytelling Scrub (transição suave para a próxima seção)
       // Hero agora é LandingHeroSection.vue (Fase 5, parte 6) — o ScrollTrigger
       // mira a seção pelo seletor CSS, mesmo padrão das fatias anteriores.
       if (!reducedMotion.value) {
@@ -656,7 +730,7 @@
       landingEl.value?.querySelector<HTMLVideoElement>('.hero-video')?.pause()
     }
 
-    if (heroSectionEl) {
+    if (heroSectionEl && reducedMotion.value) {
       const headerHeight = headerEl.value?.offsetHeight ?? 80
       heroObserver = new IntersectionObserver(
         entries => {
@@ -938,21 +1012,14 @@ img {
   left: 0;
   right: 0;
   z-index: 1000;
-  padding: 1.25rem 0;
+  padding: 1.25rem 0 0.5rem;
   background: transparent;
-  transition: top 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    padding 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform, opacity;
+  will-change: transform, opacity, padding;
 }
 
-.header.header-solid {
-  top: 1rem;
-  padding: 0;
-}
-
-.header:not(.header-solid) .container {
-  max-width: none;
-  padding: 0 clamp(1.5rem, 5vw, 4.5rem);
+.header .container {
+  max-width: 100%;
+  padding: 0 clamp(1rem, 3.5vw, 3rem);
 }
 
 .header-content {
@@ -960,24 +1027,34 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 2rem;
-  border-radius: 14px;
+  border-radius: 0px;
   border: 1px solid transparent;
-  transition: background 0.35s ease, box-shadow 0.35s ease,
-    border-color 0.35s ease, padding 0.35s ease, max-width 0.35s ease;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  will-change: max-width, background-color, box-shadow, padding, border-radius;
 }
 
-.header-solid .header-content {
+/* Fallback para prefers-reduced-motion ou antes do JS carregar */
+.header.header-solid {
+  padding-top: 1rem;
+}
+
+.header.header-solid .header-content {
   max-width: 1100px;
-  margin: 0 auto;
-  padding: 0.65rem 0.85rem 0.65rem 1.75rem;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(16px);
-  border-color: rgba(255, 154, 77, 0.15);
+  -webkit-backdrop-filter: blur(16px);
+  border-color: rgba(255, 154, 77, 0.18);
   box-shadow: 0 16px 40px rgba(255, 95, 143, 0.2);
+  border-radius: 16px;
+  padding: 0.65rem 0.85rem 0.65rem 1.75rem;
 }
 
 @media (max-width: 768px) {
-  .header-solid .header-content {
+  .header.header-solid .header-content {
     padding: 0.55rem 0.6rem 0.55rem 1.15rem;
   }
 }
@@ -1041,25 +1118,23 @@ img {
   font-weight: 600;
   padding: 0.875rem 1.5rem;
   cursor: pointer;
-  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s ease, background-color 0.25s ease;
   border-radius: 10px;
   transform: translateZ(0);
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
 .btn-ghost:hover {
-  color: #fff;
+  color: #fff !important;
   background: rgba(255, 255, 255, 0.15);
 }
 
 .header-solid .btn-ghost {
-  color: #334155;
   text-shadow: none;
 }
 
 .header-solid .btn-ghost:hover {
-  color: var(--primary-dark);
+  color: var(--primary-dark) !important;
   background: rgba(255, 154, 77, 0.08);
 }
 
@@ -1103,17 +1178,16 @@ img {
 
 .mobile-menu-btn:hover {
   background: rgba(255, 255, 255, 0.15);
-  color: #fff;
+  color: #fff !important;
 }
 
 .header-solid .mobile-menu-btn {
-  color: var(--text);
   text-shadow: none;
 }
 
 .header-solid .mobile-menu-btn:hover {
   background: rgba(255, 154, 77, 0.1);
-  color: var(--primary-dark);
+  color: var(--primary-dark) !important;
 }
 
 /* Mobile Menu (drawer) */
