@@ -21,8 +21,9 @@
     image: event.images?.[0]?.url || '',
     title: event.title,
     location: event.location,
-    schedule: new Date(event.startDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
-    interestName: (event.eventInterests || [])[0]?.interest?.name,
+    schedule: new Date(event.startDate).toLocaleDateString('pt-BR'),
+    // Até 2 categorias no card (ex.: "ROCK" + "INDIE") — antes só a primeira era exibida.
+    tags: (event.eventInterests || []).slice(0, 2).map((ei: any) => ei.interest?.name).filter(Boolean),
     likes: event._count?.likes || 0,
     comments: event._count?.comments || 0,
   })))
@@ -46,13 +47,18 @@
         @click="goToEvent(card.id)"
       >
         <div class="if-media" :style="card.image ? { backgroundImage: `url(${card.image})` } : {}">
-          <span v-if="card.interestName" class="if-tag">{{ card.interestName }}</span>
+          <div v-if="card.tags.length > 0" class="if-tags">
+            <span v-for="tag in card.tags" :key="tag" class="if-tag">{{ tag }}</span>
+          </div>
         </div>
         <div class="if-footer">
           <h3 class="if-card-title">{{ card.title }}</h3>
           <div class="if-meta">
-            <span>📅 {{ card.schedule }}</span>
-            <span v-if="card.location" class="if-location">📍 {{ card.location }}</span>
+            <span class="if-date">📅 {{ card.schedule }}</span>
+            <template v-if="card.location">
+              <span class="if-dot">·</span>
+              <span class="if-location">📍 {{ card.location }}</span>
+            </template>
           </div>
         </div>
       </button>
@@ -123,17 +129,31 @@
   background: linear-gradient(180deg, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.78) 100%);
 }
 
-.if-tag {
+/* Mesmo estilo/posição das interest-tags do FeedCard.vue (.interest-tags):
+   pill translúcida no rodapé da imagem, não no topo. */
+.if-tags {
   position: absolute;
-  top: 10px;
+  bottom: 10px;
   left: 10px;
   z-index: 1;
-  background: rgba(255, 255, 255, 0.92);
-  border-radius: var(--radius-full);
-  padding: 0.3rem 0.6rem;
-  font-size: 0.66rem;
-  font-weight: 700;
-  color: var(--color-dark);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.if-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 14px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
 }
 
 .if-footer {
@@ -155,10 +175,19 @@
 
 .if-meta {
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  align-items: center;
+  gap: 0.35rem;
   font-size: 0.76rem;
   color: var(--color-text-muted);
+  overflow: hidden;
+}
+
+.if-date {
+  flex-shrink: 0;
+}
+
+.if-dot {
+  flex-shrink: 0;
 }
 
 .if-location {
