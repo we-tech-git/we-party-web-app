@@ -6,11 +6,15 @@
   import { formatDate, getHandle } from './commentDisplay'
   import { commentTreeKey, countComments, MAX_COMMENT_DEPTH } from './commentTree'
 
-  const props = defineProps<{
+  const props = withDefaults(defineProps<{
     comment: CommentNodeData
     /** Nível na árvore: raiz = 1. */
     depth: number
-  }>()
+    /** Repassado por `InlineComments` — 'interest' dá visual de card ao comentário raiz. */
+    variant?: 'default' | 'interest'
+  }>(), {
+    variant: 'default',
+  })
 
   const ctx = inject(commentTreeKey)!
   const { goToProfile } = useUserNavigation()
@@ -41,6 +45,7 @@
       'cn-node--root': depth === 1,
       'cn-node--fresh': ctx.isFresh(comment.id),
       'cn-node--replying': ctx.isReplyingTo(comment.id),
+      'cn-node--interest': variant === 'interest',
     }"
   >
     <div class="cn-head">
@@ -247,6 +252,7 @@
           :key="reply.id"
           :comment="reply"
           :depth="depth + 1"
+          :variant="variant"
         />
       </div>
     </div>
@@ -263,6 +269,14 @@
 
 .cn-node--root {
   --spine-x: 20px;
+}
+
+/* Visual de "card" pro comentário raiz na página de Interesse (design "A voz
+   da tribo") — só afeta quem passa `variant="interest"`; Feed não usa. */
+.cn-node--interest.cn-node--root > .cn-head {
+  background: #f6f5f9;
+  border-radius: var(--radius-lg);
+  padding: 0.9rem 1rem;
 }
 
 /* ─── Cabeça ─── */

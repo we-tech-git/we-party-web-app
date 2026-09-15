@@ -37,8 +37,17 @@
     subjectType?: 'event' | 'interest'
     subjectId: string | number
     visible: boolean
+    /**
+     * Estilo visual do painel — 'default' é o usado no Feed, sem mudanças.
+     * 'interest' é opt-in, usado só na página de interesse (`InterestPage.vue`):
+     * some com o título interno "Comentários" (a página já mostra seu próprio
+     * heading "A voz da tribo") e passa adiante pro `CommentNode` pra dar o
+     * visual de "card" ao comentário raiz, batendo com o design daquela página.
+     */
+    variant?: 'default' | 'interest'
   }>(), {
     subjectType: 'event',
+    variant: 'default',
   })
 
   const emit = defineEmits<{
@@ -409,7 +418,7 @@
   <InlinePanel :visible="visible">
     <!-- Header -->
     <div class="ic-header">
-      <div class="ic-title-group">
+      <div v-if="variant !== 'interest'" class="ic-title-group">
         <h4 class="ic-title">Comentários</h4>
         <span v-if="!loading" class="ic-count-badge">{{ totalCount }}</span>
       </div>
@@ -480,7 +489,7 @@
 
       <TransitionGroup v-else name="ic-item">
         <div v-for="comment in comments" :key="comment.id" class="ic-thread">
-          <CommentNode :comment="comment" :depth="1" />
+          <CommentNode :comment="comment" :depth="1" :variant="variant" />
         </div>
       </TransitionGroup>
     </div>
