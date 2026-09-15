@@ -12,6 +12,7 @@
   import AppFooter from '@/components/UI/AppFooter/AppFooter.vue'
   import AppHeader from '@/components/UI/AppHeader/AppHeader.vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import BreadcrumbBack from '@/components/UI/BreadcrumbBack/BreadcrumbBack.vue'
   import ConfirmDialog from '@/components/UI/ConfirmDialog/ConfirmDialog.vue'
   import EventMiniCard from '@/components/UI/EventMiniCard/EventMiniCard.vue'
   import FollowButton from '@/components/UI/FollowButton/FollowButton.vue'
@@ -1377,41 +1378,7 @@
       <!-- Main Content -->
       <main class="layout-main" role="main">
         <!-- Breadcrumb com acessibilidade -->
-        <nav :aria-label="t('profile.aria.navigation')" class="breadcrumb-nav">
-          <button
-            :aria-label="t('profile.aria.backToFeed')"
-            class="breadcrumb-back"
-            type="button"
-            @click="handleBackNavigation"
-          >
-            <span aria-hidden="true" class="back-icon">
-              <svg
-                fill="none"
-                height="16"
-                stroke="currentColor"
-                stroke-width="2.5"
-                viewBox="0 0 24 24"
-                width="16"
-              >
-                <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </span>
-            <span class="back-text">{{ t('common.back') }}</span>
-          </button>
-          <span aria-hidden="true" class="breadcrumb-separator">
-            <svg
-              fill="none"
-              height="14"
-              stroke="currentColor"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-              width="14"
-            >
-              <path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </span>
-          <span class="breadcrumb-current">{{ t('feed.nav.profile') }}</span>
-        </nav>
+        <BreadcrumbBack :current="t('feed.nav.profile')" @back="handleBackNavigation" />
 
         <!-- Profile Header Card -->
         <div class="profile-card">
@@ -3255,59 +3222,6 @@
    entrada/saída) não tem mais nenhum consumidor aqui, cada componente
    extraído tem sua própria cópia. */
 
-/* ── Breadcrumb ── */
-.breadcrumb-nav {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 1.15rem;
-  background: white;
-  border-radius: 14px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.04);
-}
-
-.breadcrumb-back {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.9rem;
-  border: none;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.03);
-  color: #555b77;
-  font-weight: 600;
-  font-size: 0.88rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.breadcrumb-back:hover {
-  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
-  color: white;
-  transform: translateX(-2px);
-}
-
-.back-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-}
-
-.breadcrumb-separator {
-  display: flex;
-  align-items: center;
-  color: #d0d4e3;
-}
-
-.breadcrumb-current {
-  font-weight: 700;
-  font-size: 0.92rem;
-  color: #1a1c2e;
-}
-
 /* ═════════════════════════════════════════════════════
    RESPONSIVE - Mobile First Approach
    Base styles = Mobile (< 480px)
@@ -3392,19 +3306,6 @@
 .edit-btn {
   padding: 0.45rem 0.9rem;
   font-size: 0.78rem;
-}
-
-.breadcrumb-nav {
-  padding: 0.5rem 0.85rem;
-}
-
-.breadcrumb-back {
-  padding: 0.35rem 0.7rem;
-  font-size: 0.82rem;
-}
-
-.back-text {
-  display: none;
 }
 
 /* Havia uma 2ª declaração de `.modal-container` aqui (max-width: 100%,
@@ -3499,19 +3400,6 @@
 
   .tab-icon {
     display: inline-block;
-  }
-
-  .breadcrumb-nav {
-    padding: 0.65rem 1.15rem;
-  }
-
-  .breadcrumb-back {
-    padding: 0.45rem 0.9rem;
-    font-size: 0.88rem;
-  }
-
-  .back-text {
-    display: inline;
   }
 
   .header-info h1 {

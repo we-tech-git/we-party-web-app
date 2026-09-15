@@ -16,6 +16,7 @@ declare module 'vue' {
     AppHeader: typeof import('./components/UI/AppHeader/AppHeader.vue')['default']
     AppLoader: typeof import('./components/UI/AppLoader/AppLoader.vue')['default']
     AuthLayout: typeof import('./components/UI/AuthLayout/AuthLayout.vue')['default']
+    BreadcrumbBack: typeof import('./components/UI/BreadcrumbBack/BreadcrumbBack.vue')['default']
     CommentNode: typeof import('./components/modules/Feed/CommentNode.vue')['default']
     CommentsDrawer: typeof import('./components/modules/Feed/CommentsDrawer.vue')['default']
     ConfirmDialog: typeof import('./components/UI/ConfirmDialog/ConfirmDialog.vue')['default']
