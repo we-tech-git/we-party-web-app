@@ -12,10 +12,15 @@
     disabled?: boolean
     label?: string
     followingLabel?: string
+    /** Preenchido (gradiente) mesmo no estado "não segue" — para CTAs de destaque
+     * (ex.: hero de página de interesse), onde o padrão outline é fraco demais.
+     * Não afeta o uso padrão (Profile/PublicProfile/AddFriends), que não passa essa prop. */
+    solid?: boolean
   }>(), {
     disabled: false,
     label: 'Seguir',
     followingLabel: 'Seguindo',
+    solid: false,
   })
 
   const emit = defineEmits<{
@@ -25,7 +30,7 @@
 
 <template>
   <button
-    :class="['follow-btn', following ? 'is-following' : 'is-follow']"
+    :class="['follow-btn', (following || solid) ? 'is-following' : 'is-follow']"
     :disabled="disabled"
     type="button"
     @click="emit('toggle')"

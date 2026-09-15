@@ -442,6 +442,7 @@
   },
   "interestPage": {
     "hero": {
+      "badgePrefix": "Interesse",
       "followLabel": "Seguir {name}",
       "followingLabel": "✓ Seguindo"
     },

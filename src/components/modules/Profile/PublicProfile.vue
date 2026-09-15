@@ -22,6 +22,7 @@
   import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
   import AppHeader from '@/components/UI/AppHeader/AppHeader.vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
+  import BreadcrumbBack from '@/components/UI/BreadcrumbBack/BreadcrumbBack.vue'
   import EventMiniCard from '@/components/UI/EventMiniCard/EventMiniCard.vue'
   import FollowButton from '@/components/UI/FollowButton/FollowButton.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
@@ -250,12 +251,7 @@
       <FeedSidebarNav :active="activeNav" class="layout-sidebar" :items="navItems" @select="handleNavSelect" />
 
       <main class="layout-main" role="main">
-        <nav :aria-label="t('profile.aria.navigation')" class="breadcrumb-nav">
-          <button class="breadcrumb-back" type="button" @click="router.back()">
-            <span aria-hidden="true">←</span>
-            <span>{{ t('common.back') }}</span>
-          </button>
-        </nav>
+        <BreadcrumbBack @back="router.back()" />
 
         <div v-if="!loading && notFound" class="not-found-state">
           <div class="not-found-icon">🕵️</div>
@@ -285,15 +281,15 @@
                   :size="96"
                 />
 
-                <FollowButton
-                  v-if="profile.isFollowing !== null"
-                  class="profile-actions-top"
-                  :disabled="followBusy"
-                  :following="!!profile.isFollowing"
-                  :following-label="t('profile.followersModal.following')"
-                  :label="t('profile.followersModal.follow')"
-                  @toggle="toggleFollow"
-                />
+                <div v-if="profile.isFollowing !== null" class="profile-actions-top">
+                  <FollowButton
+                    :disabled="followBusy"
+                    :following="!!profile.isFollowing"
+                    :following-label="t('profile.followersModal.following')"
+                    :label="t('profile.followersModal.follow')"
+                    @toggle="toggleFollow"
+                  />
+                </div>
               </div>
 
               <header class="header-info">
@@ -447,22 +443,6 @@
   padding: 1rem 0 3rem;
 }
 
-.breadcrumb-nav {
-  margin-bottom: 1rem;
-}
-
-.breadcrumb-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border: none;
-  background: none;
-  font-weight: 700;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 0.4rem 0;
-}
-
 .not-found-state {
   text-align: center;
   padding: 4rem 1rem;
@@ -511,22 +491,29 @@
 
 .profile-content {
   padding: 0 1.5rem 1.5rem;
+  position: relative;
+  margin-top: -48px;
 }
 
 .avatar-section {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-top: -48px;
+  margin-bottom: 1rem;
 }
 
 .avatar-img {
+  width: 96px;
+  height: 96px;
   border: 4px solid #fff;
   border-radius: 50%;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .1);
+  background: #fff;
+  object-fit: cover;
 }
 
 .profile-actions-top {
-  margin-bottom: 0.5rem;
+  padding-top: 56px;
 }
 
 .header-info h1 {

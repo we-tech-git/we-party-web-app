@@ -188,13 +188,13 @@
 }
 
 .iu-urgency--soon {
-  background: #fee2e2;
-  color: #ef4444;
+  background: #ffdfc7;
+  color: #c1571c;
 }
 
 .iu-urgency--near {
-  background: #fff3e0;
-  color: #ff9800;
+  background: #fdecc8;
+  color: #b9822b;
 }
 
 .iu-urgency--far {

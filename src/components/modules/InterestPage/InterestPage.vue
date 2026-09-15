@@ -90,6 +90,7 @@
         :followers-count="store.followersCount"
         :interest="store.interest"
         :is-following="store.isFollowing"
+        :logged-user="loggedUser"
         :sample-followers="store.sampleFollowers"
         @toggle-follow="handleToggleFollow"
       />
@@ -104,6 +105,7 @@
         <InlineComments
           :subject-id="store.interestId ?? ''"
           subject-type="interest"
+          variant="interest"
           :visible="true"
         />
       </section>
@@ -116,8 +118,27 @@
 
 <style scoped>
 .ip-page {
+  /*
+   * `src/styles/css-variables.css` (radius/sombra/blur/gradiente/fonte de
+   * exibição) nunca é importado globalmente (achado documentado em
+   * `src/styles/README.md`, ainda não resolvido) — ativar esse arquivo pro
+   * app inteiro mudaria Feed/Profile/etc. que usam os mesmos nomes de var.
+   * Definindo aqui, só a árvore da página de Interesse (que já referencia
+   * essas vars em Hero/Featured/Upcoming/TopPeople) herda os valores reais;
+   * o resto do site não é afetado. Valores idênticos aos de `css-variables.css`.
+   */
+  --font-display: 'Poppins', sans-serif;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --blur-sm: blur(4px);
+  --gradient-primary: linear-gradient(135deg, #ff9a4d, #ff5f8f);
+
   min-height: 100vh;
-  background: #faf9fc;
+  background: #fdf1f4;
   padding-bottom: 2.5rem;
 }
 

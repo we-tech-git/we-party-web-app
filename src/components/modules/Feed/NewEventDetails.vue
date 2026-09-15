@@ -384,22 +384,18 @@
                 {{ rsvped ? 'Tô confirmado!' : 'Eu vou!' }}
               </button>
 
-              <button
-                v-if="event.sourceUrl"
-                class="btn-external relative z-10 w-full mt-2.5 flex items-center justify-center gap-2 rounded-2xl py-3.5 font-extrabold text-white transition-all"
-                @click="openSourceUrl"
-              >
-                <svg
-                  class="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.2"
-                  viewBox="0 0 24 24"
+              <div v-if="event.sourceUrl" class="mt-2.5">
+                <button
+                  class="btn-ticket relative z-10 w-full block"
+                  type="button"
+                  @click="openSourceUrl"
                 >
-                  <path d="M14 3h7v7M21 3l-9 9M19 14v5a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h5" />
-                </svg>
-                Saiba mais
-              </button>
+                  <span class="btn-ticket-label">TICKET</span>
+                </button>
+                <p class="text-center text-gray-400 font-semibold text-xs mt-1.5">
+                  Saiba como comprar o ingresso
+                </p>
+              </div>
 
               <div class="relative z-10 flex gap-2.5 mt-2.5">
                 <button
@@ -1102,7 +1098,7 @@
     )
   }
 
-  // ── Link externo "Saiba mais" (mesma dinâmica da tela antiga) ──
+  // ── Link externo "Comprar ingressos" (mesma dinâmica da tela antiga) ──
   // Abre o site oficial do evento em nova aba; só é exibido quando há sourceUrl.
   function openSourceUrl () {
     if (event.value.sourceUrl) {
@@ -1423,14 +1419,41 @@
     background: linear-gradient(120deg, #10A87D, #0c9c8c);
 }
 
-/* Botão "Saiba mais" — mesma cor/efeito do botão da tela de detalhes antiga */
-.btn-external {
-    background: linear-gradient(135deg, #ff5f8f, #ff7eb3);
+/* Botão "Comprar ingressos" — usa a arte do tiquete (public/ticket-button.png)
+   como fundo; o texto fica posicionado sobre a área em branco do desenho.
+   aspect-ratio trava a proporção da imagem (1536x1024) pra o texto não
+   "andar" conforme a largura do card muda. */
+.btn-ticket {
+    position: relative;
+    aspect-ratio: 1431 / 774;
+    background-image: url('/ticket-button.png');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: transform .2s ease, filter .2s ease;
 }
 
-.btn-external:hover {
+.btn-ticket:hover {
+    filter: brightness(1.04);
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(255, 95, 166, 0.35);
+}
+
+.btn-ticket-label {
+    position: absolute;
+    inset: 24% 5% 26% 29%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    letter-spacing: .04em;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 800;
+    font-size: clamp(18px, 6vw, 26px);
+    line-height: 1.15;
+    color: #fff;
 }
 
 /* Botão "Voltar" do hero — muda para o gradiente da marca ao passar o mouse,
