@@ -255,9 +255,10 @@ export interface CommentTreeContext {
   sendingReply: { value: boolean }
   replyToName: { value: string }
   /**
-   * Abre o fluxo de denúncia do comentário — undefined quando a thread não
-   * suporta a ação (comentário de evento, nesta rodada). `CommentNode`
-   * esconde o botão "Reportar" quando isto não existe.
+   * Abre o fluxo de denúncia do comentário — comentário de evento e de
+   * interesse suportam os dois. Opcional só para o `CommentNode` continuar
+   * escondendo o botão "Reportar" caso alguma tela futura não repasse esta
+   * função.
    */
   report?: (comment: CommentNodeData) => void
   isReporting: (id: string) => boolean

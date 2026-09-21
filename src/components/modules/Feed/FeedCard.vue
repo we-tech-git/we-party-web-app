@@ -2,10 +2,14 @@
   import type { FeedItem } from '@/stores/events'
   import { computed, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
+  import { createReport } from '@/api/reports'
+  import ReportDialog from '@/components/UI/ReportDialog/ReportDialog.vue'
+  import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import { useEventImages } from '@/composables/useEventImages'
   import { useGuestMode } from '@/composables/useGuestMode'
   import { useInterestNavigation } from '@/composables/useInterestNavigation'
+  import { SNACKBAR_COLORS, useSnackbar } from '@/composables/useSnackbar'
   import { useUserNavigation } from '@/composables/useUserNavigation'
   import { useShareStore } from '@/stores/share'
   import { svgIcons } from '@/utils/svgSet'
@@ -152,6 +156,38 @@
       text: 'Veja esse evento que encontrei que você também pode gostar',
       url: `${window.location.origin}/event/${props.id}`,
     })
+  }
+
+  // Denúncia de evento — mesmo diálogo/API usados pra denúncia de comentário
+  // (ver InlineComments.vue), com ReportType 'EVENT'.
+  const snackbar = useSnackbar()
+  const showReportDialog = ref(false)
+  const sendingReport = ref(false)
+
+  function handleReportEvent () {
+    handleProtectedAction(() => (showReportDialog.value = true), 'denunciar eventos')
+  }
+
+  async function submitReportEvent (reason: string) {
+    if (sendingReport.value) return
+    sendingReport.value = true
+    try {
+      await createReport('EVENT', String(props.id), reason || undefined)
+      showReportDialog.value = false
+      snackbar.show('Denúncia enviada. Nossa equipe vai revisar.', SNACKBAR_COLORS.success)
+    } catch (error: any) {
+      // O backend recusa denúncia duplicada com 400 — mensagem específica
+      // em vez do erro genérico, pra quem já denunciou entender por quê.
+      showReportDialog.value = false
+      snackbar.show(
+        error?.response?.status === 400
+          ? (error?.response?.data?.message || 'Você já denunciou este evento.')
+          : 'Não foi possível enviar a denúncia. Tente novamente.',
+        SNACKBAR_COLORS.error,
+      )
+    } finally {
+      sendingReport.value = false
+    }
   }
 
   function toggleInterests (e: Event) {
@@ -492,6 +528,60 @@
                 offset="10"
               >Compartilhar</v-tooltip>
             </button>
+
+            <v-menu location="top end">
+              <template #activator="{ props: menuProps }">
+                <button
+                  aria-label="Mais opções"
+                  class="icon-button"
+                  data-testid="feed-card-more-options"
+                  type="button"
+                  v-bind="menuProps"
+                >
+                  <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height="18"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2.4"
+                    viewBox="0 0 24 24"
+                    width="18"
+                  >
+                    <circle cx="12" cy="5" r="1" />
+                    <circle cx="12" cy="12" r="1" />
+                    <circle cx="12" cy="19" r="1" />
+                  </svg>
+                  <v-tooltip
+                    activator="parent"
+                    content-class="feed-card-tooltip"
+                    location="top"
+                    offset="10"
+                  >Mais opções</v-tooltip>
+                </button>
+              </template>
+
+              <v-list density="compact">
+                <v-list-item data-testid="feed-card-report" @click="handleReportEvent">
+                  <template #prepend>
+                    <svg
+                      fill="none"
+                      height="16"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="16"
+                    >
+                      <path d="M4 21V4a1 1 0 0 1 1-1h13.5a.5.5 0 0 1 .4.8L15 9l3.9 5.2a.5.5 0 0 1-.4.8H5" />
+                    </svg>
+                  </template>
+                  <v-list-item-title>Denunciar evento</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
           </div>
         </footer>
       </figcaption>
@@ -506,6 +596,15 @@
       :visible="showInterests"
     />
   </article>
+
+  <ReportDialog
+    v-model="showReportDialog"
+    :submitting="sendingReport"
+    subtitle="Conte o que há de errado com este evento (opcional) — a equipe vai revisar."
+    title="Reportar evento"
+    @submit="submitReportEvent"
+  />
+  <Snackbar v-model="snackbar.visible.value" :color="snackbar.color.value" :message="snackbar.message.value" />
 </template>
 
 <style scoped>

@@ -436,6 +436,15 @@
                 </button>
               </div>
 
+              <button
+                class="w-full text-center text-gray-400 font-semibold text-xs mt-3 hover:text-gray-600 transition-colors"
+                data-testid="event-details-report"
+                type="button"
+                @click="handleReportEvent"
+              >
+                Denunciar evento
+              </button>
+
               <div v-if="false" class="flex items-center gap-3 mt-5 pt-4 border-t border-black/5">
                 <div class="flex items-center">
                   <div
@@ -558,6 +567,14 @@
     :message="snackbarMessage"
     :timeout="1800"
   />
+
+  <ReportDialog
+    v-model="showReportDialog"
+    :submitting="sendingReport"
+    subtitle="Conte o que há de errado com este evento (opcional) — a equipe vai revisar."
+    title="Reportar evento"
+    @submit="submitReportEvent"
+  />
 </template>
 
 <script setup lang="ts">
@@ -567,6 +584,7 @@
   import { getEventComments } from '@/api/comments'
   import { getEventById, getMyAttendance, getTrendingEvents } from '@/api/event'
   import { checkIsFollowing, followUserById, unfollowUserById } from '@/api/follows'
+  import { createReport } from '@/api/reports'
   import EventFaqAccordion from '@/components/modules/Feed/EventFaqAccordion.vue'
   import EventLineupPanel from '@/components/modules/Feed/EventLineupPanel.vue'
   import EventLocationPanel from '@/components/modules/Feed/EventLocationPanel.vue'
@@ -574,6 +592,7 @@
   import EventTrendingCard from '@/components/modules/Feed/EventTrendingCard.vue'
   import InlineComments from '@/components/modules/Feed/InlineComments.vue'
   import AppHeader from '@/components/UI/AppHeader/AppHeader.vue'
+  import ReportDialog from '@/components/UI/ReportDialog/ReportDialog.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
@@ -1129,6 +1148,37 @@
       text: 'Veja esse evento que encontrei que você também pode gostar',
       url: `${window.location.origin}/event/${currentId.value}`,
     })
+  }
+
+  // ── Denúncia de evento — mesmo diálogo/API do FeedCard.vue e da denúncia
+  // de comentário em InlineComments.vue, com ReportType 'EVENT' ──────────
+  const showReportDialog = ref(false)
+  const sendingReport = ref(false)
+
+  function handleReportEvent () {
+    showReportDialog.value = true
+  }
+
+  async function submitReportEvent (reason: string) {
+    if (sendingReport.value || !event.value.id) return
+    sendingReport.value = true
+    try {
+      await createReport('EVENT', String(event.value.id), reason || undefined)
+      showReportDialog.value = false
+      showSnackbar('Denúncia enviada. Nossa equipe vai revisar.', SNACKBAR_COLORS.success)
+    } catch (error: any) {
+      // O backend recusa denúncia duplicada com 400 — mensagem específica
+      // em vez do erro genérico, pra quem já denunciou entender por quê.
+      showReportDialog.value = false
+      showSnackbar(
+        error?.response?.status === 400
+          ? (error?.response?.data?.message || 'Você já denunciou este evento.')
+          : 'Não foi possível enviar a denúncia. Tente novamente.',
+        SNACKBAR_COLORS.error,
+      )
+    } finally {
+      sendingReport.value = false
+    }
   }
 
   // ── Navegação ────────────────────────────────────────────────
