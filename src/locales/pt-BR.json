@@ -252,7 +252,9 @@
       "confirmedTab": "Confirmados",
       "confirmedCount": "confirmados",
       "emptyLiked": "Nenhum evento curtido ainda",
-      "emptyConfirmed": "Nenhuma presença confirmada ainda"
+      "emptyConfirmed": "Nenhuma presença confirmada ainda",
+      "privateLiked": "Esse usuário optou por manter os eventos curtidos privados",
+      "privateConfirmed": "Esse usuário optou por manter as presenças confirmadas privadas"
     },
     "likedEvents": {
       "title": "Eventos curtidos",
@@ -279,7 +281,12 @@
       "editProfile": "Editar Perfil",
       "editProfileDesc": "Altere nome, bio e foto",
       "logout": "Sair da conta",
-      "logoutDesc": "Encerrar sessão atual"
+      "logoutDesc": "Encerrar sessão atual",
+      "privacy": "Privacidade do Perfil",
+      "showLikedEvents": "Eventos curtidos",
+      "showLikedEventsDesc": "Mostrar no seu perfil público os eventos que você curtiu",
+      "showConfirmedEvents": "Presenças confirmadas",
+      "showConfirmedEventsDesc": "Mostrar no seu perfil público os eventos que você confirmou presença"
     },
     "deleteAccount": {
       "dangerZone": "Zona de Perigo",

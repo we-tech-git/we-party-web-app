@@ -11,10 +11,16 @@
 
   defineProps<{
     notificationsEnabled: boolean
+    /** Controla se os eventos curtidos aparecem no perfil público (`/profile/:id`). */
+    showLikedEventsEnabled: boolean
+    /** Controla se as presenças confirmadas aparecem no perfil público (`/profile/:id`). */
+    showConfirmedEventsEnabled: boolean
   }>()
 
   const emit = defineEmits<{
     'update:notificationsEnabled': [value: boolean]
+    'update:showLikedEventsEnabled': [value: boolean]
+    'update:showConfirmedEventsEnabled': [value: boolean]
     'edit-profile': []
     'logout': []
   }>()
@@ -81,6 +87,42 @@
           </div>
         </div>
         <i class="mdi mdi-chevron-right setting-arrow" />
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <h4 class="settings-group-title">{{ t('profile.settings.privacy') }}</h4>
+      <div
+        class="setting-item"
+        data-testid="profile-settings-show-liked-events"
+        @click="emit('update:showLikedEventsEnabled', !showLikedEventsEnabled)"
+      >
+        <div class="setting-left">
+          <div class="setting-icon-wrap">
+            <i class="mdi mdi-heart-outline" />
+          </div>
+          <div>
+            <span class="setting-name">{{ t('profile.settings.showLikedEvents') }}</span>
+            <span class="setting-desc">{{ t('profile.settings.showLikedEventsDesc') }}</span>
+          </div>
+        </div>
+        <div class="toggle-switch" :class="{ checked: showLikedEventsEnabled }" />
+      </div>
+      <div
+        class="setting-item"
+        data-testid="profile-settings-show-confirmed-events"
+        @click="emit('update:showConfirmedEventsEnabled', !showConfirmedEventsEnabled)"
+      >
+        <div class="setting-left">
+          <div class="setting-icon-wrap">
+            <i class="mdi mdi-calendar-check-outline" />
+          </div>
+          <div>
+            <span class="setting-name">{{ t('profile.settings.showConfirmedEvents') }}</span>
+            <span class="setting-desc">{{ t('profile.settings.showConfirmedEventsDesc') }}</span>
+          </div>
+        </div>
+        <div class="toggle-switch" :class="{ checked: showConfirmedEventsEnabled }" />
       </div>
     </div>
   </div>

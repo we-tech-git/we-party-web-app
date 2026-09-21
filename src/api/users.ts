@@ -209,11 +209,15 @@ export async function updateUserProfile (userId: string, data: {
   name?: string
   username?: string
   bio?: string
+  /** Preferência de privacidade — ver docs/BACKEND_PROFILE_PRIVACY_SPEC.md */
+  showLikedEvents?: boolean
+  /** Preferência de privacidade — ver docs/BACKEND_PROFILE_PRIVACY_SPEC.md */
+  showConfirmedEvents?: boolean
 }) {
   const formData = new FormData()
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
-      formData.append(key, value)
+      formData.append(key, String(value))
     }
   }
 

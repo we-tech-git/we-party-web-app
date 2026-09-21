@@ -252,7 +252,9 @@
       "confirmedTab": "Attending",
       "confirmedCount": "attending",
       "emptyLiked": "No liked events yet",
-      "emptyConfirmed": "No confirmed attendance yet"
+      "emptyConfirmed": "No confirmed attendance yet",
+      "privateLiked": "This user chose to keep liked events private",
+      "privateConfirmed": "This user chose to keep confirmed attendance private"
     },
     "likedEvents": {
       "title": "Liked events",
@@ -279,7 +281,12 @@
       "editProfile": "Edit Profile",
       "editProfileDesc": "Change name, bio and photo",
       "logout": "Logout",
-      "logoutDesc": "End current session"
+      "logoutDesc": "End current session",
+      "privacy": "Profile Privacy",
+      "showLikedEvents": "Liked events",
+      "showLikedEventsDesc": "Show the events you liked on your public profile",
+      "showConfirmedEvents": "Confirmed attendance",
+      "showConfirmedEventsDesc": "Show the events you confirmed attendance to on your public profile"
     },
     "deleteAccount": {
       "dangerZone": "Danger Zone",
