@@ -341,6 +341,11 @@
       user.bio = userData.bio || ''
       user.joined = userData.createdAt ? formatJoinDate(userData.createdAt) : ''
 
+      // Backend ainda não persiste esses campos (ver docs/BACKEND_PROFILE_PRIVACY_SPEC.md) —
+      // até lá, `undefined` cai no default "visível", sem regressão.
+      showLikedEventsEnabled.value = userData.showLikedEvents !== false
+      showConfirmedEventsEnabled.value = userData.showConfirmedEvents !== false
+
       // Sincroniza com localStorage para manter consistência em todas as páginas
       updateUser({
         name: userData.name || '',
@@ -1101,6 +1106,30 @@
   // ── Settings toggles ──
   const settingsNotifications = ref(true)
 
+  // ── Privacidade do perfil público — ver docs/BACKEND_PROFILE_PRIVACY_SPEC.md ──
+  const showLikedEventsEnabled = ref(true)
+  const showConfirmedEventsEnabled = ref(true)
+
+  /**
+   * Toggle otimista (mesmo padrão de like/favoritar do AGENTS.md): reflete
+   * na hora, reverte e mostra toast só se a chamada falhar.
+   */
+  async function updatePrivacySetting (field: 'showLikedEvents' | 'showConfirmedEvents', value: boolean) {
+    const target = field === 'showLikedEvents' ? showLikedEventsEnabled : showConfirmedEventsEnabled
+    const previous = target.value
+    target.value = value
+
+    if (!loggedUser.value?.id) return
+
+    try {
+      await updateUserProfile(loggedUser.value.id, { [field]: value })
+    } catch (error) {
+      target.value = previous
+      logger.error(`Erro ao atualizar preferência de privacidade (${field}):`, error)
+      showSnackbar(t('profile.messages.profileUpdateError'), SNACKBAR_COLORS.error)
+    }
+  }
+
   // ── Liked events ──
   // Tipo e mapeamento extraídos pra src/utils/profileEvents.ts (reaproveitados
   // pelo perfil de terceiro, que precisa da mesma normalização read-only).
@@ -1660,9 +1689,13 @@
           <ProfileSettingsPanel
             v-if="activeTab === 'settings'"
             :notifications-enabled="settingsNotifications"
+            :show-confirmed-events-enabled="showConfirmedEventsEnabled"
+            :show-liked-events-enabled="showLikedEventsEnabled"
             @edit-profile="openEditModal"
             @logout="handleLogout"
             @update:notifications-enabled="settingsNotifications = $event"
+            @update:show-confirmed-events-enabled="updatePrivacySetting('showConfirmedEvents', $event)"
+            @update:show-liked-events-enabled="updatePrivacySetting('showLikedEvents', $event)"
           />
         </div>
       </main>

@@ -18,6 +18,7 @@
   } from '@/api/interestPage'
   import { createReport } from '@/api/reports'
   import InlinePanel from '@/components/UI/InlinePanel/InlinePanel.vue'
+  import ReportDialog from '@/components/UI/ReportDialog/ReportDialog.vue'
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useCommentLikes } from '@/composables/useCommentLikes'
@@ -80,12 +81,10 @@
   const replyText = ref('')
   const sendingReply = ref(false)
 
-  // Denúncia — só ligada em comentário de interesse nesta rodada (ver
-  // PLAN-INTEREST-PAGE.md). Reaproveita o mesmo botão/modal pra comentário
-  // de evento é trocar `v-if="isInterest"` por outra condição, sem código novo.
+  // Denúncia — vale tanto para comentário de evento quanto de interesse; só
+  // o `ReportType` enviado à API muda (ver `apiReportType` e `submitReport`).
   const reportingId = ref<string | null>(null)
   const reportModalComment = ref<CommentNodeData | null>(null)
-  const reportReason = ref('')
   const sendingReport = ref(false)
 
   // Like de comentário: implementação única, compartilhada com as demais telas
@@ -308,27 +307,25 @@
 
   const handleToggleLike = commentLikes.toggle
 
-  // Denúncia — só ligada quando subjectType === 'interest' (ver `report` no
-  // treeContext, condicional). Abre um modal simples em vez de disparar na
-  // hora: dar chance de escrever o motivo evita denúncia por engano.
+  // Abre um modal simples em vez de disparar na hora: dar chance de
+  // escrever o motivo evita denúncia por engano.
   function openReportModal (comment: CommentNodeData) {
     reportModalComment.value = comment
-    reportReason.value = ''
   }
 
   function closeReportModal () {
     reportModalComment.value = null
-    reportReason.value = ''
   }
 
-  async function submitReport () {
+  async function submitReport (reason: string) {
     const comment = reportModalComment.value
     if (!comment || sendingReport.value) return
 
     sendingReport.value = true
     reportingId.value = comment.id
     try {
-      await createReport('INTEREST_COMMENT', comment.id, reportReason.value.trim() || undefined)
+      const type = isInterest.value ? 'INTEREST_COMMENT' : 'COMMENT'
+      await createReport(type, comment.id, reason || undefined)
       closeReportModal()
       errorMessage.value = ''
     } catch (error: any) {
@@ -379,11 +376,7 @@
     replyText,
     sendingReply,
     replyToName,
-    // Só existe pra comentário de interesse nesta rodada — CommentNode
-    // esconde o botão "Reportar" quando `ctx.report` é undefined, então
-    // ligar em comentário de evento depois é só passar esta função aqui
-    // também, sem mexer no CommentNode.
-    report: isInterest.value ? openReportModal : undefined,
+    report: openReportModal,
     isReporting: (id: string) => reportingId.value === id,
   }
   provide(commentTreeKey, treeContext)
@@ -536,32 +529,15 @@
   <!-- Denunciar comentário — motivo opcional, mesma regra 2 do AGENTS.md:
        ação com POST precisa de loading no gatilho + confirmação (aqui, o
        próprio modal fechar é a confirmação; erro vira mensagem no painel). -->
-  <Teleport to="body">
-    <div v-if="reportModalComment" class="ic-report-overlay" @click.self="closeReportModal">
-      <div class="ic-report-modal">
-        <h3 class="ic-report-title">Reportar comentário</h3>
-        <p class="ic-report-subtitle">Conte o que há de errado (opcional) — a equipe vai revisar.</p>
-        <textarea
-          v-model="reportReason"
-          class="ic-report-textarea"
-          maxlength="500"
-          placeholder="Motivo (opcional)"
-          rows="3"
-        />
-        <div class="ic-report-actions">
-          <button class="ic-report-cancel" type="button" @click="closeReportModal">Cancelar</button>
-          <button
-            class="ic-report-submit"
-            :disabled="sendingReport"
-            type="button"
-            @click="submitReport"
-          >
-            {{ sendingReport ? 'Enviando…' : 'Denunciar' }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+  <ReportDialog
+    :model-value="!!reportModalComment"
+    :submitting="sendingReport"
+    subtitle="Conte o que há de errado (opcional) — a equipe vai revisar."
+    title="Reportar comentário"
+    @cancel="closeReportModal"
+    @submit="submitReport"
+    @update:model-value="val => { if (!val) closeReportModal() }"
+  />
 </template>
 
 <style scoped>
@@ -885,91 +861,4 @@
   }
 }
 
-/* ─── Modal de denúncia ─── */
-.ic-report-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.45);
-  padding: 1rem;
-}
-
-.ic-report-modal {
-  width: 100%;
-  max-width: 380px;
-  background: #fff;
-  border-radius: 18px;
-  padding: 1.25rem;
-}
-
-.ic-report-title {
-  margin: 0 0 0.25rem;
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: #16171f;
-}
-
-.ic-report-subtitle {
-  margin: 0 0 0.75rem;
-  font-size: 0.82rem;
-  color: #8b8fa1;
-}
-
-.ic-report-textarea {
-  width: 100%;
-  border: 1.5px solid #e4e6ef;
-  border-radius: 12px;
-  padding: 0.65rem 0.75rem;
-  font-size: 0.87rem;
-  color: #1a1a1a;
-  font-family: inherit;
-  resize: vertical;
-  outline: none;
-}
-
-.ic-report-textarea:focus {
-  border-color: #ff5fa6;
-  box-shadow: 0 0 0 3px rgba(255, 95, 166, 0.12);
-}
-
-.ic-report-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 0.85rem;
-}
-
-.ic-report-cancel {
-  border: none;
-  background: transparent;
-  border-radius: 12px;
-  padding: 0.55rem 1rem;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #8b8fa1;
-  cursor: pointer;
-}
-
-.ic-report-cancel:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.ic-report-submit {
-  border: none;
-  border-radius: 12px;
-  padding: 0.55rem 1.1rem;
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: #fff;
-  background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
-  cursor: pointer;
-}
-
-.ic-report-submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 </style>

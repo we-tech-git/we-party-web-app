@@ -84,6 +84,10 @@
     isFollowing: boolean | null
     likedEvents: any[]
     eventAttendances: any[]
+    /** Preferência de privacidade do dono do perfil — ver docs/BACKEND_PROFILE_PRIVACY_SPEC.md. */
+    showLikedEvents?: boolean
+    /** Preferência de privacidade do dono do perfil — ver docs/BACKEND_PROFILE_PRIVACY_SPEC.md. */
+    showConfirmedEvents?: boolean
   }
 
   const loading = ref(true)
@@ -111,6 +115,8 @@
         return
       }
       profile.value = data
+      // Abre na primeira aba que o dono do perfil deixa visível.
+      activeTab.value = data.showLikedEvents === false && data.showConfirmedEvents !== false ? 'confirmed' : 'liked'
     } catch {
       notFound.value = true
     } finally {
@@ -178,6 +184,14 @@
     (profile.value?.eventAttendances ?? []).map(evt => mapConfirmedAttendanceUtil(evt, eventFallbacks.value)),
   )
   const activeItems = computed(() => activeTab.value === 'liked' ? likedItems.value : confirmedItems.value)
+
+  const canShowLiked = computed(() => profile.value?.showLikedEvents !== false)
+  const canShowConfirmed = computed(() => profile.value?.showConfirmedEvents !== false)
+  const privacyMessage = computed(() => {
+    if (activeTab.value === 'liked' && !canShowLiked.value) return t('profile.public.privateLiked')
+    if (activeTab.value === 'confirmed' && !canShowConfirmed.value) return t('profile.public.privateConfirmed')
+    return null
+  })
 
   function formatShortDate (dateString: string): string {
     return formatShortDateUtil(dateString, t('profile.likedEvents.soon'))
@@ -316,8 +330,9 @@
             </div>
           </div>
 
-          <div class="content-tabs" role="tablist">
+          <div v-if="canShowLiked || canShowConfirmed" class="content-tabs" role="tablist">
             <button
+              v-if="canShowLiked"
               class="tab-btn"
               :class="{ active: activeTab === 'liked' }"
               role="tab"
@@ -327,6 +342,7 @@
               {{ t('profile.tabs.liked') }}
             </button>
             <button
+              v-if="canShowConfirmed"
               class="tab-btn"
               :class="{ active: activeTab === 'confirmed' }"
               role="tab"
@@ -338,24 +354,29 @@
           </div>
 
           <div class="tab-panel">
-            <div v-if="activeItems.length > 0" class="mini-cards-grid">
-              <EventMiniCard
-                v-for="item in activeItems"
-                :key="item.id"
-                :banner-url="item.banner"
-                :date-label="formatShortDate(item.schedule)"
-                :location="item.location || t('profile.likedEvents.locationUndefined')"
-                :title="item.title"
-                @click="router.push(`/event/${item.id}`)"
-              >
-                <template #stats>
-                  <span class="mini-stat">{{ item.confirmed }} {{ t('profile.public.confirmedCount') }}</span>
-                </template>
-              </EventMiniCard>
+            <div v-if="privacyMessage" class="empty-state">
+              <p>{{ privacyMessage }}</p>
             </div>
-            <div v-else class="empty-state">
-              <p>{{ activeTab === 'liked' ? t('profile.public.emptyLiked') : t('profile.public.emptyConfirmed') }}</p>
-            </div>
+            <template v-else>
+              <div v-if="activeItems.length > 0" class="mini-cards-grid">
+                <EventMiniCard
+                  v-for="item in activeItems"
+                  :key="item.id"
+                  :banner-url="item.banner"
+                  :date-label="formatShortDate(item.schedule)"
+                  :location="item.location || t('profile.likedEvents.locationUndefined')"
+                  :title="item.title"
+                  @click="router.push(`/event/${item.id}`)"
+                >
+                  <template #stats>
+                    <span class="mini-stat">{{ item.confirmed }} {{ t('profile.public.confirmedCount') }}</span>
+                  </template>
+                </EventMiniCard>
+              </div>
+              <div v-else class="empty-state">
+                <p>{{ activeTab === 'liked' ? t('profile.public.emptyLiked') : t('profile.public.emptyConfirmed') }}</p>
+              </div>
+            </template>
           </div>
         </template>
       </main>

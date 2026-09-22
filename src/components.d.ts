@@ -72,6 +72,7 @@ declare module 'vue' {
     ProfileRequestInterestModal: typeof import('./components/modules/Profile/ProfileRequestInterestModal.vue')['default']
     ProfileSettingsPanel: typeof import('./components/modules/Profile/ProfileSettingsPanel.vue')['default']
     PublicProfile: typeof import('./components/modules/Profile/PublicProfile.vue')['default']
+    ReportDialog: typeof import('./components/UI/ReportDialog/ReportDialog.vue')['default']
     RequestPassword: typeof import('./components/modules/PasswordRecovery/RequestPassword.vue')['default']
     ResetPassword: typeof import('./components/modules/PasswordRecovery/ResetPassword.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

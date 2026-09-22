@@ -19,6 +19,7 @@ Catálogo hoje:
 | `AppHeader`, `AppFooter` | não |
 | `AppLoader` | ✅ |
 | `EventMiniCard` | ✅ |
+| `ReportDialog` | ✅ |
 | `AuthLayout`, `ConfirmDialog`, `ErrorBoundary`, `FollowButton`, `GradientText`, `ImageCropper`, `InlinePanel`, `LoginRequiredDialog`, `SearchInput`, `SelectableChip`, `ShareSheet`, `Snackbar`, `SocialAuthButtons`, `UserAvatar`, `WePartyLoader`, `inputLabel` | não |
 
 Adicionar story pros componentes sem story ainda é backlog incremental

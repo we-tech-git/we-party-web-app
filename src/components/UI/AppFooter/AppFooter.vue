@@ -12,7 +12,7 @@
   const router = useRouter()
 
   const currentYear = new Date().getFullYear()
-  const instagramUrl = 'https://instagram.com/weparty'
+  const instagramUrl = 'https://www.instagram.com/weparty.br'
 
   function goToLandingSection (sectionId: string) {
     router.push({ path: '/', hash: `#${sectionId}` })

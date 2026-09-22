@@ -25,6 +25,7 @@ trabalho já concluído ficam em [`archive/`](./archive/README.md).
 | [`BACKEND_COMMENT_THREADS_SPEC.md`](./BACKEND_COMMENT_THREADS_SPEC.md) | Comentários em árvore (até 5 níveis) + likes por comentário. |
 | [`BACKEND_NEW_INTERESTS_SPEC.md`](./BACKEND_NEW_INTERESTS_SPEC.md) | Endpoint de solicitação de novos interesses. |
 | [`BACKEND_USER_SEARCH_SPEC.md`](./BACKEND_USER_SEARCH_SPEC.md) | Endpoint de busca de usuários. |
+| [`BACKEND_PROFILE_PRIVACY_SPEC.md`](./BACKEND_PROFILE_PRIVACY_SPEC.md) | Preferências de privacidade do perfil público (`showLikedEvents`/`showConfirmedEvents`). |
 
 ### Histórico
 
