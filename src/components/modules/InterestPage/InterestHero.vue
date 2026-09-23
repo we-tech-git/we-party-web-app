@@ -111,7 +111,9 @@
 <style scoped>
 .ih-hero {
   position: relative;
-  min-height: 420px;
+  /* Header sobreposto ao hero; ~80% da tela deixa a próxima seção aparecer */
+  min-height: 560px;
+  min-height: max(80svh, 560px);
   display: flex;
   align-items: flex-end;
   background-size: cover;
@@ -139,7 +141,7 @@
 }
 
 .ih-hero--cover .ih-scrim {
-  background: linear-gradient(180deg, rgba(7, 9, 26, 0.15) 0%, rgba(7, 9, 26, 0.35) 45%, rgba(7, 9, 26, 0.88) 100%);
+  background: linear-gradient(180deg, rgba(7, 9, 26, 0.45) 0%, rgba(7, 9, 26, 0.35) 45%, rgba(7, 9, 26, 0.88) 100%);
 }
 
 .ih-scrim {
@@ -243,7 +245,8 @@
 
 @media (max-width: 640px) {
   .ih-hero {
-    min-height: 320px;
+    min-height: 440px;
+    min-height: max(65svh, 440px);
   }
 
   .ih-content {

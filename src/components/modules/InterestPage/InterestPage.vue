@@ -77,7 +77,13 @@
 
 <template>
   <div class="ip-page">
-    <AppHeader :guest-mode="!isFullyAuthenticated" :user="headerUser" />
+    <!-- Sobreposto ao hero só quando ele existe; em loading/NotFound o
+         conteúdo começa no topo e ficaria escondido atrás do header. -->
+    <AppHeader
+      :guest-mode="!isFullyAuthenticated"
+      :transparent="!store.loadingHero && !store.notFound && !!store.interest"
+      :user="headerUser"
+    />
 
     <WePartyLoader v-if="store.loadingHero" fullscreen :messages="['Carregando interesse...']" />
 

@@ -5,12 +5,14 @@
        FeedTopHeader" (ver histórico do arquivo). Substituído pelo
        componente de verdade: menos CSS duplicado e um só lugar pra
        corrigir bug de header daqui pra frente. -->
-  <AppHeader :user="headerUser" />
+  <AppHeader transparent :user="headerUser" />
 
   <!-- ===== HERO ===== -->
+  <!-- Quase tela cheia (85%): o header é transparente e fica sobreposto à
+       imagem, e a próxima seção aparece um pouco embaixo. -->
   <section
     class="hero-section relative w-full flex flex-col justify-end overflow-hidden"
-    style="min-height: 84vh; min-height: max(84vh, 600px);"
+    style="min-height: 85vh; min-height: max(85svh, 560px);"
   >
     <div
       class="absolute inset-0 bg-cover bg-center"
@@ -23,7 +25,7 @@
 
     <!-- Back -->
     <a
-      class="btn-back absolute top-20 sm:top-24 left-4 md:left-14 z-10 flex items-center gap-2 bg-white/16 backdrop-blur-sm border border-white/28 text-white font-extrabold px-4 py-2.5 rounded-2xl transition-all cursor-pointer hover:-translate-y-0.5"
+      class="btn-back absolute top-28 sm:top-32 left-4 md:left-14 z-10 flex items-center gap-2 bg-white/16 backdrop-blur-sm border border-white/28 text-white font-extrabold px-4 py-2.5 rounded-2xl transition-all cursor-pointer hover:-translate-y-0.5"
       href="#"
       @click.prevent="goBack"
     >
@@ -42,7 +44,7 @@
     <!-- Like (hero) -->
     <button
       :class="[
-        'btn-like-hero absolute top-20 sm:top-24 right-4 md:right-14 z-10 flex items-center gap-2 backdrop-blur-sm border font-extrabold px-4 py-2.5 rounded-2xl transition-all cursor-pointer hover:-translate-y-0.5',
+        'btn-like-hero absolute top-28 sm:top-32 right-4 md:right-14 z-10 flex items-center gap-2 backdrop-blur-sm border font-extrabold px-4 py-2.5 rounded-2xl transition-all cursor-pointer hover:-translate-y-0.5',
         liked
           ? 'bg-grad-main border-transparent text-white shadow-pink-glow'
           : 'bg-white/16 border-white/28 text-white'
