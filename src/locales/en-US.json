@@ -461,6 +461,10 @@
       "heading": "Share interest",
       "text": "Check out the {name} events on We Party"
     },
+    "related": {
+      "kicker": "Discover more",
+      "title": "Fans of {name} also like"
+    },
     "empty": {
       "title": "No {name} events here yet",
       "text": "Follow {name} to see events show up here as soon as they're published.",

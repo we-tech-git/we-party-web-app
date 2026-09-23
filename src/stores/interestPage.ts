@@ -5,6 +5,7 @@ import { followInterest, getInterestPage, unfollowInterest } from '@/api/interes
 import { buildHeroSlides } from '@/composables/useHeroSlideshow'
 import { useLoading } from '@/composables/useLoading'
 import { logger } from '@/utils/logger'
+import { buildRelatedInterests } from '@/utils/relatedInterests'
 
 export interface InterestPageSkin {
   id: string
@@ -51,6 +52,11 @@ export const useInterestPageStore = defineStore('interestPage', () => {
 
   /** Imagens dos eventos (destaque + próximos) — fundo do hero e og:image da página. */
   const heroSlides = computed(() => buildHeroSlides([...featuredEvents.value, ...upcomingEvents.value]))
+
+  /** "Quem curte X também curte": outros interesses dos eventos da página, mais frequentes primeiro. */
+  const relatedInterests = computed(() => interest.value
+    ? buildRelatedInterests([...featuredEvents.value, ...upcomingEvents.value], interest.value.id)
+    : [])
 
   /** Depois do `fetchPage`, sem nenhum evento nas duas listas → estado vazio da página. */
   const hasNoEvents = computed(() => featuredEvents.value.length === 0 && upcomingEvents.value.length === 0)
@@ -147,6 +153,7 @@ export const useInterestPageStore = defineStore('interestPage', () => {
     notFound,
     loadingHero,
     heroSlides,
+    relatedInterests,
     hasNoEvents,
     fetchPage,
     toggleFollow,

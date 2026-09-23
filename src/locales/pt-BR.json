@@ -461,6 +461,10 @@
       "heading": "Compartilhar interesse",
       "text": "Olha os eventos de {name} no We Party"
     },
+    "related": {
+      "kicker": "Descubra mais",
+      "title": "Quem curte {name} também curte"
+    },
     "empty": {
       "title": "Ainda não tem evento de {name} por aqui",
       "text": "Siga {name} pra ver os eventos aparecerem aqui assim que forem publicados.",

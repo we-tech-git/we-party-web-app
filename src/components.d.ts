@@ -48,6 +48,7 @@ declare module 'vue' {
     InterestHero: typeof import('./components/modules/InterestPage/InterestHero.vue')['default']
     InterestHeroBackdrop: typeof import('./components/modules/InterestPage/InterestHeroBackdrop.vue')['default']
     InterestPage: typeof import('./components/modules/InterestPage/InterestPage.vue')['default']
+    InterestRelated: typeof import('./components/modules/InterestPage/InterestRelated.vue')['default']
     InterestTopPeople: typeof import('./components/modules/InterestPage/InterestTopPeople.vue')['default']
     InterestUpcomingList: typeof import('./components/modules/InterestPage/InterestUpcomingList.vue')['default']
     LandingAppShowcaseSection: typeof import('./components/modules/Landingpage/LandingAppShowcaseSection.vue')['default']

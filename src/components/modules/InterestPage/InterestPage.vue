@@ -15,6 +15,7 @@
   import InterestEmptyState from './InterestEmptyState.vue'
   import InterestFeaturedEvents from './InterestFeaturedEvents.vue'
   import InterestHero from './InterestHero.vue'
+  import InterestRelated from './InterestRelated.vue'
   import InterestTopPeople from './InterestTopPeople.vue'
   import InterestUpcomingList from './InterestUpcomingList.vue'
 
@@ -137,6 +138,10 @@
         <InterestFeaturedEvents :events="store.featuredEvents" />
         <InterestUpcomingList :events="store.upcomingEvents" />
       </template>
+
+      <!-- Sem beco sem saída: leva pra outros interesses que rolam junto -->
+      <InterestRelated :interest-name="store.interest.name" :interests="store.relatedInterests" />
+
       <InterestTopPeople :following="store.topPeopleFollowing" :others="store.topPeopleOthers" />
 
       <section class="ip-comments">
