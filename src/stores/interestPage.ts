@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { unwrapItem } from '@/api'
 import { followInterest, getInterestPage, unfollowInterest } from '@/api/interestPage'
+import { buildHeroSlides } from '@/composables/useHeroSlideshow'
 import { useLoading } from '@/composables/useLoading'
 import { logger } from '@/utils/logger'
 
@@ -47,6 +48,12 @@ export const useInterestPageStore = defineStore('interestPage', () => {
   const notFound = ref(false)
 
   const loadingHero = computed(() => isLoading('interest-page:hero'))
+
+  /** Imagens dos eventos (destaque + próximos) — fundo do hero e og:image da página. */
+  const heroSlides = computed(() => buildHeroSlides([...featuredEvents.value, ...upcomingEvents.value]))
+
+  /** Depois do `fetchPage`, sem nenhum evento nas duas listas → estado vazio da página. */
+  const hasNoEvents = computed(() => featuredEvents.value.length === 0 && upcomingEvents.value.length === 0)
 
   /**
    * `id` pode ser o slug (rota pública é por slug) ou o id real — o
@@ -139,6 +146,8 @@ export const useInterestPageStore = defineStore('interestPage', () => {
     topPeopleOthers,
     notFound,
     loadingHero,
+    heroSlides,
+    hasNoEvents,
     fetchPage,
     toggleFollow,
     reset,

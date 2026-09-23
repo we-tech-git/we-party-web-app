@@ -1,7 +1,9 @@
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import type { EventDateFilter } from '@/utils/eventDateFilters'
+  import { computed, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
+  import { EVENT_DATE_FILTERS, matchesDateFilter } from '@/utils/eventDateFilters'
 
   const props = defineProps<{
     events: any[]
@@ -9,6 +11,29 @@
 
   const router = useRouter()
   const { t } = useI18n()
+
+  const activeFilter = ref<EventDateFilter>('all')
+
+  /**
+   * Todos os filtros aparecem (com contagem) quando há 2+ eventos; os que não
+   * têm nenhum evento ficam desabilitados — assim o usuário vê que "nada rola
+   * esse fim de semana" em vez de achar que a página não tem filtro.
+   */
+  const filterOptions = computed(() => EVENT_DATE_FILTERS.map(key => {
+    const count = props.events.filter(evt => matchesDateFilter(evt.startDate, key)).length
+    return { key, count, disabled: key !== 'all' && count === 0 }
+  }))
+
+  const showFilters = computed(() => props.events.length > 1)
+
+  // Se a lista mudar e o filtro ativo ficar sem eventos, volta pra "Todos".
+  const effectiveFilter = computed(() =>
+    filterOptions.value.some(option => option.key === activeFilter.value && !option.disabled) ? activeFilter.value : 'all',
+  )
+
+  const filteredEvents = computed(() =>
+    props.events.filter(evt => matchesDateFilter(evt.startDate, effectiveFilter.value)),
+  )
 
   /**
    * Badge de urgência — cálculo do front a partir de `startDate`, sem campo
@@ -29,7 +54,7 @@
     return t('interestPage.upcoming.daysLeft', { days })
   }
 
-  const items = computed(() => props.events.map(evt => {
+  const items = computed(() => filteredEvents.value.map(evt => {
     const date = new Date(evt.startDate)
     return {
       ...evt,
@@ -47,9 +72,33 @@
 </script>
 
 <template>
-  <section v-if="items.length > 0" aria-labelledby="upcoming-heading" class="iu-section">
+  <section v-if="events.length > 0" aria-labelledby="upcoming-heading" class="iu-section">
     <p class="iu-kicker">{{ t('interestPage.upcoming.kicker') }}</p>
     <h2 id="upcoming-heading" class="iu-title">{{ t('interestPage.upcoming.title') }}</h2>
+
+    <v-chip-group
+      v-if="showFilters"
+      :aria-label="t('interestPage.upcoming.filtersLabel')"
+      class="iu-filters"
+      mandatory
+      :model-value="effectiveFilter"
+      @update:model-value="activeFilter = $event ?? 'all'"
+    >
+      <v-chip
+        v-for="option in filterOptions"
+        :key="option.key"
+        class="iu-filter"
+        color="primary"
+        :data-testid="`interest-upcoming-filter-${option.key}`"
+        :disabled="option.disabled"
+        size="default"
+        :value="option.key"
+        variant="outlined"
+      >
+        {{ t(`interestPage.upcoming.filters.${option.key}`) }}
+        <span class="iu-filter-count">{{ option.count }}</span>
+      </v-chip>
+    </v-chip-group>
 
     <div class="iu-list">
       <button
@@ -100,6 +149,44 @@
   font-weight: 800;
   color: var(--color-dark);
   margin: 0 0 1.1rem;
+}
+
+/* Filtros de data: Vuetify `v-chip-group`; o selecionado usa o gradiente da marca */
+.iu-filters {
+  margin: -0.4rem 0 0.9rem;
+}
+
+/* `!important` nas cores de texto: o Vuetify aplica `color="primary"` no texto do
+   chip com !important, o que deixava rosa sobre o gradiente rosa (ilegível). */
+.iu-filter {
+  font-weight: 700;
+  border-color: var(--color-primary);
+  background: #fff;
+  color: var(--color-dark) !important;
+  box-shadow: none;
+}
+
+.iu-filter.v-chip--selected {
+  background: var(--gradient-primary);
+  border-color: transparent;
+  color: #fff !important;
+}
+
+/* Sem o "véu" que o Vuetify põe por cima do chip selecionado (desbotava o gradiente) */
+.iu-filter.v-chip--selected :deep(.v-chip__overlay) {
+  opacity: 0;
+}
+
+.iu-filter.v-chip--disabled {
+  border-color: rgba(0, 0, 0, 0.14);
+  color: var(--color-text-muted) !important;
+  opacity: 0.7;
+}
+
+.iu-filter-count {
+  margin-left: 0.4rem;
+  font-size: 0.72rem;
+  opacity: 0.75;
 }
 
 .iu-list {

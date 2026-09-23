@@ -24,7 +24,8 @@
   }>()
 
   const emit = defineEmits<{
-    (e: 'toggle-follow'): void
+    'toggle-follow': []
+    'share': []
   }>()
 
   const heroSlides = computed(() => props.slides ?? [])
@@ -111,6 +112,33 @@
             solid
             @toggle="emit('toggle-follow')"
           />
+
+          <button
+            :aria-label="t('interestPage.share.button')"
+            class="ih-share-btn"
+            data-testid="interest-hero-share"
+            type="button"
+            @click="emit('share')"
+          >
+            <svg
+              aria-hidden="true"
+              fill="none"
+              height="18"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="18"
+            >
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.6" x2="15.4" y1="13.5" y2="17.5" />
+              <line x1="15.4" x2="8.6" y1="6.5" y2="10.5" />
+            </svg>
+            <span class="ih-share-label">{{ t('interestPage.share.button') }}</span>
+          </button>
 
           <div class="ih-stats">
             <div v-if="displayedFollowers.length > 0" aria-hidden="true" class="ih-avatars">
@@ -215,7 +243,10 @@
   z-index: 1;
   width: 100%;
   max-width: 810px;
-  margin: 0 auto;
+  /* Alinha o bloco à esquerda com o conteúdo do header (mesma grade de 1280px da
+     logo), em vez de centralizá-lo: em tela larga o hero deixa de ficar solto no
+     meio e o card da direita cai perto do centro da tela. */
+  margin: 0 auto 0 max(0px, calc((100% - min(100%, 1280px)) / 2 - 0.5rem));
   padding: 3rem 1.5rem 2.5rem;
   color: #fff;
 }
@@ -253,19 +284,22 @@
   color: rgba(255, 255, 255, 0.92);
 }
 
+/* Linha de baixo em duas colunas (ações | legenda), coladas na mesma base: o card
+   nunca cobre o título (que fica na linha de cima) e, se as ações não couberem
+   ao lado dele, quebram dentro da própria coluna em vez de empurrar o card.
+   A coluna do card sobra com o espaço livre; ele fica centralizado nela. */
 .ih-bottom {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1.2rem 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(250px, 1fr);
+  align-items: end;
+  column-gap: 1.5rem;
   margin-top: 1.6rem;
 }
 
 .ih-actions-row {
   display: flex;
   align-items: center;
-  gap: 1.4rem;
+  gap: 1rem 1.2rem;
   flex-wrap: wrap;
 }
 
@@ -277,6 +311,29 @@
   font-size: 1rem;
   padding: 0.8rem 1.6rem;
   min-width: 160px;
+}
+
+/* Compartilhar: pílula de vidro, mesmo tratamento do badge "Interesse" */
+.ih-share-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.1rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: var(--blur-sm);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.ih-share-btn:hover {
+  background: rgba(255, 255, 255, 0.24);
+  transform: translateY(-1px);
 }
 
 .ih-stats {
@@ -311,14 +368,14 @@
   color: #fff;
 }
 
-/* Legenda do slideshow: à direita da linha de ações, no fluxo (nunca sobre o título) */
+/* Legenda do slideshow: centralizada no espaço livre da linha de baixo, base alinhada às ações */
 .ih-showcase {
-  margin-left: auto;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
+  justify-self: center;
   gap: 0.7rem;
-  width: 260px;
+  width: 250px;
 }
 
 .ih-showcase-link {
@@ -418,11 +475,15 @@
     padding: 2.25rem 1.1rem 1.9rem;
   }
 
-  /* Sem espaço lateral: a legenda desce pra baixo dos botões */
+  /* Mobile: sem espaço lateral, a legenda desce pra baixo das ações */
+  .ih-bottom {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 1.4rem;
+  }
+
   .ih-showcase {
     align-items: flex-start;
     width: 100%;
-    margin-left: 0;
   }
 
   .ih-actions-row {

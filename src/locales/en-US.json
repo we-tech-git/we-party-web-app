@@ -456,6 +456,17 @@
       "showcaseLink": "View event {title}",
       "showcaseGoTo": "Show event {title}"
     },
+    "share": {
+      "button": "Share",
+      "heading": "Share interest",
+      "text": "Check out the {name} events on We Party"
+    },
+    "empty": {
+      "title": "No {name} events here yet",
+      "text": "Follow {name} to see events show up here as soon as they're published.",
+      "textFollowing": "You already follow {name}. Events will show up here as soon as they're published.",
+      "explore": "Explore other events"
+    },
     "featured": {
       "kicker": "Don't miss",
       "title": "What's popping 🔊"
@@ -465,7 +476,14 @@
       "title": "Coming up 🔥",
       "today": "today",
       "tomorrow": "tomorrow",
-      "daysLeft": "{days} days left"
+      "daysLeft": "{days} days left",
+      "filtersLabel": "Filter events by date",
+      "filters": {
+        "all": "All",
+        "week": "This week",
+        "month": "This month",
+        "nextMonth": "Next month"
+      }
     },
     "topPeople": {
       "kicker": "Who's already here",

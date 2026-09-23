@@ -43,6 +43,7 @@ declare module 'vue' {
     InlinePanel: typeof import('./components/UI/InlinePanel/InlinePanel.vue')['default']
     InputLabel: typeof import('./components/UI/inputLabel/InputLabel.vue')['default']
     Interest: typeof import('./components/modules/interest/Interest.vue')['default']
+    InterestEmptyState: typeof import('./components/modules/InterestPage/InterestEmptyState.vue')['default']
     InterestFeaturedEvents: typeof import('./components/modules/InterestPage/InterestFeaturedEvents.vue')['default']
     InterestHero: typeof import('./components/modules/InterestPage/InterestHero.vue')['default']
     InterestHeroBackdrop: typeof import('./components/modules/InterestPage/InterestHeroBackdrop.vue')['default']
