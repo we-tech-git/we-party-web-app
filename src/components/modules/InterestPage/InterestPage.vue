@@ -7,6 +7,7 @@
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
   import { useGuestMode } from '@/composables/useGuestMode'
+  import { buildHeroSlides } from '@/composables/useHeroSlideshow'
   import { useInterestPageStore } from '@/stores/interestPage'
   import { logger } from '@/utils/logger'
   import InlineComments from '../Feed/InlineComments.vue'
@@ -32,6 +33,10 @@
     avatar: loggedUser.value?.profileImage || '',
     username: loggedUser.value?.username ? `@${loggedUser.value.username}` : '',
   }))
+
+  // Fundo do hero (quando o interesse não tem capa curada): imagens dos eventos
+  // em destaque e dos próximos, sem repetir a mesma imagem.
+  const heroSlides = computed(() => buildHeroSlides([...store.featuredEvents, ...store.upcomingEvents]))
 
   const snackbarVisible = ref(false)
   const snackbarMessage = ref('')
@@ -98,6 +103,7 @@
         :is-following="store.isFollowing"
         :logged-user="loggedUser"
         :sample-followers="store.sampleFollowers"
+        :slides="heroSlides"
         @toggle-follow="handleToggleFollow"
       />
 

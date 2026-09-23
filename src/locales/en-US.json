@@ -451,7 +451,10 @@
     "hero": {
       "badgePrefix": "Interest",
       "followLabel": "Follow {name}",
-      "followingLabel": "✓ Following"
+      "followingLabel": "✓ Following",
+      "showcaseKicker": "Coming up",
+      "showcaseLink": "View event {title}",
+      "showcaseGoTo": "Show event {title}"
     },
     "featured": {
       "kicker": "Don't miss",
