@@ -1079,6 +1079,16 @@ img {
   animation: gentle-float 3s ease-in-out infinite;
 }
 
+/* O título do logo nunca quebra em duas linhas (em 320px o flex do header o
+   espremia até virar "We / Party"): o logo não encolhe e o texto não quebra. */
+.logo {
+  flex-shrink: 0;
+}
+
+.logo .logo-text {
+  white-space: nowrap;
+}
+
 @keyframes gentle-float {
   0%,
   100% {

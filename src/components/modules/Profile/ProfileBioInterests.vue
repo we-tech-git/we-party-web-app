@@ -10,6 +10,8 @@
 
   const props = defineProps<{
     interests: UserInterest[]
+    /** `aria-label` da região — o padrão ("Seus interesses") só serve pro próprio perfil. */
+    label?: string
   }>()
 
   const BIO_INTERESTS_LIMIT = 3
@@ -27,7 +29,7 @@
 </script>
 
 <template>
-  <div :aria-label="t('profile.yourInterests')" class="interests-section">
+  <div :aria-label="label ?? t('profile.yourInterests')" class="interests-section">
     <div class="interests-chips-wrapper">
       <ul class="interests-chips" role="list">
         <li v-for="interest in displayedInterests" :key="interest.id">

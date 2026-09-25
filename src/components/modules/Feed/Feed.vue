@@ -1401,11 +1401,11 @@
 .feed-shell {
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: minmax(180px, 250px) 1fr minmax(200px, 280px);
+  grid-template-columns: minmax(180px, var(--layout-sidebar-width)) 1fr minmax(200px, 280px);
   grid-template-areas: 'sidebar main trends';
-  column-gap: 1rem;
+  column-gap: var(--layout-column-gap);
   row-gap: 0;
-  width: min(100%, 1280px);
+  width: min(100%, var(--layout-max-width));
   margin: 0 auto;
   background: transparent;
   border-radius: 0;
@@ -1439,7 +1439,6 @@
   position: relative;
   z-index: 1;
   padding: 0 10px 3rem;
-  background-color: #ff5fa70a;
 }
 
 .feed-main::-webkit-scrollbar {
@@ -1725,7 +1724,7 @@
     grid-template-columns: 220px 1fr;
     grid-template-areas: 'sidebar main';
     width: min(100%, 960px);
-    padding: 0 2.25rem;
+    padding: 0 var(--layout-side-padding);
     margin: 0 auto;
     border-radius: 0;
   }
@@ -2146,6 +2145,7 @@
 .filter-chip.active {
   border-color: transparent;
   background: linear-gradient(135deg, #ff9a4d 0%, #ff5f8f 100%);
+  background-origin: border-box;
   color: #fff;
   box-shadow: 0 3px 12px rgba(255, 95, 166, 0.3);
   transform: translateY(-1px);

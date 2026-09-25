@@ -44,6 +44,22 @@ export const Confirmado: Story = {
   },
 }
 
+export const ComEtiqueta: Story = {
+  args: {
+    ...Padrao.args,
+    dateLabel: 'sáb, 08/08 · 20:00',
+    tag: 'Em 3 dias',
+  },
+}
+
+export const JaPassou: Story = {
+  args: {
+    ...Padrao.args,
+    dateLabel: 'sáb, 08/08 · 20:00',
+    past: true,
+  },
+}
+
 export const ComStatsInterativas: Story = {
   render: args => ({
     components: { EventMiniCard },

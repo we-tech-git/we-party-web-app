@@ -296,6 +296,10 @@
 
 .trending-item-mobile {
   display: flex;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: left;
   align-items: flex-start;
   gap: 0.85rem;
   padding: 0.85rem 1rem;
@@ -344,15 +348,15 @@
   letter-spacing: 0.06em;
   color: #ff5fa6;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .trend-title {
   font-size: 0.95rem;
   font-weight: 700;
   color: #1a1c2e;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .trend-engagement {

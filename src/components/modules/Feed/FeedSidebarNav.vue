@@ -109,6 +109,11 @@
    CSS VARIABLES (Design Tokens)
    ============================================ */
 .sidebar {
+  /* Fonte própria: sem isso o menu herda a da página — o Profile.vue usa
+     'Baloo Thambi 2' (letras mais baixas, parecem menores) e o Feed usa a
+     padrão do Vuetify. Fixar aqui mantém o menu idêntico em todas as telas. */
+  font-family: 'Roboto', sans-serif;
+
   --sidebar-padding-right: 1.5rem;
   --sidebar-gap: 2rem;
   --sidebar-min-height: 540px;
