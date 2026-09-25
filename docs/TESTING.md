@@ -23,14 +23,28 @@ yarn test         # vitest run
 ## Onde colocar o teste
 
 Arquivo `*.spec.ts` **ao lado do arquivo testado**, não em uma pasta
-`__tests__/` separada — é o padrão já usado pelos 5 specs existentes:
+`__tests__/` separada — é o padrão usado por todos os specs existentes:
 
 ```
-src/utils/avatar.spec.ts
+# componentes (mount)
 src/components/modules/Profile/Profile.spec.ts
+src/components/modules/Profile/PublicProfile.spec.ts
 src/components/modules/Feed/Feed.spec.ts
 src/components/modules/Feed/NewEventDetails.spec.ts
 src/components/modules/Landingpage/LandingPage.spec.ts
+
+# composables
+src/composables/useFollowToggle.spec.ts
+src/composables/useHeroSlideshow.spec.ts
+src/composables/useInterestNavigation.spec.ts
+
+# funções puras (utils)
+src/utils/avatar.spec.ts
+src/utils/eventDateFilters.spec.ts
+src/utils/eventTiming.spec.ts
+src/utils/mutualFollowers.spec.ts
+src/utils/profileEvents.spec.ts
+src/utils/relatedInterests.spec.ts
 ```
 
 `vitest.config.ts` inclui `src/**/*.spec.ts`, então qualquer novo arquivo

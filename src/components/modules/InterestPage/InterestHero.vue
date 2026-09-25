@@ -3,8 +3,8 @@
   import type { InterestPageSkin, InterestPerson } from '@/stores/interestPage'
   import { computed } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import AvatarStack from '@/components/UI/AvatarStack/AvatarStack.vue'
   import FollowButton from '@/components/UI/FollowButton/FollowButton.vue'
-  import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import { useHeroSlideshow } from '@/composables/useHeroSlideshow'
   import InterestHeroBackdrop from './InterestHeroBackdrop.vue'
 
@@ -141,16 +141,7 @@
           </button>
 
           <div class="ih-stats">
-            <div v-if="displayedFollowers.length > 0" aria-hidden="true" class="ih-avatars">
-              <UserAvatar
-                v-for="person in displayedFollowers.slice(0, 3)"
-                :key="person.id"
-                class="ih-avatar"
-                :image="person.profileImage"
-                :name="person.name"
-                :size="32"
-              />
-            </div>
+            <AvatarStack class="ih-avatars" :max="3" :people="displayedFollowers" :size="32" />
             <span class="ih-stat">
               <strong>{{ followersCount.toLocaleString('pt-BR') }}</strong> {{ interest.memberNoun }}
               <template v-if="activeEventsCount !== null">
@@ -247,7 +238,9 @@
      logo), em vez de centralizá-lo: em tela larga o hero deixa de ficar solto no
      meio e o card da direita cai perto do centro da tela. */
   margin: 0 auto 0 max(0px, calc((100% - min(100%, 1280px)) / 2 - 0.5rem));
-  padding: 3rem 1.5rem 2.5rem;
+  /* O topo reserva o espaço do AppHeader (fixed/transparente por cima do hero):
+     como o conteúdo fica colado embaixo, sem isso um hero alto encosta no header. */
+  padding: calc(6rem + env(safe-area-inset-top, 0px)) 1.5rem 2.5rem;
   color: #fff;
 }
 
@@ -343,18 +336,9 @@
   flex-wrap: wrap;
 }
 
+/* O anel dos avatares acompanha o fundo escuro do hero */
 .ih-avatars {
-  display: flex;
-}
-
-.ih-avatar {
-  border: 2px solid var(--color-dark);
-  border-radius: 50%;
-  margin-left: -9px;
-}
-
-.ih-avatar:first-child {
-  margin-left: 0;
+  --avatar-stack-ring: var(--color-dark);
 }
 
 .ih-stat {
@@ -472,7 +456,8 @@
   }
 
   .ih-content {
-    padding: 2.25rem 1.1rem 1.9rem;
+    /* Header mobile ≈ 64px + folga de ~1rem */
+    padding: calc(5rem + env(safe-area-inset-top, 0px)) 1.1rem 1.9rem;
   }
 
   /* Mobile: sem espaço lateral, a legenda desce pra baixo das ações */

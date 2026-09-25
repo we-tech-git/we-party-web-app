@@ -254,7 +254,30 @@
       "emptyLiked": "Nenhum evento curtido ainda",
       "emptyConfirmed": "Nenhuma presença confirmada ainda",
       "privateLiked": "Esse usuário optou por manter os eventos curtidos privados",
-      "privateConfirmed": "Esse usuário optou por manter as presenças confirmadas privadas"
+      "privateConfirmed": "Esse usuário optou por manter as presenças confirmadas privadas",
+      "emptyLikedHint": "Quando {name} curtir um evento, ele aparece aqui.",
+      "emptyConfirmedHint": "Quando {name} confirmar presença em um evento, ele aparece aqui.",
+      "interestsLabel": "Interesses de {name}",
+      "share": {
+        "button": "Compartilhar perfil",
+        "heading": "Compartilhar perfil",
+        "text": "Olha o perfil de {name} no We Party"
+      },
+      "mutualFollowers": {
+        "one": "Seguido por {a}",
+        "two": "Seguido por {a} e {b}",
+        "many": "Seguido por {a}, {b} e mais {count}"
+      },
+      "sections": {
+        "upcoming": "Próximos",
+        "past": "Já rolou"
+      },
+      "timing": {
+        "today": "Hoje",
+        "tomorrow": "Amanhã",
+        "inDays": "Em {days} dias",
+        "ended": "Já rolou"
+      }
     },
     "likedEvents": {
       "title": "Eventos curtidos",

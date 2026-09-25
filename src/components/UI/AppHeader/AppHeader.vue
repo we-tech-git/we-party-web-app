@@ -251,6 +251,10 @@
 
 <style scoped>
 .feed-top-header {
+  /* Fonte própria: sem isso a busca, o nome e o @ do usuário herdam a da
+     página (o Profile.vue usa 'Baloo Thambi 2', letras mais baixas). O logo
+     "WE PARTY" mantém a sua (.brand). */
+  font-family: 'Roboto', sans-serif;
   box-sizing: border-box;
   width: 100%;
   padding: 15px 0;

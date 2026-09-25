@@ -50,7 +50,7 @@
       <i v-if="isSelected" aria-hidden="true" class="mdi mdi-close chip-icon chip-icon--hover" />
       <i v-else aria-hidden="true" class="mdi mdi-plus chip-icon" />
     </template>
-    {{ label }}
+    <span class="chip-label">{{ label }}</span>
   </component>
 </template>
 
@@ -70,6 +70,10 @@
   justify-content: center;
   gap: 6px;
   white-space: nowrap;
+  /* Rótulo maior que o espaço (ex.: "Empreendedorismo, negócios e inovação" numa
+     coluna estreita) trunca com reticências em vez de vazar do card. */
+  max-width: 100%;
+  min-width: 0;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
   box-shadow: 0 2px 0 rgba(0, 0, 0, .05);
@@ -82,6 +86,10 @@
 .category-chip.selected {
   background: linear-gradient(90deg, #ff9a4d, #ff5f8f);
   background-size: 100% 100%;
+  /* Sem isso o gradiente é medido pelo padding-box e se repete por baixo da
+     borda transparente: aparece uma faixa da cor final na esquerda e da
+     inicial na direita. */
+  background-origin: border-box;
   color: #fff;
   border: 1.5px solid transparent;
   box-shadow: 0 10px 20px rgba(255, 95, 166, .2);
@@ -98,8 +106,15 @@
 }
 
 .chip-icon {
+  flex-shrink: 0;
   font-size: 0.95rem;
   line-height: 1;
+}
+
+.chip-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Chip selecionado: check por padrão, × no hover/foco para sinalizar que clicar

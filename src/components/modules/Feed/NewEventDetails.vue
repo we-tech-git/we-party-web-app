@@ -15,8 +15,8 @@
     style="min-height: 85vh; min-height: max(85svh, 560px);"
   >
     <div
-      class="absolute inset-0 bg-cover bg-center"
-      :style="{ backgroundImage: heroBackground }"
+      class="absolute inset-0 bg-cover"
+      :style="{ backgroundImage: heroBackground, backgroundPosition: 'center 12%' }"
     />
     <div
       class="absolute inset-0"
@@ -64,7 +64,9 @@
     </button>
 
     <!-- Hero inner -->
-    <div class="relative z-10 w-full max-w-295 mx-auto px-4 md:px-10 pb-20 md:pb-28 animate-rise">
+    <!-- pt-40/sm:pt-48: passa dos botões Voltar/Curtir (absolute em top-28/sm:top-32,
+         ~44px de altura) pra que título/tags longos nunca subam por cima deles. -->
+    <div class="relative z-10 w-full max-w-295 mx-auto px-4 md:px-10 pt-40 sm:pt-48 pb-20 md:pb-28 animate-rise">
       <div class="flex flex-wrap gap-2 mb-5">
         <span
           class="bg-grad-main text-white text-[11px] font-extrabold tracking-wide px-3.5 py-1.5 rounded-full uppercase"
@@ -122,8 +124,10 @@
       <!-- Content grid -->
       <div class="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-7 items-start mt-6">
 
-        <!-- LEFT COLUMN -->
-        <div class="flex flex-col gap-5">
+        <!-- LEFT COLUMN — min-w-0: item de grid não encolhe abaixo do conteúdo
+             mínimo; sem isso a barra de abas (nowrap) alarga a coluna e empurra
+             a da direita pra fora da tela em ~1024px. -->
+        <div class="flex flex-col gap-5 min-w-0">
 
           <!-- Tab bar -->
           <div
@@ -363,9 +367,24 @@
                 <span class="block text-gray-400 font-semibold text-xs mt-2">{{ eventHeat.going }} confirmados · {{ eventHeat.likes }} curtidas</span>
               </div>
 
+              <div v-if="event.sourceUrl">
+                <button
+                  class="btn-ticket relative z-10 block mx-auto"
+                  data-testid="event-details-ticket"
+                  type="button"
+                  @click="openSourceUrl"
+                >
+                  <span class="btn-ticket-label">TICKET</span>
+                </button>
+                <p class="text-center text-gray-400 font-semibold text-xs mt-1.5">
+                  Saiba como comprar o ingresso
+                </p>
+              </div>
+
               <button
                 :class="[
                   'w-full flex items-center justify-center gap-2.5 font-display font-extrabold text-[19px] py-4 rounded-[17px] text-white transition-all hover:-translate-y-0.5',
+                  event.sourceUrl ? 'mt-2.5' : '',
                   rsvped ? 'bg-grad-green shadow-green-glow' : 'bg-grad-main shadow-pink-glow'
                 ]"
                 @click="toggleRsvp"
@@ -385,19 +404,6 @@
                 </svg>
                 {{ rsvped ? 'Tô confirmado!' : 'Eu vou!' }}
               </button>
-
-              <div v-if="event.sourceUrl" class="mt-2.5">
-                <button
-                  class="btn-ticket relative z-10 w-full block"
-                  type="button"
-                  @click="openSourceUrl"
-                >
-                  <span class="btn-ticket-label">TICKET</span>
-                </button>
-                <p class="text-center text-gray-400 font-semibold text-xs mt-1.5">
-                  Saiba como comprar o ingresso
-                </p>
-              </div>
 
               <div class="relative z-10 flex gap-2.5 mt-2.5">
                 <button
@@ -1471,18 +1477,22 @@
     background: linear-gradient(120deg, #10A87D, #0c9c8c);
 }
 
-/* Botão "Comprar ingressos" — usa a arte do tiquete (public/ticket-button.png)
-   como fundo; o texto fica posicionado sobre a área em branco do desenho.
-   aspect-ratio trava a proporção da imagem (1536x1024) pra o texto não
-   "andar" conforme a largura do card muda. */
+/* Botão "Comprar ingressos" — usa a arte do tiquete (public/ticket-button.png,
+   1431x774) via border-image em 3 fatias: o canhoto (esquerda, com o
+   "123456") e a borda direita mantêm a proporção; só o miolo rosa estica.
+   Assim a arte não deforma ao variar a largura (até 250px, centralizado)
+   e a altura fica fixa (--ticket-h). As larguras das
+   bordas escalam com a altura (372px e 83px da imagem original). O texto
+   fica sobre o miolo (área dentro do padding box). */
 .btn-ticket {
+    --ticket-h: 108px;
     position: relative;
-    aspect-ratio: 1431 / 774;
-    background-image: url('/ticket-button.png');
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    border: none;
+    width: min(100%, 250px);
+    height: var(--ticket-h);
+    border-style: solid;
+    border-width: 0 calc(var(--ticket-h) * 83 / 774) 0 calc(var(--ticket-h) * 372 / 774);
+    border-image: url('/ticket-button.png') 0 83 0 372 fill / 0 calc(var(--ticket-h) * 83 / 774) 0 calc(var(--ticket-h) * 372 / 774) stretch;
+    background: none;
     cursor: pointer;
     padding: 0;
     transition: transform .2s ease, filter .2s ease;
@@ -1495,7 +1505,7 @@
 
 .btn-ticket-label {
     position: absolute;
-    inset: 24% 5% 26% 29%;
+    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1503,7 +1513,7 @@
     letter-spacing: .04em;
     font-family: 'Poppins', sans-serif;
     font-weight: 800;
-    font-size: clamp(18px, 6vw, 26px);
+    font-size: 22px;
     line-height: 1.15;
     color: #fff;
 }
@@ -1512,6 +1522,7 @@
    padronizando o feedback com os demais botões do app */
 .btn-back:hover {
     background: linear-gradient(120deg, #ff9a4d 0%, #ff5f8f 100%);
+    background-origin: border-box;
     border-color: transparent;
     box-shadow: 0 10px 26px -12px rgba(240, 48, 154, .85);
 }
