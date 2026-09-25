@@ -68,7 +68,7 @@
   <v-dialog v-model="isOpen" max-width="360" :scrim="true" transition="dialog-bottom-transition">
     <div class="share-sheet">
       <header class="share-header">
-        <h3>Compartilhar Evento</h3>
+        <h3>{{ shareData.heading || 'Compartilhar Evento' }}</h3>
         <button aria-label="Fechar" class="close-btn" @click="close">✕</button>
       </header>
 

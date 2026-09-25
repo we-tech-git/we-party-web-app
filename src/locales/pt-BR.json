@@ -451,7 +451,25 @@
     "hero": {
       "badgePrefix": "Interesse",
       "followLabel": "Seguir {name}",
-      "followingLabel": "✓ Seguindo"
+      "followingLabel": "✓ Seguindo",
+      "showcaseKicker": "Vem aí",
+      "showcaseLink": "Ver o evento {title}",
+      "showcaseGoTo": "Mostrar o evento {title}"
+    },
+    "share": {
+      "button": "Compartilhar",
+      "heading": "Compartilhar interesse",
+      "text": "Olha os eventos de {name} no We Party"
+    },
+    "related": {
+      "kicker": "Descubra mais",
+      "title": "Quem curte {name} também curte"
+    },
+    "empty": {
+      "title": "Ainda não tem evento de {name} por aqui",
+      "text": "Siga {name} pra ver os eventos aparecerem aqui assim que forem publicados.",
+      "textFollowing": "Você já segue {name}. Os eventos vão aparecer aqui assim que forem publicados.",
+      "explore": "Explorar outros eventos"
     },
     "featured": {
       "kicker": "Manda ver",
@@ -462,7 +480,14 @@
       "title": "Tá chegando 🔥",
       "today": "é hoje",
       "tomorrow": "é amanhã",
-      "daysLeft": "faltam {days} dias"
+      "daysLeft": "faltam {days} dias",
+      "filtersLabel": "Filtrar eventos por data",
+      "filters": {
+        "all": "Todos",
+        "week": "Esta semana",
+        "month": "Este mês",
+        "nextMonth": "Mês que vem"
+      }
     },
     "topPeople": {
       "kicker": "Quem já chegou",

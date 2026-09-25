@@ -8,11 +8,14 @@
   import { useAuth } from '@/composables/useAuth'
   import { useGuestMode } from '@/composables/useGuestMode'
   import { useInterestPageStore } from '@/stores/interestPage'
+  import { useShareStore } from '@/stores/share'
   import { logger } from '@/utils/logger'
   import InlineComments from '../Feed/InlineComments.vue'
   import NotFound from '../NotFound/NotFound.vue'
+  import InterestEmptyState from './InterestEmptyState.vue'
   import InterestFeaturedEvents from './InterestFeaturedEvents.vue'
   import InterestHero from './InterestHero.vue'
+  import InterestRelated from './InterestRelated.vue'
   import InterestTopPeople from './InterestTopPeople.vue'
   import InterestUpcomingList from './InterestUpcomingList.vue'
 
@@ -21,6 +24,7 @@
   }>()
 
   const store = useInterestPageStore()
+  const shareStore = useShareStore()
   const { isFullyAuthenticated, loggedUser } = useAuth()
   const { requireLogin } = useGuestMode()
   const { t } = useI18n()
@@ -32,6 +36,9 @@
     avatar: loggedUser.value?.profileImage || '',
     username: loggedUser.value?.username ? `@${loggedUser.value.username}` : '',
   }))
+
+  // Visitante cai no explore público; logado, no feed (mesma regra do logo do AppHeader).
+  const exploreTo = computed(() => isFullyAuthenticated.value ? '/feed' : '/explore')
 
   const snackbarVisible = ref(false)
   const snackbarMessage = ref('')
@@ -59,6 +66,20 @@
     }
   }
 
+  // Compartilha a URL "bonita" (slug), não a que o usuário abriu — que pode ser o id.
+  function handleShare () {
+    const interest = store.interest
+    if (!interest) {
+      return
+    }
+    shareStore.open({
+      heading: t('interestPage.share.heading'),
+      title: interest.name,
+      text: t('interestPage.share.text', { name: interest.name }),
+      url: `${window.location.origin}/interests/${interest.slug ?? props.slug}`,
+    })
+  }
+
   onMounted(() => {
     store.fetchPage(props.slug)
   })
@@ -77,7 +98,13 @@
 
 <template>
   <div class="ip-page">
-    <AppHeader :guest-mode="!isFullyAuthenticated" :user="headerUser" />
+    <!-- Sobreposto ao hero só quando ele existe; em loading/NotFound o
+         conteúdo começa no topo e ficaria escondido atrás do header. -->
+    <AppHeader
+      :guest-mode="!isFullyAuthenticated"
+      :transparent="!store.loadingHero && !store.notFound && !!store.interest"
+      :user="headerUser"
+    />
 
     <WePartyLoader v-if="store.loadingHero" fullscreen :messages="['Carregando interesse...']" />
 
@@ -92,11 +119,29 @@
         :is-following="store.isFollowing"
         :logged-user="loggedUser"
         :sample-followers="store.sampleFollowers"
+        :slides="store.heroSlides"
+        @share="handleShare"
         @toggle-follow="handleToggleFollow"
       />
 
-      <InterestFeaturedEvents :events="store.featuredEvents" />
-      <InterestUpcomingList :events="store.upcomingEvents" />
+      <!-- Sem nenhum evento: em vez de deixar a página "oca", convida a seguir. -->
+      <InterestEmptyState
+        v-if="store.hasNoEvents"
+        :emoji="store.interest.emoji"
+        :explore-to="exploreTo"
+        :follow-busy="followBusy"
+        :interest-name="store.interest.name"
+        :is-following="store.isFollowing"
+        @toggle-follow="handleToggleFollow"
+      />
+      <template v-else>
+        <InterestFeaturedEvents :events="store.featuredEvents" />
+        <InterestUpcomingList :events="store.upcomingEvents" />
+      </template>
+
+      <!-- Sem beco sem saída: leva pra outros interesses que rolam junto -->
+      <InterestRelated :interest-name="store.interest.name" :interests="store.relatedInterests" />
+
       <InterestTopPeople :following="store.topPeopleFollowing" :others="store.topPeopleOthers" />
 
       <section class="ip-comments">

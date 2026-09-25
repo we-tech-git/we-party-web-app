@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { ref } from 'vue'
+  import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
   import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
@@ -20,8 +20,34 @@
     user: UserSummary
     showBackBtn?: boolean
     guestMode?: boolean
+    /** Header sobreposto ao conteúdo (ex.: hero de imagem em tela cheia):
+     *  fica transparente no topo e ganha fundo sólido ao rolar a página. */
+    transparent?: boolean
   }>()
   const { t } = useI18n()
+
+  // Só relevante com `transparent`: depois desse scroll o header volta a ter
+  // fundo sólido, senão ficaria ilegível sobre o conteúdo claro da página.
+  const SCROLLED_THRESHOLD = 60
+  const isScrolled = ref(false)
+
+  function updateScrolled () {
+    isScrolled.value = window.scrollY > SCROLLED_THRESHOLD
+  }
+
+  function toggleScrollListener (enabled: boolean) {
+    window.removeEventListener('scroll', updateScrolled)
+    if (enabled) {
+      window.addEventListener('scroll', updateScrolled, { passive: true })
+      updateScrolled()
+    } else {
+      isScrolled.value = false
+    }
+  }
+
+  onMounted(() => toggleScrollListener(!!props.transparent))
+  onBeforeUnmount(() => window.removeEventListener('scroll', updateScrolled))
+  watch(() => props.transparent, enabled => toggleScrollListener(!!enabled))
   const router = useRouter()
   const { logout: authLogout, loggedUser, isAuthenticated } = useAuth()
   const { requireLogin } = useGuestMode()
@@ -84,7 +110,11 @@
 </script>
 
 <template>
-  <header aria-label="Brand header" class="feed-top-header">
+  <header
+    aria-label="Brand header"
+    class="feed-top-header"
+    :class="{ 'is-overlay': transparent, 'is-scrolled': transparent && isScrolled }"
+  >
     <div class="header-inner">
       <div class="brand-wrapper">
         <button
@@ -236,6 +266,26 @@
   will-change: transform;
   /* Suporte para safe area em iOS */
   padding-top: calc(15px + env(safe-area-inset-top, 0px));
+}
+
+/* Modo overlay: sai do fluxo e deixa o conteúdo (hero) subir por trás */
+.feed-top-header.is-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin-bottom: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom-color: transparent;
+}
+
+.feed-top-header.is-overlay.is-scrolled {
+  background: rgb(255, 245, 247);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom-color: rgba(255, 200, 220, 0.3);
 }
 
 .display-user-header {
