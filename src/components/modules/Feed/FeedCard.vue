@@ -1537,4 +1537,31 @@
   }
 }
 
+/* ─── Mobile: o conteúdo define a altura do card ─────────────────────────── */
+/* Em telas estreitas título + interesses + data/local + stats + botões podem
+   ser mais altos que o banner. Com o overlay absoluto (colado embaixo) o
+   excesso subia e ficava por baixo do host-tag. Aqui o overlay entra no fluxo
+   (a altura antiga do banner vira min-height) e a imagem vira fundo. */
+@media (max-width: 640px) {
+  .banner,
+  .banner-placeholder {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .overlay {
+    position: relative;
+    inset: auto;
+    min-height: clamp(300px, 76vw, 400px);
+  }
+}
+
+@media (max-width: 480px) {
+  .overlay {
+    min-height: clamp(260px, 70vw, 340px);
+  }
+}
+
 </style>

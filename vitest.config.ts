@@ -7,7 +7,14 @@ import { defineConfig } from 'vitest/config'
 // teste unitário não precisa e que só deixariam a suíte mais lenta/instável.
 // Ver REFACTOR_AUDIT_PLAN.md — Fase 0 / seção 2.8.
 export default defineConfig({
-  plugins: [Vue()],
+  plugins: [
+    Vue({
+      // `<img src="/logo.png">` (arquivo de `public/`) viraria um import de
+      // asset; no Windows o Vite tenta ler `file:///logo.png` e derruba a
+      // suíte inteira na hora do import. Teste não precisa resolver imagem.
+      template: { transformAssetUrls: { includeAbsolute: false } },
+    }),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('src', import.meta.url)),

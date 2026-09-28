@@ -29,9 +29,10 @@
   import type { FollowUser } from './types'
 
   import { useI18n } from 'vue-i18n'
+  import FollowButton from '@/components/UI/FollowButton/FollowButton.vue'
   import { useUserNavigation } from '@/composables/useUserNavigation'
 
-  const props = defineProps<{
+  defineProps<{
     visible: boolean
     variant: 'followers' | 'following'
     list: FollowUser[]
@@ -49,11 +50,6 @@
   function openProfile (userId: FollowUser['id']) {
     emit('close')
     goToProfile(userId)
-  }
-
-  function buttonLabel (person: FollowUser): string {
-    if (props.variant === 'following') return t('profile.followingModal.unfollow')
-    return person.isFollowing ? t('profile.followersModal.following') : t('profile.followersModal.follow')
   }
 </script>
 
@@ -81,14 +77,13 @@
                   <span class="follow-modal-name">{{ person.name }}</span>
                   <span v-if="person.username" class="follow-modal-username">@{{ person.username }}</span>
                 </div>
-                <button
-                  class="follow-modal-btn"
-                  :class="{ following: variant === 'following' || person.isFollowing }"
-                  type="button"
-                  @click="emit('toggle-follow', person)"
-                >
-                  {{ buttonLabel(person) }}
-                </button>
+                <FollowButton
+                  :data-testid="`follow-modal-toggle-${person.id}`"
+                  :following="!!person.isFollowing"
+                  :following-label="variant === 'following' ? t('profile.followingModal.unfollow') : t('profile.followersModal.following')"
+                  :label="t('profile.followersModal.follow')"
+                  @toggle="emit('toggle-follow', person)"
+                />
               </li>
             </ul>
             <div v-else class="follow-modal-empty">
@@ -293,38 +288,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
-}
-
-.follow-modal-btn {
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-full);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  background: linear-gradient(135deg, #ff9a4d, #ff5f8f);
-  color: white;
-  border: none;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.follow-modal-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-primary);
-}
-
-.follow-modal-btn.following {
-  background: transparent;
-  border: 1px solid var(--color-border-strong);
-  color: var(--color-text-secondary);
-}
-
-.follow-modal-btn.following:hover {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: #ef4444;
-  color: #ef4444;
-  box-shadow: none;
 }
 
 .follow-modal-empty {

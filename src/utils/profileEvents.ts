@@ -15,6 +15,8 @@ export interface LikedEventItem {
   creator: { name: string }
   hostAvatar: string
   schedule: string
+  /** Data crua (ISO) do evento — `schedule` já vem formatada e não dá pra reparsear de forma confiável. */
+  startDate?: string
   title: string
   description: string
   confirmed: number
@@ -64,25 +66,26 @@ export function resolveConfirmedCount (evt: RawEvent): number {
 export function mapLikedEvent (evt: RawEvent, fallbacks: ProfileEventFallbacks): LikedEventItem {
   const rawBanner = evt.bannerUrl || evt.banner || (Array.isArray(evt.photos) ? evt.photos[0] : '') || ''
   const hostName = evt.organizer?.name || evt.hostName || evt.creator?.name || 'Organizador'
-  const resolveSchedule = (e: RawEvent): string => {
+  const resolveStartDate = (e: RawEvent): string | undefined => {
     const candidates = [e.date, e.startDate, e.dateTime, e.startAt, e.eventDate, e.start_date, e.schedule]
     for (const val of candidates) {
-      if (!val) {
-        continue
-      }
-      const parsed = new Date(val)
-      if (!Number.isNaN(parsed.getTime())) {
-        return parsed.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+      if (val && !Number.isNaN(new Date(val).getTime())) {
+        return new Date(val).toISOString()
       }
     }
-    return fallbacks.dateUndefined
+    return undefined
   }
+  const startDate = resolveStartDate(evt)
+  const resolveSchedule = (): string => startDate
+    ? new Date(startDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+    : fallbacks.dateUndefined
   return {
     id: evt.id,
     banner: rawBanner,
     creator: { name: hostName },
     hostAvatar: evt.organizer?.avatar || evt.hostAvatar || evt.creator?.profileImage || '',
-    schedule: resolveSchedule(evt),
+    schedule: resolveSchedule(),
+    startDate,
     location: evt.location || evt.address || fallbacks.locationUndefined,
     title: evt.name || evt.title || fallbacks.eventTitle,
     description: evt.description || '',

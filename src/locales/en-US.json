@@ -254,7 +254,30 @@
       "emptyLiked": "No liked events yet",
       "emptyConfirmed": "No confirmed attendance yet",
       "privateLiked": "This user chose to keep liked events private",
-      "privateConfirmed": "This user chose to keep confirmed attendance private"
+      "privateConfirmed": "This user chose to keep confirmed attendance private",
+      "emptyLikedHint": "When {name} likes an event, it will show up here.",
+      "emptyConfirmedHint": "When {name} confirms attendance at an event, it will show up here.",
+      "interestsLabel": "{name}'s interests",
+      "share": {
+        "button": "Share profile",
+        "heading": "Share profile",
+        "text": "Check out {name}'s profile on We Party"
+      },
+      "mutualFollowers": {
+        "one": "Followed by {a}",
+        "two": "Followed by {a} and {b}",
+        "many": "Followed by {a}, {b} and {count} more"
+      },
+      "sections": {
+        "upcoming": "Upcoming",
+        "past": "Already happened"
+      },
+      "timing": {
+        "today": "Today",
+        "tomorrow": "Tomorrow",
+        "inDays": "In {days} days",
+        "ended": "Already happened"
+      }
     },
     "likedEvents": {
       "title": "Liked events",

@@ -9,8 +9,10 @@
    * (fora de escopo, ver PLAN-USER-PROFILE-NAVIGATION.md).
    *
    * Reaproveita: `UserAvatar`, `FollowButton`, `AppHeader`/`FeedSidebarNav`
-   * (mesmo chrome do resto da área logada), e a normalização de eventos de
-   * `src/utils/profileEvents.ts` (extraída de `Profile.vue`).
+   * (mesmo chrome do resto da área logada), `ProfileBioInterests` (chips de
+   * interesse) e a normalização de eventos de `src/utils/profileEvents.ts`
+   * (extraída de `Profile.vue`). Seguidores em comum e grid de eventos ficam
+   * em `ProfileMutualFollowers`/`ProfileEventSections` — esta página só orquestra.
    */
   import type { NavItem } from '@/types/navigation'
   import { computed, onMounted, ref, watch } from 'vue'
@@ -20,23 +22,28 @@
   import { followUserById, getFollowers, getFollowing, unfollowUserById } from '@/api/follows'
   import { getUserProfile } from '@/api/users'
   import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
+  import AppFooter from '@/components/UI/AppFooter/AppFooter.vue'
   import AppHeader from '@/components/UI/AppHeader/AppHeader.vue'
   import AppLoader from '@/components/UI/AppLoader/AppLoader.vue'
   import BreadcrumbBack from '@/components/UI/BreadcrumbBack/BreadcrumbBack.vue'
-  import EventMiniCard from '@/components/UI/EventMiniCard/EventMiniCard.vue'
   import FollowButton from '@/components/UI/FollowButton/FollowButton.vue'
+  import ShareButton from '@/components/UI/ShareButton/ShareButton.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
+  import { useMutualFollowers } from '@/composables/useMutualFollowers'
   import { useSnackbar } from '@/composables/useSnackbar'
   import { useUserNavigation } from '@/composables/useUserNavigation'
+  import { useShareStore } from '@/stores/share'
   import {
-    formatShortDate as formatShortDateUtil,
     type LikedEventItem,
     mapConfirmedAttendance as mapConfirmedAttendanceUtil,
     mapLikedEventItem as mapLikedEventItemUtil,
   } from '@/utils/profileEvents'
+  import ProfileBioInterests from './ProfileBioInterests.vue'
+  import ProfileEventSections from './ProfileEventSections.vue'
+  import ProfileMutualFollowers from './ProfileMutualFollowers.vue'
 
   const props = defineProps<{
     userId: string
@@ -47,6 +54,7 @@
   const { loggedUser } = useAuth()
   const { goToProfile } = useUserNavigation()
   const snackbar = useSnackbar()
+  const shareStore = useShareStore()
 
   // ── AppHeader espera os dados do VISITANTE logado, não do perfil visitado ──
   const viewerSummary = computed(() => ({
@@ -82,6 +90,8 @@
     followersCount: number
     followingCount: number
     isFollowing: boolean | null
+    /** Só interesses aprovados (a página pública do interesse existe pra todos eles). */
+    interests?: { id: string, name: string, slug?: string, emoji?: string | null }[]
     likedEvents: any[]
     eventAttendances: any[]
     /** Preferência de privacidade do dono do perfil — ver docs/BACKEND_PROFILE_PRIVACY_SPEC.md. */
@@ -136,6 +146,23 @@
     if (Number.isNaN(date.getTime())) return ''
     return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
   })
+
+  // "Seguido por quem você segue" — só faz sentido em perfil de terceiro (`isFollowing` é null no próprio).
+  const { preview: mutualPreview, extraCount: mutualExtraCount } = useMutualFollowers(
+    () => profile.value?.id,
+    () => profile.value?.isFollowing != null,
+  )
+
+  // Compartilha a URL pública do perfil (não `window.location.href`, que pode carregar query/hash).
+  function handleShare () {
+    if (!profile.value) return
+    shareStore.open({
+      heading: t('profile.public.share.heading'),
+      title: profile.value.name,
+      text: t('profile.public.share.text', { name: profile.value.name }),
+      url: `${window.location.origin}/profile/${profile.value.id}`,
+    })
+  }
 
   async function toggleFollow () {
     if (!profile.value || followBusy.value) return
@@ -192,10 +219,6 @@
     if (activeTab.value === 'confirmed' && !canShowConfirmed.value) return t('profile.public.privateConfirmed')
     return null
   })
-
-  function formatShortDate (dateString: string): string {
-    return formatShortDateUtil(dateString, t('profile.likedEvents.soon'))
-  }
 
   // ── Modais de seguidores/seguindo ──
   interface FollowListUser {
@@ -295,8 +318,14 @@
                   :size="96"
                 />
 
-                <div v-if="profile.isFollowing !== null" class="profile-actions-top">
+                <div class="profile-actions-top">
+                  <ShareButton
+                    data-testid="public-profile-share"
+                    :label="t('profile.public.share.button')"
+                    @click="handleShare"
+                  />
                   <FollowButton
+                    v-if="profile.isFollowing !== null"
                     :disabled="followBusy"
                     :following="!!profile.isFollowing"
                     :following-label="t('profile.followersModal.following')"
@@ -311,6 +340,12 @@
                 <span v-if="profile.username" class="handle">@{{ profile.username }}</span>
                 <p v-if="profile.bio" class="bio">{{ profile.bio }}</p>
 
+                <ProfileBioInterests
+                  v-if="profile.interests?.length"
+                  :interests="profile.interests"
+                  :label="t('profile.public.interestsLabel', { name: profile.name })"
+                />
+
                 <div class="follow-stats-row">
                   <button class="follow-stat" type="button" @click="openFollowersModal">
                     <span class="follow-stat-count">{{ profile.followersCount }}</span>
@@ -322,6 +357,8 @@
                     <span class="follow-stat-label">{{ t('profile.following') }}</span>
                   </button>
                 </div>
+
+                <ProfileMutualFollowers :extra-count="mutualExtraCount" :people="mutualPreview" />
 
                 <div v-if="joinedLabel" class="meta-row">
                   <span class="meta-item">{{ t('profile.joinedIn') }} {{ joinedLabel }}</span>
@@ -340,6 +377,7 @@
               @click="activeTab = 'liked'"
             >
               {{ t('profile.tabs.liked') }}
+              <span class="tab-count" data-testid="public-profile-tab-liked-count">{{ likedItems.length }}</span>
             </button>
             <button
               v-if="canShowConfirmed"
@@ -350,6 +388,7 @@
               @click="activeTab = 'confirmed'"
             >
               {{ t('profile.public.confirmedTab') }}
+              <span class="tab-count" data-testid="public-profile-tab-confirmed-count">{{ confirmedItems.length }}</span>
             </button>
           </div>
 
@@ -358,29 +397,35 @@
               <p>{{ privacyMessage }}</p>
             </div>
             <template v-else>
-              <div v-if="activeItems.length > 0" class="mini-cards-grid">
-                <EventMiniCard
-                  v-for="item in activeItems"
-                  :key="item.id"
-                  :banner-url="item.banner"
-                  :date-label="formatShortDate(item.schedule)"
-                  :location="item.location || t('profile.likedEvents.locationUndefined')"
-                  :title="item.title"
-                  @click="router.push(`/event/${item.id}`)"
+              <ProfileEventSections
+                v-if="activeItems.length > 0"
+                :items="activeItems"
+                @open="id => router.push(`/event/${id}`)"
+              />
+              <div v-else class="empty-state" data-testid="public-profile-empty">
+                <div aria-hidden="true" class="empty-state__emoji">{{ activeTab === 'liked' ? '❤️' : '🎟️' }}</div>
+                <p class="empty-state__title">
+                  {{ activeTab === 'liked' ? t('profile.public.emptyLiked') : t('profile.public.emptyConfirmed') }}
+                </p>
+                <p class="empty-state__hint">
+                  {{ t(activeTab === 'liked' ? 'profile.public.emptyLikedHint' : 'profile.public.emptyConfirmedHint', { name: profile.name }) }}
+                </p>
+                <button
+                  class="empty-action"
+                  data-testid="public-profile-empty-explore"
+                  type="button"
+                  @click="router.push('/feed')"
                 >
-                  <template #stats>
-                    <span class="mini-stat">{{ item.confirmed }} {{ t('profile.public.confirmedCount') }}</span>
-                  </template>
-                </EventMiniCard>
-              </div>
-              <div v-else class="empty-state">
-                <p>{{ activeTab === 'liked' ? t('profile.public.emptyLiked') : t('profile.public.emptyConfirmed') }}</p>
+                  {{ t('profile.likedEvents.exploreEvents') }}
+                </button>
               </div>
             </template>
           </div>
         </template>
       </main>
     </section>
+
+    <AppFooter />
 
     <!-- Modal de Seguidores -->
     <Teleport to="body">
@@ -446,22 +491,93 @@
   background: #FAFAFB;
 }
 
+/* Mesmo shell do Profile.vue: mobile empilhado com a nav fixa embaixo
+   (o próprio FeedSidebarNav se fixa ≤960px), grid com sidebar sticky a partir de 960px. */
 .layout-shell {
+  box-sizing: border-box;
   display: flex;
-  max-width: 1100px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+  width: min(100%, var(--layout-max-width));
   margin: 0 auto;
-  gap: 1.5rem;
-  padding: 0 1rem;
+  padding: 1rem 0.5rem;
 }
 
-.layout-sidebar {
-  flex: 0 0 auto;
+/* O footer é o último elemento da página, então carrega a folga para a
+   bottom nav fixa (mobile) não cobri-lo. */
+:deep(.app-footer) {
+  padding-bottom: calc(2rem + 5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .layout-main {
-  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
   min-width: 0;
-  padding: 1rem 0 3rem;
+}
+
+@media (min-width: 640px) {
+  .layout-shell {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+}
+
+@media (min-width: 960px) {
+  .layout-shell {
+    display: grid;
+    align-items: start;
+    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-areas: 'sidebar main';
+    width: min(100%, 960px);
+    margin-bottom: 3.5rem;
+    padding: 0 var(--layout-side-padding);
+  }
+
+  /* A sidebar volta a ser sticky, então o footer não precisa mais da folga */
+  :deep(.app-footer) {
+    padding-bottom: 2rem;
+  }
+
+  .layout-sidebar {
+    grid-area: sidebar;
+    position: sticky;
+    top: 100px;
+    align-self: flex-start;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    scrollbar-width: none;
+    z-index: 10;
+  }
+
+  .layout-sidebar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .layout-main {
+    grid-area: main;
+    min-height: 100vh;
+  }
+}
+
+/* Sidebar icon-only (FeedSidebarNav esconde os labels ≤1100px) */
+@media (min-width: 960px) and (max-width: 1099px) {
+  .layout-shell {
+    grid-template-columns: 72px minmax(0, 1fr);
+    width: min(100%, 1080px);
+  }
+}
+
+@media (min-width: 1240px) {
+  .layout-shell {
+    grid-template-columns: var(--layout-sidebar-width) minmax(0, 720px);
+    justify-content: start;
+    column-gap: var(--layout-column-gap);
+    width: min(100%, var(--layout-max-width));
+    padding: 0 1rem;
+  }
 }
 
 .not-found-state {
@@ -534,6 +650,9 @@
 }
 
 .profile-actions-top {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   padding-top: 56px;
 }
 
@@ -615,32 +734,45 @@
   cursor: pointer;
 }
 
+.tab-count {
+  margin-left: 0.35rem;
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
 .tab-btn.active {
   background: linear-gradient(90deg, #ff9a4d 0%, #ff5f8f 100%);
+  /* O gradiente por padrão nasce na área do padding e se repete sob a borda
+     transparente (fio rosa na esquerda) — border-box faz ele cobrir a borda. */
+  background-origin: border-box;
   color: #fff;
   border-color: transparent;
-}
-
-.mini-cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
-}
-
-/* Shell do card (banner/data/título/localização): agora é
-   src/components/UI/EventMiniCard/EventMiniCard.vue (Fase 3 do
-   REFACTOR_AUDIT_PLAN.md). Só o conteúdo do slot #stats continua aqui. */
-.mini-stat {
-  font-size: 0.78rem;
-  color: #9ca3af;
-  font-weight: 700;
 }
 
 .empty-state {
   text-align: center;
   padding: 3rem 1rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-weight: 600;
+}
+
+.empty-state__emoji {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.empty-state__title {
+  margin: 0.75rem 0 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--color-dark);
+}
+
+.empty-state__hint {
+  max-width: 360px;
+  margin: 0.35rem auto 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
 }
 
 .modal-overlay {
@@ -734,15 +866,5 @@
   color: #9ca3af;
   padding: 2rem 1rem;
   font-weight: 600;
-}
-
-@media (max-width: 900px) {
-  .layout-shell {
-    flex-direction: column;
-  }
-
-  .layout-sidebar {
-    display: none;
-  }
 }
 </style>

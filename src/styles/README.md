@@ -49,7 +49,13 @@ onde declarar um valor novo.
 4. **É cor?** Sempre `var(--color-*)` de `tokens.css` — nunca hex
    hardcoded novo. Se a cor que você precisa não existe em `tokens.css`,
    isso é sinal de discutir se ela devia existir ali antes de hardcodar.
-5. **Radius/sombra/espaçamento/transição/z-index**: como esses tokens não
+5. **Layout das telas com sidebar (Feed, Perfil, Perfil público)**:
+   usar `--layout-max-width`, `--layout-column-gap`,
+   `--layout-sidebar-width` e `--layout-side-padding` de `tokens.css`, e
+   **não** somar `margin-top` no shell — o respiro abaixo do header vem do
+   próprio `AppHeader` (`margin-bottom: 1rem`). Assim o conteúdo não "pula"
+   ao navegar entre essas telas.
+6. **Radius/sombra/espaçamento/transição/z-index**: como esses tokens não
    estão ativos ainda (ver tabela acima), usar o valor mais comum já
    presente nos componentes vizinhos em vez de inventar um número novo —
    não usar `css-variables.css`, que não tem efeito.

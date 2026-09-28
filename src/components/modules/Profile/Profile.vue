@@ -5,7 +5,7 @@
   import { useI18n } from 'vue-i18n'
   import { useRoute, useRouter } from 'vue-router'
   import { isRequestCanceled, unwrapItem, unwrapList } from '@/api'
-  import { followUserById, getFollowStats, getMyFollowers, getMyFollowing, unfollowUserById } from '@/api/follows'
+  import { getFollowStats, getMyFollowers, getMyFollowing } from '@/api/follows'
   import { addUserInterest, getInterests, getUnownedInterestSuggestions, removeUserInterest, requestNewInterests, searchInterestsByName } from '@/api/interest'
   import { getUserInterests, getUserProfile, getUserRecomendations, searchUsers, updateUserProfile, uploadBannerImage, uploadProfileImage } from '@/api/users'
   import FeedSidebarNav from '@/components/modules/Feed/FeedSidebarNav.vue'
@@ -18,10 +18,12 @@
   import FollowButton from '@/components/UI/FollowButton/FollowButton.vue'
   import SearchInput from '@/components/UI/SearchInput/SearchInput.vue'
   import SelectableChip from '@/components/UI/SelectableChip/SelectableChip.vue'
+  import ShareButton from '@/components/UI/ShareButton/ShareButton.vue'
   import Snackbar from '@/components/UI/Snackbar/Snackbar.vue'
   import UserAvatar from '@/components/UI/UserAvatar/UserAvatar.vue'
   import WePartyLoader from '@/components/UI/WePartyLoader/WePartyLoader.vue'
   import { useAuth } from '@/composables/useAuth'
+  import { useFollowToggle } from '@/composables/useFollowToggle'
   import { useInterestNavigation } from '@/composables/useInterestNavigation'
   import { useLoading } from '@/composables/useLoading'
   import { useUserNavigation } from '@/composables/useUserNavigation'
@@ -549,29 +551,24 @@
   }
 
   // ── Toggle Follow User ──
-  async function toggleFollowUser (user: FollowUser) {
-    const previousState = user.isFollowing
-
-    // Atualização otimista
-    user.isFollowing = !user.isFollowing
-
-    try {
-      if (previousState) {
-        await unfollowUserById(user.id)
-        followStats.value.following = Math.max(0, followStats.value.following - 1)
-        showSnackbar(t('profile.messages.unfollowSuccess', { name: user.name }), '#6b7280')
-      } else {
-        await followUserById(user.id)
+  // Otimista + reversão + anti-duplo-clique ficam no composable; aqui só
+  // contadores e toast.
+  const { toggleFollow: toggleFollowUser } = useFollowToggle<FollowUser>({
+    lists: [followersList, followingList, allRecommendedUsers, filteredRecommendedUsers, recommendedUsers],
+    onSuccess (user, nowFollowing) {
+      if (nowFollowing) {
         followStats.value.following++
         showSnackbar(t('profile.messages.followSuccess', { name: user.name }), SNACKBAR_COLORS.success)
+      } else {
+        followStats.value.following = Math.max(0, followStats.value.following - 1)
+        showSnackbar(t('profile.messages.unfollowSuccess', { name: user.name }), '#6b7280')
       }
-    } catch (error_) {
-      // Reverte em caso de erro
-      user.isFollowing = previousState
+    },
+    onError (error_) {
       console.error('Erro ao alterar follow:', error_)
       showSnackbar(t('profile.messages.followUpdateError'), SNACKBAR_COLORS.error)
-    }
-  }
+    },
+  })
 
   // ── Open/Close Followers/Following Modals ──
   function openFollowersModal () {
@@ -1438,14 +1435,7 @@
                   <i aria-hidden="true" class="mdi mdi-pencil-outline" />
                   {{ t('profile.editProfile') }}
                 </button>
-                <button
-                  :aria-label="t('profile.shareProfile')"
-                  class="share-btn"
-                  type="button"
-                  @click="handleShareProfile"
-                >
-                  <i aria-hidden="true" class="mdi mdi-share-variant-outline" />
-                </button>
+                <ShareButton data-testid="profile-share" :label="t('profile.shareProfile')" @click="handleShareProfile" />
               </div>
             </div>
 
@@ -1799,9 +1789,11 @@
                   <span v-if="recUser.username" class="recommendation-username">@{{ recUser.username }}</span>
                 </div>
                 <FollowButton
+                  :aria-label="recUser.isFollowing ? t('profile.followersModal.following') : t('profile.followersModal.follow')"
                   :following="!!recUser.isFollowing"
                   :following-label="t('profile.followersModal.following')"
                   :label="t('profile.followersModal.follow')"
+                  :title="recUser.isFollowing ? t('profile.followersModal.following') : t('profile.followersModal.follow')"
                   @toggle="toggleFollowUser(recUser)"
                 />
               </li>
@@ -2000,13 +1992,12 @@
 .layout-shell {
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: 240px minmax(0, 720px) 320px;
+  grid-template-columns: var(--layout-sidebar-width) minmax(0, 720px) 320px;
   grid-template-areas: 'sidebar main extras';
-  column-gap: 2rem;
-  width: min(100%, 1280px);
+  column-gap: var(--layout-column-gap);
+  width: min(100%, var(--layout-max-width));
   margin: 0 auto 3.5rem;
   align-items: start;
-  margin-top: 2rem;
 }
 
 .layout-sidebar {
@@ -2151,26 +2142,6 @@
 
 .edit-btn i {
   font-size: 1rem;
-}
-
-.share-btn {
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1.5px solid #e0e2ed;
-  background: white;
-  color: #555b77;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 1.1rem;
-}
-
-.share-btn:hover {
-  border-color: #ff5fa6;
-  color: #ff5fa6;
 }
 
 .header-info {
@@ -3474,7 +3445,7 @@
     grid-template-columns: 220px 1fr;
     grid-template-areas: 'sidebar main';
     width: min(100%, 960px);
-    padding: 0 var(--spacing-xl);
+    padding: 0 var(--layout-side-padding);
   }
 
   /* Layout de 2 colunas (sem coluna extras): esconde novamente.
@@ -3572,11 +3543,11 @@
 /* ── LARGE DESKTOP (≥ 1240px) ── */
 @media (min-width: 1240px) {
   .layout-shell {
-    grid-template-columns: 240px minmax(0, 720px) 320px;
+    grid-template-columns: var(--layout-sidebar-width) minmax(0, 720px) 320px;
     grid-template-areas: 'sidebar main extras';
-    column-gap: var(--spacing-xl);
-    width: min(100%, 1280px);
-    padding: 0;
+    column-gap: var(--layout-column-gap);
+    width: min(100%, var(--layout-max-width));
+    padding: 0 1rem;
   }
 
   .layout-extras {
@@ -3591,6 +3562,48 @@
 
   .layout-extras::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* ≥960px a coluna extras é sticky e limitada a `100vh - 120px`. Rolar a coluna
+   inteira cortava o topo do 1º card (e, pior, a base do último), então aqui só
+   as LISTAS de dentro rolam.
+   Conta: a parte fixa dos dois cards (padding, títulos, busca, dica, gap) soma
+   ~310px; com ~50px de folga, sobram `100vh - 480px` para as três listas, que
+   dividem esse espaço em 25% / 30% / 45%. Cada uma tem um mínimo legível e o
+   teto que já existia. Os cards em si não encolhem: se nem os mínimos couberem
+   (tela muito baixa), o overflow-y do .layout-extras é a rede de segurança. */
+@media (min-width: 960px) {
+  .layout-extras .interests-tags-wrapper {
+    max-height: clamp(64px, calc((100vh - 480px) * 0.25), 180px);
+  }
+
+  /* Na coluna estreita (960–1099px) os chips quebram um por linha; a lista
+     rola por dentro em vez de ficar mais alta que o card. */
+  .layout-extras .interests-suggestions-list {
+    max-height: clamp(80px, calc((100vh - 480px) * 0.3), 220px);
+    padding: 2px 4px 4px 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 95, 166, 0.3) transparent;
+  }
+
+  .layout-extras .recommendations-list-wrapper {
+    max-height: clamp(104px, calc((100vh - 480px) * 0.45), 280px);
+  }
+}
+
+/* Coluna extras estreita (960–1099px, 240px): o FollowButton (min-width 120px)
+   deixava o nome sem espaço. Aqui ele vira um botão só de ícone, ao lado do
+   nome; o texto sai da tela (font-size 0) mas continua no aria-label. */
+@media (min-width: 960px) and (max-width: 1099px) {
+  .recommendation-item :deep(.follow-btn) {
+    gap: 0;
+    width: 2.5rem;
+    min-width: 0;
+    height: 2.5rem;
+    padding: 0;
+    font-size: 0;
   }
 }
 
@@ -3630,7 +3643,6 @@
 /* Focus visible para acessibilidade */
 .tab-btn:focus-visible,
 .edit-btn:focus-visible,
-.share-btn:focus-visible,
 .stat-item:focus-visible,
 .avatar-wrapper:focus-visible,
 btn:focus-visible,
@@ -3671,7 +3683,6 @@ a:focus-visible {
 
 /* Ripple effect para botões (usando pseudo-elemento) */
 .edit-btn,
-.share-btn,
 .show-more-btn,
 .empty-action {
   position: relative;
@@ -3679,7 +3690,6 @@ a:focus-visible {
 }
 
 .edit-btn::after,
-.share-btn::after,
 .show-more-btn::after,
 .empty-action::after {
   content: '';
@@ -3692,7 +3702,6 @@ a:focus-visible {
 }
 
 .edit-btn:active::after,
-.share-btn:active::after,
 .show-more-btn:active::after,
 .empty-action:active::after {
   transform: scale(2.5);

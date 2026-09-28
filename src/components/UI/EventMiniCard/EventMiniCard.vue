@@ -19,9 +19,15 @@
       location: string
       /** Mostra o selo de "confirmado" sobre o banner. */
       confirmed?: boolean
+      /** Etiqueta curta acima do título (ex.: "Hoje", "Em 3 dias"). Já traduzida pelo chamador. */
+      tag?: string
+      /** Evento que já passou: banner e card esmaecidos. */
+      past?: boolean
     }>(),
     {
       confirmed: false,
+      tag: '',
+      past: false,
     },
   )
 
@@ -33,7 +39,7 @@
 <template>
   <div
     class="event-mini-card"
-    :class="{ 'event-mini-card--confirmed': confirmed }"
+    :class="{ 'event-mini-card--confirmed': confirmed, 'event-mini-card--past': past }"
     role="button"
     tabindex="0"
     @click="$emit('click')"
@@ -50,6 +56,7 @@
       </div>
     </div>
     <div class="content">
+      <span v-if="tag" class="tag" data-testid="event-mini-card-tag">{{ tag }}</span>
       <h4 class="title">{{ title }}</h4>
       <div class="location">
         <i class="mdi mdi-map-marker" />
@@ -84,6 +91,15 @@
 
 .event-mini-card--confirmed:hover {
   box-shadow: 0 8px 24px rgba(76, 175, 80, 0.15);
+}
+
+/* Já passou: esmaece sem esconder — continua clicável e legível */
+.event-mini-card--past {
+  opacity: 0.8;
+}
+
+.event-mini-card--past .banner img {
+  filter: grayscale(0.85);
 }
 
 .banner {
@@ -144,6 +160,19 @@
 
 .content {
   padding: 1rem;
+}
+
+.tag {
+  display: inline-block;
+  margin-bottom: 0.4rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-secondary), var(--color-primary));
+  color: var(--color-light);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .title {
