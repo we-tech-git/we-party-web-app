@@ -260,7 +260,7 @@
       <!-- Host tag -->
       <div class="host-tag" style="cursor: pointer;" @click.stop="handleHostClick">
         <UserAvatar class="host-avatar" :image="hostAvatar" :name="hostName" :size="26" />
-        <span>{{ hostName }}</span>
+        <span class="host-name">{{ hostName }}</span>
       </div>
 
       <!-- Bookmark -->
@@ -857,11 +857,17 @@
   transform: scale(1.03);
 }
 
+.host-name {
+  display: inline-block;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .host-avatar {
-  width: 26px;
-  height: 26px;
+  flex-shrink: 0;
   border-radius: 50%;
-  object-fit: cover;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
@@ -1320,6 +1326,7 @@
 
   .overlay {
     padding: clamp(1rem, 3vw, 1.5rem);
+    padding-top: 4.5rem;
   }
 }
 
@@ -1344,9 +1351,8 @@
     padding: 0.32rem 0.65rem 0.32rem 0.38rem;
   }
 
-  .host-avatar {
-    width: 23px;
-    height: 23px;
+  .host-name {
+    max-width: 140px;
   }
 
   .bookmark {
@@ -1389,8 +1395,13 @@
     height: clamp(260px, 70vw, 340px);
   }
 
+  .host-name {
+    max-width: 125px;
+  }
+
   .overlay {
     padding: 0.9rem;
+    padding-top: 4.25rem;
     gap: 0.3rem;
   }
 
@@ -1555,12 +1566,20 @@
     position: relative;
     inset: auto;
     min-height: clamp(300px, 76vw, 400px);
+    padding-top: 4.25rem;
   }
 }
 
 @media (max-width: 480px) {
   .overlay {
     min-height: clamp(260px, 70vw, 340px);
+    padding-top: 4.25rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .host-name {
+    max-width: 105px;
   }
 }
 
