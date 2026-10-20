@@ -88,7 +88,7 @@ localStorage.setItem(STORAGE_KEYS.LOGGED_USER, JSON.stringify(response.user));
 ```typescript
 function generateTestLoginData() {
   const emailGenerated = `jonathan.nwokolo@gmail.com`;
-  const passwordGenerated = "Teste12345@";
+  const passwordGenerated = "<senha-de-teste-removida>";
   return { email: emailGenerated, password: passwordGenerated };
 }
 ```
