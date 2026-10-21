@@ -102,6 +102,20 @@ Toda ação que dispara requisição (salvar perfil, upload, seguir, enviar come
 - Textos sempre via `vue-i18n` (`src/locales/`), nunca hardcoded.
 - Componente de página fino: orquestra composables e delega render.
 
+## Design System: Figma ↔ código ↔ Storybook (regra OBRIGATÓRIA — vale também para o CMS)
+
+O Figma (arquivo **Venus Design**: páginas *Design System* e *Componentes*) e o código são uma coisa só:
+- **Mudou um componente (ou token) aqui** ⇒ atualizar o componente/variável no Figma **e** a ficha em *Componentes* **na mesma tarefa**.
+- **Mudou no Figma** ⇒ refletir no componente, na story (`yarn storybook`) e em `docs/DESIGN_SYSTEM.md`.
+- Todo componente de `src/components/UI/` tem story com as variantes do Figma e link do nó (`parameters.design`).
+- Divergência que não coube na tarefa: declarar no PR e abrir tarefa — nunca silenciosa.
+- Skill: `figma-code-sync` (`.opencode/skills/figma-code-sync`). Detalhes e tokens do visual B: `frontend/we-party-cms/docs/DESIGN_SYSTEM.md`.
+
+## Testes e segurança em toda mudança de UI
+
+- Cobertura em `weparty-automation` (layout desktop/mobile, estados, fluxos, retroativo) e `data-testid` no mesmo PR.
+- Segurança a cada PR: checklist abaixo + skill `security-review`; pendência grande vai para `docs/SECURITY.md`/Plane.
+
 ## Checklist de segurança (verificar a CADA nova implementação)
 
 Não é burocracia: a lista existe porque estes erros já apareceram neste código.
