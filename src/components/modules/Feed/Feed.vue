@@ -34,6 +34,7 @@
   import { useLoading } from '@/composables/useLoading'
   import { readLikeCount, useEventsStore } from '@/stores/events'
   import { logger } from '@/utils/logger'
+  import { shouldForwardWheel } from '@/utils/wheelForward'
   import FeedCard from './FeedCard.vue'
   import FeedSidebarNav from './FeedSidebarNav.vue'
   import FeedTrendingMobile from './FeedTrendingMobile.vue'
@@ -847,15 +848,12 @@
    * Sidebar e trends têm scroll próprio, mas quando o conteúdo deles é mais
    * curto que a coluna (caso comum) não sobra nada pra rolar ali — e como o
    * shell em volta é `overflow: hidden`, o wheel não tinha pra onde ir e a
-   * página parecia travada. Aqui a gente só deixa a coluna rolar sozinha
-   * enquanto ainda tem para onde ir; do contrário, repassa o wheel pro feed.
+   * página parecia travada. Só nesse caso repassa o wheel pro feed; se a
+   * coluna rola, ela rola sozinha e não puxa o feed junto ao chegar no
+   * começo/fim (WEPARTY-231).
    */
   function forwardWheelToFeed (event: WheelEvent) {
-    const column = event.currentTarget as HTMLElement
-    const atTop = column.scrollTop <= 0
-    const atBottom = column.scrollTop + column.clientHeight >= column.scrollHeight - 1
-
-    if ((event.deltaY < 0 && !atTop) || (event.deltaY > 0 && !atBottom)) {
+    if (!shouldForwardWheel(event.currentTarget as HTMLElement, event.deltaY)) {
       return
     }
 
@@ -1261,7 +1259,7 @@
         @wheel="forwardWheelToFeed"
       />
 
-      <main ref="feedMainRef" class="feed-main">
+      <main ref="feedMainRef" class="feed-main" data-testid="feed-main">
         <!-- Breadcrumb Navigation -->
         <BreadcrumbBack
           v-if="activeNav !== 'home'"
@@ -1367,6 +1365,7 @@
 
       <FeedTrendsPanel
         class="feed-trends"
+        data-testid="feed-trends"
         :guest-mode="props.guestMode"
         :items="displayedTrends"
         :loading="checkLoading('feed:trends')"
@@ -1420,6 +1419,7 @@
 .feed-sidebar {
   grid-area: sidebar;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
   scrollbar-width: none;
   z-index: 10;
 }
@@ -1434,6 +1434,7 @@
   flex-direction: column;
   gap: 1.75rem;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
   min-height: 0;
   scrollbar-width: none;
   position: relative;
@@ -1448,6 +1449,7 @@
 .feed-trends {
   grid-area: trends;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
   scrollbar-width: none;
   z-index: 10;
 }

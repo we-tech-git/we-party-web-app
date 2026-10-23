@@ -135,14 +135,14 @@
             <path v-for="(path, idx) in svgIcons.backArrow.paths" :key="idx" v-bind="path" />
           </svg>
         </button>
-        <div class="brand-logo-wrapper" @click="navigateToHome">
+        <div class="brand-logo-wrapper" data-testid="app-header-brand" @click="navigateToHome">
           <img alt="We Party Logo" class="brand-logo-img" src="/logoweparty.png">
           <span aria-hidden="true" class="brand notranslate" translate="no">WE PARTY</span>
         </div>
       </div>
       <div class="center-container">
         <slot name="center-content">
-          <div class="default-search-wrapper">
+          <div class="default-search-wrapper" data-testid="app-header-search">
             <EventSearchAutocomplete
               v-model="defaultSearchQuery"
               :placeholder="t('feed.searchPlaceholder')"
@@ -151,7 +151,7 @@
           </div>
         </slot>
       </div>
-      <div class="user-summary">
+      <div class="user-summary" data-testid="app-header-user">
         <!-- Seletor de idioma apenas no modo guest (explore), exceto dentro do
              preview em iframe (mockup 3D da landing page), onde não cabe -->
         <div v-if="guestMode && !isEmbedded" class="lang-switch-wrapper">

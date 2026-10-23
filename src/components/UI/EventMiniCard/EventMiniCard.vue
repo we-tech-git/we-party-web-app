@@ -40,6 +40,7 @@
   <div
     class="event-mini-card"
     :class="{ 'event-mini-card--confirmed': confirmed, 'event-mini-card--past': past }"
+    data-testid="event-mini-card"
     role="button"
     tabindex="0"
     @click="$emit('click')"

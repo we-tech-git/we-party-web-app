@@ -425,7 +425,7 @@
       </main>
     </section>
 
-    <AppFooter />
+    <AppFooter reserve-bottom-nav />
 
     <!-- Modal de Seguidores -->
     <Teleport to="body">
@@ -502,12 +502,6 @@
   width: min(100%, var(--layout-max-width));
   margin: 0 auto;
   padding: 1rem 0.5rem;
-}
-
-/* O footer é o último elemento da página, então carrega a folga para a
-   bottom nav fixa (mobile) não cobri-lo. */
-:deep(.app-footer) {
-  padding-bottom: calc(2rem + 5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .layout-main {
