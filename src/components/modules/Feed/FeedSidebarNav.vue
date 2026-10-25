@@ -70,7 +70,7 @@
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" data-testid="feed-sidebar-nav">
     <nav aria-label="Navegação principal">
       <ul class="nav-list" role="list">
         <li v-for="item in items" :key="item.id" class="nav-item">

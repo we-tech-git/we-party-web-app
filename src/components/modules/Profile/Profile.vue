@@ -1450,12 +1450,12 @@
 
               <!-- Follow Stats -->
               <div class="follow-stats-row">
-                <button class="follow-stat" type="button" @click="openFollowersModal">
+                <button class="follow-stat" data-testid="profile-followers-button" type="button" @click="openFollowersModal">
                   <span class="follow-stat-count">{{ followStats.followers }}</span>
                   <span class="follow-stat-label">{{ t('profile.followers') }}</span>
                 </button>
                 <span class="follow-stat-divider" />
-                <button class="follow-stat" type="button" @click="openFollowingModal">
+                <button class="follow-stat" data-testid="profile-following-button" type="button" @click="openFollowingModal">
                   <span class="follow-stat-count">{{ followStats.following }}</span>
                   <span class="follow-stat-label">{{ t('profile.following') }}</span>
                 </button>
@@ -1482,6 +1482,7 @@
             :aria-selected="activeTab === tab.id"
             class="tab-btn"
             :class="{ active: activeTab === tab.id }"
+            :data-testid="`profile-tab-${tab.id}`"
             role="tab"
             @click="activeTab = tab.id"
           >
@@ -1807,7 +1808,7 @@
       </aside>
     </section>
 
-    <AppFooter />
+    <AppFooter reserve-bottom-nav />
 
     <!-- Modal de Editar Perfil — extraído pra ProfileEditModal.vue na Fase 5
          do REFACTOR_AUDIT_PLAN.md (4ª fatia da decomposição de
@@ -3258,12 +3259,6 @@
   right: 0;
   top: auto;
   z-index: 1000;
-}
-
-/* O footer vem depois da .layout-shell, então precisa da sua própria folga
-   para não ficar por baixo da bottom nav fixa. */
-:deep(.app-footer) {
-  padding-bottom: calc(2rem + 5rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* Mobile: mostra Interesses + Quem seguir empilhados abaixo do conteúdo principal.

@@ -11,6 +11,15 @@
   // seção certa, esteja ela montada ou navegando de outra página.
   const router = useRouter()
 
+  // Telas com a bottom nav fixa (perfil, perfil público) ligam isto para o
+  // rodapé ganhar a folga no mobile — sem ela o menu cobre a última linha.
+  // A folga mora aqui porque `:deep(.app-footer)` no CSS da página nunca
+  // pegava: o `<footer>` é a raiz deste componente, e `:deep` só alcança
+  // descendentes do elemento que carrega o escopo da página.
+  defineProps<{
+    reserveBottomNav?: boolean
+  }>()
+
   const currentYear = new Date().getFullYear()
   const instagramUrl = 'https://www.instagram.com/weparty.br'
 
@@ -27,7 +36,7 @@
 </script>
 
 <template>
-  <footer class="app-footer">
+  <footer class="app-footer" :class="{ 'app-footer--bottom-nav': reserveBottomNav }" data-testid="app-footer">
     <div class="container">
       <div class="footer-grid">
         <div class="footer-col-brand">
@@ -72,7 +81,7 @@
         </div>
       </div>
 
-      <div class="footer-bottom">
+      <div class="footer-bottom" data-testid="app-footer-bottom">
         <span>© {{ currentYear }} We Party. Todos os direitos reservados.</span>
         <div class="footer-legal-links">
           <button class="footer-link-btn" data-testid="app-footer-open-privacy" type="button" @click="openTermsModal('privacy')">Privacidade</button>
@@ -222,6 +231,13 @@
 
 .footer-legal-links .footer-link-btn:hover {
   color: #ff9a4d;
+}
+
+/* A bottom nav fixa (FeedSidebarNav) aparece até 960px. */
+@media (max-width: 960px) {
+  .app-footer--bottom-nav {
+    padding-bottom: calc(2rem + 5rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @media (max-width: 768px) {
