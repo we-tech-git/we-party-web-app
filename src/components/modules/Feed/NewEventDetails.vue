@@ -587,7 +587,7 @@
 
 <script setup lang="ts">
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-  import { useRouter } from 'vue-router'
+  import { useRoute, useRouter } from 'vue-router'
   import { unwrapItem, unwrapList } from '@/api'
   import { getEventComments } from '@/api/comments'
   import { getEventById, getMyAttendance, getTrendingEvents } from '@/api/event'
@@ -618,6 +618,11 @@
   }>()
 
   const router = useRouter()
+  const route = useRoute()
+  // Código do link de divulgação (`?ref=`) que trouxe a visita — WEPARTY-239.
+  const trackingRef = computed(() =>
+    typeof route.query.ref === 'string' && route.query.ref ? route.query.ref : undefined,
+  )
   const eventsStore = useEventsStore()
   const shareStore = useShareStore()
   const { userDisplayName, loggedUser } = useAuth()
@@ -1389,7 +1394,9 @@
     if (!hasPreview) loading.value = true
     errorMessage.value = ''
     try {
-      const res: any = await getEventById(currentId.value)
+      const res: any = trackingRef.value
+        ? await getEventById(currentId.value, trackingRef.value)
+        : await getEventById(currentId.value)
       const payload = res?.data?.event || res?.data || res
       event.value = mapEvent(payload)
       applyCounters(payload)

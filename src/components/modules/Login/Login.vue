@@ -20,6 +20,7 @@
   import { validationRules } from '@/composables/useValidation'
   import router from '@/router'
   import { logger } from '@/utils/logger'
+  import { getSafeNextPath } from '@/utils/safeNextPath'
 
   const { t } = useI18n()
   const { login } = useAuth()
@@ -107,6 +108,11 @@
     await submitForm()
   }
 
+  /** Destino pós-login: o `?next=` (se for caminho da própria app) ou o feed. */
+  function postLoginPath () {
+    return getSafeNextPath(router.currentRoute.value.query.next) ?? '/feed'
+  }
+
   /**
    * Envia os dados do formulário para a API de login.
    * Gerencia o estado de carregamento, sucesso e falha.
@@ -148,7 +154,7 @@
 
         showSnackbar(t('login.snackbar.success'), '#22c55e')
         setTimeout(() => {
-          router.push('/feed')
+          router.push(postLoginPath())
         }, 1500)
       } else {
         // Extrai a mensagem de erro da resposta, como "Email não verificado"
@@ -228,7 +234,7 @@
       showSnackbar(t('login.snackbar.googleSuccess'), '#22c55e')
       logger.log('[GOOGLE AUTH] 🎉 Redirecionando para /feed')
       setTimeout(() => {
-        router.push('/feed')
+        router.push(postLoginPath())
       }, 1500)
     } catch (error: any) {
       logger.error('[GOOGLE AUTH] ❌ Erro ao processar sucesso:', error)

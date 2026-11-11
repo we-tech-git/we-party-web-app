@@ -93,7 +93,7 @@ router.beforeEach((to, from, next) => {
   // As URLs não têm mais o prefixo `/private`, então o sinal não pode mais
   // vir do path; vem do meta da rota.
   if (to.meta.requiresAuth) {
-    const canAccess = privateRouteGuard(to.path)
+    const canAccess = privateRouteGuard(to.path, to.fullPath)
     if (typeof canAccess === 'string') {
       next(canAccess)
       return
