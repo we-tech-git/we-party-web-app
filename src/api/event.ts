@@ -215,11 +215,17 @@ export async function getEventsToday (page = 1, limit = 10) {
   }
 }
 
-export async function getEventById (id: string | number) {
+/**
+ * @param ref - código do link de divulgação que trouxe a visita (`?ref=` da
+ *   URL do evento). O backend só conta a visita por origem; sem `ref`, a
+ *   chamada é a mesma de sempre.
+ */
+export async function getEventById (id: string | number, ref?: string) {
   try {
+    const query = ref ? `?ref=${encodeURIComponent(ref)}` : ''
     const response = await callApi(
       'GET',
-      `/events/${id}`,
+      `/events/${id}${query}`,
       {},
       true,
     )

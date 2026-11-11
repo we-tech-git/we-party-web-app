@@ -8,6 +8,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { AuthService, type LoggedUser } from '@/services/auth'
 import { useEventsStore } from '@/stores/events'
 import { logger } from '@/utils/logger'
+import { loginPathWithNext } from '@/utils/safeNextPath'
 
 // Estado global reativo da autenticação
 const isAuthenticated = ref(AuthService.isAuthenticated())
@@ -279,8 +280,12 @@ export function useAuth () {
 
 /**
  * Guards de navegação para uso no router
+ *
+ * @param fullPath - caminho completo com query (`to.fullPath`). Sem login, vai
+ *   para `/login?next=<fullPath>` e o login devolve o visitante para lá — assim
+ *   o `?ref=` do link de divulgação não se perde (WEPARTY-239).
  */
-export function privateRouteGuard (path?: string) {
+export function privateRouteGuard (path?: string, fullPath?: string) {
   const authenticated = AuthService.isAuthenticated()
   const user = AuthService.getUser()
 
@@ -289,7 +294,7 @@ export function privateRouteGuard (path?: string) {
     if (path?.includes('/feed')) {
       return '/explore'
     }
-    return '/login'
+    return loginPathWithNext(fullPath)
   }
 
   if (user && user.isEmailVerified === false) {

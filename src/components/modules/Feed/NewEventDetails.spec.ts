@@ -6,6 +6,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createI18n } from 'vue-i18n'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { useShareStore } from '@/stores/share'
 import { createTestVuetify } from '@/test/vuetify'
 import NewEventDetails from './NewEventDetails.vue'
 
@@ -68,6 +69,27 @@ vi.mock('@/api/follows', async importOriginal => {
     unfollowUserById: vi.fn().mockResolvedValue({ data: {} }),
   }
 })
+
+/** Monta já na rota `/event/ev1<query>`, como quem chega pelo link de divulgação. */
+async function mountOnEventRoute (query: string) {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', component: { template: '<div />' } },
+      { path: '/feed', component: { template: '<div />' } },
+      { path: '/login', component: { template: '<div />' } },
+      { path: '/event/:id', component: { template: '<div />' } },
+    ],
+  })
+  await router.push(`/event/ev1${query}`)
+  await router.isReady()
+  const vuetify = createTestVuetify()
+  const i18n = createI18n({ legacy: false, locale: 'pt-BR', messages: { 'pt-BR': {} } })
+  return mount(NewEventDetails, {
+    props: { eventId: 'ev1' },
+    global: { plugins: [vuetify, i18n, router] },
+  })
+}
 
 function mountNewEventDetails (props: Record<string, unknown> = {}) {
   const vuetify = createTestVuetify()
@@ -132,5 +154,40 @@ describe('NewEventDetails', () => {
     await flushMountedPromises()
     expect(getEventById).toHaveBeenCalledWith('ev1')
     expect(wrapper.text()).toContain('Festa de Réveillon')
+  })
+
+  describe('link de divulgação (?ref=) — WEPARTY-239', () => {
+    it('repassa o ref da URL para getEventById', async () => {
+      const { getEventById } = await import('@/api/event')
+      vi.mocked(getEventById).mockClear()
+
+      await mountOnEventRoute('?ref=abcd2345')
+      await flushMountedPromises()
+
+      expect(getEventById).toHaveBeenCalledWith('ev1', 'abcd2345')
+    })
+
+    it('sem ref na URL, chama sem ref', async () => {
+      const { getEventById } = await import('@/api/event')
+      vi.mocked(getEventById).mockClear()
+
+      await mountOnEventRoute('')
+      await flushMountedPromises()
+
+      expect(getEventById).toHaveBeenCalledWith('ev1')
+    })
+
+    it('compartilhar não propaga o ref de quem chegou pelo link', async () => {
+      const wrapper = await mountOnEventRoute('?ref=abcd2345')
+      await flushMountedPromises()
+      const shareStore = useShareStore()
+
+      const shareButton = wrapper.findAll('button').find(b => b.text().trim() === 'Enviar')
+      expect(shareButton).toBeDefined()
+      await shareButton!.trigger('click')
+
+      expect(shareStore.shareData.url).toBe(`${window.location.origin}/event/ev1`)
+      expect(shareStore.shareData.url).not.toContain('ref=')
+    })
   })
 })
